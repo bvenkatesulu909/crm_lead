@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "E:\\crm-lead\\backend\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:create_app", "--factory", "--port", "8000"],
+      "cwd": "E:\\crm-lead\\backend",
+      "port": 8000,
+      "url": "http://127.0.0.1:8000"
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "E:\\crm-lead\\frontend",
+      "port": 3000
+    }
+  ]
+}

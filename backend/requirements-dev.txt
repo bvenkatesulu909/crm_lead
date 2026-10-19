@@ -1,0 +1,15 @@
+# Development and test tools. Not needed to run the API, only to build and check it.
+-r requirements.txt
+
+# Test runner.
+pytest==9.1.1
+# HTTP client used by FastAPI's TestClient to call the app in tests.
+httpx==0.28.1
+# Linter and formatter (finds bugs and style problems, sorts imports).
+ruff==0.17.1
+# Static type checker.
+mypy==2.4.0
+# Type information for ReportLab (quote PDFs), from typeshed.
+types-reportlab==5.0.0.20260911
+# Checks module boundaries (contracts in pyproject.toml): modules use each other only via api.py.
+import-linter==2.15

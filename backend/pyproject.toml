@@ -1,0 +1,79 @@
+# Tool settings only (pytest, ruff, mypy). Dependencies live in requirements*.txt.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F: errors, I: import order, B: likely bugs, UP: modern syntax, S: security checks.
+select = ["E", "F", "I", "B", "UP", "S"]
+
+[tool.ruff.lint.isort]
+# The local "alembic/" migrations folder must not make ruff treat the alembic library as ours.
+known-third-party = ["alembic"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's documented pattern: Depends()/Query() as parameter defaults.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.params.Depends"]
+
+[tool.ruff.lint.per-file-ignores]
+# assert is how pytest checks things.
+"tests/**" = ["S101"]
+# One row per test identity reads better than wrapped tuples.
+"scripts/seed_dev_data.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# Strict typing is required for application code. Test functions may leave pytest
+# fixtures unannotated (their types come from the fixture definitions).
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+
+# ---------- Architecture boundaries (import-linter) ----------
+# Run: lint-imports   (in backend, venv active). See CLAUDE.md "Architecture rules".
+[tool.importlinter]
+root_package = "app"
+
+[[tool.importlinter.contracts]]
+name = "app.core never depends on business modules"
+type = "forbidden"
+source_modules = ["app.core"]
+forbidden_modules = ["app.modules", "app.api", "app.main", "app.model_registry"]
+
+[[tool.importlinter.contracts]]
+name = "Modules use each other only through their api.py"
+type = "independence"
+modules = [
+    "app.modules.accounts",
+    "app.modules.activities",
+    "app.modules.assistant",
+    "app.modules.catalog",
+    "app.modules.contacts",
+    "app.modules.dashboard",
+    "app.modules.documents",
+    "app.modules.identity",
+    "app.modules.invoices",
+    "app.modules.leads",
+    "app.modules.notifications",
+    "app.modules.orders",
+    "app.modules.portal",
+    "app.modules.quotes",
+    "app.modules.relationships",
+    "app.modules.reports",
+    "app.modules.sales",
+    "app.modules.support",
+    "app.modules.workflows",
+]
+# The one allowed path between modules: importing another module's public api.py.
+ignore_imports = ["app.modules.** -> app.modules.*.api"]

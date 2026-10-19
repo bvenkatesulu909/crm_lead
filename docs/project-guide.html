@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>crm-lead — Project Guide</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+  :root { --ink:#0f172a; --muted:#475569; --brand:#4338ca; --soft:#eef2ff; --line:#e2e8f0; --ok:#047857; --warn:#b45309; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; margin: 0; background: #fff; }
+  h1 { font-size: 26pt; margin: 0 0 6pt; color: var(--brand); }
+  h2 { font-size: 16pt; color: var(--brand); border-bottom: 2px solid var(--brand); padding-bottom: 3pt; margin: 22pt 0 8pt; page-break-after: avoid; }
+  h3 { font-size: 12.5pt; margin: 14pt 0 4pt; page-break-after: avoid; }
+  h4 { font-size: 10.5pt; margin: 10pt 0 3pt; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; page-break-after: avoid; }
+  p { margin: 4pt 0 6pt; }
+  ul, ol { margin: 3pt 0 7pt 0; padding-left: 18pt; }
+  li { margin: 2pt 0; }
+  code, .mono { font-family: Consolas, "Courier New", monospace; font-size: 9.3pt; background: #f1f5f9; padding: 0 3px; border-radius: 3px; }
+  pre { font-family: Consolas, "Courier New", monospace; font-size: 9pt; background: #0f172a; color: #e2e8f0; padding: 8pt 10pt; border-radius: 6px; white-space: pre-wrap; page-break-inside: avoid; margin: 5pt 0 8pt; }
+  table { width: 100%; border-collapse: collapse; margin: 5pt 0 9pt; font-size: 9.5pt; page-break-inside: auto; }
+  th, td { border: 1px solid var(--line); padding: 4pt 6pt; text-align: left; vertical-align: top; }
+  th { background: var(--soft); }
+  tr { page-break-inside: avoid; }
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; page-break-after: always; }
+  .cover .sub { font-size: 14pt; color: var(--muted); }
+  .cover .meta { margin-top: 30pt; font-size: 10.5pt; color: var(--muted); }
+  .box { border: 1px solid var(--line); border-left: 4px solid var(--brand); background: #f8fafc; padding: 7pt 10pt; border-radius: 4px; margin: 7pt 0 9pt; page-break-inside: avoid; }
+  .box.ok { border-left-color: var(--ok); }
+  .box.warn { border-left-color: var(--warn); }
+  .box b.t { display: block; margin-bottom: 2pt; }
+  .step { page-break-inside: avoid; }
+  .tag { display: inline-block; font-size: 8.5pt; font-weight: 600; padding: 1pt 6pt; border-radius: 10px; background: var(--soft); color: var(--brand); margin-right: 4pt; }
+  .tag.ok { background: #ecfdf5; color: var(--ok); }
+  .toc li { margin: 1pt 0; }
+  .newpage { page-break-before: always; }
+  .small { font-size: 9pt; color: var(--muted); }
+  figure.shot { margin: 8pt 0 12pt; page-break-inside: avoid; text-align: center; }
+  figure.shot img { max-width: 100%; max-height: 118mm; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+  figure.shot figcaption { font-size: 9pt; color: var(--muted); margin-top: 3pt; }
+  figure.small-shot img { max-height: 70mm; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <h1>crm-lead</h1>
+  <p class="sub">Project guide: everything built so far, step by step, with explanations</p>
+  <p class="meta">
+    A production-oriented CRM built as a modular monolith, running locally on Windows.<br>
+    Status as of 18 October 2026: Phases 0–2, authentication, Lead Management, three frontend workflows,
+    customer portal, support tickets, orders, invoices, user onboarding (sign-up, invitations, approval)
+    and the AI assistant's text chat are done. Nothing has been committed to Git yet.<br><br>
+    This edition contains screenshots of every screen and of the problems met along the way.<br><br>
+    This guide contains no passwords or secrets. Local test passwords live only in
+    <code>frontend\.env.local</code> and <code>infrastructure\.env</code> (both ignored by Git).
+  </p>
+</section>
+
+<h2>Contents</h2>
+<ol class="toc">
+  <li>The big picture: what we are building and with what</li>
+  <li>How the pieces fit together (architecture)</li>
+  <li>The journey, step by step (every request and what was done)</li>
+  <li>A tour of the screens, with pictures</li>
+  <li>Your own account: sign-up, the e-mail inbox, joining an organisation</li>
+  <li>Security: how data is protected</li>
+  <li>How we test, and the test results</li>
+  <li>How to run everything yourself (Windows CMD)</li>
+  <li>Test users and demo data</li>
+  <li>Where to find things (files and documents)</li>
+  <li>Problems we hit and how they were solved</li>
+  <li>What is not done yet / next steps</li>
+  <li>Glossary of terms</li>
+</ol>
+
+<h2>1. The big picture</h2>
+<p><b>crm-lead</b> is a Customer Relationship Management system. A CRM keeps track of a company's customers and
+everything around them: leads (possible customers), accounts (customer companies), orders, invoices, support
+requests and more. You asked for 17 modules in total (users and roles, accounts, contacts, leads,
+opportunities, activities, marketing, products and quotes, orders, invoices and payments, support, customer
+portal, reports, workflow automation, documents, AI chatbot and voice, integrations).</p>
+
+<h3>The technology, and why each piece is there</h3>
+<table>
+  <tr><th>Part</th><th>Technology</th><th>Why (in plain words)</th></tr>
+  <tr><td>Website (frontend)</td><td>Next.js 16, React 19, TypeScript, Tailwind CSS 4</td><td>React builds the screens; Next.js runs them on a server so data and tokens stay safe; TypeScript catches mistakes before running; Tailwind gives consistent styling.</td></tr>
+  <tr><td>API (backend)</td><td>Python 3.12, FastAPI</td><td>FastAPI turns Python functions into a web API, checks incoming data automatically and documents itself (OpenAPI).</td></tr>
+  <tr><td>Database</td><td>PostgreSQL 16</td><td>A reliable database with strong rules (constraints, triggers, permissions) that protect data even if code has a bug.</td></tr>
+  <tr><td>Database code</td><td>SQLAlchemy 2, Alembic</td><td>SQLAlchemy lets Python talk to the database safely (no hand-built SQL); Alembic records every change to the tables as a numbered "migration".</td></tr>
+  <tr><td>Login</td><td>Keycloak (OpenID Connect)</td><td>A dedicated login server. The CRM never stores passwords itself; Keycloak handles passwords, sessions and two-step sign-in.</td></tr>
+  <tr><td>Running services</td><td>Docker Desktop</td><td>Runs PostgreSQL and Keycloak in containers, the same way on every machine, without installing them by hand.</td></tr>
+  <tr><td>Tests</td><td>pytest, Vitest, Playwright</td><td>pytest tests the backend against a real database; Vitest tests screen components; Playwright clicks through the real website like a person would.</td></tr>
+  <tr><td>Version control</td><td>Git</td><td>Keeps the history of every change. The repository is set up but not committed yet (your choice).</td></tr>
+</table>
+
+<h3>The rules we agreed to follow</h3>
+<ul>
+  <li>One phase at a time; stop and wait for your approval at the end of each phase.</li>
+  <li>Explain every step in beginner-friendly language.</li>
+  <li>Ask before anything destructive (deleting data or volumes, rewriting history) and before major architecture changes.</li>
+  <li>Never claim tests passed unless they were actually run and shown passing.</li>
+  <li>No cloud deployment; everything runs locally. Commands for you use Windows CMD syntax.</li>
+  <li>No secrets in code. Never trust IDs sent by the browser. Never let one tenant see another tenant's data.</li>
+</ul>
+
+<h2>2. How the pieces fit together</h2>
+<pre>
+ Browser (you)
+    │  only an encrypted session cookie, never a token
+    ▼
+ Next.js website  (frontend/, port 3000)
+    │  server-side calls with the user's access token
+    ▼
+ FastAPI backend  (backend/, port 8000)  ──checks token──►  Keycloak (port 8080)
+    │  every query filtered by tenant + role + record rules
+    ▼
+ PostgreSQL (port 5432)   constraints · triggers · insert-only tables
+</pre>
+
+<h3>Modular monolith</h3>
+<p>The backend is <b>one application</b> (a "monolith") split into clearly separated <b>modules</b>
+(<code>backend/app/modules/&lt;name&gt;/</code>): identity, accounts, contacts, leads, sales, support, orders,
+invoices, portal. Each module has the same files:</p>
+<table>
+  <tr><th>File</th><th>What it is for</th></tr>
+  <tr><td><code>models.py</code></td><td>The database tables of the module.</td></tr>
+  <tr><td><code>schemas.py</code></td><td>What the API accepts and returns. Input and output are separate, so the browser can never set fields like totals or numbers.</td></tr>
+  <tr><td><code>policies.py</code></td><td>Who may see which rows (record-level rules), written as database conditions.</td></tr>
+  <tr><td><code>repository.py</code></td><td>The database queries, always with the policy applied.</td></tr>
+  <tr><td><code>rules.py</code></td><td>Pure business rules (status flows, money maths) that are easy to unit-test.</td></tr>
+  <tr><td><code>service.py</code></td><td>The business actions (create, confirm, pay…). Never commits; writes an audit record.</td></tr>
+  <tr><td><code>router.py</code></td><td>The web endpoints. Thin: check permission, call the service, commit once.</td></tr>
+  <tr><td><code>api.py</code></td><td>The only thing other modules may import. Keeps modules independent.</td></tr>
+</table>
+<p>Why: it is as simple to run as one program, but each part can be understood, tested and later split out on its own
+(decision recorded in <code>docs/adr/0001-modular-monolith.md</code>).</p>
+
+<h2 class="newpage">3. The journey, step by step</h2>
+<p>Each step below says what you asked, what was built, why, and how it was checked.</p>
+
+<div class="step">
+<h3>Step 1 — Planning documents (Phase 0)</h3>
+<p><b>You asked:</b> plan the whole CRM (stack, 17 modules, rules) and create <code>architecture.md</code>,
+<code>implementation-plan.md</code>, <code>CLAUDE.md</code>, <code>.gitignore</code> and a folder structure, without building business modules yet.</p>
+<p><b>What was done:</b></p>
+<ul>
+  <li><code>architecture.md</code>: the design (modules, tenancy, security, data rules).</li>
+  <li><code>implementation-plan.md</code>: the work split into numbered phases with acceptance criteria.</li>
+  <li><code>CLAUDE.md</code>: the working rules, security rules and commands — read at the start of every session.</li>
+</ul>
+<p><b>Why:</b> agreeing on the plan first avoids rebuilding later.</p>
+</div>
+
+<div class="step">
+<h3>Step 2 — Finishing Phase 0</h3>
+<p><b>You asked:</b> git init, README, .editorconfig, .gitattributes, the first ADR, and check tool versions.</p>
+<ul>
+  <li><code>git init</code> created the repository. <code>.editorconfig</code> keeps formatting consistent between editors; <code>.gitattributes</code> fixes line endings between Windows and Linux.</li>
+  <li><b>ADR</b> = Architecture Decision Record: a short document explaining one important decision. ADR 0001 records the modular monolith.</li>
+  <li>You chose: <i>"Leave it uncommitted for now; I'll set up Git, uv and Docker first."</i> Git name/e-mail are still not set, so nothing is committed.</li>
+</ul>
+</div>
+
+<div class="step">
+<h3>Step 3 — Backend foundation (Phase 2a)</h3>
+<p><b>You asked:</b> a FastAPI app with a health endpoint, configuration, CORS allow-list, structured logging,
+consistent errors, requirements files, <code>.env.example</code> and pytest — without fake authentication.</p>
+<ul>
+  <li><code>GET /api/v1/health</code> tells whether the API is alive.</li>
+  <li><b>Configuration</b> comes from environment variables (prefix <code>CRM_</code>), never hard-coded.</li>
+  <li><b>CORS allow-list</b>: only the CRM website (http://localhost:3000) may call the API from a browser.</li>
+  <li><b>Structured logging</b>: every log line is JSON with a request ID, so problems can be traced.</li>
+  <li><b>Consistent errors</b>: every error uses the "Problem Details" format with a stable <code>code</code>.</li>
+</ul>
+<p><span class="tag ok">Checked</span> 25 tests passing.</p>
+</div>
+
+<div class="step">
+<h3>Step 4 — Database foundation (Phase 2b) and Docker (Phase 1)</h3>
+<p><b>You asked:</b> PostgreSQL with SQLAlchemy and Alembic, no real customer data, no shortcuts instead of migrations;
+validate the connection. Later: a named Docker volume and a health check.</p>
+<ul>
+  <li><code>infrastructure/docker-compose.yml</code> runs PostgreSQL 16 with a <b>named volume</b> (<code>postgres_data</code>) so data survives when the container is removed, a <b>health check</b>, and a port bound only to 127.0.0.1 (not reachable from your network).</li>
+  <li>Two database roles: <code>crm_owner</code> (changes tables, used by migrations) and <code>crm_app</code> (the API: may only read/write rows). If the API were ever attacked, it still could not drop tables.</li>
+  <li>Migration <b>0001</b>: tenants, users, accounts, contacts, leads — with UUID keys, timestamps and composite foreign keys that stop cross-tenant links.</li>
+  <li><b>Docker problem:</b> the engine would not start because Windows "Virtual Machine Platform" was off. You ran <code>wsl --install --no-distribution</code> and restarted; after that PostgreSQL went from "starting" to "healthy".</li>
+  <li>We proved persistence: the container was removed (without <code>-v</code>) and recreated, and the data was still there.</li>
+</ul>
+<p><span class="tag ok">Checked</span> 49 tests passing including 17 against the real database.</p>
+</div>
+
+<div class="step">
+<h3>Step 5 — Login with Keycloak, roles and permissions (Phases 4/5, part 1)</h3>
+<p><b>You asked:</b> real authentication with no hard-coded secrets, no admin credentials in files, no custom
+password storage, and security-focused tests.</p>
+<ul>
+  <li><b>Keycloak</b> was added to Docker with a realm <code>crm</code> and a client <code>crm-web</code>. The realm file uses placeholders like <code>${CRM_WEB_CLIENT_SECRET}</code>; real values are generated into the git-ignored <code>.env</code>.</li>
+  <li><b>PKCE login</b> (Authorization Code + PKCE): the safest browser login flow; the password grant is disabled.</li>
+  <li>The API checks every token: signature (RS256), issuer, audience <code>crm-api</code>, expiry. Any failure gives the same generic 401.</li>
+  <li><b>Six roles</b>: Super Admin (platform only, sees no tenant data), Tenant Admin, Sales Manager, Sales Agent, Support Agent, Customer. Each role maps to <b>permissions</b> like <code>lead:read:own</code> (file <code>backend/app/core/auth/rbac.py</code>).</li>
+  <li><b>ADR 0002 (you accepted it):</b> the tenant comes from the CRM's own user record found by the token's issuer + subject — not from anything the browser sends.</li>
+  <li><code>portal_access_grants</code> (migration 0002): which customer user may see which customer account.</li>
+  <li>A seed script creates fictional demo tenants, users and accounts.</li>
+</ul>
+<p><span class="tag ok">Checked</span> 152 tests passing, including tests against the real Keycloak.</p>
+</div>
+
+<div class="step">
+<h3>Step 6 — Lead Management (Phase 7)</h3>
+<p><b>You asked:</b> create/read/update leads, assign, status changes, qualify, convert (atomic, no duplicates),
+activities, history, search, audit — with tenant and role security and OpenAPI docs.</p>
+<ul>
+  <li>Lead status flow with only allowed changes (e.g. you cannot convert an unqualified lead).</li>
+  <li><b>Conversion</b> creates account + contact + opportunity in <b>one transaction</b>: all or nothing, and a second conversion is refused even if two people click at the same time (row locking).</li>
+  <li><b>Optimistic locking</b>: each edit sends the version it loaded; if someone else changed the lead meanwhile, you get a clear "changed by someone else" error instead of silently overwriting.</li>
+  <li><b>Audit log</b>: every important change is recorded in an append-only table (the API cannot edit or delete it).</li>
+  <li>Migration 0003; API contract exported to <code>docs/api/openapi.json</code>.</li>
+</ul>
+<p><span class="tag ok">Checked</span> 286 tests passing.</p>
+</div>
+
+<div class="step">
+<h3>Step 7 — Frontend workflows 1, 2 and 3</h3>
+<p><b>You asked:</b> real screens connected to the real API, secure login, no tokens in localStorage, useful error
+messages, component and end-to-end tests, one workflow at a time.</p>
+<ul>
+  <li><b>Workflow 1:</b> login/logout, dashboard, lead list (search, filters, sorting, pages), create lead.</li>
+  <li><b>Workflow 2:</b> lead details, edit, assign, qualify/disqualify, convert — each with a confirmation dialog.</li>
+  <li><b>Workflow 3:</b> customer account list and details, employee profile page.</li>
+  <li><b>How login is kept safe:</b> the browser only gets an encrypted, httpOnly cookie. The tokens stay on the Next.js server ("Backend for Frontend"). An expiring token is refreshed automatically.</li>
+  <li>Hiding a button in the screen is only for convenience — the API checks permission again every time.</li>
+</ul>
+<p>You then asked to show all modules on the dashboard: a <b>module overview</b> now shows every module honestly as
+"available" or "planned · phase N".</p>
+<p><span class="tag ok">Checked</span> backend 361 tests; frontend 87 component tests and 29 end-to-end tests.</p>
+</div>
+
+<div class="step">
+<h3>Step 8 — The AI assistant request, and a decision on order (ADR 0003)</h3>
+<p><b>You asked</b> for an AI assistant with strict security (verified identity, no unrestricted database access,
+permission checks on every tool call, prompt-injection protection, approvals for sensitive actions, evaluation tests,
+text before voice).</p>
+<p><b>Your decisions:</b> build the prerequisites first; use the Anthropic Claude API; use local embeddings with
+pgvector. Build order: <b>customer portal → support tickets → orders → invoices → AI assistant</b>.
+Reason: the assistant can only safely answer questions about tickets, orders and invoices once those exist with
+proper permissions.</p>
+</div>
+
+<div class="step">
+<h3>Step 9 — Customer portal (Phase 15)</h3>
+<ul>
+  <li>Customers who log in are sent to <code>/portal</code>; staff screens are closed to them.</li>
+  <li>They see <b>only</b> accounts listed in their portal access grants. Another customer's account — in the same or another tenant — answers "Page not found", exactly like a page that doesn't exist (so nothing leaks).</li>
+  <li>Portal API responses are smaller, customer-safe versions (no internal fields).</li>
+</ul>
+</div>
+
+<div class="step">
+<h3>Step 10 — Support tickets with human handoff (Phase 14)</h3>
+<ul>
+  <li>Tickets numbered per organisation (T-0001…), status flow New → In progress ↔ Waiting for customer → Resolved → Closed (final).</li>
+  <li><b>SLA</b> (service-level agreement): deadlines per priority, shown as on track / at risk / breached / met.</li>
+  <li>Public replies vs <b>internal notes</b> (never shown to customers). Comments cannot be edited or deleted.</li>
+  <li><b>Human handoff</b> for the future assistant: <code>support.api.create_customer_ticket(..., channel="assistant")</code> runs as the customer and only for their own accounts.</li>
+  <li>Migration 0004. Documentation: <code>docs/support.md</code>.</li>
+</ul>
+</div>
+
+<div class="step">
+<h3>Step 11 — Orders (Phase 12)</h3>
+<p><b>You asked:</b> orders for staff and customer portal order status, verified against the running backend.</p>
+<ul>
+  <li>Because products and quotes (Phase 11) don't exist yet, <b>staff create orders directly</b> with lines (description, quantity, price, tax). Line amounts are stored as a <b>snapshot</b>, so later price changes never alter an order.</li>
+  <li>Status flow: Draft → Confirmed → In fulfilment → Shipped → Delivered; Cancelled possible until shipped (reason required, shown to the customer).</li>
+  <li><b>Money</b> is exact decimal (never floating point), rounded half-up per line; the server calculates every amount. The form shows a live preview using exact whole cents.</li>
+  <li>Sales agents order only for accounts they own; fulfilment steps need the <code>order:fulfil</code> permission (admins, managers).</li>
+  <li>Customers see confirmed orders of their own accounts with a progress tracker (received → being prepared → on its way → delivered), never drafts or internal notes.</li>
+  <li>Migration 0005. Documentation: <code>docs/orders.md</code>.</li>
+</ul>
+<p><span class="tag ok">Checked</span> backend 427 tests; frontend 108 component and 32 end-to-end tests. Security
+"mutation checks": rules were broken on purpose to prove the tests catch it.</p>
+</div>
+
+<div class="step">
+<h3>Step 12 — Invoices, credit notes and payments (Phase 13)</h3>
+<ul>
+  <li>An invoice is created <b>from an order</b> as a draft (no number). <b>Issuing</b> gives it the next number (INV-0001…) — numbers have no gaps because a discarded draft never had one.</li>
+  <li><b>Issued invoices are frozen by the database itself</b> (a trigger): only the running balance can change. Corrections are made with <b>credit notes</b> (CN-0001…), whose reason the customer sees.</li>
+  <li><b>Payments</b> are entered by hand; they cannot be edited or deleted. A mistake or bounced transfer is undone with a <b>reversal</b> entry. Customers only see payments that count.</li>
+  <li>Amount due = total − credit notes − payments; never negative (no overpayments). Payment state (Open, Partially paid, Overdue, Paid, Credited) is calculated on every read.</li>
+  <li>Admins and managers bill and record payments; support and sales agents can only read; customers see issued invoices of their own accounts.</li>
+  <li>Shared money maths moved to <code>backend/app/core/money.py</code>. Migration 0006. Documentation: <code>docs/invoices.md</code>.</li>
+</ul>
+<p><span class="tag ok">Checked</span> backend 490 tests (8 security mutations caught); frontend 119 component and 35 end-to-end tests; production build OK.</p>
+</div>
+
+<div class="step">
+<h3>Step 13 — Follow-up: invoiced orders can no longer be cancelled</h3>
+<p>A separate session closed a known gap: the server now refuses (error <code>order_invoiced</code>) to cancel an order
+that has a draft or issued invoice; discarding the draft releases it. The invoices module tells the orders module
+through a small public function (no direct writes into another module's tables). Migration 0007.</p>
+<p><span class="tag ok">Checked</span> backend 497 tests passing (re-run in the main session).</p>
+</div>
+
+<div class="step">
+<h3>Step 14 — A first printable guide</h3>
+<p><b>You asked</b> for everything done so far, step by step, as a PDF. The guide was written as a web page
+(<code>docs/project-guide.html</code>) and printed to PDF with the same browser engine the tests use. This document
+is the updated edition.</p>
+</div>
+
+<h3>Step 15 — Starting the CRM yourself: two common Windows problems</h3>
+<p><b>Problem 1: "The system cannot find the path specified."</b> The command used <code>E:\Projects\crm-lead</code>,
+but the project lives in <code>E:\crm-lead</code> (no <code>Projects</code> folder). The fix:
+<code>cd /d E:\crm-lead\infrastructure</code>. The <code>/d</code> lets CMD switch drives (C: to E:) as well.</p>
+<figure class="shot"><img src="guide-images/u1-cmd-wrong-path.png" alt="Your screen: the wrong folder path"><figcaption>Your screen: the wrong folder path</figcaption></figure>
+<p><b>Problem 2: "[WinError 10013] An attempt was made to access a socket…"</b> Port 8000 was already used by a
+copy of the API running in this app's preview pane. Only one program can listen on a port. That copy was stopped,
+and your command worked. Also: this project starts the API with <code>app.main:create_app --factory</code>, not
+<code>app.main:app</code> as in other projects.</p>
+<figure class="shot"><img src="guide-images/u2-port-in-use.png" alt="Your screen: the port was already in use"><figcaption>Your screen: the port was already in use</figcaption></figure>
+<pre>cd /d E:\crm-lead\backend
+.venv\Scripts\activate
+python -m uvicorn app.main:create_app --factory --reload --port 8000</pre>
+
+<div class="step">
+<h3>Step 16 — "I cannot log in; users should be creatable": user onboarding (ADR 0004)</h3>
+<p><b>You asked</b> to be able to create users, and chose <b>both</b> ways: administrators create users,
+<i>and</i> people can sign up on the login page but get access only after approval. Because this changes how
+people enter the system, it was written down first as <b>ADR 0004</b> and built only after your approval.</p>
+<ul>
+  <li><b>Keycloak now stores its data in PostgreSQL</b> (its own <code>keycloak</code> database). Before, it kept users
+  inside its container, so created users would have been lost on every restart.</li>
+  <li><b>Mailpit</b> was added: a local e-mail inbox at <b>http://localhost:8025</b>. Every e-mail the login system
+  sends (verification, invitation, password reset) lands there and never reaches the real internet.</li>
+  <li><b>A login on its own grants nothing.</b> A person needs a CRM user in exactly one organisation, and only an
+  administrator can create that link.</li>
+  <li><b>Three ways in:</b> (1) a Tenant Admin adds a staff member on the <b>Users</b> page; (2) staff invite a customer
+  contact from an account page ("Portal access"); (3) someone signs up, enters the organisation's
+  <b>sign-up code</b>, and waits until an admin approves (choosing a role, or "customer" plus accounts).</li>
+  <li><b>Safety rules:</b> Super Admin can never be given out; admins can't change or deactivate themselves; the
+  last Tenant Admin can't be removed; 5 wrong codes per hour at most; the e-mail must be verified; deactivating
+  signs the person out everywhere at once.</li>
+  <li><b>Passwords are never seen by the CRM:</b> people set them on Keycloak's own page from the e-mail link.</li>
+  <li>Migration <b>0008</b>; documentation in <code>docs/onboarding.md</code>.</li>
+</ul>
+<figure class="shot"><img src="guide-images/u3-keycloak-signin.png" alt="Your screen: the sign-in page that had no way to create an account"><figcaption>Your screen: the sign-in page that had no way to create an account</figcaption></figure><figure class="shot"><img src="guide-images/01-login.png" alt="Now: the login page with "Create an account""><figcaption>Now: the login page with "Create an account"</figcaption></figure><figure class="shot"><img src="guide-images/14-users.png" alt="The Users page for Tenant Admins: requests waiting for approval, the sign-up code, staff and portal users"><figcaption>The Users page for Tenant Admins: requests waiting for approval, the sign-up code, staff and portal users</figcaption></figure>
+<p><b>Bugs found and fixed along the way:</b></p>
+<ul>
+  <li>The "Last sign-in" column always said "Never". Sign-ins are now recorded, at most every 15 minutes.</li>
+  <li><b>A dangerous one:</b> after a failed first try, the approval form could jump back to "Sales Agent" while
+  still looking like "Customer". It was fixed so what you see is always what is sent, and a test guards it.</li>
+  <li>Several dialogs on one page reused the same field IDs, so labels pointed at the wrong fields (bad for screen
+  readers). Each dialog now has unique IDs.</li>
+</ul>
+<p><span class="tag ok">Checked</span> backend 547 tests (including the real Keycloak and Mailpit); frontend 124
+component tests; 38 end-to-end tests, including a real invitation e-mail opened from Mailpit.</p>
+</div>
+
+<div class="step">
+<h3>Step 17 — The AI assistant, text chat (Phase 20a)</h3>
+<p><b>You asked</b> to start the AI assistant. It was split into small steps: <b>20a</b> text chat (done),
+<b>20b</b> knowledge base with pgvector (later; needs a different PostgreSQL image), <b>20c</b> voice (later).</p>
+<ul>
+  <li>Customers ask in the portal: "Where is my order?", "Which invoices are still open?".</li>
+  <li>The assistant (Claude) can only use <b>tools</b>. Each tool calls the same functions as the portal pages,
+  <b>as the signed-in customer</b>, so it can never see more than the customer could open themselves.</li>
+  <li>It has <b>no way to change data</b>. Its only "action" <i>prepares</i> a support ticket; the customer must click
+  <b>Create ticket</b>.</li>
+  <li><b>Protection against manipulation (prompt injection):</b> even if someone hides instructions in data (e.g. an
+  order reference saying "ignore your rules") and the model obeys, the server refuses anything outside the
+  customer's own data. Tests prove this with a deliberately misbehaving stand-in model.</li>
+  <li>Limits: 30 messages per hour, 2,000 characters per message, 6 tool steps per answer. Every tool call is
+  written to an audit table that can't be changed.</li>
+  <li>The Claude API key stays in <code>backend\.env</code>; the browser never sees it. Without a working key the
+  portal honestly says "not available" and offers a ticket.</li>
+  <li>Migration <b>0009</b>; documentation in <code>docs/assistant.md</code>.</li>
+</ul>
+<figure class="shot"><img src="guide-images/20-portal-assistant.png" alt="The assistant in the customer portal"><figcaption>The assistant in the customer portal</figcaption></figure>
+<p><span class="tag ok">Checked</span> backend 569 tests passing (+4 live evaluations that run only on request);
+127 component tests; 40 end-to-end tests.</p>
+</div>
+
+<div class="step">
+<h3>Step 18 — Connecting Claude: lessons about API keys</h3>
+<p>Connecting the real Claude API took several attempts. The lessons are worth keeping:</p>
+<ol>
+  <li><b>Never paste a key into a chat, ticket or screenshot.</b> A key that was shown anywhere must be
+  <b>revoked</b> and replaced. Keys pasted in this chat were treated as exposed and never used.</li>
+  <li>Store keys with the helper. It reads the key <b>without showing it</b> and writes it to <code>backend\.env</code>:
+  <pre>cd /d E:\crm-lead\backend
+.venv\Scripts\activate
+python -m scripts.set_anthropic_key</pre></li>
+  <li>Check the connection yourself (it shows only the key type and Anthropic's answer, never the key):
+  <pre>python -m scripts.check_anthropic</pre></li>
+  <li><b>Key types:</b> <code>sk-ant-api…</code> = workspace key (simplest). <code>sk-ant-usr…</code> = user-level key: it
+  needs a workspace ID (setting <code>CRM_ANTHROPIC_WORKSPACE_ID</code>), and must belong to the organisation that
+  has the credit.</li>
+  <li>"<b>Credit balance is too low</b>" means the key isn't billed to an organisation with credit. The console's
+  Workbench can still work (it uses your browser login), so test with <code>check_anthropic</code>.</li>
+</ol>
+<div class="box warn"><b class="t">Status</b>The live check against real Claude is still open: the last test still
+answered "credit balance is too low". Once <code>check_anthropic</code> says <b>WORKS</b>, the live check takes a few minutes.</div>
+</div>
+
+<div class="step">
+<h3>Step 19 — Your own sign-up: the e-mail and joining an organisation</h3>
+<p>You created your own account and waited for the verification e-mail in Gmail. It never arrives there <b>by
+design</b>: on this computer every e-mail goes to the local inbox <b>Mailpit</b>. See section 5 for the steps.</p>
+</div>
+
+<h2 class="newpage">4. A tour of the screens</h2>
+<p>All pictures show fictional demo data from your computer (organisations "Alpha Demo" and "Beta Demo").</p>
+<h3>Staff CRM</h3>
+<figure class="shot"><img src="guide-images/02-keycloak-login.png" alt="Signing in happens on the login system (Keycloak); the CRM never sees the password"><figcaption>Signing in happens on the login system (Keycloak); the CRM never sees the password</figcaption></figure><figure class="shot"><img src="guide-images/03-dashboard.png" alt="Dashboard (Sales Manager): lead figures, recent leads and the module overview"><figcaption>Dashboard (Sales Manager): lead figures, recent leads and the module overview</figcaption></figure><figure class="shot"><img src="guide-images/04-leads.png" alt="Leads: search, filters, sorting and pages"><figcaption>Leads: search, filters, sorting and pages</figcaption></figure><figure class="shot"><img src="guide-images/05-lead-detail.png" alt="A lead: details, timeline and the actions the role allows"><figcaption>A lead: details, timeline and the actions the role allows</figcaption></figure><figure class="shot"><img src="guide-images/06-accounts.png" alt="Customer accounts"><figcaption>Customer accounts</figcaption></figure><figure class="shot"><img src="guide-images/07-account-detail.png" alt="An account: profile, orders, unpaid invoices and Portal access (invite customers)"><figcaption>An account: profile, orders, unpaid invoices and Portal access (invite customers)</figcaption></figure><figure class="shot"><img src="guide-images/08-orders.png" alt="Orders"><figcaption>Orders</figcaption></figure><figure class="shot"><img src="guide-images/09-order-detail.png" alt="An order: lines, totals, history, and the invoice card"><figcaption>An order: lines, totals, history, and the invoice card</figcaption></figure><figure class="shot"><img src="guide-images/10-invoices.png" alt="Invoices with payment state and amount due"><figcaption>Invoices with payment state and amount due</figcaption></figure><figure class="shot"><img src="guide-images/11-invoice-detail.png" alt="An invoice: balance, payments (with reversals) and credit notes"><figcaption>An invoice: balance, payments (with reversals) and credit notes</figcaption></figure><figure class="shot"><img src="guide-images/12-tickets.png" alt="Support tickets with SLA status"><figcaption>Support tickets with SLA status</figcaption></figure><figure class="shot"><img src="guide-images/13-ticket-detail.png" alt="A ticket: conversation, internal notes and actions"><figcaption>A ticket: conversation, internal notes and actions</figcaption></figure><figure class="shot"><img src="guide-images/14-users.png" alt="Users (Tenant Admin): approvals, sign-up code, staff and portal users"><figcaption>Users (Tenant Admin): approvals, sign-up code, staff and portal users</figcaption></figure><h3>Customer portal</h3>
+<figure class="shot"><img src="guide-images/15-portal-home.png" alt="Portal home: the customer’s own accounts, orders, invoices to pay, support and the assistant"><figcaption>Portal home: the customer’s own accounts, orders, invoices to pay, support and the assistant</figcaption></figure><figure class="shot"><img src="guide-images/16-portal-order.png" alt="Order status with progress steps"><figcaption>Order status with progress steps</figcaption></figure><figure class="shot"><img src="guide-images/17-portal-invoice.png" alt="An invoice as the customer sees it: what is owed, payments received, credit notes"><figcaption>An invoice as the customer sees it: what is owed, payments received, credit notes</figcaption></figure><figure class="shot"><img src="guide-images/18-portal-tickets.png" alt="The customer’s support tickets"><figcaption>The customer’s support tickets</figcaption></figure><figure class="shot"><img src="guide-images/20-portal-assistant.png" alt="The AI assistant"><figcaption>The AI assistant</figcaption></figure><h3>Developer tools</h3>
+<figure class="shot"><img src="guide-images/19-mailpit.png" alt="Mailpit, the local e-mail inbox (http://localhost:8025)"><figcaption>Mailpit, the local e-mail inbox (http://localhost:8025)</figcaption></figure><figure class="shot"><img src="guide-images/21-api-docs.png" alt="Automatic API documentation (http://127.0.0.1:8000/docs)"><figcaption>Automatic API documentation (http://127.0.0.1:8000/docs)</figcaption></figure>
+
+<h2 class="newpage">5. Your own account: sign-up, the e-mail inbox, joining an organisation</h2>
+<h3>1. Verify your e-mail in Mailpit (not Gmail)</h3>
+<figure class="shot"><img src="guide-images/u4-email-verification.png" alt="Your screen: Keycloak says the e-mail was sent - but it goes to Mailpit"><figcaption>Your screen: Keycloak says the e-mail was sent - but it goes to Mailpit</figcaption></figure>
+<ol>
+  <li>Open <b>http://localhost:8025</b>.</li>
+  <li>Click the newest <b>"Verify email"</b> message to your address.</li>
+  <li>Click the link inside. You are taken back to the CRM.</li>
+</ol>
+<p>No need to click "re-send": the "wait 22 seconds" message only limits how often it can resend.</p>
+<h3>2. Request access with your organisation's sign-up code</h3>
+<figure class="shot"><img src="guide-images/u5-request-access.png" alt="Your screen: signed in, but not yet linked to an organisation"><figcaption>Your screen: signed in, but not yet linked to an organisation</figcaption></figure>
+<p>Enter the organisation's sign-up code (a Tenant Admin sees it on the <b>Users</b> page) and click
+<b>Request access</b>. The page then shows "Waiting for approval".</p>
+<h3>3. Approve (as the organisation's admin)</h3>
+<ol>
+  <li>Open a <b>private/incognito</b> browser window and go to http://localhost:3000.</li>
+  <li>Sign in as <code>alpha.admin</code> (password: <code>E2E_USER_PASSWORD</code> in <code>frontend\.env.local</code>).</li>
+  <li>Open <b>Users</b>. Under <b>Waiting for approval</b>, click <b>Approve</b> next to your request, choose a role (or
+  "Customer" plus accounts), and confirm.</li>
+</ol>
+<h3>4. Continue</h3>
+<p>Back in your own window, click <b>Check again</b>, then <b>Continue to crm-lead</b>. You're inside with the role chosen.</p>
+
+<h2 class="newpage">6. Security: how data is protected</h2>
+<table>
+  <tr><th>Protection</th><th>What it means</th></tr>
+  <tr><td>Tenant isolation</td><td>Every business table has <code>tenant_id</code>. It comes only from the verified user record, never from the browser. Composite foreign keys make the database itself refuse links between tenants.</td></tr>
+  <tr><td>Role permissions (RBAC)</td><td>Every endpoint requires a permission such as <code>invoice:manage</code>.</td></tr>
+  <tr><td>Record-level rules</td><td>Even with the permission, you only see rows you may see (e.g. an agent's own accounts). Lists are filtered inside the database, so counts never leak.</td></tr>
+  <tr><td>404 instead of 403</td><td>A record you may not see answers "not found", so nobody can probe which IDs exist.</td></tr>
+  <tr><td>Never trust browser IDs</td><td>Every ID is loaded through the policy; tampering gives 404 (tested).</td></tr>
+  <tr><td>Server-controlled fields</td><td>Totals, numbers, statuses, creators are never accepted from the browser (unknown fields are rejected with 422).</td></tr>
+  <tr><td>No tokens in the browser</td><td>Only an encrypted httpOnly cookie; tokens stay on the server.</td></tr>
+  <tr><td>Append-only records</td><td>Audit log, ticket comments, order history, invoice lines, payments, credit notes cannot be changed by the API's database role.</td></tr>
+  <tr><td>Database guards</td><td>Check constraints (totals add up, balance never negative), a trigger freezing issued invoices, unique indexes (one live invoice per order).</td></tr>
+  <tr><td>No secrets in code</td><td>All secrets come from git-ignored <code>.env</code> files; examples use placeholders.</td></tr>
+  <tr><td>Joining needs an administrator</td><td>A login alone grants nothing; only an admin links a person to an organisation and role. Sign-up codes are random and attempts are limited.</td></tr>
+  <tr><td>AI assistant boundaries</td><td>The model only gets tools that run as the customer; it can't write data; hand-overs need the customer's click; every tool call is audited; nothing of other customers is ever sent to the model (tested).</td></tr>
+</table>
+<div class="box warn"><b class="t">Still planned</b>PostgreSQL Row-Level Security (RLS) as an extra safety net is scheduled for Phase 5 (tenancy); today isolation is enforced by the policies, foreign keys and tests.</div>
+
+<h2>7. How we test, and the results</h2>
+<ul>
+  <li><b>Backend (pytest):</b> runs against a real PostgreSQL test database <code>crm_test</code>; each test runs inside a transaction that is rolled back, so tests never leave data behind. Every module tests: happy path, validation, tenant isolation, role denial, record-level denial, ID tampering.</li>
+  <li><b>Mutation checks:</b> a security rule is broken on purpose; at least one test must fail; then the code is restored.</li>
+  <li><b>Frontend component tests (Vitest):</b> forms, buttons, dialogs, display rules.</li>
+  <li><b>End-to-end tests (Playwright):</b> a real browser logs in through Keycloak and clicks through complete journeys as different users (agent, manager, support, customers of two tenants).</li>
+  <li><b>Code quality:</b> ruff (lint/format) and mypy (types) for Python; ESLint, Prettier and TypeScript strict mode for the frontend.</li>
+</ul>
+<table>
+  <tr><th>After</th><th>Backend tests</th><th>Component tests</th><th>End-to-end tests</th></tr>
+  <tr><td>Backend foundation</td><td>25</td><td>—</td><td>—</td></tr>
+  <tr><td>Database foundation</td><td>49</td><td>—</td><td>—</td></tr>
+  <tr><td>Authentication</td><td>152</td><td>—</td><td>—</td></tr>
+  <tr><td>Lead Management</td><td>286</td><td>—</td><td>—</td></tr>
+  <tr><td>Frontend workflows, portal, support</td><td>361</td><td>87</td><td>29</td></tr>
+  <tr><td>Orders</td><td>427</td><td>108</td><td>32</td></tr>
+  <tr><td>Invoices</td><td>490</td><td>119</td><td>35</td></tr>
+  <tr><td>Invoiced-order lock</td><td>497</td><td>119 (not re-run)</td><td>35 (not re-run)</td></tr>
+  <tr><td>User onboarding (ADR 0004)</td><td>547</td><td>124</td><td>38</td></tr>
+  <tr><td>AI assistant, text chat (20a)</td><td>569 (+4 live, on request)</td><td>127</td><td>40 (+1 live, needs a working key)</td></tr>
+</table>
+<p class="small">One optional slow test (token refresh, about 5 minutes) is skipped unless <code>E2E_SLOW=1</code> is set.</p>
+
+<h2>8. How to run everything yourself (Windows CMD)</h2>
+<p>All commands start from the project folder <code>E:\crm-lead</code>. Use a normal Command Prompt.</p>
+<h4>1. Start the services (database and login server)</h4>
+<pre>cd infrastructure
+docker compose up -d
+docker compose ps</pre>
+<p>Wait until both show <b>healthy</b>. To stop them without losing data: <code>docker compose down</code>
+(never add <code>-v</code>, which deletes the data).</p>
+<h4>2. Start the API (new CMD window)</h4>
+<pre>cd backend
+.venv\Scripts\activate
+alembic upgrade head
+uvicorn app.main:create_app --factory --reload</pre>
+<p><code>activate</code> switches to the project's own Python; <code>alembic upgrade head</code> applies any new table
+changes; <code>uvicorn</code> starts the API on http://127.0.0.1:8000.</p>
+<h4>3. Start the website (another CMD window)</h4>
+<pre>cd frontend
+npm run dev</pre>
+<p>Open http://localhost:3000 and sign in.</p>
+<h4>Local addresses</h4>
+<table>
+  <tr><th>What</th><th>Address</th></tr>
+  <tr><td>CRM website (start here)</td><td>http://localhost:3000</td></tr>
+  <tr><td>Customer portal</td><td>http://localhost:3000/portal</td></tr>
+  <tr><td>Local e-mail inbox (Mailpit)</td><td>http://localhost:8025</td></tr>
+  <tr><td>API health / API documentation</td><td>http://127.0.0.1:8000/api/v1/health · http://127.0.0.1:8000/docs</td></tr>
+  <tr><td>Keycloak admin console</td><td>http://localhost:8080/admin (login in <code>infrastructure\.env</code>)</td></tr>
+</table>
+<h4>AI assistant key (optional)</h4>
+<pre>cd /d E:\crm-lead\backend
+.venv\Scripts\activate
+python -m scripts.set_anthropic_key
+python -m scripts.check_anthropic</pre>
+<h4>4. Run the tests</h4>
+<pre>cd backend
+.venv\Scripts\activate
+pytest
+ruff check . && ruff format --check . && mypy app tests</pre>
+<pre>cd frontend
+npm test
+npm run lint && npm run typecheck
+npm run test:e2e</pre>
+<div class="box"><b class="t">Tip</b>Stop <code>npm run dev</code> before <code>npm run build</code> (or restart it afterwards). Building while the dev server runs can make it serve old code.</div>
+<h4>One-time setup (already done on this computer)</h4>
+<pre>cd backend
+uv venv --python 3.12 .venv
+.venv\Scripts\activate
+uv pip install -r requirements-dev.txt
+python -m scripts.seed_dev_data
+cd ..\frontend
+npm install</pre>
+
+<h2>9. Test users and demo data</h2>
+<p>All people and companies are fictional. The shared test password is stored in <code>frontend\.env.local</code>
+(<code>E2E_USER_PASSWORD</code>) — not in this document.</p>
+<table>
+  <tr><th>User name</th><th>Role</th><th>Organisation</th><th>Notes</th></tr>
+  <tr><td>alpha.admin</td><td>Tenant Admin</td><td>Alpha</td><td>Everything in Alpha</td></tr>
+  <tr><td>alpha.manager</td><td>Sales Manager</td><td>Alpha</td><td>All sales, orders, billing</td></tr>
+  <tr><td>alpha.agent1</td><td>Sales Agent</td><td>Alpha</td><td>Owns "Example Customer One Ltd"</td></tr>
+  <tr><td>alpha.agent2</td><td>Sales Agent</td><td>Alpha</td><td>Owns "Example Customer Two Ltd"</td></tr>
+  <tr><td>alpha.support</td><td>Support Agent</td><td>Alpha</td><td>Tickets; reads orders and invoices</td></tr>
+  <tr><td>alpha.customer1</td><td>Customer</td><td>Alpha</td><td>Portal for Example Customer One Ltd</td></tr>
+  <tr><td>alpha.customer2</td><td>Customer</td><td>Alpha</td><td>Portal for Example Customer Two Ltd</td></tr>
+  <tr><td>beta.admin</td><td>Tenant Admin</td><td>Beta</td><td>A second organisation, to prove isolation</td></tr>
+  <tr><td>beta.customer</td><td>Customer</td><td>Beta</td><td>Portal for Example Customer Three Ltd</td></tr>
+</table>
+
+<h2>10. Where to find things</h2>
+<table>
+  <tr><th>Path</th><th>Contents</th></tr>
+  <tr><td><code>architecture.md</code>, <code>implementation-plan.md</code>, <code>CLAUDE.md</code></td><td>Design, phases with status, working rules and commands</td></tr>
+  <tr><td><code>docs/adr/</code></td><td>Decisions: 0001 modular monolith, 0002 tenant from user mapping, 0003 AI assistant foundations</td></tr>
+  <tr><td><code>docs/auth.md</code></td><td>Login, roles and the full permission table</td></tr>
+  <tr><td><code>docs/leads.md</code>, <code>support.md</code>, <code>orders.md</code>, <code>invoices.md</code></td><td>One document per module: rules, who can do what, API, screens</td></tr>
+  <tr><td><code>docs/onboarding.md</code>, <code>docs/assistant.md</code></td><td>User onboarding (ADR 0004) and the AI assistant</td></tr>
+  <tr><td><code>docs/guide-images/</code></td><td>The screenshots used in this guide</td></tr>
+  <tr><td><code>docs/frontend.md</code></td><td>Screens and frontend structure</td></tr>
+  <tr><td><code>docs/api/openapi.json</code></td><td>The full API contract (a test keeps it up to date)</td></tr>
+  <tr><td><code>infrastructure/</code></td><td>Docker Compose, PostgreSQL init script, Keycloak realm</td></tr>
+  <tr><td><code>backend/app/</code></td><td>API code: <code>core/</code> (config, auth, errors, money, audit) and <code>modules/</code></td></tr>
+  <tr><td><code>backend/alembic/versions/</code></td><td>Migrations 0001–0009</td></tr>
+  <tr><td><code>backend/tests/</code></td><td>Backend tests (<code>tests/db/</code> use the real database)</td></tr>
+  <tr><td><code>frontend/src/app/(app)/</code></td><td>Staff screens: dashboard, leads, accounts, orders, invoices, support, profile</td></tr>
+  <tr><td><code>frontend/src/app/portal/</code></td><td>Customer portal: accounts, orders, invoices, tickets</td></tr>
+  <tr><td><code>frontend/e2e/</code></td><td>End-to-end journeys</td></tr>
+</table>
+
+<h3>Database migrations so far</h3>
+<table>
+  <tr><th>No.</th><th>What it adds</th></tr>
+  <tr><td>0001</td><td>Tenants, users, accounts, contacts, leads</td></tr>
+  <tr><td>0002</td><td>Login identity mapping, portal access grants</td></tr>
+  <tr><td>0003</td><td>Lead management: roles on users, opportunities, lead activities and assignments, audit log</td></tr>
+  <tr><td>0004</td><td>Support tickets, comments, ticket numbers</td></tr>
+  <tr><td>0005</td><td>Orders, order lines, status history, order numbers</td></tr>
+  <tr><td>0006</td><td>Invoices, invoice lines, credit notes, payments, billing numbers, freeze trigger</td></tr>
+  <tr><td>0007</td><td>"Invoiced" mark on orders (blocks cancelling invoiced orders)</td></tr>
+  <tr><td>0008</td><td>Organisation sign-up codes, access requests, wrong-code attempts</td></tr>
+  <tr><td>0009</td><td>AI assistant: conversations, messages, tool-call audit, prepared actions</td></tr>
+</table>
+
+<h2>11. Problems we hit and how they were solved</h2>
+<table>
+  <tr><th>Problem</th><th>Cause</th><th>Solution</th></tr>
+  <tr><td>Docker engine would not start</td><td>Windows "Virtual Machine Platform" was off</td><td><code>wsl --install --no-distribution</code> and a real restart</td></tr>
+  <tr><td>Other Python programs closed</td><td>An early command stopped all python.exe processes</td><td>Owned up to it; since then only specific processes are stopped</td></tr>
+  <tr><td>Doubled constraint names in migrations</td><td>Naming convention applied twice</td><td>Use <code>op.f()</code> for explicit names</td></tr>
+  <tr><td>Events in the wrong order in tests</td><td>All times inside one transaction are equal</td><td><code>clock_timestamp()</code> plus a sequence number</td></tr>
+  <tr><td>Website showed "not a function" errors</td><td>Dev server served old code after a build or many file edits</td><td>Restart the dev server (now documented)</td></tr>
+  <tr><td>Containers missing one day</td><td><code>docker compose down</code> was run</td><td><code>docker compose up -d</code>; data was safe in the volume</td></tr>
+  <tr><td>Order version jumped by 3 on one save</td><td>Several database flushes per request</td><td>Restructured so each request updates the order once (a test caught it)</td></tr>
+  <tr><td>Two "survivor" security mutations in orders</td><td>The read rule hid the gap in the write rule</td><td>Added a defence-in-depth test for a wider-reading role</td></tr>
+  <tr><td>"The system cannot find the path specified"</td><td>Path <code>E:\Projects\crm-lead</code> instead of <code>E:\crm-lead</code></td><td><code>cd /d E:\crm-lead\…</code></td></tr>
+  <tr><td>WinError 10013 when starting the API</td><td>Port 8000 already used by another copy of the API</td><td>Stop the other copy; one program per port</td></tr>
+  <tr><td>Created users would vanish on restart</td><td>Keycloak kept data inside its container</td><td>Keycloak now uses its own PostgreSQL database</td></tr>
+  <tr><td>Mailpit could not start on port 1025</td><td>Windows reserves that port</td><td>SMTP stays inside Docker; only the inbox (8025) is exposed</td></tr>
+  <tr><td>Approval sent the wrong role</td><td>React reset the form after a failed submit</td><td>Fresh form per attempt; regression test</td></tr>
+  <tr><td>Labels pointed at other dialogs' fields</td><td>Repeated HTML IDs</td><td>Unique IDs per dialog (<code>useId</code>)</td></tr>
+  <tr><td>Verification e-mail "not received"</td><td>Local setup sends all e-mail to Mailpit</td><td>Open http://localhost:8025</td></tr>
+  <tr><td>Claude calls failing</td><td>User-level key without workspace; then "credit balance too low"</td><td>Workspace setting added; key must belong to the funded organisation; <code>check_anthropic</code> to test</td></tr>
+</table>
+
+<h2>12. What is not done yet / next steps</h2>
+<ol>
+  <li><b>First Git commit.</b> Set your name and e-mail once, then commit (only when you say so):
+<pre>git config --global user.name "Your Name"
+git config --global user.email "you@example.com"</pre></li>
+  <li><b>Live check of the AI assistant</b> with a key that draws on your credit (<code>check_anthropic</code> must say WORKS).</li>
+  <li><b>Phase 20b</b> knowledge base (local embeddings + pgvector; needs a PostgreSQL image change, ask first) and <b>20c</b> voice.</li>
+  <li>Still open in infrastructure: MinIO (file storage), Row-Level Security (Phase 5).</li>
+  <li>Later phases: opportunities, activities, products and quotes (then quote → order), marketing, documents and PDFs, reports, workflow automation, integrations.</li>
+  <li>Known limits listed in each module document (e.g. no partial shipments, no refunds/overpayments, no e-mail notifications yet).</li>
+</ol>
+
+<h2>13. Glossary</h2>
+<table>
+  <tr><th>Term</th><th>Meaning</th></tr>
+  <tr><td>API</td><td>The backend's "doors" that the website (or the future assistant) calls to read or change data.</td></tr>
+  <tr><td>Tenant</td><td>One organisation using the CRM. Tenants never see each other's data.</td></tr>
+  <tr><td>Account</td><td>A customer company in the CRM.</td></tr>
+  <tr><td>Lead</td><td>A possible customer that has not bought yet.</td></tr>
+  <tr><td>RBAC</td><td>Role-Based Access Control: what you may do depends on your role's permissions.</td></tr>
+  <tr><td>OIDC / PKCE</td><td>Standard, secure ways to sign in through a login server (Keycloak).</td></tr>
+  <tr><td>Token</td><td>A signed, short-lived proof of who you are, checked on every API call.</td></tr>
+  <tr><td>Migration</td><td>A numbered script that changes the database structure in a repeatable way.</td></tr>
+  <tr><td>Transaction</td><td>A group of database changes that happen all together or not at all.</td></tr>
+  <tr><td>Optimistic locking</td><td>Detecting that someone else changed a record since you loaded it (version number).</td></tr>
+  <tr><td>Audit log</td><td>A permanent record of who changed what and when.</td></tr>
+  <tr><td>Snapshot</td><td>A copy of values at one moment (order/invoice lines keep their prices forever).</td></tr>
+  <tr><td>Credit note</td><td>A document that reduces what a customer owes on an issued invoice.</td></tr>
+  <tr><td>Reversal</td><td>An entry that cancels a mistaken payment without deleting it.</td></tr>
+  <tr><td>SLA</td><td>Service-level agreement: the promised response and resolution times for tickets.</td></tr>
+  <tr><td>ADR</td><td>Architecture Decision Record: a short note explaining one important decision.</td></tr>
+  <tr><td>Mutation check</td><td>Deliberately breaking a rule to prove the tests notice.</td></tr>
+  <tr><td>End-to-end test</td><td>A test that uses the real website in a real browser, like a person.</td></tr>
+</table>
+
+<p class="small" style="margin-top:18pt">Generated from the project's documents and session history on 18 October 2026.
+For the latest details, the documents in <code>docs/</code> are the source of truth.</p>
+</body>
+</html>

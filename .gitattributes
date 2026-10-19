@@ -1,0 +1,29 @@
+# .gitattributes: tells Git how to treat files.
+# Main job here: store text files with LF line endings in the repository, so Linux
+# containers (Docker) and Windows tools see the same content.
+
+# Auto-detect text files and normalise their line endings to LF in the repo.
+* text=auto eol=lf
+
+# Windows scripts must stay CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Shell scripts run inside Linux containers must stay LF.
+*.sh  text eol=lf
+
+# Binary files: never touch them.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+
+# Lock files are generated; collapse them in diffs.
+uv.lock           linguist-generated=true -diff
+package-lock.json linguist-generated=true -diff

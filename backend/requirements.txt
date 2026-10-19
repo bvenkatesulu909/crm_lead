@@ -1,0 +1,30 @@
+# Runtime dependencies of the crm-lead API.
+# Direct dependencies are pinned exactly (==) so every install gets the same, tested versions.
+# Upgrade deliberately: change a version here, reinstall, run the tests, then commit.
+
+# Web framework: routing, request validation, OpenAPI docs.
+fastapi==0.143.3
+# ASGI server that runs the app. [standard] adds faster HTTP parsing, auto-reload and .env support.
+uvicorn[standard]==0.54.0
+# Data validation used by FastAPI and by our settings and API schemas.
+pydantic==2.14.1
+# Loads typed settings from environment variables / .env (app/core/config.py).
+pydantic-settings==2.16.0
+# ORM: maps Python classes to database tables and builds safe, parameterised SQL.
+sqlalchemy==2.1.5
+# Database migrations: versioned, reviewable schema changes (backend/alembic/).
+alembic==1.20.0
+# PostgreSQL driver used by SQLAlchemy. [binary] ships a precompiled build, no compiler needed on Windows.
+psycopg[binary]==3.3.6
+# HTTP client: Keycloak admin API (user onboarding, ADR 0004) and the Claude SDK.
+httpx==0.28.1
+# Official Anthropic SDK for the AI assistant (ADR 0003). Used only by the backend; the API key
+# never reaches the browser.
+anthropic==1.15.0
+# S3 client for the file store (ADR 0005; SeaweedFS locally). Works with any S3-compatible
+# store; used only inside app/core/storage.py.
+minio==7.2.20
+# PDF generation (quote PDFs, ADR 0005). Pure Python, no system libraries needed on Windows.
+reportlab==5.0.1
+# Reads file uploads (multipart/form-data) in FastAPI - documents module (Phase 10).
+python-multipart==0.0.32

@@ -1,0 +1,20 @@
+# Architecture Decision Records (ADRs)
+
+An ADR is a short document that records **one important decision**: the situation, the choice,
+and its consequences. They explain *why* the project looks the way it does.
+
+Rules:
+
+- One decision per file, numbered: `NNNN-short-title.md`.
+- Never rewrite an accepted ADR. If a decision changes, write a new ADR that supersedes it and
+  mark the old one `Superseded by ADR NNNN`.
+- Decisions marked **[ADR]** in [architecture.md](../../architecture.md) need an ADR and owner approval to change.
+
+| # | Title | Status |
+|---|---|---|
+| [0001](0001-modular-monolith.md) | Start as a modular monolith | Accepted |
+| [0002](0002-tenant-from-crm-user-mapping.md) | Tenant from CRM user mapping, not a token claim | Accepted |
+| [0003](0003-ai-assistant-foundations.md) | AI assistant: Claude API, local embeddings + pgvector, prerequisites first | Accepted |
+| [0004](0004-user-onboarding.md) | User onboarding: admin-created users, portal invitations, sign-up with approval | Accepted |
+| [0005](0005-file-storage-outbox-worker.md) | S3 file storage (SeaweedFS), outbox + worker, e-mailed quote PDFs | Accepted |
+| [0006](0006-domain-events-notifications-workflows.md) | Domain events, notifications and workflow rules | Accepted |

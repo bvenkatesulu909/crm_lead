@@ -1,0 +1,134 @@
+# Local development infrastructure for crm-lead.
+#
+# Start:   docker compose up -d        (run inside the infrastructure folder)
+# Status:  docker compose ps
+# Stop:    docker compose down         (keeps the data volume)
+#
+# All credentials come from infrastructure/.env (git-ignored). Copy .env.example to .env first.
+# Ports are bound to 127.0.0.1 so the services are reachable only from this computer,
+# not from other devices on your network.
+
+name: crm-lead
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      # Superuser: only used by the init script and for administration, never by the app.
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:?set POSTGRES_SUPERUSER in infrastructure/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD in infrastructure/.env}
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      # Read by postgres/init/01-create-roles-and-databases.sh on first start.
+      CRM_DB_OWNER_USER: ${CRM_DB_OWNER_USER:?set CRM_DB_OWNER_USER in infrastructure/.env}
+      CRM_DB_OWNER_PASSWORD: ${CRM_DB_OWNER_PASSWORD:?set CRM_DB_OWNER_PASSWORD in infrastructure/.env}
+      CRM_DB_APP_USER: ${CRM_DB_APP_USER:?set CRM_DB_APP_USER in infrastructure/.env}
+      CRM_DB_APP_PASSWORD: ${CRM_DB_APP_PASSWORD:?set CRM_DB_APP_PASSWORD in infrastructure/.env}
+      # Read by postgres/init/02-create-keycloak-database.sh.
+      KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:?set KEYCLOAK_DB_USER in infrastructure/.env}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD in infrastructure/.env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Scripts here run once, when the data volume is empty (first start only).
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # -h 127.0.0.1 checks the TCP listener, which only opens after the init scripts finish.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  keycloak:
+    # Identity provider: login pages, passwords, MFA and signed tokens. The CRM never stores
+    # passwords itself. Pinned to an exact version so upgrades are deliberate.
+    image: quay.io/keycloak/keycloak:26.4.7
+    restart: unless-stopped
+    # start-dev: development mode (HTTP allowed).
+    # --import-realm: loads keycloak/realm-crm.json on the FIRST start (when the realm does not
+    # exist yet). Data is kept in the "keycloak" PostgreSQL database (ADR 0004), so users created
+    # through the CRM survive restarts. Later edits of the realm file are NOT applied
+    # automatically - see docs/auth.md ("Changing the realm file").
+    command: ["start-dev", "--import-realm"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:?set KEYCLOAK_DB_USER in infrastructure/.env}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD in infrastructure/.env}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?set KEYCLOAK_ADMIN_USER in infrastructure/.env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in infrastructure/.env}
+      # Fixed public URL, so the token issuer is always http://localhost:8080/realms/crm.
+      KC_HOSTNAME: http://localhost:8080
+      KC_HTTP_PORT: "8080"
+      KC_HEALTH_ENABLED: "true"
+      # Substituted into realm-crm.json placeholders like ${CRM_WEB_CLIENT_SECRET}.
+      CRM_WEB_CLIENT_SECRET: ${CRM_WEB_CLIENT_SECRET:?set CRM_WEB_CLIENT_SECRET in infrastructure/.env}
+      CRM_DEV_USER_PASSWORD: ${CRM_DEV_USER_PASSWORD:?set CRM_DEV_USER_PASSWORD in infrastructure/.env}
+      CRM_USER_ADMIN_CLIENT_SECRET: ${CRM_USER_ADMIN_CLIENT_SECRET:?set CRM_USER_ADMIN_CLIENT_SECRET in infrastructure/.env}
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8080}:8080"
+    volumes:
+      - ./keycloak/realm-crm.json:/opt/keycloak/data/import/realm-crm.json:ro
+    healthcheck:
+      # The image has no curl, so bash opens a TCP connection to the management port (9000)
+      # and checks that /health/ready reports "UP".
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status": *"UP"' <&3
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  mailpit:
+    # Catches every e-mail sent by Keycloak (set-your-password, verify e-mail, reset password).
+    # Nothing leaves this computer. Inbox: http://localhost:8025
+    image: axllent/mailpit:v1.27.11
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: "500"
+    ports:
+      - "127.0.0.1:${MAILPIT_WEB_PORT:-8025}:8025"
+      # SMTP for the CRM backend and worker, which run on this computer (ADR 0005). Host port
+      # 2525 instead of 1025 because Windows may reserve 1025. Keycloak uses mailpit:1025.
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-2525}:1025"
+
+  files:
+    # S3-compatible file store for quote PDFs and, later, documents (ADR 0005). SeaweedFS
+    # replaces MinIO, whose community images are no longer published. Only the S3 port is
+    # exposed; requests need the access key below - anonymous access is refused.
+    image: chrislusf/seaweedfs:3.97
+    restart: unless-stopped
+    environment:
+      S3_ACCESS_KEY: ${FILES_S3_ACCESS_KEY:?set FILES_S3_ACCESS_KEY in infrastructure/.env}
+      S3_SECRET_KEY: ${FILES_S3_SECRET_KEY:?set FILES_S3_SECRET_KEY in infrastructure/.env}
+    # Writes the access key into SeaweedFS's identity file inside the container (never into this
+    # folder), then starts master + volume + filer + S3 gateway in one process.
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        printf '{"identities":[{"name":"crm","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}'
+        "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json &&
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json
+        -volume.max=0 -master.volumeSizeLimitMB=256
+    ports:
+      - "127.0.0.1:${FILES_S3_PORT:-8333}:8333"
+    volumes:
+      - files_data:/data
+
+volumes:
+  # Named volume: data survives "docker compose down" and container upgrades.
+  # Only "docker compose down -v" (or deleting the volume) erases it.
+  postgres_data:
+  files_data:

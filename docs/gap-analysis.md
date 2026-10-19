@@ -1,0 +1,253 @@
+# crm-lead — Inventory, gap analysis and phased plan
+
+*Inspected on 18 October 2026, against the running stack.* Sources: the **live** OpenAPI schema at
+`http://127.0.0.1:8000/openapi.json` (identical to `docs/api/openapi.json`: 74 operations, 84
+schemas), the live PostgreSQL database (Alembic revision **0009**), and the source code.
+No endpoints or data were invented. Row counts include fictional data created by automated tests.
+
+---
+
+## 1. What exists today
+
+### 1.1 Frontend (`frontend/`)
+
+| Item | Version (installed) |
+|---|---|
+| Next.js (App Router, `proxy.ts`, `cacheComponents: false`) | 16.4.2 |
+| React / React DOM | 19.3.0 |
+| TypeScript (strict) | 5.9.3 |
+| Tailwind CSS | 4.3.3 |
+| zod (form validation) | 4.6.7 |
+| openid-client / jose (OIDC login, session encryption) | 6.8.8 / 6.2.12 |
+| Vitest / Testing Library / Playwright | 5.0.5 / 16.3.3 / 1.64.1 |
+| ESLint / Prettier | 9.39.5 / 3.9.10 |
+
+**Authentication.** Login uses Authorization Code + PKCE against Keycloak (`/api/auth/login`,
+`/api/auth/callback/keycloak`, `src/lib/server/oidc.ts`). Tokens are kept in an **encrypted httpOnly
+cookie** (`src/lib/server/session.ts`); the browser never receives a token. `src/proxy.ts`
+refreshes tokens before they expire. Logout is a Server Action. All API calls go through
+`src/lib/server/api.ts → apiFetch()` on the Next.js server with the user's token.
+
+**Routes (39 route files).**
+
+| Area | Routes |
+|---|---|
+| Public | `/login`, `/pending` (signed in, waiting for access), `not-found` |
+| Staff CRM `(app)` | `/` dashboard · `/leads`, `/leads/new`, `/leads/[id]`, `/leads/[id]/edit` · `/accounts`, `/accounts/[id]` · `/orders`, `/orders/new`, `/orders/[id]`, `/orders/[id]/edit` · `/invoices`, `/invoices/[id]` · `/tickets`, `/tickets/new`, `/tickets/[id]` · `/users` · `/platform` · `/profile` |
+| Customer portal | `/portal` · `/portal/accounts/[id]` · `/portal/orders`, `/[id]` · `/portal/invoices`, `/[id]` · `/portal/tickets`, `/new`, `/[id]` · `/portal/assistant` |
+
+**Shared components** (`src/components`): `app-shell`, `user-menu`, `ui` (buttons, cards, alerts,
+badges), `pagination`, `module-grid`, `action-dialog` (confirmation dialogs), `lead-form`,
+`order-form`, `orders`, `invoices`, `tickets`, `ticket-forms`.
+**Logic** (`src/lib`): `permissions` (display-only), `modules`, `*-rules`, `order-math`
+(exact cents), `validation/*` (zod), `api-types`, `api-error`, plus 7 test files.
+
+### 1.2 Backend (`backend/`)
+
+Python 3.12, FastAPI, SQLAlchemy 2, Alembic, psycopg 3, httpx, anthropic SDK. Modules in
+`app/modules/`:
+
+| Module | Files present | Endpoints |
+|---|---|---|
+| identity | models, service, dependencies, api, router, onboarding (+schemas, router) | `/me`, `/users`, `/platform/tenants` (GET, POST), `/tenant/*` (11), `/accounts/{id}/portal-users` (3), `/onboarding/*` (2) |
+| accounts | full set | `GET /accounts`, `GET /accounts/{id}` (**read-only**) |
+| contacts | models, api | **none** |
+| sales (opportunities) | models, api | **none** |
+| leads | full set (no api.py; nothing imports it) | 12 |
+| support (tickets) | full set | 8 staff + 5 portal |
+| orders | full set | 5 staff + 2 portal |
+| invoices | full set | 8 staff + 2 portal |
+| portal | router | `GET /portal/accounts`, `/portal/accounts/{id}` |
+| assistant | llm, tools, service, router | 6 (portal only) |
+| (core) | config, auth (tokens, rbac, principal, identity_admin), db, errors, audit, money, search | `/health`, `/health/ready` |
+
+**All 74 live operations by tag:**
+- accounts 2
+- assistant 6
+- health 2
+- identity 3
+- invoices 8
+- leads 12
+- onboarding 2
+- orders 5
+- platform 1
+- portal 11
+- portal access 3
+- tickets 8
+- user administration 11
+
+### 1.3 Database (29 tables, migrations 0001–0009)
+
+| Group | Tables (→ main relationships) |
+|---|---|
+| Identity | `tenants`, `users`, `portal_access_grants` (→ users, accounts), `access_requests` (→ users), `signup_code_attempts` |
+| Customers | `accounts` (→ users as owner), `contacts` (→ accounts, users) |
+| Sales | `leads` (→ accounts, contacts, opportunities, users), `lead_activities`, `lead_assignments`, `opportunities` (→ accounts, contacts, users) |
+| Support | `tickets` (→ accounts, users), `ticket_comments`, `ticket_number_counters` |
+| Orders | `orders` (→ accounts, users), `order_lines`, `order_status_events`, `order_number_counters` |
+| Billing | `invoices` (→ orders, accounts, users), `invoice_lines`, `credit_notes`, `credit_note_lines`, `payments`, `billing_number_counters` |
+| Assistant | `assistant_conversations`, `assistant_messages`, `assistant_tool_calls`, `assistant_pending_actions` |
+| Cross-cutting | `audit_log` |
+
+Every tenant-owned table has `tenant_id`, with composite foreign keys `(tenant_id, x_id)`. There is
+one trigger (`trg_invoices_freeze_issued`). **Row-Level Security is enabled on 0 tables.**
+
+### 1.4 Frontend ↔ API consistency (checked)
+
+- **97 `apiFetch` calls** in the frontend. After resolving paths built from variables, **every
+  call maps to an existing endpoint and HTTP method**. No call targets a non-existent endpoint,
+  and no screen uses mock data.
+- **Endpoints without UI:** `POST /leads/{id}/activities` (log a call, meeting or note on a lead:
+  the API exists, the lead page only *shows* activities); `GET /health`, `/health/ready` (for
+  operations, no UI needed).
+- **Tables without API:** `contacts` (27 rows, created by lead conversion), `opportunities`
+  (13 rows, created by lead conversion), `audit_log` (no read endpoint).
+
+### 1.5 Architecture rules (CLAUDE.md) vs reality
+
+| Rule | Status |
+|---|---|
+| Modules import other modules only via `api.py` | **Followed and enforced** since Phase A: import-linter contracts in `pyproject.toml`, `lint-imports`, and `tests/test_architecture.py` |
+| Each module has `permissions.py`, `events.py` | Rule **updated in Phase A** to match the code: permissions are central in `core/auth/rbac.py`; events come with the outbox (Phase C) |
+| Cross-module side effects via outbox events | **No outbox / worker yet**. The invoiced-order lock uses a direct `orders.api` call (documented choice) |
+| PostgreSQL RLS enabled | **Not yet** (planned Phase 5; isolation today = policies + composite FKs + tests) |
+| Tests per module: happy path, validation, tenant isolation, role denial, record-level denial, ID tampering | Followed for leads, tickets, orders, invoices, onboarding, assistant |
+
+### 1.6 Quality status (last full runs, 18 Oct 2026)
+
+| Suite | Result |
+|---|---|
+| Backend pytest | 569 passed, 4 skipped (live Claude evaluations, opt-in) |
+| Frontend component (Vitest) | 127 passed |
+| End-to-end (Playwright, real stack) | 40 passed, 2 skipped (slow token refresh; live assistant chat) |
+| Lint / types / build | ruff, mypy, ESLint, tsc and the production build all clean |
+
+---
+
+## 2. Gap analysis against the 17 requested modules
+
+Legend: ✅ done · 🟡 partly · ❌ not started
+
+| # | Module | Backend | Frontend | Gap |
+|---|---|---|---|---|
+| 1 | Users & roles | ✅ roles, permissions, user admin, invitations, sign-up approval | ✅ `/users`, `/platform`, `/pending`, `/profile` | 🟡 **Teams** (plan Phase 5) not built; roles are fixed (no custom roles) |
+| 2 | Accounts | ✅ CRUD, segment, hierarchy, deactivate/archive/restore, timeline (Phase B) | ✅ list, 360° page, create/edit | teams (Phase C); contracts |
+| 3 | Contacts | ✅ CRUD, search, primary contact, consent, history (Phase B) | ✅ list, detail, create/edit | contact interactions (Phase D activities) |
+| 4 | Leads | ✅ 12 endpoints | 🟡 all flows except logging activities | 🟡 UI for `POST /leads/{id}/activities`; duplicate detection deferred |
+| 5 | Opportunities | ✅ CRUD, stage moves, won/lost/reopen, stage history, board totals (Phase D) | ✅ Kanban (drag & drop), deal page | tenant-configurable stages (Admin); quote links (Phase E) |
+| 6 | Activities & tasks | ✅ tasks, follow-ups, logs on any record, reminders, overdue (Phase D) | ✅ Tasks, calendar, record panels, header bell | e-mail reminders (needs Phase C worker) |
+| 7 | Marketing | ❌ | ❌ | Phase 16 (needs worker, consent tracking) |
+| 8 | Products & quotes | ✅ catalogue, price books, quotes with approval, revisions, quote → order (Phase E1) | ✅ products, price books, quotes, print page, portal accept/decline | stored PDFs and e-mailing quotes (Phase C); configurable approval limit |
+| 9 | Orders | ✅ (incl. from accepted quotes) | ✅ staff + portal | contracts and renewals |
+| 10 | Invoices & payments | ✅ | ✅ staff + portal | invoice PDF (needs 15); refunds/overpayments; no payment provider |
+| 11 | Support | ✅ | ✅ staff + portal | knowledge base (moved to 16b); e-mail notifications |
+| 12 | Customer portal | ✅ accounts, orders, invoices, tickets, assistant | ✅ | quotes and documents (once 8 and 15 exist) |
+| 13 | Reports | ✅ dashboards + 4 standard reports + report builder + CSV export (docs/reports.md) | ✅ role dashboards on `/`, Reports pages | saved/scheduled reports, charts, forecast; "team" filter after teams |
+| 14 | Workflow automation | ✅ events, notifications, reminder e-mails, automation rules + run log (17a/17b) | ✅ notification centre, e-mail settings, Automation pages | webhooks (Phase 19); more triggers |
+| 15 | Documents | ✅ uploads with versions on accounts / deals, quote PDFs, portal sharing (Phase 10) | ✅ Documents cards, portal section | virus scanning; documents on contacts/orders/tickets |
+| 16 | AI assistant & voice | 🟡 20a portal text chat done; **live check with Claude pending** (Anthropic billing) | 🟡 portal chat | 20b knowledge base (pgvector), 20c voice; **staff assistant** (plan says staff chat) |
+| 17 | Integrations | ❌ | ❌ | Phase 19 |
+
+**Foundation gaps** (cross-cutting, from implementation-plan Phases 1, 5, 21):
+
+- **Git:** the repository has **no commits**; everything is still uncommitted.
+- **Outbox + background worker** (needed by 6, 7, 14, 17 and for reminders and e-mails).
+- **PostgreSQL RLS** (planned Phase 5).
+- **Teams** (Phase 5).
+- **MinIO** (Phase 1, needed by 10).
+- **import-linter** enforcement of module boundaries.
+- **Hardening** (Phase 21): `pip-audit` / `npm audit`, backup/restore, a performance test with
+  100k leads, and a README for a clean Windows machine.
+- **Stale status markers:** implementation-plan still says Phase 0 *(current)*. The markers of
+  Phase 4 and Phase 15 also predate the finished work.
+
+---
+
+## 3. Phased implementation plan (proposal)
+
+The rules stay the same: **one phase at a time**, owner approval at the end of each, and ADRs
+for architecture changes. Working code is kept; no restructuring beyond what each phase needs.
+Each phase lists only endpoints that **do not exist yet** and would be added; nothing listed
+below exists today.
+
+### Phase A — Safe baseline (small, no new features)  *(in progress: markers ✅, import-linter ✅, commit waiting for the owner's Git identity, live check waiting for Anthropic billing)*
+1. **First Git commit.** The owner sets Git name and e-mail; nothing has been committed yet, so
+   this protects all the work done so far.
+2. Fix stale status markers in `implementation-plan.md` and add this gap analysis to the docs.
+3. Add **import-linter** with a contract matching the real rule ("modules import other modules
+   only via `api.py`") and run it in the check commands.
+4. Assistant **live check** once Anthropic billing works (`python -m scripts.check_anthropic`).
+
+*Done when:* the commit exists, the import-linter check passes, and all suites stay green.
+
+### Phase B — Customer data completeness (plan Phase 6: Accounts & Contacts)  *(done 2026-10-19 — see docs/accounts-contacts.md)*
+- New API: account create/edit/archive; a contacts module with full endpoints (list, search,
+  get, create, edit, archive) and contact ↔ account links. Same record-level policy as
+  accounts (agents: own; managers/admins: all).
+- UI: account create/edit, a real **Contacts** card on account pages, contact list and detail.
+- UI for the existing `POST /leads/{id}/activities` (log a call, meeting or note).
+
+*Done when:* the plan's Phase 6 criteria pass, including "a contact on an account you can't see →
+404". Playwright journey added.
+
+### Phase C — Platform foundations (plan Phases 5 rest + 1 rest), ADR needed
+- ~~**Outbox table + worker skeleton**, with retries.~~ Done 2026-10-19 as Phase C1 (ADR 0005, docs/background-jobs.md).
+- **Teams**, so managers can see their team's records (today: the whole tenant).
+- **Row-Level Security** on tenant tables, with `SET LOCAL app.tenant_id` per request, plus the
+  "raw query without tenant returns nothing" test.
+- ~~**MinIO** service in Docker Compose.~~ Done as **SeaweedFS** (S3 API) in Phase C1 - MinIO images are no longer published (ADR 0005).
+
+*Why now:* activities/reminders, marketing, workflows, documents and integrations all depend on
+these.
+
+### Phase D — Sales pipeline (plan Phases 8 + 9)  *(done 2026-10-19 — see docs/pipeline-activities.md; e-mail reminders wait for Phase C)*
+- Opportunities API and UI, with configurable pipelines/stages per tenant, a Kanban board, stage
+  history and forecast. The `opportunities` table already exists; a migration extends it.
+- Activities & tasks on any record, with reminders via the worker and e-mail to Mailpit.
+
+### Phase E — Documents, products and quotes (plan Phases 10 + 11)
+- Documents in MinIO, linked to records, with authorization checked on download.
+- Products, price books, and quotes with lines, discounts and taxes. Quote PDF stored as a
+  document. **Accepted quote → order** (completes Phase 12's original criterion).
+- Invoice PDF (same mechanism); portal shows quotes and public documents.
+
+### Phase F — Assistant completion (plan Phase 20)
+- 20b knowledge base: local embeddings + pgvector. This needs a PostgreSQL image change, so ask
+  first.
+- **Staff assistant** (the plan requires a staff chat; today only the portal has one): the same
+  tool design, acting as the staff user, with confirmation for write actions.
+- 20c voice input/output.
+
+### Phase G — Marketing, automation, reports, integrations (plan Phases 16–19)
+In the plan's order, each one using the outbox/worker from Phase C.
+
+### Phase H — Hardening (plan Phase 21)
+- Security checklist and dependency scans.
+- Backup/restore for PostgreSQL and MinIO.
+- Performance with 100k leads.
+- Clean-machine README.
+
+---
+
+### Phase B2 — Customer relationship depth  *(done 2026-10-19 — see docs/customer-relationships.md)*
+Segmentation, duplicate detection, relationship transfer, customer health, lead scoring and
+customer feedback (ratings, complaints). Documents and renewal alerts wait for Phases C/E.
+
+### Requested later (owner's list, 2026-10-19), in proposed order
+1. ~~Products, price books, quotes with approval (Phase E).~~ Done 2026-10-19 as Phase E1 (docs/quotes-catalog.md).
+2. Orders → contracts and renewals (renewal alerts).
+3. Reports and exports (conversion, pipeline, performance, forecast, engagement, retention).
+4. Notifications and workflow; Communication Center (e-mail composer, templates, conversations)
+   - both need the Phase C outbox/worker (ADR).
+5. Administration and security screens (roles, audit viewer, configuration, ownership policy).
+6. Customer documents in the CRM and portal - needs MinIO (Phase C, ADR).
+
+## 4. Open decisions for the owner
+
+1. **Order of B and C.** I recommend B first: small, visible, no architecture change. Then C,
+   which needs an ADR (RLS and the outbox change how every request and side effect works).
+2. **Teams model:** one team per user, or several? Should managers see their team only, or the
+   whole tenant as today?
+3. **Assistant:** keep `claude-opus-5-5`, or switch to a cheaper model for the portal?
+4. **Integrations (module 17):** which systems first (e-mail provider, accounting/ERP, payment
+   provider)?

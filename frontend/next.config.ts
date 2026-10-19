@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   // across users, which removes a whole class of data-leak mistakes.
   cacheComponents: false,
   poweredByHeader: false,
+  // Network mode (backend/scripts/network_mode.py): the dev server may be opened through this
+  // computer's network address, e.g. from a phone. Empty normally.
+  allowedDevOrigins: process.env.NETWORK_HOST ? [process.env.NETWORK_HOST] : [],
   // The development badge ("N") sits bottom-right, so it never covers the sidebar menu.
   devIndicators: { position: "bottom-right" },
   experimental: {

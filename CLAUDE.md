@@ -85,6 +85,7 @@ Alembic (`backend/`) · PostgreSQL · Keycloak (OIDC) · SeaweedFS (S3 files) ·
 | Local e-mail inbox (Mailpit) | http://localhost:8025 — invitations, verification, password reset | ADR 0004 |
 | Run background worker (own CMD window) | `python -m app.worker` (in `backend`, venv active); `--once` runs due jobs and exits | ADR 0005 |
 | File store (SeaweedFS, S3 API) | `127.0.0.1:8333`, keys in `infrastructure\.env`; started by `docker compose up -d` | ADR 0005 |
+| Open the CRM to other devices on your network (see docs/network-access.md) | `python -m scripts.network_mode on <PC address>` / `off` / `status` (in `backend`, venv active), then `cd frontend && npm run dev:network` | Network mode |
 | Install web dependencies | `cd frontend && npm install` | Phase 3 |
 | Run web | `cd frontend && npm run dev` (http://localhost:3000) | Phase 3 |
 | Web lint / types | `cd frontend && npm run lint && npm run typecheck` | Phase 3 |

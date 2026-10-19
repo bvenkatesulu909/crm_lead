@@ -65,8 +65,10 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD in infrastructure/.env}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?set KEYCLOAK_ADMIN_USER in infrastructure/.env}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in infrastructure/.env}
-      # Fixed public URL, so the token issuer is always http://localhost:8080/realms/crm.
-      KC_HOSTNAME: http://localhost:8080
+      # Fixed public URL, so the token issuer never changes by accident. Normally
+      # http://localhost:8080; "network mode" (backend/scripts/network_mode.py) sets it to this
+      # computer's address so phones and laptops on the same network can sign in.
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
       KC_HTTP_PORT: "8080"
       KC_HEALTH_ENABLED: "true"
       # Substituted into realm-crm.json placeholders like ${CRM_WEB_CLIENT_SECRET}.
@@ -74,7 +76,8 @@ services:
       CRM_DEV_USER_PASSWORD: ${CRM_DEV_USER_PASSWORD:?set CRM_DEV_USER_PASSWORD in infrastructure/.env}
       CRM_USER_ADMIN_CLIENT_SECRET: ${CRM_USER_ADMIN_CLIENT_SECRET:?set CRM_USER_ADMIN_CLIENT_SECRET in infrastructure/.env}
     ports:
-      - "127.0.0.1:${KEYCLOAK_PORT:-8080}:8080"
+      # 127.0.0.1 = only this computer; network mode uses 0.0.0.0 (all network cards).
+      - "${KEYCLOAK_BIND:-127.0.0.1}:${KEYCLOAK_PORT:-8080}:8080"
     volumes:
       - ./keycloak/realm-crm.json:/opt/keycloak/data/import/realm-crm.json:ro
     healthcheck:

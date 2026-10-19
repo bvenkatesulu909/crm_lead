@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 
 import { ButtonLink, Card, EmptyState, ErrorAlert } from "@/components/ui";
 import { UserMenu } from "@/components/user-menu";
@@ -14,6 +15,8 @@ import { getMe } from "@/lib/server/api";
 export default async function PortalLayout({
   children,
 }: LayoutProps<"/portal">) {
+  // Per-user pages: render on each request, never at build time.
+  await connection();
   let me: Me;
   try {
     me = await getMe();

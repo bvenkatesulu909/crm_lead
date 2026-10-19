@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
@@ -19,6 +20,8 @@ import { apiFetch, getMe } from "@/lib/server/api";
 export default async function AuthenticatedLayout({
   children,
 }: LayoutProps<"/">) {
+  // Per-user pages: render on each request, never at build time (the build has no API/session).
+  await connection();
   let me: Me;
   try {
     me = await getMe();

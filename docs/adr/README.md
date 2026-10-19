@@ -18,3 +18,4 @@ Rules:
 | [0004](0004-user-onboarding.md) | User onboarding: admin-created users, portal invitations, sign-up with approval | Accepted |
 | [0005](0005-file-storage-outbox-worker.md) | S3 file storage (SeaweedFS), outbox + worker, e-mailed quote PDFs | Accepted |
 | [0006](0006-domain-events-notifications-workflows.md) | Domain events, notifications and workflow rules | Accepted |
+| [0007](0007-online-deployment.md) | Online deployment (Netlify for the web app, hosting for the rest) | Accepted |

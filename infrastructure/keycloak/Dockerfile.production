@@ -1,0 +1,29 @@
+# Keycloak for ONLINE use (ADR 0007): production mode, PostgreSQL, the production realm.
+# Build from the infrastructure/keycloak folder:   docker build -f Dockerfile.production -t crm-keycloak .
+# Same Keycloak version as development (docker-compose.yml), so behaviour matches what was tested.
+#
+# Settings come from environment variables on the host (never from this file) - see
+# docs/deployment.md for the full list: KC_HOSTNAME, KC_DB_URL, KC_DB_USERNAME, KC_DB_PASSWORD,
+# KC_BOOTSTRAP_ADMIN_USERNAME, KC_BOOTSTRAP_ADMIN_PASSWORD, CRM_WEB_URL, CRM_WEB_CLIENT_SECRET,
+# CRM_USER_ADMIN_CLIENT_SECRET, SMTP_HOST, SMTP_PORT, SMTP_FROM, SMTP_USER, SMTP_PASSWORD.
+
+FROM quay.io/keycloak/keycloak:26.4.7
+
+# Options that must be fixed when Keycloak is "built" (not changeable later by environment).
+ENV KC_DB=postgres \
+    KC_HEALTH_ENABLED=true \
+    KC_METRICS_ENABLED=false
+RUN /opt/keycloak/bin/kc.sh build
+
+# The realm: roles and clients, NO users. Imported on the first start only (when the realm does
+# not exist yet); afterwards the database is the source of truth.
+COPY realm-crm-production.json /opt/keycloak/data/import/realm-crm.json
+
+# The host terminates HTTPS and forwards the original address in X-Forwarded-* headers.
+ENV KC_HTTP_ENABLED=true \
+    KC_PROXY_HEADERS=xforwarded \
+    KC_HOSTNAME_STRICT=true
+
+EXPOSE 8080
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
+CMD ["start", "--optimized", "--import-realm"]

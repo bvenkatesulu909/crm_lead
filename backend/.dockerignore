@@ -1,0 +1,14 @@
+# Keep secrets, test data and local tooling out of the image.
+.env
+.env.*
+!.env.example
+*.network-backup
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.import_linter_cache/
+tests/
+requirements-dev.txt

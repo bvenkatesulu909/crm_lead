@@ -1,0 +1,17 @@
+# Netlify settings for the crm-lead WEB APP (ADR 0007). Contains no secrets.
+#
+# Netlify builds only the Next.js app in frontend/. The API, worker, database, Keycloak, file
+# store and mail run on other hosts (see docs/deployment.md). Secrets and addresses are set in
+# Netlify's "Site configuration > Environment variables", never in this repository:
+#   APP_BASE_URL, API_BASE_URL, OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, SESSION_SECRET
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Next.js 16 needs Node 20.9 or newer; 22 is a long-term-support release.
+  NODE_VERSION = "22"
+  # No analytics or telemetry during builds.
+  NEXT_TELEMETRY_DISABLED = "1"

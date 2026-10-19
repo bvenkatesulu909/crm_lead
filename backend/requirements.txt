@@ -18,6 +18,10 @@ alembic==1.20.0
 psycopg[binary]==3.3.6
 # HTTP client: Keycloak admin API (user onboarding, ADR 0004) and the Claude SDK.
 httpx==0.28.1
+# Verifies the signed access tokens from Keycloak (app/core/auth/tokens.py). [crypto] adds the
+# RSA signature support (RS256) it needs; "cryptography" is pinned exactly like the rest.
+PyJWT[crypto]==2.15.1
+cryptography==50.0.2
 # Official Anthropic SDK for the AI assistant (ADR 0003). Used only by the backend; the API key
 # never reaches the browser.
 anthropic==1.15.0

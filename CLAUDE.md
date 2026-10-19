@@ -19,7 +19,7 @@ Alembic (`backend/`) · PostgreSQL · Keycloak (OIDC) · SeaweedFS (S3 files) ·
 3. **Explain every step in beginner-friendly language**: what a file is for, why a library is needed, what a command does.
 4. **Ask before** destructive commands (deleting files/volumes/databases, `docker compose down -v`, `git reset --hard`, force-push, dropping tables, rewriting migrations already applied) and before **major architectural changes** (anything marked [ADR] in architecture.md).
 5. **Never claim tests passed unless they were actually run** in this session and the output showed success. If tests were not run, say so.
-6. **No cloud deployment** of any kind. Everything runs locally.
+6. **Cloud deployment only as described in ADR 0007** (Netlify for the web app, separate hosts for the rest) and only after its hardening checklist - never with development settings, test users or development passwords. Until the owner says "go live", everything runs locally.
 7. **Commands for the user use Windows CMD syntax** (e.g. `copy`, `set`, `^` for line continuation, `.venv\Scripts\activate`). Do not give PowerShell- or bash-only commands to the user.
 8. Keep `architecture.md`, `implementation-plan.md` and this file up to date when decisions change.
 
@@ -156,11 +156,15 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
 - **Phase 18 part 2 (reports, builder, CSV)** — done 2026-10-19, not committed. See `docs/reports.md`.
   - `reports` module (no tables): win rate, lead conversion, revenue & quotes, support SLA; report builder over 9 record types; CSV with audit (`report.exported`) and formula-injection protection; each module supplies its own figures and export whitelist through its `api.py`; Reports pages; the module is now "Available".
   - Tests (run 2026-10-19): backend 987 passed (+4 opt-in skipped), ruff/mypy/import-linter clean; Vitest 205 passed; full E2E 67 passed, 1 skipped, 4 failed: the live assistant test (Anthropic billing, known), two menu lists that needed "Reports" and the quotes journey that timed out on a slow machine - after fixing the lists, `workflow1` + `quotes` specs re-run: 12 passed. The full suite was not re-run end to end after that fix. Production build not re-run.
+- **Online deployment, step D1 (ADR 0007)** — prepared 2026-10-19, nothing is online. See `docs/deployment.md`.
+  - `netlify.toml`; `backend/Dockerfile` (API + worker); `infrastructure/keycloak/Dockerfile.production` + generated `realm-crm-production.json` (no users); tests for requirements and the production realm; production web build is clean.
+  - Fixed: `requirements.txt` lacked PyJWT/cryptography (a clean install crashed).
+  - Still needed: D2 staging and D3 go-live (accounts, domain, secrets - owner's actions), RLS, direct-to-bucket uploads if hosting limits require.
 - **Pending:**
   - Assistant live check against real Claude. Blocked by Anthropic billing ("credit balance too
     low"); test with `python -m scripts.check_anthropic`.
   - Teams, RLS, e-mail task reminders via the worker (rest of Phase C).
   - Modules not started: marketing, report builder/exports, workflows, communication center, integrations, staff assistant.
-- **Current phase:** Phase 18 part 2 (reports) done, waiting for the owner's review. Next planned modules: Communication Center, Marketing (Phase 16), Integrations (Phase 19), staff AI assistant (Phase 20). Next planned modules, one phase at a time: Workflow & Notifications (Phase 17, uses the worker), Reports & exports (Phase 18 part 2), Communication Center, Marketing (Phase 16), Integrations (Phase 19), staff AI assistant (Phase 20). The first Git commit still waits for the Git identity. Phase A's first Git commit is
+- **Current phase:** Online deployment D1 (preparation) done, waiting for the owner's review; D2/D3 need the owner's accounts. Phase 18 part 2 (reports) also done. Next planned modules: Communication Center, Marketing (Phase 16), Integrations (Phase 19), staff AI assistant (Phase 20). Next planned modules, one phase at a time: Workflow & Notifications (Phase 17, uses the worker), Reports & exports (Phase 18 part 2), Communication Center, Marketing (Phase 16), Integrations (Phase 19), staff AI assistant (Phase 20). The first Git commit still waits for the Git identity. Phase A's first Git commit is
   still open. Next proposed: Phase C (outbox + worker for e-mail reminders, teams, RLS, MinIO;
   ADR needed), then contracts and renewals.

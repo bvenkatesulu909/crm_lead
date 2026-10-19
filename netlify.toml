@@ -8,7 +8,6 @@
 [build]
   base = "frontend"
   command = "npm run build"
-  publish = ".next"
 
 [build.environment]
   # Next.js 16 needs Node 20.9 or newer; 22 is a long-term-support release.

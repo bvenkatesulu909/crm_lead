@@ -1,7 +1,7 @@
 # ruff: noqa: S101, S104, S310, S607, E501 - a local admin tool: asserts, local URLs, docker CLI, long messages
 """Open the CRM to other devices on your network (and back to this computer only).
 
-    python -m scripts.network_mode on 192.168.31.133    use this computer's network address
+    python -m scripts.network_mode on <PC-address>    use this computer's network address
     python -m scripts.network_mode off                  back to localhost only
     python -m scripts.network_mode status               what is set now
 

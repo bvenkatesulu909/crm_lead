@@ -7,13 +7,13 @@ internet; people on your network can see the login page but still need a CRM acc
 ## Turn it on (Windows CMD)
 
 1. Find this computer's address: run `ipconfig` and read **IPv4 Address** of your Wi-Fi
-   adapter (for this PC: `192.168.31.133`).
+   adapter (it looks like `192.168.x.x`).
 2. In the project folder:
 
 ```
 cd backend
 .venv\Scripts\activate
-python -m scripts.network_mode on 192.168.31.133
+python -m scripts.network_mode on <PC-address>
 ```
 
 It tells Keycloak (the sign-in service) the new address, backs up and updates the settings
@@ -24,7 +24,7 @@ cd frontend
 npm run dev:network
 ```
 
-3. Open **http://192.168.31.133:3000** on this computer or any device on the same network.
+3. Open **http://<PC-address>:3000** on this computer or any device on the same network.
    Sign in with the same accounts as before.
 
 ## Windows firewall (run CMD **as administrator**, once)

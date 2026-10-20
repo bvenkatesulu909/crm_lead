@@ -1,8 +1,10 @@
 # Web frontend (`frontend/`)
 
 Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS 4, talking to the FastAPI
-backend. Status: **all 3 workflows done** — login/session, dashboard, lead list, create lead;
-lead details, edit, assign, qualify/disqualify, convert; customer accounts, account details, employee profile.
+backend. Status: staff and portal screens for every shipped module (login/session, dashboards,
+leads, accounts, contacts, pipeline, tasks, quotes, orders, invoices, tickets, documents,
+reports, notifications, automation, users, assistant). Open UI gaps are tracked in
+[docs/gap-analysis.md](gap-analysis.md).
 
 ## How it fits together (Backend-for-Frontend)
 
@@ -51,26 +53,45 @@ Browser ──cookie (encrypted, httpOnly)──► Next.js server ──Bearer 
 | Route | Screen | Notes |
 |---|---|---|
 | `/login` | Sign-in | Messages for cancelled/expired/failed sign-in and after sign-out |
-| `/` | Dashboard | Lead counts (all / new / qualified / converted) and recent leads — **in the user's scope** (agents: own leads); plus a **CRM modules** overview of all 13 modules with their honest build status (Available / In progress / Planned · phase N). Only modules that work and that the role may use are links — no dead links, no invented figures |
+| `/` | Dashboard | Role dashboards (executive / manager / rep): lead counts, pipeline, follow-ups, revenue, orders and support - in the user's scope; plus the module catalogue with honest build status (19 modules). Only modules that work and that the role may use are links |
 | `/leads` | Lead list | Search (name, company, e-mail), status/source filters, sort, 20 per page; empty, no-results, error and no-access states |
+| `/leads/new` | Create lead | Labelled fields, required marker, per-field errors with `aria-describedby`, focus moves to the first error, backend errors shown with a reference ID |
 | `/leads/[id]` | Lead details | Details, owner, timeline (activities + automatic events), ownership history, conversion result. Action bar shows only what the role and status allow: Edit, Assign, Mark as contacted, Qualify, Disqualify, Convert |
 | `/leads/[id]/edit` | Edit lead | Same form as create, pre-filled; sends the `version` it loaded, so a concurrent change gives a clear "changed by someone else" error instead of overwriting |
-| `/accounts` | Customer accounts | Search (name, account number), status filter, 20 per page, owner names; scope from the API (agents: own accounts, managers/admins/support: all of the tenant) |
-| `/accounts/[id]` | Account details | Profile fields, owner, parent account, **history** of leads converted into it (only for roles that may read leads), contacts placeholder |
-| `/portal` | Customer portal home | Customers only (staff see "this area is for customers"). Lists ONLY the accounts granted to the customer (`/api/v1/portal/accounts`); recent orders, invoices to pay and tickets; an honest "coming soon" panel for the assistant |
-| `/portal/accounts/[id]` | Customer's account | Customer-safe fields only (name, status, website). Another customer's account — same or other tenant — is a 404 |
-| `/tickets`, `/tickets/new`, `/tickets/[id]` | Support (staff) | See [support.md](support.md) |
-| `/portal/tickets`, `/portal/tickets/new`, `/portal/tickets/[id]` | Support (customers) | See [support.md](support.md) |
+| `/accounts`, `/accounts/new`, `/accounts/[id]/edit` | Customer accounts | Search (name, account number), status filter, 20 per page, owner names; create/edit with segment, owner and parent account (same record-level rules as the API) |
+| `/accounts/[id]` | Account details | Profile, owner, parent account, contacts card, documents, quotes, deals, activities and history of converted leads |
+| `/accounts/health` | Customer health | At-risk list from customer health scores (see [customer-relationships.md](customer-relationships.md)) |
+| `/contacts`, `/contacts/new`, `/contacts/[id]`, `/contacts/[id]/edit` | Contacts | List/search, detail with consent and history, create/edit (see [accounts-contacts.md](accounts-contacts.md)) |
+| `/opportunities` | Pipeline board | Kanban with drag & drop and "Move to", totals per stage (see [pipeline-activities.md](pipeline-activities.md)) |
+| `/opportunities/new`, `/opportunities/[id]`, `/opportunities/[id]/edit` | Deal details / edit | Amount, stage history, won/lost/reopen, quote cards |
+| `/tasks`, `/tasks/calendar` | Tasks and calendar | Tasks, follow-ups and logs linked to records; overdue, reminders bell, calendar view |
+| `/products`, `/products/new`, `/products/[id]` | Products | Catalogue: managers maintain, sales/support read (see [quotes-catalog.md](quotes-catalog.md)) |
+| `/products/price-books/[id]` | Price book | Entries used to price quotes |
+| `/quotes`, `/quotes/new`, `/quotes/[id]`, `/quotes/[id]/edit` | Quotes | Lines, discounts (approval above the tenant limit - four eyes), revisions, status, send by e-mail with the PDF |
+| `/quotes/settings` | Quote settings | The organisation's approval limit (tenant admins) |
+| `/print/quotes/[id]`, `/quotes/[id]/pdf` | Printable quote / PDF | Print view; stored PDF download through a route handler (no token in the browser) |
 | `/orders`, `/orders/new`, `/orders/[id]`, `/orders/[id]/edit` | Orders (staff) | See [orders.md](orders.md) |
-| `/portal/orders`, `/portal/orders/[id]` | Order status (customers) | See [orders.md](orders.md) |
-| `/users` | Users (Tenant Admin) | See [onboarding.md](onboarding.md): staff list, add staff member, change role, deactivate/reactivate, resend invitation, sign-up code, access requests |
-| `/pending` | Waiting for access | People signed in without CRM access: enter sign-up code, see request status, "Continue" after approval (refreshes the token), deactivated notice |
-| `/portal/assistant` | AI assistant (customers) | See [assistant.md](assistant.md): chat about own orders/invoices/tickets, prepared tickets to confirm, "not available" without an API key |
-| `/platform` | Organisations (Super Admin) | List organisations, create one with its first Tenant Admin |
 | `/invoices`, `/invoices/[id]` | Invoices, payments, credit notes (staff) | See [invoices.md](invoices.md) |
-| `/portal/invoices`, `/portal/invoices/[id]` | Invoices and amount owed (customers) | See [invoices.md](invoices.md) |
+| `/tickets`, `/tickets/new`, `/tickets/[id]` | Support (staff) | See [support.md](support.md) |
+| `/documents`, `/documents/[id]/download` | Documents | Upload versions on accounts/deals; download through a route handler with an authorization check (see [documents.md](documents.md)) |
+| `/reports`, `/reports/builder` | Reports | Standard reports and the report builder (see [reports.md](reports.md)) |
+| `/reports/[key]/csv`, `/reports/builder/csv` | CSV export | Route handlers; audit entry and formula-injection protection |
+| `/notifications`, `/notifications/settings` | Notifications | Inbox, mark read, e-mail notification settings (see [workflows.md](workflows.md)) |
+| `/automation`, `/automation/new`, `/automation/[id]` | Automation rules | Trigger → conditions → actions, run log (tenant admins) |
+| `/users` | Users (Tenant Admin) | See [onboarding.md](onboarding.md): staff list, add staff member, change role, deactivate/reactivate, resend invitation, sign-up code, access requests |
+| `/platform` | Organisations (Super Admin) | List organisations, create one with its first Tenant Admin |
+| `/pending` | Waiting for access | People signed in without CRM access: enter sign-up code, see request status, "Continue" after approval (refreshes the token), deactivated notice |
 | `/profile` | Employee profile | Name, e-mail, organisation, roles, what the role allows (plain language), link to Keycloak's own page for password / two-step sign-in, sign out |
-| `/leads/new` | Create lead | Labelled fields, required marker, per-field errors with `aria-describedby`, focus moves to the first error, backend errors shown with a reference ID |
+| `/portal` | Customer portal home | Customers only (staff see "this area is for customers"). Lists ONLY the granted accounts; recent orders, invoices to pay, tickets, quotes and documents; link to the assistant |
+| `/portal/accounts/[id]` | Customer's account | Customer-safe fields only. Another customer's account - same or other tenant - is a 404 |
+| `/portal/orders`, `/portal/orders/[id]` | Order status (customers) | See [orders.md](orders.md) |
+| `/portal/invoices`, `/portal/invoices/[id]` | Invoices and amount owed (customers) | See [invoices.md](invoices.md) |
+| `/portal/quotes`, `/portal/quotes/[id]`, `/portal/quotes/[id]/pdf` | Quotes (customers) | See sent quotes, accept or decline, download the PDF |
+| `/portal/tickets`, `/portal/tickets/new`, `/portal/tickets/[id]` | Support (customers) | See [support.md](support.md) |
+| `/portal/documents/[id]/download` | Document download (customers) | Public documents of granted accounts only |
+| `/portal/assistant` | AI assistant (customers) | See [assistant.md](assistant.md): chat about own orders/invoices/tickets, prepared tickets to confirm, "not available" without an API key |
+| `/api/auth/login`, `/api/auth/callback/keycloak` | OIDC login handlers | Authorization Code + PKCE; stores the encrypted `crm_session` cookie |
+| `/_not-found`, error pages | Not found / error | Friendly pages; errors show a reference ID |
 
 **Confirmation for sensitive actions:** every change on the lead page (assign, contacted,
 qualify, disqualify, convert) opens a native `<dialog>` that explains the consequence first —
@@ -80,10 +101,15 @@ are shown inside the dialog.
 
 Layout: sidebar (desktop) / slide-in menu (mobile), top bar with user menu (name, roles,
 sign out), "Skip to main content" link, visible focus ring, Escape closes menus.
-Navigation per role: sales staff see Dashboard, Leads, Accounts; support agents see Dashboard, Accounts;
-customers are redirected from every staff page to `/portal`, which has its own simpler layout.
+Navigation is grouped by module and filtered by role in `src/lib/permissions.ts` (display only;
+the API decides), and customers are redirected from every staff page to `/portal`, which has its
+own simpler layout.
 
-## Files
+## Key shared files
+
+This is a map of the shared building blocks, not a full file index. The **Screens** table above
+covers every route; per-module screens live under `src/app/` (for example `src/app/(app)/contacts/`,
+`src/app/(app)/quotes/`, `src/app/portal/`) and each module documents its own files in `docs/*.md`.
 
 | Path | Purpose |
 |---|---|
@@ -145,7 +171,6 @@ must be up). The slow token-refresh test runs only with `set E2E_SLOW=1`.
 
 ## Not done yet
 
-- Contact screens and editing accounts (backend endpoints don't exist yet).
-
 - Generated API types from `docs/api/openapi.json` instead of hand-written ones.
 - Content-Security-Policy header (needs nonce support for Next.js scripts).
+- Staff AI assistant chat (the portal assistant exists; see `docs/assistant.md`).

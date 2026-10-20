@@ -1,8 +1,9 @@
 # Authentication & authorization
 
 How a request proves **who** it comes from, and how the API decides **what** that person may see.
-Status: implemented for identity (`/me`), accounts (staff), customer portal (accounts) and
-platform tenant listing. Other modules will reuse the same building blocks.
+Status: the foundation is implemented and used by every shipped staff and portal module
+(identity, accounts, contacts, leads, sales, activities, catalogue, orders, billing, support,
+portal, documents, reports, workflows, assistant). Teams and Row-Level Security are still open.
 
 ## 1. The big picture
 
@@ -111,43 +112,63 @@ token and the database — never from request bodies, query strings or headers l
 
 | Permission | Super Admin | Tenant Admin | Sales Manager | Sales Agent | Support Agent | Customer |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
-| `platform:tenant:read` / `:manage` | ✔ | | | | | |
-| `tenant:user:read` / `:manage` | | ✔ | | | | |
-| `account:read:all` | | ✔ | ✔ | | ✔ | |
-| `account:read:own` | | | | ✔ | | |
-| `account:write:all` | | ✔ | ✔ | | | |
-| `account:write:own` | | | | ✔ | | |
-| `contact:read:all` | | ✔ | ✔ | | ✔ | |
-| `contact:read:own` / `write:own` | | | | ✔ | | |
-| `contact:write:all` | | ✔ | ✔ | | | |
-| `lead:read:all` / `write:all` | | ✔ | ✔ | | | |
-| `lead:read:own` / `write:own` | | | | ✔ | | |
-| `lead:assign` | | ✔ | ✔ | | | |
-| `lead:convert` (within write scope) | | ✔ | ✔ | ✔ | | |
-| `ticket:read:all` | | ✔ | ✔ | | ✔ | |
-| `ticket:read:own_accounts` (tickets on accounts they own) | | | | ✔ | | |
-| `ticket:manage` | | ✔ | | | ✔ | |
-| `portal:account:read` (granted accounts only) | | | | | | ✔ |
-| `portal:ticket:read` / `portal:ticket:write` (granted accounts only) | | | | | | ✔ |
-| `order:read:all` | | ✔ | ✔ | | ✔ | |
-| `order:read:own_accounts` / `order:write:own_accounts` (accounts they own) | | | | ✔ | | |
-| `order:write:all` | | ✔ | ✔ | | | |
-| `order:fulfil` (in fulfilment / shipped / delivered) | | ✔ | ✔ | | | |
-| `portal:order:read` (confirmed orders of granted accounts only) | | | | | | ✔ |
-| `invoice:read:all` | | ✔ | ✔ | | ✔ | |
-| `invoice:read:own_accounts` (accounts they own) | | | | ✔ | | |
-| `invoice:manage` (create from order, issue, discard, credit notes) | | ✔ | ✔ | | | |
-| `payment:record` (record and reverse payments) | | ✔ | ✔ | | | |
-| `portal:invoice:read` (issued invoices of granted accounts only) | | | | | | ✔ |
-| `portal:user:invite` (admins: any account; agents: accounts they own) | | ✔ | | ✔ | | |
-| `portal:assistant:use` (AI assistant on own data) | | | | | | ✔ |
+| `platform:tenant:read` / `platform:tenant:manage` | ✔ |  |  |  |  |  |
+| `tenant:user:read` / `tenant:user:manage` |  | ✔ |  |  |  |  |
+| `portal:user:invite` (admins: any account; agents: accounts they own) |  | ✔ |  | ✔ |  |  |
+| `account:read:all` |  | ✔ | ✔ |  | ✔ |  |
+| `account:read:own` |  |  |  | ✔ |  |  |
+| `account:write:all` |  | ✔ | ✔ |  |  |  |
+| `account:write:own` |  |  |  | ✔ |  |  |
+| `contact:read:all` |  | ✔ | ✔ |  | ✔ |  |
+| `contact:read:own` / `contact:write:own` |  |  |  | ✔ |  |  |
+| `contact:write:all` |  | ✔ | ✔ |  |  |  |
+| `lead:read:all` / `lead:write:all` |  | ✔ | ✔ |  |  |  |
+| `lead:read:own` / `lead:write:own` |  |  |  | ✔ |  |  |
+| `lead:assign` |  | ✔ | ✔ |  |  |  |
+| `lead:convert` (within write scope) |  | ✔ | ✔ | ✔ |  |  |
+| `opportunity:read:all` / `opportunity:write:all` |  | ✔ | ✔ |  |  |  |
+| `opportunity:read:own` / `opportunity:write:own` |  |  |  | ✔ |  |  |
+| `activity:read:all` / `activity:write:all` / `activity:assign` |  | ✔ | ✔ |  |  |  |
+| `activity:read:own` / `activity:write:own` |  |  |  | ✔ | ✔ |  |
+| `catalog:read` |  | ✔ | ✔ | ✔ | ✔ |  |
+| `catalog:manage` |  | ✔ | ✔ |  |  |  |
+| `quote:read:all` / `quote:write:all` / `quote:approve` |  | ✔ | ✔ |  |  |  |
+| `quote:read:own` / `quote:write:own` |  |  |  | ✔ |  |  |
+| `quote:settings:manage` (the approval limit per organisation) |  | ✔ |  |  |  |  |
+| `document:read` |  | ✔ | ✔ | ✔ | ✔ |  |
+| `document:write` |  | ✔ | ✔ | ✔ |  |  |
+| `document:delete` |  | ✔ | ✔ |  |  |  |
+| `ticket:read:all` |  | ✔ | ✔ |  | ✔ |  |
+| `ticket:read:own_accounts` (tickets on accounts they own) |  |  |  | ✔ |  |  |
+| `ticket:manage` |  | ✔ |  |  | ✔ |  |
+| `order:read:all` |  | ✔ | ✔ |  | ✔ |  |
+| `order:read:own_accounts` / `order:write:own_accounts` |  |  |  | ✔ |  |  |
+| `order:write:all` |  | ✔ | ✔ |  |  |  |
+| `order:fulfil` (in fulfilment / shipped / delivered) |  | ✔ | ✔ |  |  |  |
+| `invoice:read:all` |  | ✔ | ✔ |  | ✔ |  |
+| `invoice:read:own_accounts` |  |  |  | ✔ |  |  |
+| `invoice:manage` (create from order, issue, discard, credit notes) |  | ✔ | ✔ |  |  |  |
+| `payment:record` (record and reverse payments) |  | ✔ | ✔ |  |  |  |
+| `notification:read` |  | ✔ | ✔ | ✔ | ✔ |  |
+| `workflow:manage` (automation rules) |  | ✔ |  |  |  |  |
+| `dashboard:sales:all` |  | ✔ | ✔ |  |  |  |
+| `dashboard:sales:own` |  |  |  | ✔ |  |  |
+| `dashboard:executive` |  | ✔ |  |  |  |  |
+| `portal:account:read` (granted accounts only) |  |  |  |  |  | ✔ |
+| `portal:ticket:read` / `portal:ticket:write` (granted accounts only) |  |  |  |  |  | ✔ |
+| `portal:order:read` (confirmed orders of granted accounts only) |  |  |  |  |  | ✔ |
+| `portal:invoice:read` (issued invoices of granted accounts only) |  |  |  |  |  | ✔ |
+| `portal:quote:read` / `portal:quote:respond` (sent quotes, accept/decline) |  |  |  |  |  | ✔ |
+| `portal:document:read` (public documents of granted accounts) |  |  |  |  |  | ✔ |
+| `portal:assistant:use` (AI assistant on own data) |  |  |  |  |  | ✔ |
 
 - **Super Admin** runs the platform (tenants). By design it sees **no tenant business data**.
 - `own` = records whose `owner_id` is the caller; `all` = all records **of the caller's tenant**.
   No permission ever crosses tenants.
 - The table lives in code (reviewed, versioned, tested), not in the database, so a database
-  write can never grant extra rights. Enforced today: accounts, portal accounts and leads
-  (see [leads.md](leads.md)); contacts permissions are defined for later endpoints.
+  write can never grant extra rights. `ROLE_PERMISSIONS` in `backend/app/core/auth/rbac.py` is
+  the source of truth - keep this table in sync when a permission changes. Every shipped module
+  enforces its permission on every endpoint.
 
 **Colleague directory** — `GET /api/v1/users` (`?assignable=true`): staff of the caller's own
 tenant, names and IDs only (no e-mails), used for owner names and assignment. Customers and
@@ -233,6 +254,6 @@ those tests are skipped.
 
 - PostgreSQL Row-Level Security as a second safety net (Phase 5). It will need a narrow,
   audited exception for the `(issuer, subject)` user lookup, which happens before the tenant is known.
-- Next.js login (Auth.js) – Phase 3. Teams/hierarchies for sales managers (today: whole tenant).
-- Write endpoints (`account:write:*`), contacts and leads endpoints.
-- Production Keycloak: `start` mode with HTTPS, real SMTP, real secrets management.
+- Teams/hierarchies for sales managers (today an `all` scope means the whole tenant).
+- Production Keycloak: `start` mode with HTTPS, real SMTP, real secrets management (prepared in
+  ADR 0007: `infrastructure/keycloak/Dockerfile.production` + `realm-crm-production.json`).

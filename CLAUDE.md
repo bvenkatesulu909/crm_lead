@@ -80,6 +80,7 @@ Alembic (`backend/`) · PostgreSQL · Keycloak (OIDC) · SeaweedFS (S3 files) ·
 | Apply migrations | `alembic upgrade head` (in `backend`, venv active) | Phase 2b |
 | Create migration | `alembic revision --autogenerate -m "message"` | Phase 2b |
 | Export API contract (after endpoint/schema changes) | `python -m scripts.export_openapi` (in `backend`, venv active) | Phase 7 |
+| Regenerate the project inventory (`docs/inventory.md`) | `python -m scripts.report_inventory` (in `backend`, venv active) | 2026-10-20 |
 | Seed local test data (fictional) | `python -m scripts.seed_dev_data` (in `backend`, venv active) | Phase 4 |
 | Keycloak admin console | http://localhost:8080/admin (credentials in `infrastructure\.env`) | Phase 4 |
 | Local e-mail inbox (Mailpit) | http://localhost:8025 — invitations, verification, password reset | ADR 0004 |
@@ -160,11 +161,30 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   - `netlify.toml`; `backend/Dockerfile` (API + worker); `infrastructure/keycloak/Dockerfile.production` + generated `realm-crm-production.json` (no users); tests for requirements and the production realm; production web build is clean.
   - Fixed: `requirements.txt` lacked PyJWT/cryptography (a clean install crashed).
   - Still needed: D2 staging and D3 go-live (accounts, domain, secrets - owner's actions), RLS, direct-to-bucket uploads if hosting limits require.
+- **Netlify 404 fix and documentation audit** — done 2026-10-20, not committed. See `docs/deployment.md`.
+  - `netlify.toml` sets `publish = ".next"` (the Next.js adapter deploys the server build, not
+    static files); a "Page not found" troubleshooting section was added to `docs/deployment.md`.
+  - Production web build re-run on 2026-10-20: clean, including with `.env.local` removed
+    (Netlify's empty environment). Every page is server-rendered (only /_not-found is static),
+    so Netlify's Next.js adapter is required - static hosting cannot serve the app.
+  - Documentation drift fixed in `architecture.md`, `implementation-plan.md`, `docs/auth.md`
+    and `docs/frontend.md`.
+  - New generated `docs/inventory.md` and `backend/scripts/report_inventory.py` (command in the
+    table above): current API, database, route and test counts; the database part is skipped
+    when PostgreSQL is unreachable.
 - **Pending:**
   - Assistant live check against real Claude. Blocked by Anthropic billing ("credit balance too
     low"); test with `python -m scripts.check_anthropic`.
-  - Teams, RLS, e-mail task reminders via the worker (rest of Phase C).
-  - Modules not started: marketing, report builder/exports, workflows, communication center, integrations, staff assistant.
-- **Current phase:** Online deployment D1 (preparation) done, waiting for the owner's review; D2/D3 need the owner's accounts. Phase 18 part 2 (reports) also done. Next planned modules: Communication Center, Marketing (Phase 16), Integrations (Phase 19), staff AI assistant (Phase 20). Next planned modules, one phase at a time: Workflow & Notifications (Phase 17, uses the worker), Reports & exports (Phase 18 part 2), Communication Center, Marketing (Phase 16), Integrations (Phase 19), staff AI assistant (Phase 20). The first Git commit still waits for the Git identity. Phase A's first Git commit is
-  still open. Next proposed: Phase C (outbox + worker for e-mail reminders, teams, RLS, MinIO;
-  ADR needed), then contracts and renewals.
+  - Teams and PostgreSQL Row-Level Security (rest of Phase C; the outbox, worker and reminder
+    e-mails are done).
+  - Modules not started: marketing (Phase 16), Communication Center, integrations (Phase 19),
+    staff AI assistant (Phase 20b/20c: knowledge base, voice).
+  - Full end-to-end suite re-run after the latest fixes (last recorded 2026-10-19: backend 987,
+    Vitest 205, Playwright 67 with known failures - live assistant, one slow test).
+- **Current phase:** Online deployment (ADR 0007) - D1 preparation done; D2 staging and D3
+  go-live wait for the owner's accounts, domain and secrets. The Netlify "Page not found" (404)
+  is being resolved: `netlify.toml` now sets `publish = ".next"`; the next check is the
+  **Deploy summary Functions count** (steps in `docs/deployment.md`).
+- **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
+  (Phase 19), staff AI assistant (Phase 20b/20c), contracts and renewals. Teams and RLS come
+  before the features that need them and need an ADR.

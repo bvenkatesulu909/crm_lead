@@ -74,6 +74,52 @@ For the migration step only: `CRM_MIGRATION_DATABASE_URL` (schema owner user).
 `CRM_WEB_URL=https://app.example.com`, `CRM_WEB_CLIENT_SECRET` (= Netlify's `OIDC_CLIENT_SECRET`),
 `CRM_USER_ADMIN_CLIENT_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASSWORD`.
 
+## If the Netlify site shows "Page not found" (404)
+
+Every screen in this CRM is rendered per request (it reads the session cookie), so the production
+build contains no ready-made HTML. Netlify can only serve it by running its **Next.js adapter**,
+which turns the build into serverless Functions plus routing rules. If the adapter does not run,
+Netlify deploys the publish folder as a plain static site; with no `index.html` there, every
+address - including `/` - returns Netlify's "Page not found" page. That was the symptom on
+20 October 2026.
+
+`netlify.toml` now sets `publish = ".next"` (relative to `base = "frontend"`, so it means
+`frontend/.next`). Netlify installs the Next.js adapter itself for a Next.js project; do **not**
+pin `@netlify/plugin-nextjs` unless the checks below prove it is not running.
+
+Check, in this order:
+
+1. **Was the deploy published?** Deploys → the newest deploy must be marked **Published**. A
+   "Skipped" or "Failed" deploy is not live.
+2. **Did the adapter run?** Open that deploy → **Deploy summary**. A Next.js deploy lists at least
+   one **Function** (and usually one **Edge Function**). Zero functions means the adapter did not
+   run, and the 404 is expected.
+3. **What was deployed?** In the deploy log look for `Starting to deploy site from '.next'` and
+   for the Next.js adapter step. If it says the site was deployed from `frontend` or from an
+   empty path, the publish directory in effect is wrong.
+4. **Build settings.** Project configuration → Build & deploy → Build settings should show base
+   directory `frontend`, build command `npm run build`, publish directory `.next`. The
+   repository's `netlify.toml` overrides these values where it sets them.
+5. **Is the adapter blocked?** Project configuration → Environment variables: make sure
+   `NETLIFY_NEXT_PLUGIN_SKIP` is not set to `true`.
+6. After changing any setting: Deploys → **Trigger deploy** → **Clear cache and deploy site**.
+
+If the Functions count stays 0, the fallback - only with that evidence - is to pin the adapter:
+`cd frontend` then `npm install -D @netlify/plugin-nextjs`, add
+
+```toml
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+```
+
+to `netlify.toml`, and redeploy. Netlify's guidance is not to pin it, so treat this as a
+diagnostic step, not the default.
+
+**Expected next symptom:** once routing works but the six environment variables above are still
+missing, every page returns Netlify's **500 "Application error"** - `/login` validates them at
+request time (`serverConfig()`). Set the six variables on the site (temporary placeholders that
+match the formats are enough for a smoke test) before judging the sign-in page.
+
 ## Steps still to do
 
 ### D2 - private staging (needs your accounts)

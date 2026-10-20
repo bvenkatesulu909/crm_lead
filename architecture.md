@@ -1,6 +1,8 @@
 # crm-lead — Architecture
 
-> Status: **Draft v1** (Phase 0 – planning). Nothing in this document is implemented yet.
+> Status: **Living design document** (updated 2026-10-20). It describes the intended design;
+> what is implemented, and what is still missing, is tracked in
+> [implementation-plan.md](implementation-plan.md) and [docs/gap-analysis.md](docs/gap-analysis.md).
 > Changes to the decisions marked **[ADR]** are *major architectural changes* and need explicit approval.
 
 ---
@@ -371,8 +373,8 @@ crm-lead/
 │       ├── tailwind / postcss config
 │       ├── src/
 │       │   ├── app/
-│       │   │   ├── (staff)/      # Staff CRM pages  → /app/...
-│       │   │   ├── (portal)/     # Customer portal → /portal/...
+│       │   │   ├── (app)/        # Staff CRM pages  → /...
+│       │   │   ├── portal/       # Customer portal → /portal/...
 │       │   │   └── api/auth/     # OIDC login + callback route handlers
 │       │   ├── components/       # Shared UI components
 │       │   ├── lib/              # API client, auth helpers

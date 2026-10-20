@@ -8,6 +8,10 @@
 [build]
   base = "frontend"
   command = "npm run build"
+  # The build output of this server-rendered Next.js app, relative to "base" (so: frontend/.next).
+  # Netlify's Next.js adapter turns it into Functions plus routing. Deployed as plain files it has
+  # no index.html, so Netlify answers "Page not found" for every address - see docs/deployment.md.
+  publish = ".next"
 
 [build.environment]
   # Next.js 16 needs Node 20.9 or newer; 22 is a long-term-support release.

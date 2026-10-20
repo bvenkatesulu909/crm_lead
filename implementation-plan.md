@@ -211,18 +211,13 @@ audit log; outbox table + worker skeleton; admin UI to list users, assign roles 
 
 **Acceptance criteria**
 - Standard dashboards (pipeline, win rate, revenue, ticket SLA) and a simple report builder.
-  - **Done (2026-10-19):** role dashboards on `/`:
-    - executive, sales manager and sales rep views;
-    - leads, customers, pipeline, follow-ups, activity feed, team table, revenue, orders and support;
-    - period and sales rep filters;
-    - see [docs/dashboard.md](docs/dashboard.md).
-  - **Done (2026-10-19, part 2):** win rate, lead conversion, revenue & quotes and support SLA reports; report builder; CSV export with audit and CSV-injection protection; see [docs/reports.md](docs/reports.md).
-  - **Done (2026-10-19):** role dashboards on `/`:
-    - executive, sales manager and sales rep views;
-    - leads, customers, pipeline, follow-ups, activity feed, team table, revenue, orders and support;
-    - period and sales rep filters;
-    - see [docs/dashboard.md](docs/dashboard.md).
-  - **Still open:** win rate (needs closed opportunities, Phase 8), CSV export and the report builder.
+  - **Done (2026-10-19, part 1):** role dashboards on `/` (executive, sales manager, sales rep);
+    leads, customers, pipeline, follow-ups, activity feed, team table, revenue, orders and support;
+    period and sales rep filters; see [docs/dashboard.md](docs/dashboard.md).
+  - **Done (2026-10-19, part 2):** win rate, lead conversion, revenue & quotes and support SLA
+    reports; report builder; CSV export with audit and CSV-injection protection; see
+    [docs/reports.md](docs/reports.md).
+  - **Still open:** saved/scheduled reports, charts, forecast, and the "team" filter (after teams).
 - All report queries apply tenant + record-level filters; CSV export respects the same rules (tested).
 - Definition of Done checklist complete.
 

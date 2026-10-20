@@ -86,3 +86,6 @@ Desktop.ini
 
 # ---------- Claude Code local settings ----------
 .claude/settings.local.json
+
+# ---------- Local database backups (ADR 0010 R0): never commit dumps ----------
+infrastructure/backups/

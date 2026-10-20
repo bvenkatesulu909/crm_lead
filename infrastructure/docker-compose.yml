@@ -12,7 +12,12 @@ name: crm-lead
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # Our own image = postgres:16-alpine + pgvector compiled in (ADR 0010). Building on the same
+    # Alpine/musl base keeps the existing volume's text collation and avoids a REINDEX.
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+    image: crm-lead-postgres:16-pgvector-0.8.7
     restart: unless-stopped
     environment:
       # Superuser: only used by the init script and for administration, never by the app.

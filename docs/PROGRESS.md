@@ -13,12 +13,15 @@ Materials (now in the project):
 
 - Base CRM: running locally, migrations to **0019**, portal assistant text chat exists (Phase 20a).
 - RAG add-on: **not started**. The design proposal is [rag-knowledge-base.md](rag-knowledge-base.md)
-  (proposed [ADR 0010](adr/0010-rag-knowledge-base.md)).
+  (proposed [ADR 0010](adr/0010-knowledge-search-pgvector-embeddings.md)).
 - Session 1 did: read all three guides + CLAUDE.md + docs; audited RAG-guide section 1 against the
   code; wrote this file. **No migration, code, dependency or Docker change has been made.**
-- **Current step (P0 CI):** `.github/workflows/ci.yml` now has a backend and a frontend job; the
-  local equivalents are green. **Not committed or pushed yet**, so GitHub Actions has not run and
-  the CI piece is not proven.
+- **Current step (R0 step 2, done locally - awaiting approval):** custom PostgreSQL image
+  `crm-lead-postgres:16-pgvector-0.8.7` (Alpine + pgvector compiled in) runs healthy on the same
+  data volume; `vector` 0.8.7 is enabled in `crm` and `crm_test`; backups were taken first;
+  full backend suite still green. Not committed or pushed.
+- **P0 CI (paused):** `.github/workflows/ci.yml` has backend and frontend jobs; backend is green on
+  GitHub, the frontend `next typegen` fix is written but **uncommitted**, so CI is not green yet.
 
 ## 2. Prerequisites from RAG guide section 1 - audited against the code
 
@@ -62,7 +65,7 @@ RAG's own section 1 says R0-R3 can start after Stage 1 and 2A; 1B/1C/2A/2B are a
 Legend: [ ] not started · [~] in progress · [x] done. Nothing is checked yet.
 
 ### Stage R0 - Set-up and decisions (branch rag-r0-setup)
-- [ ] R0.1 PostgreSQL with pgvector: back up first, switch image to pgvector/pgvector:pg16, same volume, CREATE EXTENSION vector for crm + crm_test; CI image too.
+- [~] R0.1 PostgreSQL with pgvector: **done locally 2026-10-20** (own Alpine image + pgvector v0.8.7, same volume, extension in crm/crm_test, backups taken); awaiting approval and the CI image switch.
 - [ ] R0.2 ADR: embedding model + where it runs (local embedding service in Docker, no public port; Embedder protocol: model_name, dimensions, embed_documents, embed_query).
 - [ ] R0.3 ADR: chunking + search method (starting settings from Appendix D: ~1,600 chars, 1 paragraph overlap, heading path on, 40 candidates, RRF 60, top 5, reranker off).
 - Done when: pgvector runs, backup shown, existing tests pass, embedding service answers a test call, both ADRs approved.
@@ -166,3 +169,13 @@ Legend: [ ] not started · [~] in progress · [x] done. Nothing is checked yet.
   The full pytest run found a real bug: the test-only repository model was registered on the app
   Base, so Alembic's migration-sync test saw a phantom table; fixed by giving the test model its own
   private DeclarativeBase. Nothing committed or pushed; CI is not proven until GitHub runs it.
+- **2026-10-20 (session 3, R0 step 2):** backed up `crm` (559 KB, 444 TOC entries) and
+  `keycloak` (233 KB) with `pg_dump -Fc` and verified the archives. Added
+  `infrastructure/postgres/Dockerfile` (postgres:16-alpine + pgvector v0.8.7 compiled in;
+  multi-stage; LLVM bitcode off), `init/03-enable-pgvector.sh`, the Compose build/image pin,
+  a git-ignore rule for backups, and `docs/rag-runbook.md` (backup, one-off extension command,
+  verification, restore). Recreated only the postgres container on the same volume: data intact
+  (revision 0019, 71 users, 187 accounts); `CREATE EXTENSION vector` ran in `crm` and
+  `crm_test`; the init script was run manually (idempotent) and works; `\dx vector` = 0.8.7;
+  vector distance works as superuser **and** app role; full backend pytest **999 passed,
+  4 skipped**. Not committed or pushed; approval pending.

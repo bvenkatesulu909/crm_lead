@@ -388,7 +388,7 @@ crm-lead/
 
 ## 17. Open decisions (to confirm before the relevant phase)
 
-1. LLM provider: **decided — Anthropic Claude API; knowledge search: local embeddings + pgvector (ADR 0003).** Speech provider: still open (decided in the assistant phase, after text chat).
+1. LLM provider: **decided — Anthropic Claude API; knowledge search: local embeddings + pgvector (ADR 0003; groundwork decisions in ADR 0010).** Speech provider: still open (decided in the assistant phase, after text chat).
 2. Which external systems to integrate first (Phase 19) – e.g. email (IMAP/SMTP), calendar, accounting, payment provider.
 3. Whether portal users get a separate Keycloak realm (stronger separation) or the same realm. **Decided for now: same realm, same client; user type comes from the CRM database.**
 4. Tenant mapping — **decided (ADR 0002, accepted):** tenant comes from the CRM `users` table, looked up by the token's verified `(iss, sub)`; no tenant claim in tokens.

@@ -5,7 +5,7 @@ knowledge (policies, manuals, production details) can be connected to the CRM as
 tables, endpoints, dependencies or Docker images have been changed.
 
 Related: [ADR 0003](adr/0003-ai-assistant-foundations.md) (accepted: local embeddings + pgvector),
-[ADR 0010](adr/0010-rag-knowledge-base.md) (proposed, this design), [docs/assistant.md](assistant.md),
+[ADR 0010](adr/0010-knowledge-search-pgvector-embeddings.md) (proposed R0 decisions), [docs/assistant.md](assistant.md),
 [docs/documents.md](documents.md), [docs/background-jobs.md](background-jobs.md).
 
 ## 1. What RAG means, in one minute

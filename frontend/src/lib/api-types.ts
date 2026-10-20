@@ -1180,3 +1180,30 @@ export type ReportCatalogue = {
   }[];
   can_filter_by_rep: boolean;
 };
+export const KNOWLEDGE_DOCUMENT_STATUSES = [
+  "processing",
+  "indexed",
+  "needs_review",
+  "failed",
+  "no_text",
+] as const;
+export type KnowledgeDocumentStatus =
+  (typeof KNOWLEDGE_DOCUMENT_STATUSES)[number];
+
+export type KnowledgeDocument = {
+  id: string;
+  title: string;
+  file_name: string;
+  content_type: string;
+  size_bytes: number;
+  status: KnowledgeDocumentStatus;
+  page_count: number;
+  chunk_count: number;
+  error: string | null;
+  created_at: string;
+};
+
+export type KnowledgeDocumentPage = {
+  items: KnowledgeDocument[];
+  total: number;
+};

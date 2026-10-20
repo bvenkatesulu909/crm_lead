@@ -27,6 +27,7 @@ const PERMISSIONS: Record<string, string[]> = {
     "catalog:read",
     "quote:read:own",
     "quote:write:own",
+    "knowledge:read",
   ],
   sales_manager: [
     "lead:read:all",
@@ -65,6 +66,7 @@ describe("role-based navigation", () => {
         "Orders",
         "Invoices",
         "Products",
+        "Knowledge",
         "Reports",
       ],
     ],
@@ -231,6 +233,7 @@ describe("dashboard module catalog", () => {
       "Reports",
       "Integrations",
       "AI Assistant",
+      "Knowledge Base",
       "Administration",
     ]);
     expect(modules.find((m) => m.key === "portal")?.note).toBe(
@@ -245,6 +248,7 @@ describe("dashboard module catalog", () => {
       "Orders",
       "Invoices",
       "Reports",
+      "Knowledge Base",
     ]);
     expect(modules.find((m) => m.key === "orders")?.link).toBe("/orders");
     expect(modules.find((m) => m.key === "quotes")?.link).toBe("/quotes");

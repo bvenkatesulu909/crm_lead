@@ -82,6 +82,7 @@ Alembic (`backend/`) · PostgreSQL · Keycloak (OIDC) · SeaweedFS (S3 files) ·
 | Export API contract (after endpoint/schema changes) | `python -m scripts.export_openapi` (in `backend`, venv active) | Phase 7 |
 | Regenerate the project inventory (`docs/inventory.md`) | `python -m scripts.report_inventory` (in `backend`, venv active) | 2026-10-20 |
 | Seed local test data (fictional) | `python -m scripts.seed_dev_data` (in `backend`, venv active) | Phase 4 |
+| Seed fictional knowledge documents (RAG R1.6) | `python -m scripts.seed_knowledge_demo` (in `backend`, venv active) | RAG R1 |
 | Keycloak admin console | http://localhost:8080/admin (credentials in `infrastructure\.env`) | Phase 4 |
 | Local e-mail inbox (Mailpit) | http://localhost:8025 — invitations, verification, password reset | ADR 0004 |
 | Run background worker (own CMD window) | `python -m app.worker` (in `backend`, venv active); `--once` runs due jobs and exits | ADR 0005 |

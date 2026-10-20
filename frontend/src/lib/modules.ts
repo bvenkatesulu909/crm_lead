@@ -33,6 +33,7 @@ export type ModuleIcon =
   | "reports"
   | "integrations"
   | "assistant"
+  | "knowledge"
   | "administration";
 
 export type CrmModule = {
@@ -81,6 +82,7 @@ export const CRM_MODULES: CrmModule[] = [
   { key: "reports", name: "Reports", description: "Dashboards, standard reports, report builder and CSV export", status: "available", phase: 18, href: "/reports", permissions: ["dashboard:sales:all", "dashboard:sales:own", "quote:read:all", "quote:read:own", "invoice:read:all", "invoice:read:own_accounts", "order:read:all", "order:read:own_accounts", "ticket:read:all", "ticket:read:own_accounts", "account:read:all", "account:read:own"] },
   { key: "integrations", name: "Integrations", description: "SAP/ERP, email, messaging and payments", status: "planned", phase: 19 },
   { key: "assistant", name: "AI Assistant", description: "Customer chat in the portal (text); knowledge base and voice next", status: "in_progress", phase: 20 },
+  { key: "knowledge", name: "Knowledge Base", description: "Company policies and manuals, indexed with citations", status: "available", phase: 20, href: "/knowledge", permissions: ["knowledge:read"] },
   { key: "administration", name: "Administration", description: "Users, roles, invitations and sign-up approvals", status: "available", phase: 5, href: "/users", permissions: ["tenant:user:read"] },
 ]; // prettier-ignore
 

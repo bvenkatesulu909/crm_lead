@@ -40,6 +40,9 @@ const icons: Record<NavItem["icon"], ReactNode> = {
   organisations: (
     <path d="M3 21h18M5 21V5l7-3 7 3v16M9 9h1M14 9h1M9 13h1M14 13h1M10 21v-4h4v4" />
   ),
+  knowledge: (
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2zM8 7h8M8 11h6" />
+  ),
   support: (
     <path d="M4 13a8 8 0 1 1 16 0v4a2 2 0 0 1-2 2h-2v-6h4M4 13v4a2 2 0 0 0 2 2h2v-6H4" />
   ),

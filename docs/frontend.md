@@ -74,6 +74,7 @@ Browser ──cookie (encrypted, httpOnly)──► Next.js server ──Bearer 
 | `/invoices`, `/invoices/[id]` | Invoices, payments, credit notes (staff) | See [invoices.md](invoices.md) |
 | `/tickets`, `/tickets/new`, `/tickets/[id]` | Support (staff) | See [support.md](support.md) |
 | `/documents`, `/documents/[id]/download` | Documents | Upload versions on accounts/deals; download through a route handler with an authorization check (see [documents.md](documents.md)) |
+| `/knowledge` | Knowledge (staff) | Upload PDF/DOCX/TXT/Markdown, see the indexing status, delete; tenant admins manage, all staff read (see [rag-knowledge-base.md](rag-knowledge-base.md)) |
 | `/reports`, `/reports/builder` | Reports | Standard reports and the report builder (see [reports.md](reports.md)) |
 | `/reports/[key]/csv`, `/reports/builder/csv` | CSV export | Route handlers; audit entry and formula-injection protection |
 | `/notifications`, `/notifications/settings` | Notifications | Inbox, mark read, e-mail notification settings (see [workflows.md](workflows.md)) |

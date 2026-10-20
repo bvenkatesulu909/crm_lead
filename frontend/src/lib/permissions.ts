@@ -67,6 +67,10 @@ export const canReadNotifications = (me: Pick<Me, "permissions">) =>
   hasAny(me, "notification:read");
 export const canReadDocuments = (me: Pick<Me, "permissions">) =>
   hasAny(me, "document:read");
+export const canReadKnowledge = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "knowledge:read");
+export const canManageKnowledge = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "knowledge:manage");
 export const canWriteDocuments = (me: Pick<Me, "permissions">) =>
   hasAny(me, "document:write");
 export const canDeleteDocuments = (me: Pick<Me, "permissions">) =>
@@ -129,6 +133,7 @@ export type NavItem = {
     | "users"
     | "automation"
     | "reports"
+    | "knowledge"
     | "organisations";
 };
 
@@ -163,6 +168,8 @@ export function navigationFor(
     items.push({ href: "/tickets", label: "Support", icon: "support" });
   if (canReadCatalog(me))
     items.push({ href: "/products", label: "Products", icon: "products" });
+  if (canReadKnowledge(me))
+    items.push({ href: "/knowledge", label: "Knowledge", icon: "knowledge" });
   if (me.permissions.length > 0 && canUseReports(me))
     items.push({ href: "/reports", label: "Reports", icon: "reports" });
   if (canReadUsers(me))

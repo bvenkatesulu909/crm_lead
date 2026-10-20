@@ -25,6 +25,8 @@ export const MODULE_ICON_PATHS: Record<ModuleIcon, string> = {
   documents: "M6 2h9l5 5v15H6zM14 2v6h6M9 13h6M9 17h6",
   communication: "M3 5h18v12H8l-5 4zM7 9h10M7 13h6",
   workflows: "M5 3v6M5 15v6M5 9a3 3 0 0 0 3 3h8a3 3 0 0 1 3 3v6M19 3v6",
+  knowledge:
+    "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2zM8 7h8M8 11h6",
   administration:
     "M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6zM9 12l2 2 4-4",
 };

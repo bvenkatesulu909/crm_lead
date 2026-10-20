@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-10-20 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-10-21 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **169** operations over **134** paths and **191** schemas.
+- **173** operations over **136** paths and **194** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -30,6 +30,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | notifications | 5 |
 | orders | 5 |
 | reports | 5 |
+| knowledge | 4 |
 | customer relationships | 3 |
 | identity | 3 |
 | portal access | 3 |
@@ -40,18 +41,18 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0019**
-- Tables in the current schema: **46**
+- Alembic revision: **0020**
+- Tables in the current schema: **48**
 - Tables with Row-Level Security: **0** (0 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **19**
-- Heads: `0019`
+- Migration files: **20**
+- Heads: `0020`
 
 ## Web app (`frontend/src/app`)
 
-- 64 pages and 8 route handlers.
+- 65 pages and 8 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -74,6 +75,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/documents/[id]/download` | route handler |
 | `/invoices` | page |
 | `/invoices/[id]` | page |
+| `/knowledge` | page |
 | `/leads` | page |
 | `/leads/[id]` | page |
 | `/leads/[id]/edit` | page |
@@ -130,10 +132,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **47**
+- Backend test files: **51**
 - Frontend component test files: **13**
 - Playwright end-to-end specs: **19**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **30** (8 in `docs/adr/`)
+- Markdown documents under `docs/`: **37** (12 in `docs/adr/`)

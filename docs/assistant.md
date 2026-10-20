@@ -7,7 +7,8 @@ a support ticket that the customer confirms with one click.
 Phase 20 is built in steps:
 - **20a, this step:** text chat with permission-checked tools and a human handover.
 - **20b:** knowledge base (FAQs, policies) with local embeddings + pgvector. This needs a
-  PostgreSQL image with pgvector, which is a separate, approved change.
+  PostgreSQL image with pgvector, which is a separate, approved change. Design:
+  [rag-knowledge-base.md](rag-knowledge-base.md) and proposed [ADR 0010](adr/0010-rag-knowledge-base.md).
 - **20c:** voice.
 
 ## How a message is answered

@@ -228,7 +228,7 @@ audit log; outbox table + worker skeleton; admin UI to list users, assign roles 
 - Integration credentials encrypted at rest and never logged.
 - Definition of Done checklist complete.
 
-## Phase 20 — AI Chatbot & Voice Assistant (Module 16)  *(20a text chat in the portal done — see docs/assistant.md; 20b knowledge base (pgvector), 20c voice pending)*
+## Phase 20 — AI Chatbot & Voice Assistant (Module 16)  *(20a text chat in the portal done — see docs/assistant.md; 20b knowledge base (pgvector) designed in docs/rag-knowledge-base.md + proposed ADR 0010, not built; 20c voice pending)*
 
 **Acceptance criteria**
 - Chat UI in staff app; assistant answers questions and performs actions only via permission-checked tools acting as the current user.

@@ -8,23 +8,32 @@ import uuid
 from typing import Any, cast
 
 import pytest
-from sqlalchemy import String, select
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy import String, Uuid, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 from app.core.auth.principal import Principal, UserType
 from app.core.errors import ForbiddenError, NotFoundError
-from app.core.models import Base, TenantOwnedMixin, UUIDPrimaryKeyMixin
 from app.core.repository import TenantScopedRepository
 
 TENANT = uuid.UUID("00000000-0000-0000-0000-00000000000a")
 OTHER_TENANT = uuid.UUID("00000000-0000-0000-0000-00000000000b")
 
 
-class Widget(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
+class _WidgetBase(DeclarativeBase):
+    """Private metadata for test-only models.
+
+    Deliberately NOT the app's Base: tests/db/test_migrations.py autogenerates against
+    Base.metadata, so a throwaway table there would look like a missing migration.
+    """
+
+
+class Widget(_WidgetBase):
     """A throwaway model: the base class is generic over real module models."""
 
     __tablename__ = "test_repository_widgets"
 
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     name: Mapped[str] = mapped_column(String(50))
 
 

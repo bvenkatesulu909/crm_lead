@@ -20,6 +20,7 @@ from app.modules.identity.onboarding_router import (
 from app.modules.identity.router import router as identity_router
 from app.modules.invoices.router import portal_router as portal_invoices_router
 from app.modules.invoices.router import router as invoices_router
+from app.modules.knowledge.router import router as knowledge_router
 from app.modules.leads.router import router as leads_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.orders.router import portal_router as portal_orders_router
@@ -57,6 +58,7 @@ api_router.include_router(portal_tickets_router)
 api_router.include_router(orders_router)
 api_router.include_router(portal_orders_router)
 api_router.include_router(invoices_router)
+api_router.include_router(knowledge_router)
 api_router.include_router(portal_invoices_router)
 api_router.include_router(tenant_router)
 api_router.include_router(portal_access_router)

@@ -151,6 +151,8 @@ token and the database — never from request bodies, query strings or headers l
 | `payment:record` (record and reverse payments) |  | ✔ | ✔ |  |  |  |
 | `notification:read` |  | ✔ | ✔ | ✔ | ✔ |  |
 | `workflow:manage` (automation rules) |  | ✔ |  |  |  |  |
+| `knowledge:read` (knowledge base; RAG R1) |  | ✔ | ✔ | ✔ | ✔ |  |
+| `knowledge:manage` (upload/delete knowledge documents) |  | ✔ |  |  |  |  |
 | `dashboard:sales:all` |  | ✔ | ✔ |  |  |  |
 | `dashboard:sales:own` |  |  |  | ✔ |  |  |
 | `dashboard:executive` |  | ✔ |  |  |  |  |

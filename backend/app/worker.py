@@ -28,6 +28,7 @@ from app.core.mail import Mailer, MailRejectedError, build_mailer
 from app.core.outbox import DeadJobHandler, JobHandler, run_next_job
 from app.core.storage import FileStore, build_file_store
 from app.modules.activities import api as activities_api
+from app.modules.knowledge import api as knowledge_api
 from app.modules.notifications import api as notifications_api
 from app.modules.quotes import api as quotes_api
 from app.modules.workflows import api as workflows_api
@@ -49,6 +50,7 @@ class WorkerServices:
 def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
     """Every job kind the worker knows. Modules provide handlers through their api.py."""
     return {
+        knowledge_api.JOB_KIND: knowledge_api.ingest_handler(services.file_store),
         quotes_api.PDF_JOB: quotes_api.pdf_job_handler(services.file_store),
         quotes_api.EMAIL_JOB: quotes_api.email_job_handler(
             services.file_store, services.mailer, services.settings.web_app_url

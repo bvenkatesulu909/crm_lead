@@ -123,6 +123,10 @@ class Permission(StrEnum):
     PORTAL_DOCUMENT_READ = "portal:document:read"
     # Everyone on the staff side reads their own notifications (ADR 0006).
     NOTIFICATION_READ = "notification:read"
+
+    # Knowledge base (RAG R1): staff read documents; tenant admins upload/delete them.
+    KNOWLEDGE_READ = "knowledge:read"
+    KNOWLEDGE_MANAGE = "knowledge:manage"
     # Tenant admins define workflow rules (ADR 0006, step 17b).
     WORKFLOW_MANAGE = "workflow:manage"
 
@@ -151,14 +155,14 @@ _SALES_ALL = frozenset(
 _ORDERS_ALL = frozenset({_P.ORDER_READ_ALL, _P.ORDER_WRITE_ALL, _P.ORDER_FULFIL})
 _BILLING_ALL = frozenset({_P.INVOICE_READ_ALL, _P.INVOICE_MANAGE, _P.PAYMENT_RECORD})
 
-_STAFF_BASICS = frozenset({_P.NOTIFICATION_READ})
+_STAFF_BASICS = frozenset({_P.NOTIFICATION_READ, _P.KNOWLEDGE_READ})
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     # Platform operator: manages tenants, but sees NO tenant business data.
     Role.SUPER_ADMIN: frozenset({_P.PLATFORM_TENANT_READ, _P.PLATFORM_TENANT_MANAGE}),
     Role.TENANT_ADMIN: _SALES_ALL
     | {_P.TENANT_USER_READ, _P.TENANT_USER_MANAGE, _P.PORTAL_USER_INVITE}
-    | {_P.QUOTE_SETTINGS_MANAGE}
+    | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE}
     | {_P.TICKET_READ_ALL, _P.TICKET_MANAGE}
     | _ORDERS_ALL
     | _BILLING_ALL
@@ -194,6 +198,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.INVOICE_READ_OWN_ACCOUNTS,
             _P.PORTAL_USER_INVITE,
             _P.NOTIFICATION_READ,
+            _P.KNOWLEDGE_READ,
         }
     ),  # fmt: skip
     Role.SUPPORT_AGENT: frozenset(

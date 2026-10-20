@@ -25,6 +25,9 @@ cryptography==50.0.2
 # Official Anthropic SDK for the AI assistant (ADR 0003). Used only by the backend; the API key
 # never reaches the browser.
 anthropic==1.15.0
+# Local text embeddings for the knowledge base (ADR 0010): ONNX Runtime, no PyTorch.
+# First use downloads the model (~130 MB); it is cached locally.
+fastembed==0.9.0
 # S3 client for the file store (ADR 0005; SeaweedFS locally). Works with any S3-compatible
 # store; used only inside app/core/storage.py.
 minio==7.2.20
@@ -32,3 +35,6 @@ minio==7.2.20
 reportlab==5.0.1
 # Reads file uploads (multipart/form-data) in FastAPI - documents module (Phase 10).
 python-multipart==0.0.32
+# Text extraction for knowledge ingestion (RAG R1): PDF and Word documents.
+pypdf==6.21.1
+python-docx==1.2.0

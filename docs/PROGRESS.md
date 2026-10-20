@@ -12,14 +12,22 @@ Materials (now in the project):
 ## 1. Where we are
 
 - Base CRM: running locally, migrations to **0019**, portal assistant text chat exists (Phase 20a).
-- RAG add-on: **not started**. The design proposal is [rag-knowledge-base.md](rag-knowledge-base.md)
-  (proposed [ADR 0010](adr/0010-knowledge-search-pgvector-embeddings.md)).
+- RAG add-on: **R0 complete locally** (steps 1-4). Design:
+  [rag-knowledge-base.md](rag-knowledge-base.md); decisions:
+  [ADR 0010](adr/0010-knowledge-search-pgvector-embeddings.md) and
+  [ADR 0011](adr/0011-chunking-and-hybrid-search.md), both accepted.
 - Session 1 did: read all three guides + CLAUDE.md + docs; audited RAG-guide section 1 against the
   code; wrote this file. **No migration, code, dependency or Docker change has been made.**
-- **Current step (R0 step 2, done locally - awaiting approval):** custom PostgreSQL image
-  `crm-lead-postgres:16-pgvector-0.8.7` (Alpine + pgvector compiled in) runs healthy on the same
-  data volume; `vector` 0.8.7 is enabled in `crm` and `crm_test`; backups were taken first;
-  full backend suite still green. Not committed or pushed.
+- **R1 in progress (ingestion built locally, uncommitted):** migration 0020 adds `kb_documents` and
+  `kb_chunks` (RLS-ready); staff can upload PDF/DOCX/TXT/Markdown, the worker extracts, scans for
+  personal data, chunks (ADR 0011) and replaces chunks in one transaction; status is visible. No
+  screens and no embeddings yet.
+- **R0 complete locally - awaiting approval to commit:** ADR 0010 (image/model/index)
+  and ADR 0011 (chunking/hybrid search) accepted; custom image
+  `crm-lead-postgres:16-pgvector-0.8.7` runs healthy on the same volume with `vector` 0.8.7 in
+  both databases; the local embedding layer (fastembed/bge-small-en-v1.5, 384 dims) is implemented
+  and smoke-tested. Steps 1-2 are committed on `rag-r0-setup`; the embedding layer and ADR 0011
+  are **uncommitted**.
 - **P0 CI (paused):** `.github/workflows/ci.yml` has backend and frontend jobs; backend is green on
   GitHub, the frontend `next typegen` fix is written but **uncommitted**, so CI is not green yet.
 
@@ -62,25 +70,48 @@ RAG's own section 1 says R0-R3 can start after Stage 1 and 2A; 1B/1C/2A/2B are a
 
 ## 3. Stage plan (RAG guide part by part)
 
-Legend: [ ] not started · [~] in progress · [x] done. Nothing is checked yet.
+Legend: [ ] not started · [~] in progress · [x] done. R0 is in progress.
 
 ### Stage R0 - Set-up and decisions (branch rag-r0-setup)
 - [~] R0.1 PostgreSQL with pgvector: **done locally 2026-10-20** (own Alpine image + pgvector v0.8.7, same volume, extension in crm/crm_test, backups taken); awaiting approval and the CI image switch.
-- [ ] R0.2 ADR: embedding model + where it runs (local embedding service in Docker, no public port; Embedder protocol: model_name, dimensions, embed_documents, embed_query).
-- [ ] R0.3 ADR: chunking + search method (starting settings from Appendix D: ~1,600 chars, 1 paragraph overlap, heading path on, 40 candidates, RRF 60, top 5, reranker off).
-- Done when: pgvector runs, backup shown, existing tests pass, embedding service answers a test call, both ADRs approved.
+- [~] R0.2 Embedding model + interface: **done locally 2026-10-20** - ADR 0010 chose fastembed
+  (ONNX, CPU) with BAAI/bge-small-en-v1.5 (384 dims); `app/core/ai/embeddings.py` has the
+  Embedder protocol + lazy implementation; real-model smoke test passed (384 dims, sensible
+  similarities). Deliberate deviation from the guide: the model runs **in-process** (backend/worker),
+  not as a separate container - to be confirmed by the owner.
+- [x] R0.3 Chunking + search settings: **ADR 0011 accepted 2026-10-20** - ~1,600 characters,
+  1-paragraph overlap, heading path in the embedding text, blocks kept for citations, 40
+  candidates per method, RRF k=60, top 5, reranker off, not-found threshold calibrated in R5,
+  `simple` keyword config.
+- Done when: pgvector runs, backup shown, existing tests pass, the embedding interface answers a
+  real test call (in-process; deviation noted), ADR 0010 and ADR 0011 approved. **All done
+  locally 2026-10-20.**
 
 ### Stage R1 - Knowledge sources and ingestion (branch rag-r1-ingestion)
-- [ ] R1.1 Tables: kb_articles, kb_documents, kb_chunks (tenant_id + RLS; visibility/account_id copied onto chunks; next free migration number).
-- [ ] R1.2 Ingestion job kb.ingest: publish/upload -> event -> outbox; replace chunks in one transaction; status visible.
-- [ ] R1.3 Text extraction: Markdown, PDF (pypdf), DOCX (python-docx), HTML; cleaning; scanned PDF -> failed.
-- [ ] R1.4 Chunking: heading path + paragraph blocks; target chars/overlap; blocks kept for precise citations.
-- [ ] R1.5 Screens: knowledge list, article editor, upload, needs-review queue; staff only.
-- [ ] R1.6 Demo content: fictional Alpha/Beta articles + one poisoned test document.
-- Done when: chunks appear with status, personal-data findings block indexing, demo+poisoned docs exist, tenant/role tests pass.
+- [~] R1.1 Tables: migration **0020** adds `kb_documents` + `kb_chunks` (tenant_id, composite
+  same-tenant FKs, RLS-ready). `kb_articles` deferred with the screens (file ingestion first).
+- [x] R1.2 Ingestion job: upload stores the file + document row + outbox job `knowledge.ingest` in
+  **one transaction**; worker extracts/chunks and replaces chunks atomically; statuses
+  processing/indexed/needs_review/failed/no_text. (Direct outbox job instead of a
+  `kb.document_uploaded` event - same guarantee, noted deviation.)
+- [x] R1.3 Text extraction: PDF (pypdf, page numbers), DOCX (python-docx, heading styles),
+  TXT and Markdown; no-text files become `no_text`. HTML is deferred.
+- [x] R1.4 Chunking: ADR 0011 - ~1,600 chars, one-paragraph overlap, heading path prepended to the
+  embedding text, paragraph blocks kept for citations, chunker version stored.
+- [x] R1.5 Screens: `/knowledge` lists documents with status, upload (tenant admins), delete with
+  confirmation; navigation + dashboard module entry. The article editor and a separate needs-review
+  queue are deferred with `kb_articles` (the status + error explain the finding).
+- [x] R1.6 Demo content: `scripts/seed_knowledge_demo.py` seeds 8 fictional documents (returns,
+  delivery, payments, product care, internal sales policy for alpha-demo; returns + delivery for
+  beta-demo) plus a **TEST ONLY - poisoned document**; 11 chunks, all indexed. Idempotent by
+  content hash.
+- Done when: chunks appear with status, personal-data findings block indexing, demo+poisoned docs
+  exist, tenant/role tests pass. **R1 file-ingestion slice done locally 2026-10-21** (statuses, PII
+  review, tenant/role/ingestion tests, screens, demo + poisoned document). `kb_articles` remains
+  deferred to a later R1b step.
 
 ### Stage R2 - Embeddings and indexes (branch rag-r2-indexes)
-- [ ] Add embedding vector(1024) and generated tsv (simple config) columns.
+- [ ] Add embedding vector(384) and generated tsv (simple config) columns.
 - [ ] HNSW cosine index, GIN on tsv, (tenant_id, status, visibility) index; pgvector iterative scans for filtered search.
 - [ ] Embed all demo chunks through the worker with retries; embedding_model recorded per chunk.
 - [ ] Model-change procedure documented (new column -> re-embed -> switch -> drop old).
@@ -179,3 +210,38 @@ Legend: [ ] not started · [~] in progress · [x] done. Nothing is checked yet.
   `crm_test`; the init script was run manually (idempotent) and works; `\dx vector` = 0.8.7;
   vector distance works as superuser **and** app role; full backend pytest **999 passed,
   4 skipped**. Not committed or pushed; approval pending.
+- **2026-10-20 (session 4, R0 steps 3-4):** added the local embedding layer:
+  `app/core/ai/embeddings.py` (Embedder protocol, lazy fastembed implementation, dimension check,
+  503 domain error), settings `CRM_EMBEDDINGS_*` (model, dimensions, cache dir), dependency
+  `fastembed==0.9.0`, 5 unit tests with a fake model, and `scripts/check_embeddings.py`. Real
+  model smoke test: BAAI/bge-small-en-v1.5, **384 dimensions**, similarities 0.8709 (returns
+  policy) vs 0.6185 (delivery) for the return-window question; the model downloaded on first run.
+  Installing fastembed required repairing a stale Pillow `_imaging.pyd` in the venv (moved aside,
+  Pillow reinstalled); the venv is healthy again. Design deviation to confirm: fastembed runs
+  **in-process** (ADR 0010), not as the guide's separate embedding container. Uncommitted.
+- **2026-10-20 (session 5, R0.3):** wrote and accepted
+  `docs/adr/0011-chunking-and-hybrid-search.md`: ~1,600-character chunks (~400 tokens) with
+  one-paragraph overlap, heading path prepended, paragraph blocks kept for citations, deterministic
+  chunker version; hybrid retrieval = vector top-40 + PostgreSQL full-text (`simple`) top-40
+  merged with RRF (k=60) to top-5; HNSW cosine; iterative scans for filtered searches; reranker
+  off until R5; not-found threshold calibrated in R5; embeddings failure returns 503, no silent
+  keyword-only fallback. Aligned `docs/rag-knowledge-base.md` (384 dims, 1,600 chars, own
+  pgvector image, in-process embedder). R0 is complete locally; uncommitted.
+- **2026-10-20 (session 6, R1 ingestion):** added migration 0020 (`kb_documents`, `kb_chunks`;
+  tenant-scoped, RLS-ready), the `knowledge` module (models/schemas/rules/extraction/chunking/PII
+  scan/policies/repository/service/router/api), `knowledge:read`/`knowledge:manage` permissions,
+  the `knowledge.ingest` worker job and app wiring; new dependencies pypdf 6.21.1 and
+  python-docx 1.2.0. Tests: 10 unit (extraction/chunking/PII) and 9 database/API (upload+jobs,
+  idempotent re-ingest, PII -> needs_review, no_text, invalid/duplicate files, tenant isolation,
+  role denial, delete removes chunks+file) pass; migration sync tests pass; OpenAPI regenerated
+  (+4 endpoints); **full backend suite 1023 passed, 4 skipped**; ruff/format/mypy/import-linter
+  clean; inventory regenerated. Two defects were found and fixed by the tests: an oversized overlap
+  chunk and a 16-digit card falsely matching Aadhaar. Screens/demo content and embeddings are next;
+  uncommitted.
+- **2026-10-21 (session 7, R1.5/R1.6):** added the staff Knowledge screen
+  (`/knowledge`: list with statuses, upload for tenant admins, delete with confirmation), the
+  navigation + dashboard module entry, frontend types/permissions, and
+  `scripts/seed_knowledge_demo.py`. Seeded 8 fictional documents / 11 chunks for alpha-demo and
+  beta-demo, including the TEST ONLY poisoned document (prompt-injection test material). Checks:
+  frontend **205 tests passed**, lint/typecheck/build clean; seed script ruff/mypy clean. No
+  Playwright run (needs the full stack + login). Uncommitted.

@@ -86,6 +86,12 @@ class Settings(BaseSettings):
     assistant_messages_per_hour: int = Field(default=30, ge=1, le=1000)
     assistant_timeout_seconds: float = Field(default=60, gt=0, le=300)
 
+    # Knowledge-base embeddings (ADR 0010). A local ONNX model (fastembed) - text never leaves
+    # the machine for indexing. Changing the model later means re-embedding every chunk.
+    embeddings_model: str = "BAAI/bge-small-en-v1.5"
+    embeddings_dimensions: int = Field(default=384, ge=1)
+    embeddings_cache_dir: str | None = None
+
     # S3-compatible file store (ADR 0005; SeaweedFS locally). Without keys, features that store
     # files answer 503 and everything else keeps working.
     files_s3_endpoint: str = Field(default="127.0.0.1:8333", pattern=r"^[A-Za-z0-9.\-]+:\d{1,5}$")
@@ -158,6 +164,7 @@ class Settings(BaseSettings):
         "files_s3_secret_key",
         "smtp_username",
         "smtp_password",
+        "embeddings_cache_dir",
         mode="before",
     )
     @classmethod

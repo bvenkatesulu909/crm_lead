@@ -111,9 +111,12 @@ unique `(tenant_id, name)`.
 `created_by_user_id`, timestamps. Unique `(tenant_id, sha256)` to avoid duplicate work.
 
 **`knowledge_chunks`** — the retrievable pieces.
-`id`, `tenant_id`, `document_id`, `chunk_no`, `text`, `token_count`, `heading`,
-`page_from`, `page_to`, `embedding vector(1024)`, `created_at`.
-Indexes: HNSW on `embedding` with `vector_cosine_ops`; `(tenant_id, document_id)`.
+`id`, `tenant_id`, `document_id`, `document_version`, `chunk_no`, `text`, `blocks`
+(JSONB, paragraphs for precise citations), `token_count`, `heading_path`, `page_from`,
+`page_to`, `visibility`, `account_id`, `status`, `chunking_version`, `embedding_model`,
+`embedding vector(384)`, `tsv`, `created_at`.
+Indexes: HNSW on `embedding` with `vector_cosine_ops`; GIN on `tsv`;
+`(tenant_id, document_id)`.
 
 **Deliberately not stored:** per-chunk permission snapshots. Permissions are evaluated **at query
 time** from the current collection audience and document access, so revoking access takes effect
@@ -125,9 +128,11 @@ immediately.
    an outbox job is queued (payload: `document_id` only, per ADR 0005 rules).
 2. **Extraction:** PDF text with `pypdf`; DOCX with `python-docx`; TXT/Markdown read directly.
    No text layer → `no_text`, with a message suggesting OCR later.
-3. **Chunking:** structure-aware where possible (headings/pages), otherwise a sliding window of
-   about **700 tokens (~2,800 characters) with ~100 tokens overlap**. Each chunk keeps its heading
-   path and page range for citations.
+3. **Chunking (ADR 0011):** structure-aware where possible (headings/pages). Target ~**1,600
+   characters** (~400 tokens) with **one-paragraph overlap**; the heading path is prepended to the
+   embedding text; paragraphs stay as separate blocks for precise citations; a tiny trailing
+   fragment is merged into the previous chunk. Each chunk records its heading path, page range and
+   chunker version.
 4. **Embedding:** every chunk through the same local model; the model name and dimension are
    written on the document so a model change is detectable.
 5. **Write:** chunks are inserted; the document becomes `indexed`. Re-running the job **replaces**
@@ -169,23 +174,25 @@ the new model. Old chunks stay until replaced, so search keeps working during th
 
 ## 9. Embeddings and pgvector
 
-**Embedding model (local).** Behind a small protocol in `app/core/embeddings.py`
-(`embed_documents`, `embed_query`, `dimension`, `name`), like the storage and mail interfaces.
-Candidate models (chosen after benchmarking on real PDFs): a multilingual model such as
-**bge-m3** (1024 dims) or **multilingual-e5** (768 dims). Multilingual matters because manuals
-may be in Telugu/Hindi/English. Preference: an ONNX runtime (`fastembed`) to avoid a multi-GB
-PyTorch install on Windows; the benchmark decides, and the dimension is a configuration value.
-Text never leaves the machine for indexing.
+**Embedding model (local).** Decided in ADR 0010 and implemented in
+`app/core/ai/embeddings.py` behind an `Embedder` protocol (`model_name`, `dimensions`,
+`embed_documents`, `embed_query`), like the storage and mail interfaces.
+**fastembed** (ONNX Runtime, CPU, no PyTorch) with **BAAI/bge-small-en-v1.5**, **384 dimensions**.
+Text never leaves the machine for indexing. Limitation: this is an English model; Telugu/Hindi
+content needs a different model and a full re-embed, decided before indexing real documents.
 
 **pgvector.** PostgreSQL must gain the `vector` type:
 
-- Docker image change `postgres:16-alpine` → `pgvector/pgvector:pg16` (same PostgreSQL 16
-  major version; the named volume stays).
-- `CREATE EXTENSION IF NOT EXISTS vector` for `crm` **and** `crm_test` (run by the superuser in
-  the init script for new volumes; one-time command for existing volumes).
-- A migration then creates the tables and the HNSW index.
-- **Back up the database (`pg_dump`) before the image switch** and verify the restore; the owner
-  must approve this infrastructure change (ADR 0003 already flagged it).
+- **Our own image** (ADR 0010): `infrastructure/postgres/Dockerfile` builds
+  `postgres:16-alpine` + **pgvector v0.8.7** compiled in. Keeping the same Alpine/musl base
+  preserves the existing volume's text collation - no REINDEX or dump/restore. The official
+  `pgvector/pgvector:pg16` image is Debian/glibc and would require one.
+- `CREATE EXTENSION IF NOT EXISTS vector` for `crm` **and** `crm_test` (superuser init script
+  for new volumes; a documented one-off command for existing volumes - see
+  [rag-runbook.md](rag-runbook.md)).
+- A migration then creates the tables and the HNSW index; it **verifies** the extension exists.
+- **Back up the database (`pg_dump`) before the image switch** and verify the restore (done for
+  the local development database on 2026-10-20).
 
 If the image change is not acceptable now, the fallback is a separate vector store (e.g. Qdrant)
 — more infrastructure and a new ADR; not recommended at this size.
@@ -217,6 +224,12 @@ If the image change is not acceptable now, the fallback is a separate vector sto
 Permissions: `knowledge:read`, `knowledge:manage` (staff), `portal:knowledge:read` (customers),
 plus the existing assistant permission for chat.
 
+**R1 status (2026-10-21):** document upload, list, status and delete are implemented at
+`/api/v1/knowledge/documents`, with the staff screen at `/knowledge` and fictional demo content
+(including a poisoned test document). PDF/DOCX/TXT/Markdown are extracted, scanned for personal
+data, chunked and replaced atomically by the worker. `kb_articles`, collections, search and chat
+remain later stages.
+
 ## 12. UI (planned)
 
 - **Knowledge** page (staff, admins): collections, upload with progress/status, reindex, delete.
@@ -246,11 +259,11 @@ decision or an account/backup action from you.
    embedding model preference, pgvector image change, roles, languages).
 1. **[owner] Back up the database** (`pg_dump`), verify the restore and approve the Docker image
    change. This is the only infrastructure-risky step and it is reversible with the backup.
-2. **Enable pgvector:** switch the Compose image to `pgvector/pgvector:pg16`, add the extension
-   to the init script, run `CREATE EXTENSION` once on `crm` and `crm_test`, apply the migration
-   that creates the knowledge tables + HNSW index. Run the full backend tests.
-3. **Embedding layer:** add `app/core/embeddings.py` with a local model, download/benchmark 2–3
-   candidates on your real manuals, choose one, record dimension and speed in the design doc.
+2. **Enable pgvector:** build/switch to our own pgvector-enabled image (ADR 0010), run the
+   extension one-off on `crm`/`crm_test`, apply the migration that creates the knowledge tables
+   + HNSW index. Run the full backend tests.
+3. **Embedding layer:** `app/core/ai/embeddings.py` (done 2026-10-20): fastembed + bge-small,
+   384 dims, smoke-tested; a separate embedding container was not used (in-process, ADR 0010).
 4. **Ingestion:** text extraction, chunking, the `knowledge.ingest` worker job and statuses; a
    CLI to index one document for experiments; tests for retries/idempotency.
 5. **Knowledge admin UI:** collections + upload + status + reindex, with `knowledge:manage`.

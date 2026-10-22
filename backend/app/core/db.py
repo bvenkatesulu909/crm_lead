@@ -17,6 +17,8 @@ from app.core.config import Settings
 
 # PostgreSQL setting read by the RLS policies (crm_current_tenant(), ADR 0009).
 TENANT_SETTING = "app.tenant_id"
+USER_SETTING = "app.user_id"
+LEAD_SCOPE_SETTING = "app.lead_scope"
 
 
 def create_db_engine(settings: Settings) -> Engine:
@@ -58,6 +60,24 @@ def bind_tenant(session: Session, tenant_id: uuid.UUID) -> None:
     )
 
 
+def bind_user(session: Session, user_id: uuid.UUID, lead_scope: str) -> None:
+    """Remember the user + lead scope and apply them to the current transaction.
+
+    Used by the leads RLS policy so an agent sees only leads they own, while managers see all
+    leads in the tenant. Values come from the verified Principal, never from the request body.
+    """
+    session.info["user_id"] = str(user_id)
+    session.info["lead_scope"] = lead_scope
+    session.execute(
+        text("select set_config(:name, :value, true)"),
+        {"name": USER_SETTING, "value": str(user_id)},
+    )
+    session.execute(
+        text("select set_config(:name, :value, true)"),
+        {"name": LEAD_SCOPE_SETTING, "value": lead_scope},
+    )
+
+
 def clear_tenant(session: Session) -> None:
     """Remove the tenant setting from the current transaction (tests / defensive cleanup)."""
     session.info.pop("tenant_id", None)
@@ -68,12 +88,18 @@ def clear_tenant(session: Session) -> None:
 
 
 def _apply_tenant_setting(session: Session, transaction: object, connection: object) -> None:
-    tenant = session.info.get("tenant_id")
-    if tenant:
-        connection.execute(  # type: ignore[attr-defined]
-            text("select set_config(:name, :tenant, true)"),
-            {"name": TENANT_SETTING, "tenant": tenant},
-        )
+    settings = (
+        ("tenant_id", TENANT_SETTING),
+        ("user_id", USER_SETTING),
+        ("lead_scope", LEAD_SCOPE_SETTING),
+    )
+    for info_key, setting in settings:
+        value = session.info.get(info_key)
+        if value:
+            connection.execute(  # type: ignore[attr-defined]
+                text("select set_config(:name, :value, true)"),
+                {"name": setting, "value": value},
+            )
 
 
 def get_db_session(request: Request) -> Iterator[Session]:

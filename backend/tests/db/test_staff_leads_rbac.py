@@ -7,6 +7,7 @@ from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.modules.leads import api as leads_api
 from app.modules.leads.models import Lead
+from tests.db.conftest import setup_lead_context
 from tests.db.test_quotes_api import world  # noqa: F401
 
 
@@ -27,10 +28,15 @@ def test_search_leads_never_crosses_tenants(world, db_session):
     beta = world.users["beta.admin"].tenant_id
     alpha_lead = Lead(id=uuid.uuid4(), tenant_id=alpha, last_name="AlphaOnlyLead", status="new")
     beta_lead = Lead(id=uuid.uuid4(), tenant_id=beta, last_name="BetaOnlyLead", status="new")
-    db_session.add_all([alpha_lead, beta_lead])
+    setup_lead_context(db_session, alpha)
+    db_session.add(alpha_lead)
+    setup_lead_context(db_session, beta)
+    db_session.add(beta_lead)
     db_session.flush()
 
+    setup_lead_context(db_session, alpha)
     alpha_rows = leads_api.search_leads(db_session, _staff(world, "alpha.admin"), q="OnlyLead")
+    setup_lead_context(db_session, beta)
     beta_rows = leads_api.search_leads(db_session, _staff(world, "beta.admin"), q="OnlyLead")
     assert {row["id"] for row in alpha_rows} == {str(alpha_lead.id)}
     assert {row["id"] for row in beta_rows} == {str(beta_lead.id)}

@@ -49,7 +49,7 @@ def main() -> int:
         protected = [row for row in tenant_tables if row.relrowsecurity]
         unprotected = [row for row in tenant_tables if not row.relrowsecurity]
         probes: dict[str, object] = {}
-        for name in ("users", "access_requests", "outbox_jobs", "accounts", "tickets"):
+        for name in ("users", "access_requests", "outbox_jobs", "accounts", "tickets", "leads"):
             if any(row.relname == name for row in tables):
                 probes[name] = (
                     session.execute(
@@ -63,6 +63,7 @@ def main() -> int:
                 )
         clear_tenant(session)
         kb_without_context = session.scalar(text("select count(*) from kb_documents"))
+        lead_without_context = session.scalar(text("select count(*) from leads"))
         report = {
             "tenant_tables": len(tenant_tables),
             "protected_tables": [row.relname for row in protected],
@@ -71,6 +72,7 @@ def main() -> int:
             "roles": roles,
             "cross_tenant_probe": probes,
             "knowledge_rows_without_tenant_context": kb_without_context,
+            "lead_rows_without_tenant_context": lead_without_context,
         }
     engine.dispose()
     print(json.dumps(report, indent=2, default=str))

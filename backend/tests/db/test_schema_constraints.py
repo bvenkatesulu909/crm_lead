@@ -17,6 +17,7 @@ from app.modules.accounts.models import Account
 from app.modules.contacts.models import Contact
 from app.modules.identity.models import Tenant, User
 from app.modules.leads.models import Lead
+from tests.db.conftest import setup_lead_context
 
 TEST_ISSUER = "http://localhost:8080/realms/crm"
 
@@ -110,6 +111,7 @@ def test_lead_owner_must_be_user_of_same_tenant(db_session: Session) -> None:
     tenant_a = make_tenant(db_session, "alpha")
     tenant_b = make_tenant(db_session, "beta")
     user_of_a = make_user(db_session, tenant_a)
+    setup_lead_context(db_session, tenant_b.id)
 
     db_session.add(Lead(tenant_id=tenant_b.id, last_name="Prospect", owner_id=user_of_a.id))
     with pytest.raises(IntegrityError) as error:
@@ -138,6 +140,7 @@ def _converted_records(session: Session, tenant: Tenant) -> dict[str, object]:
 def test_converted_lead_requires_conversion_time(db_session: Session) -> None:
     tenant = make_tenant(db_session, "alpha")
     records = _converted_records(db_session, tenant)
+    setup_lead_context(db_session, tenant.id)
     db_session.add(
         Lead(
             tenant_id=tenant.id,
@@ -157,6 +160,7 @@ def test_converted_lead_requires_conversion_time(db_session: Session) -> None:
 
 def test_converted_lead_must_point_to_account_and_contact(db_session: Session) -> None:
     tenant = make_tenant(db_session, "alpha")
+    setup_lead_context(db_session, tenant.id)
     db_session.add(
         Lead(tenant_id=tenant.id, last_name="X", status="converted", converted_at=datetime.now(UTC))
     )

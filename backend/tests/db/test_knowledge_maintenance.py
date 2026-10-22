@@ -12,7 +12,7 @@ from app.modules.knowledge.models import KnowledgeChunk, KnowledgeDocument, RagQ
 from tests.db.test_quotes_api import world  # noqa: F401
 
 
-def _doc(tenant_id, **values):
+def _doc(tenant_id: uuid.UUID, **values: object) -> KnowledgeDocument:
     data = {
         "id": uuid.uuid4(),
         "tenant_id": tenant_id,
@@ -32,7 +32,7 @@ def _doc(tenant_id, **values):
     return KnowledgeDocument(**data)
 
 
-def _chunk(tenant_id, document_id, model="m"):
+def _chunk(tenant_id: uuid.UUID, document_id: uuid.UUID, model: str = "m") -> KnowledgeChunk:
     return KnowledgeChunk(
         tenant_id=tenant_id,
         document_id=document_id,

@@ -1,8 +1,10 @@
 # ADR 0009 — PostgreSQL Row-Level Security as defence in depth
 
-- **Status:** Accepted (2026-10-21, staged rollout). Step 1 is implemented: per-transaction tenant
-  binding + RLS policies on the knowledge tables. The remaining domains, the worker BYPASSRLS role
-  and the test-fixture bootstrap path follow in later steps (see "Implementation status" below).
+- **Status:** Accepted (2026-10-21, staged rollout). Steps 1-2 are implemented: per-transaction
+  tenant binding + RLS on the knowledge tables (0022), and a tenant/owner policy on `leads`
+  (0029) together with the owner-based test bootstrap. The remaining domains, the worker
+  BYPASSRLS role and the identity bootstrap exceptions follow in later steps (see
+  "Implementation status" below).
 - **Date:** 2026-10-20
 - **Deciders:** Project owner
 - **Depends on:** ADR 0002 (tenant from the verified identity); independent of ADR 0008
@@ -90,12 +92,25 @@ Findings from the code audit (all verified against the tree at migration 0019):
   against missing filters and coding mistakes, which is exactly the failure mode this project has
   had none of so far but cannot rule out.
 
-## Implementation status (2026-10-21, staged)
+## Implementation status (2026-10-22, staged)
 
 - **Owner bootstrap (2026-10-21):** `crm_owner` has `BYPASSRLS` **for migrations/test setup only**
   (`infrastructure/postgres/init/04-owner-bypassrls.sh`); `crm_app` remains non-superuser and
   non-BYPASSRLS. Test fixtures must create data with an owner session while API/RLS tests use
   `crm_app`; that fixture split is the remaining prerequisite before 0029.
+- **Leads + test bootstrap (2026-10-22):** `bind_user()` stores `app.user_id` and
+  `app.lead_scope`; the `after_begin` listener re-applies tenant, user and scope after every
+  commit/rollback. `identity.service.resolve_principal()` binds scope `all` for
+  `sales_manager` and `tenant_admin`, `own` otherwise. Migration **0029** adds
+  `crm_current_user()` and `crm_lead_scope()` and enables FORCE RLS on `leads` with a policy
+  checking the tenant and (`scope = 'all'` OR `owner_id = current user`) for both USING and
+  WITH CHECK. World/setup fixtures now build data through `crm_owner` and commit it
+  (`committed_world`); `clean_committed_data` truncates afterwards and finishes the app
+  transaction first. Setup rows that must stay in a test's rolled-back transaction use an
+  explicit tenant/owner context (`setup_lead_context`). API and RLS assertions still run as
+  `crm_app`; no policy was weakened. Verified: full backend suite 1123 passed, 4 skipped;
+  `test_rls_leads.py` 2 passed; `rls_audit` shows `leads` protected and 0 lead rows without
+  tenant context.
 - **Done:** `crm_current_tenant()` (fail-closed when unset); `bind_tenant`
   (`app/core/db.py`) sets `app.tenant_id` from the verified Principal and an `after_begin`
   listener re-applies it after every commit/rollback; identity resolution binds it; the worker
@@ -104,9 +119,9 @@ Findings from the code audit (all verified against the tree at migration 0019):
 - **Verified:** raw app-role queries return 0 rows without the setting, only the bound tenant's
   rows with it, and 0 for another tenant; policy/force flags checked by a test; demo seeding and
   the knowledge tests work under RLS.
-- **Next:** the worker's dedicated BYPASSRLS role (cross-tenant job claim), the owner-role
-  bootstrap for tests, the identity/sign-up `SECURITY DEFINER` exceptions, and policies for the
-  remaining tenant tables, domain by domain (per the plan above).
+- **Next:** the worker's dedicated BYPASSRLS role (cross-tenant job claim), the identity/sign-up
+  `SECURITY DEFINER` exceptions, and policies for the remaining tenant tables, domain by domain
+  (per the plan above).
 
 ## Open questions for the owner
 
@@ -114,7 +129,8 @@ Findings from the code audit (all verified against the tree at migration 0019):
    worker with the owner role?
 2. **Owner `BYPASSRLS`:** confirm the migration role may bypass RLS for bootstrap and tests
    (recommended, documented), or keep `FORCE` strict and rewrite the few guards?
-3. **Test setup:** owner-connection fixtures (recommended) or per-fixture tenant context?
+3. **Test setup:** resolved 2026-10-22 — owner-connection fixtures for committed data, plus an
+   explicit tenant/owner context for rows that stay in a test's rolled-back transaction.
 4. **Exceptions:** accept `tenants`, `signup_code_attempts` and the SECURITY DEFINER identity
    lookups (recommended, documented in `docs/auth.md`)?
 5. **Rollout:** enable per domain (recommended) or all tables in one migration?

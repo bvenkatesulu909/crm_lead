@@ -2,11 +2,13 @@
 
 import asyncio
 from types import SimpleNamespace
+from typing import cast
 
 import httpx
 import pytest
 from pydantic import SecretStr
 
+from app.core.config import Settings
 from app.modules.voice.provider import (
     ElevenLabsSpeechProvider,
     OpenAISpeechProvider,
@@ -56,16 +58,22 @@ def test_vendor_failure_becomes_provider_error():
 
 
 def test_provider_is_absent_without_a_key():
-    settings = SimpleNamespace(voice_enabled=True, voice_provider="openai", voice_api_key=None)
+    settings = cast(
+        Settings,
+        SimpleNamespace(voice_enabled=True, voice_provider="openai", voice_api_key=None),
+    )
     assert build_speech_provider(settings) is None
-    settings = SimpleNamespace(
-        voice_enabled=True,
-        voice_provider="openai",
-        voice_api_key=SecretStr("key"),
-        voice_base_url="https://speech.test/v1",
-        voice_stt_model="stt",
-        voice_tts_model="tts",
-        voice_tts_voice="alloy",
+    settings = cast(
+        Settings,
+        SimpleNamespace(
+            voice_enabled=True,
+            voice_provider="openai",
+            voice_api_key=SecretStr("key"),
+            voice_base_url="https://speech.test/v1",
+            voice_stt_model="stt",
+            voice_tts_model="tts",
+            voice_tts_voice="alloy",
+        ),
     )
     assert build_speech_provider(settings) is not None
 
@@ -92,13 +100,16 @@ def test_elevenlabs_transcribe_and_synthesize():
 
 
 def test_build_selects_elevenlabs():
-    settings = SimpleNamespace(
-        voice_enabled=True,
-        voice_provider="elevenlabs",
-        voice_api_key=SecretStr("el-key"),
-        voice_base_url="https://api.elevenlabs.io/v1",
-        voice_stt_model="scribe_v1",
-        voice_tts_model="eleven_multilingual_v2",
-        voice_tts_voice="voice123",
+    settings = cast(
+        Settings,
+        SimpleNamespace(
+            voice_enabled=True,
+            voice_provider="elevenlabs",
+            voice_api_key=SecretStr("el-key"),
+            voice_base_url="https://api.elevenlabs.io/v1",
+            voice_stt_model="scribe_v1",
+            voice_tts_model="eleven_multilingual_v2",
+            voice_tts_voice="voice123",
+        ),
     )
     assert isinstance(build_speech_provider(settings), ElevenLabsSpeechProvider)

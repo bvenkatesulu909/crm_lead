@@ -1,5 +1,7 @@
 """DB isolation for customer assistant tools."""
 
+from collections.abc import Iterable
+
 import pytest
 
 from app.core.auth.principal import Principal
@@ -20,7 +22,7 @@ from tests.db.test_quotes_api import (  # noqa: F401
 )
 
 
-def _customer(world, user: str, tenant: str, permissions: set[str]) -> Principal:  # noqa: F811
+def _customer(world, user: str, tenant: str, permissions: Iterable[Permission]) -> Principal:  # noqa: F811
     return Principal(
         subject=f"sub-{user}",
         issuer="test",

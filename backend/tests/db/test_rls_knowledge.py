@@ -1,6 +1,8 @@
 # ruff: noqa: F811 - fixtures from test_quotes_api are used as parameters
 """App-role RLS tenant isolation (enforced knowledge tables)."""
 
+from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
@@ -20,14 +22,15 @@ def files(api: TestClient, monkeypatch):
     return store
 
 
-def _upload(api: TestClient, auth: Headers, user: str, name: str) -> dict:
+def _upload(api: TestClient, auth: Headers, user: str, name: str) -> dict[str, Any]:
     response = api.post(
         DOCS,
         data={"title": name},
         files={"file": (name + ".txt", f"# {name}\n\nPolicy text.\n".encode(), "text/plain")},
         headers=auth(user),
     )
-    return ok(response, 201)
+    body: dict[str, Any] = ok(response, 201)
+    return body
 
 
 def test_app_role_sees_only_the_bound_tenants_documents(api, auth, db_session, world):  # noqa: F811

@@ -74,13 +74,13 @@ class World:
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     tenants: dict[str, uuid.UUID] = {}
     for slug in ("alpha", "beta"):
         new_tenant = Tenant(slug=f"{slug}-dash", name=f"{slug.title()} Dashboard Test")
-        db_session.add(new_tenant)
-        db_session.flush()
+        committed_world.add(new_tenant)
+        committed_world.flush()
         tenants[slug] = new_tenant.id
     w.users = {}
     for name, (slug, role) in PEOPLE.items():
@@ -93,9 +93,9 @@ def world(db_session: Session) -> World:
             user_type="customer" if role == "customer" else "staff",
             roles=[role],
         )
-        db_session.add(user)
+        committed_world.add(user)
         w.users[name] = user
-    db_session.flush()
+    committed_world.flush()
     alpha, beta = tenants["alpha"], tenants["beta"]
     u = {name: user.id for name, user in w.users.items()}
 
@@ -111,15 +111,15 @@ def world(db_session: Session) -> World:
             owner_id=account_owner,
             created_at=created,
         )
-        db_session.add(account)
-        db_session.flush()
+        committed_world.add(account)
+        committed_world.flush()
         w.accounts[key] = account.id
-    db_session.add(
+    committed_world.add(
         PortalAccessGrant(tenant_id=alpha, user_id=u["alpha.customer"], account_id=w.accounts["A1"])
     )
     contact = Contact(tenant_id=alpha, last_name="Three", account_id=w.accounts["A1"])
-    db_session.add(contact)
-    db_session.flush()
+    committed_world.add(contact)
+    committed_world.flush()
 
     w.leads = {}
     for key, lead_tenant, lead_owner, status, created, extra in [
@@ -150,15 +150,15 @@ def world(db_session: Session) -> World:
             created_at=created,
             **extra,
         )
-        db_session.add(lead)
-        db_session.flush()
+        committed_world.add(lead)
+        committed_world.flush()
         w.leads[key] = lead.id
     for key, kind, subject, actor, when in [
         ("L2", "call", "Intro call", "alpha.agent1", ago(10)),
         ("L4", "meeting", "Demo meeting", "alpha.agent2", ago(1)),
         ("BL", "call", "Beta call", "beta.agent", ago(1)),
     ]:
-        db_session.add(
+        committed_world.add(
             LeadActivity(
                 tenant_id=alpha if key != "BL" else beta,
                 lead_id=w.leads[key],
@@ -176,7 +176,7 @@ def world(db_session: Session) -> World:
         ("O4", alpha, "A2", "alpha.agent2", "prospecting", None, "USD", None),
         ("OB", beta, "B1", "beta.agent", "proposal", "7777.00", "EUR", TODAY),
     ]:
-        db_session.add(
+        committed_world.add(
             Opportunity(
                 tenant_id=opp_tenant,
                 name=name,
@@ -190,7 +190,8 @@ def world(db_session: Session) -> World:
                 closed_at=ago(2) if stage.startswith("closed") else None,
             )
         )
-    db_session.flush()
+    committed_world.flush()
+    committed_world.commit()
     return w
 
 

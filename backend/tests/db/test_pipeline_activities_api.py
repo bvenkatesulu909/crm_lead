@@ -52,13 +52,13 @@ class World:
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     tenants: dict[str, uuid.UUID] = {}
     for slug in ("alpha", "beta"):
         new_tenant = Tenant(slug=f"{slug}-pipeline", name=f"{slug.title()} Pipeline Test")
-        db_session.add(new_tenant)
-        db_session.flush()
+        committed_world.add(new_tenant)
+        committed_world.flush()
         tenants[slug] = new_tenant.id
     w.users = {}
     for name, (slug, role) in PEOPLE.items():
@@ -71,15 +71,15 @@ def world(db_session: Session) -> World:
             user_type="customer" if role == "customer" else "staff",
             roles=[role],
         )
-        db_session.add(user)
+        committed_world.add(user)
         w.users[name] = user
-    db_session.flush()
+    committed_world.flush()
     w.ids = {}
     for key, owner in [("A1", "alpha.agent1"), ("A2", "alpha.agent2"), ("B1", "beta.agent")]:
         user = w.users[owner]
         account = Account(tenant_id=user.tenant_id, name=f"Pipe {key}", owner_id=user.id)
-        db_session.add(account)
-        db_session.flush()
+        committed_world.add(account)
+        committed_world.flush()
         w.ids[key] = account.id
     for key, owner, account_key in [("C1", "alpha.agent1", "A1"), ("C2", "alpha.agent2", "A2")]:
         user = w.users[owner]
@@ -89,20 +89,21 @@ def world(db_session: Session) -> World:
             account_id=w.ids[account_key],
             owner_id=user.id,
         )
-        db_session.add(contact)
-        db_session.flush()
+        committed_world.add(contact)
+        committed_world.flush()
         w.ids[key] = contact.id
     for key, owner in [("L1", "alpha.agent1"), ("L2", "alpha.agent2")]:
         user = w.users[owner]
         lead = Lead(tenant_id=user.tenant_id, last_name=f"Lead {key}", owner_id=user.id)
-        db_session.add(lead)
-        db_session.flush()
+        committed_world.add(lead)
+        committed_world.flush()
         w.ids[key] = lead.id
     customer = w.users["alpha.customer"]
-    db_session.add(
+    committed_world.add(
         PortalAccessGrant(tenant_id=customer.tenant_id, user_id=customer.id, account_id=w.ids["A1"])
     )
-    db_session.flush()
+    committed_world.flush()
+    committed_world.commit()
     return w
 
 

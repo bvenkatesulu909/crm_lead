@@ -17,6 +17,7 @@ from sqlalchemy.pool import NullPool
 
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Role, permissions_for
+from app.core.db import bind_tenant, bind_user
 from app.modules.accounts.models import Account
 from app.modules.contacts.models import Contact
 from app.modules.identity.models import Tenant, User
@@ -42,7 +43,10 @@ def committed_lead(
     app_engine: Engine, migrated_database: str
 ) -> Iterator[tuple[Principal, uuid.UUID]]:
     tenant_id = uuid.uuid4()
-    with Session(app_engine) as session:
+    # Setup runs as crm_owner (BYPASSRLS) because the rows must be committed for the two
+    # request threads; the conversion itself still runs as crm_app under RLS.
+    setup_engine = create_engine(migrated_database, poolclass=NullPool)
+    with Session(setup_engine) as session:
         session.add(Tenant(id=tenant_id, slug=f"race-{tenant_id.hex[:12]}", name="Race test"))
         session.flush()
         manager = User(
@@ -69,6 +73,7 @@ def committed_lead(
             tenant_id=tenant_id,
         )
         lead_id = lead.id
+    setup_engine.dispose()
     try:
         yield principal, lead_id
     finally:
@@ -92,6 +97,9 @@ def test_simultaneous_conversions_create_records_only_once(app_engine, committed
     def convert() -> None:
         try:
             with Session(app_engine) as session:
+                assert principal.user_id is not None
+                bind_tenant(session, principal.tenant_id)
+                bind_user(session, principal.user_id, "all")
                 start.wait()  # both threads begin at the same moment
                 result = service.convert_lead(session, principal, lead_id, LeadConvert())
                 time.sleep(0.5)  # hold the transaction open to widen the race window

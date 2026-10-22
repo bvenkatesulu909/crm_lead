@@ -30,7 +30,7 @@ from app.modules.workflows.models import WorkflowRule, WorkflowRun
 from app.worker import WorkerServices, job_handlers, run_due_jobs, run_schedules
 from tests.auth_helpers import TEST_ISSUER
 from tests.conftest import UNREACHABLE_DATABASE_URL
-from tests.db.conftest import session_factory_for
+from tests.db.conftest import session_factory_for, setup_lead_context
 from tests.db.test_quotes_api import (  # noqa: F401 - fixtures used by name
     Headers,
     World,
@@ -256,6 +256,7 @@ def test_lead_status_is_changed_through_the_leads_rules(
         ),
         201,
     )
+    setup_lead_context(db_session, alpha(world), world.users["alpha.manager"].id)
     lead = Lead(
         tenant_id=alpha(world), last_name="Example", owner_id=world.users["alpha.manager"].id
     )
@@ -269,6 +270,7 @@ def test_lead_status_is_changed_through_the_leads_rules(
         )
     )
     worker()
+    setup_lead_context(db_session, alpha(world), world.users["alpha.manager"].id, scope="all")
     db_session.refresh(lead)
     assert lead.status == "contacted"
     audit = db_session.scalars(
@@ -336,6 +338,7 @@ def test_a_failing_action_is_logged_and_undone(api, auth, world, worker, db_sess
         ),
         201,
     )
+    setup_lead_context(db_session, alpha(world), world.users["alpha.manager"].id)
     lead = Lead(
         tenant_id=alpha(world),
         last_name="Done",

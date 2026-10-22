@@ -29,7 +29,7 @@ from app.modules.leads.models import Lead, LeadActivity
 from app.modules.sales.models import Opportunity
 from tests.auth_helpers import TEST_ISSUER, TokenFactory, bearer
 from tests.conftest import UNREACHABLE_DATABASE_URL
-from tests.db.conftest import session_factory_for
+from tests.db.conftest import session_factory_for, setup_lead_context
 
 PEOPLE = {
     "alpha.admin": ("alpha", "tenant_admin"),
@@ -545,6 +545,7 @@ LEADS = [
 
 def _scored_leads(db_session: Session, world: World) -> dict[str, uuid.UUID]:
     agent = world.users["alpha.agent1"]
+    setup_lead_context(db_session, agent.tenant_id, agent.id)
     ids = {}
     for name, fields, activity_days in LEADS:
         lead = Lead(tenant_id=agent.tenant_id, last_name=name, owner_id=agent.id, **fields)
@@ -720,6 +721,7 @@ def test_converted_deals_start_their_stage_history(api, auth, world, db_session)
 def test_scores_agree_for_mid_range_leads_too(world, db_session) -> None:
     """Capped (100) and zero scores hide small differences; check leads in between."""
     agent = world.users["alpha.agent1"]
+    setup_lead_context(db_session, agent.tenant_id, agent.id)
     mid = [
         {"phone": "020 7946 0000", "company_name": "Mid Co", "source": "web"},
         {"email": "m@example.test", "job_title": "Head of Sales", "source": "event"},

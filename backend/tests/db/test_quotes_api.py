@@ -56,13 +56,13 @@ class World:
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     tenants: dict[str, uuid.UUID] = {}
     for slug in ("alpha", "beta"):
         new_tenant = Tenant(slug=f"{slug}-quotes", name=f"{slug.title()} Quotes Test")
-        db_session.add(new_tenant)
-        db_session.flush()
+        committed_world.add(new_tenant)
+        committed_world.flush()
         tenants[slug] = new_tenant.id
     w.users = {}
     for name, (slug, role) in PEOPLE.items():
@@ -75,14 +75,14 @@ def world(db_session: Session) -> World:
             user_type="customer" if role == "customer" else "staff",
             roles=[role],
         )
-        db_session.add(user)
+        committed_world.add(user)
         w.users[name] = user
-    db_session.flush()
+    committed_world.flush()
     w.ids = {}
 
     def add(key: str, obj: Any) -> None:
-        db_session.add(obj)
-        db_session.flush()
+        committed_world.add(obj)
+        committed_world.flush()
         w.ids[key] = obj.id
 
     alpha, beta = tenants["alpha"], tenants["beta"]
@@ -114,7 +114,7 @@ def world(db_session: Session) -> World:
             ),
         )
     for customer, account in [("alpha.customer", "A1"), ("alpha.customer2", "A2")]:
-        db_session.add(
+        committed_world.add(
             PortalAccessGrant(tenant_id=alpha, user_id=u[customer], account_id=w.ids[account])
         )
     add("P1", Product(tenant_id=alpha, sku="WID-1", name="Widget", tax_rate=D("19")))
@@ -142,7 +142,7 @@ def world(db_session: Session) -> World:
         ("BBOOK", "PB", "5.00"),
     ]:
         tenant = beta if book == "BBOOK" else alpha
-        db_session.add(
+        committed_world.add(
             PriceBookEntry(
                 tenant_id=tenant,
                 price_book_id=w.ids[book],
@@ -150,7 +150,8 @@ def world(db_session: Session) -> World:
                 unit_price=D(price),
             )
         )
-    db_session.flush()
+    committed_world.flush()
+    committed_world.commit()
     return w
 
 

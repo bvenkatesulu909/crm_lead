@@ -28,7 +28,7 @@ from app.modules.notifications.models import Notification
 from app.worker import WorkerServices, job_handlers, run_due_jobs, run_schedules
 from tests.auth_helpers import TEST_ISSUER
 from tests.conftest import UNREACHABLE_DATABASE_URL
-from tests.db.conftest import session_factory_for
+from tests.db.conftest import session_factory_for, setup_lead_context
 from tests.db.test_quotes_api import (  # noqa: F401 - fixtures used by name
     Headers,
     World,
@@ -81,6 +81,7 @@ def alpha(world: World) -> uuid.UUID:
 
 
 def add_lead(db_session: Session, world: World, owner: str = "alpha.manager") -> Lead:
+    setup_lead_context(db_session, alpha(world), uid(world, owner))
     lead = Lead(
         tenant_id=alpha(world), first_name="Ada", last_name="Lovelace", owner_id=uid(world, owner)
     )

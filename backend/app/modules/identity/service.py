@@ -24,7 +24,7 @@ from app.core.auth.rbac import (
     permissions_for,
 )
 from app.core.auth.tokens import VerifiedToken
-from app.core.db import bind_tenant
+from app.core.db import bind_tenant, bind_user
 from app.core.errors import ForbiddenError
 from app.modules.identity.models import Tenant, User
 
@@ -80,6 +80,11 @@ def resolve_principal(session: Session, token: VerifiedToken) -> Principal:
         roles, user_type = token_roles & CUSTOMER_ROLES, "customer"
     else:
         roles, user_type = token_roles & STAFF_ROLES, "staff"
+
+    lead_scope = (
+        "all" if any(role.value in {"sales_manager", "tenant_admin"} for role in roles) else "own"
+    )
+    bind_user(session, user.id, lead_scope)
 
     snapshot = sorted(role.value for role in roles)
     changed = False

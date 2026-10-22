@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import AuditLog
 from app.modules.leads.models import Lead
 from app.modules.sales.models import Opportunity
+from tests.db.conftest import setup_lead_context
 from tests.db.test_quotes_api import (  # noqa: F401 - fixtures used by name
     Headers,
     World,
@@ -163,6 +164,7 @@ def test_bad_periods_are_refused(api, auth, world, params) -> None:
 
 def test_lead_conversion_by_source(api, auth, world, db_session) -> None:
     owner = world.users["alpha.agent1"].id
+    setup_lead_context(db_session, alpha(world), owner)
     for source, status in [
         ("web", "new"),
         ("web", "unqualified"),
@@ -256,6 +258,7 @@ def test_standard_reports_download_as_csv(api, auth, world, db_session) -> None:
 
 
 def test_csv_cells_cannot_run_as_formulas(api, auth, world, db_session) -> None:
+    setup_lead_context(db_session, alpha(world), world.users["alpha.agent1"].id)
     for name in ('=HYPERLINK("http://evil.example")', "+cmd", "-1+1", "@SUM(A1)", "Normal Ltd"):
         db_session.add(
             Lead(tenant_id=alpha(world), last_name=name, owner_id=world.users["alpha.agent1"].id)
@@ -273,6 +276,7 @@ def test_csv_cells_cannot_run_as_formulas(api, auth, world, db_session) -> None:
 
 def test_builder_lists_only_what_the_user_may_see(api, auth, world, db_session) -> None:
     for owner, name in [("alpha.agent1", "Mine"), ("alpha.agent2", "Theirs")]:
+        setup_lead_context(db_session, alpha(world), world.users[owner].id)
         db_session.add(Lead(tenant_id=alpha(world), last_name=name, owner_id=world.users[owner].id))
     db_session.flush()
     mine = ok(
@@ -295,6 +299,7 @@ def test_builder_lists_only_what_the_user_may_see(api, auth, world, db_session) 
 
 def test_builder_filters_by_status_and_period(api, auth, world, db_session) -> None:
     owner = world.users["alpha.agent1"].id
+    setup_lead_context(db_session, alpha(world), owner)
     new = Lead(tenant_id=alpha(world), last_name="NewOne", status="new", owner_id=owner)
     contacted = Lead(
         tenant_id=alpha(world), last_name="Contacted", status="contacted", owner_id=owner

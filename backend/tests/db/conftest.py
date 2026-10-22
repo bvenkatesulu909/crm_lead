@@ -11,6 +11,7 @@ real problem, not something to hide.
 The schema is built with Alembic migrations, exactly as in development - never create_all().
 """
 
+import uuid
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -121,11 +122,18 @@ def committed_owner_data(owner_db_session: Session) -> Iterator[Session]:
 
 
 @pytest.fixture
-def clean_committed_data(owner_engine: Engine, db_session: Session) -> Iterator[None]:
-    """After the test, truncate all application tables on the test database (owner role)."""
+def clean_committed_data(
+    owner_engine: Engine, db_connection: Connection, db_session: Session
+) -> Iterator[None]:
+    """After the test, truncate all application tables on the test database (owner role).
+
+    The app connection's outer transaction must be finished first: it may hold row locks from
+    API writes, and TRUNCATE would block on them. The owner cleanup then runs outside RLS.
+    """
     yield
-    db_session.rollback()
     db_session.close()
+    if db_connection.in_transaction():
+        db_connection.rollback()
     with owner_engine.begin() as connection:
         names = (
             connection.execute(
@@ -152,7 +160,39 @@ def db_connection(app_engine: Engine) -> Iterator[Connection]:
         try:
             yield connection
         finally:
-            transaction.rollback()
+            if transaction.is_active:
+                transaction.rollback()
+
+
+@pytest.fixture
+def committed_world(committed_owner_data: Session, clean_committed_data: None) -> Session:
+    """Session for building test worlds: crm_owner (BYPASSRLS), committed, cleaned afterwards.
+
+    Setup fixtures use this so their rows are visible to the restricted crm_app connection that
+    runs the API and the RLS assertions. Never assert application/RLS behaviour through it.
+    """
+    return committed_owner_data
+
+
+def setup_lead_context(
+    session: Session,
+    tenant_id: uuid.UUID,
+    owner_id: uuid.UUID | None = None,
+    *,
+    scope: str | None = None,
+) -> None:
+    """Give a rolled-back setup session the RLS context a real request would have.
+
+    Rows inserted in a test's transaction cannot be written through the owner connection: their
+    tenants/users are uncommitted, so a separate owner transaction could not see the foreign
+    keys. The policy is not weakened - it still checks the tenant and that the row is owned by
+    the current user (scope "own") or that the current user is a manager (scope "all", used for
+    rows deliberately left without an owner).
+    """
+    from app.core.db import bind_tenant, bind_user
+
+    bind_tenant(session, tenant_id)
+    bind_user(session, owner_id or uuid.uuid4(), scope or ("own" if owner_id else "all"))
 
 
 def session_factory_for(connection: Connection) -> sessionmaker[Session]:

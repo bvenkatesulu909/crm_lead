@@ -2,6 +2,8 @@
 
 # ruff: noqa: F811 - the imported world fixture is used as a test parameter
 
+from collections.abc import Iterable
+
 import pytest
 
 from app.core.auth.principal import Principal
@@ -12,7 +14,7 @@ from app.modules.contacts import api as contacts_api
 from tests.db.test_quotes_api import world  # noqa: F401
 
 
-def _staff(world, user: str, permissions: set[str]) -> Principal:
+def _staff(world, user: str, permissions: Iterable[Permission]) -> Principal:
     return Principal(
         subject="sub-" + user,
         issuer="test",

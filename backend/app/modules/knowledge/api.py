@@ -14,17 +14,13 @@ from app.modules.knowledge import service
 JOB_KIND = service.JOB_KIND
 
 
-def run_maintenance(
-    session_factory: sessionmaker[Session], *, embedding_model: str
-) -> Any:
+def run_maintenance(session_factory: sessionmaker[Session], *, embedding_model: str) -> Any:
     from app.modules.knowledge import freshness
 
     return freshness.run_daily_maintenance(session_factory, embedding_model=embedding_model)
 
 
-def erase_user_rag_queries(
-    session: Session, tenant_id: uuid.UUID, user_id: uuid.UUID
-) -> int:
+def erase_user_rag_queries(session: Session, tenant_id: uuid.UUID, user_id: uuid.UUID) -> int:
     from app.modules.knowledge import freshness
 
     return freshness.erase_user_queries(session, tenant_id, user_id)

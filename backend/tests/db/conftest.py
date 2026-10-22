@@ -170,4 +170,3 @@ def db_session(db_connection: Connection) -> Iterator[Session]:
         yield session
     finally:
         session.close()
-

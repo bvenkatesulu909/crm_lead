@@ -48,6 +48,7 @@ def configure_tracing(app: Any, engine: Engine, settings: Settings) -> None:
     except Exception as exc:  # noqa: BLE001 - tracing must never stop the API from starting
         logger.warning("tracing could not be enabled", extra={"error": type(exc).__name__})
 
+
 def _instrument_sqlalchemy_spans(engine: Engine, provider: Any) -> None:
     from opentelemetry import trace
     from opentelemetry.trace import SpanKind, Status, StatusCode
@@ -91,4 +92,3 @@ def _instrument_sqlalchemy_spans(engine: Engine, provider: Any) -> None:
     event.listen(engine, "after_cursor_execute", after)
     event.listen(engine, "handle_error", on_error)
     logger.info("SQLAlchemy fallback DB spans enabled")
-

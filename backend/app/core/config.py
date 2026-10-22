@@ -72,9 +72,11 @@ class Settings(BaseSettings):
     # Lifetime of set-your-password links sent by e-mail.
     invite_link_lifespan_seconds: int = Field(default=72 * 3600, ge=3600, le=14 * 24 * 3600)
 
+    # AI runtime: "anthropic" (default, existing behaviour) or "deepseek" (OpenAI-compatible).
+    ai_provider: Literal["anthropic", "deepseek"] = "anthropic"
     # AI assistant (ADR 0003). Without a key the assistant answers 503 and the portal hides it.
     # The key stays on the server; customers' questions and the tool results the assistant
-    # reads are sent to Anthropic.
+    # reads are sent to the selected provider.
     anthropic_api_key: SecretStr | None = None
     # Needed only for user-level keys (sk-ant-usr-...): Anthropic then requires the workspace
     # to bill and log requests to. Workspace keys (sk-ant-api...) don't need it. Not a secret.
@@ -85,12 +87,43 @@ class Settings(BaseSettings):
     assistant_max_tool_rounds: int = Field(default=6, ge=1, le=20)
     assistant_messages_per_hour: int = Field(default=30, ge=1, le=1000)
     assistant_timeout_seconds: float = Field(default=60, gt=0, le=300)
+    # DeepSeek (OpenAI-compatible API). Key stays in the environment; never logged or committed.
+    deepseek_api_key: SecretStr | None = None
+    deepseek_base_url: str = "https://api.deepseek.com"
+    deepseek_model: str = "deepseek-chat"
+    # Server-side speech gateway (STT/TTS), OpenAI-compatible audio API. Disabled without a key.
+    voice_enabled: bool = True
+    voice_provider: Literal["openai", "elevenlabs", "local"] = "openai"
+    # Local mode: Whisper model size, path to a Piper .onnx voice, and the piper executable.
+    voice_piper_command: str = "piper"
+    voice_api_key: SecretStr | None = None
+    voice_base_url: str = "https://api.openai.com/v1"
+    voice_stt_model: str = "gpt-4o-mini-transcribe"
+    voice_tts_model: str = "gpt-4o-mini-tts"
+    voice_tts_voice: str = "alloy"
+    voice_max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
 
     # Knowledge-base embeddings (ADR 0010). A local ONNX model (fastembed) - text never leaves
     # the machine for indexing. Changing the model later means re-embedding every chunk.
     embeddings_model: str = "BAAI/bge-small-en-v1.5"
     embeddings_dimensions: int = Field(default=384, ge=1)
     embeddings_cache_dir: str | None = None
+
+    # Retrieval (RAG R3, ADR 0011 starting settings; R5 tunes them with measurements).
+    knowledge_candidates: int = Field(default=40, ge=5, le=200)
+    knowledge_rrf_k: int = Field(default=60, ge=1, le=1000)
+    knowledge_top_k: int = Field(default=5, ge=1, le=20)
+    # Calibrated on 100 free cases (80 answerable / 20 unanswerable, 2026-10-21):
+    # unanswerable max 0.620, answerable min 0.658 -> 0.64 keeps 100% of positives and rejects
+    # 100% of negatives on that set. Re-calibrate whenever the embedding model or corpus changes.
+    knowledge_min_similarity: float | None = Field(default=0.64, ge=0.0, le=1.0)
+    # Cross-encoder reranker: re-scores the RRF top candidates, then the top-k is returned.
+    # Measured 2026-10-21 on 13 free cases / 8 demo documents: hit@5/MRR gain +0.000. ADR 0011
+    # says keep it off until a larger eval shows a measured gain, so the default is now False.
+    # Flip to true for an experiment; it soft-fails to RRF order if the local model cannot load.
+    knowledge_reranker_enabled: bool = False
+    knowledge_reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+    knowledge_rerank_candidates: int = Field(default=10, ge=1, le=50)
 
     # S3-compatible file store (ADR 0005; SeaweedFS locally). Without keys, features that store
     # files answer 503 and everything else keeps working.
@@ -116,6 +149,22 @@ class Settings(BaseSettings):
     # Background worker (outbox jobs, ADR 0005).
     worker_poll_seconds: float = Field(default=2, gt=0, le=60)
     worker_max_attempts: int = Field(default=5, ge=1, le=20)
+    # A worker that has not updated its heartbeat for this long is considered dead.
+    worker_heartbeat_max_age_seconds: int = Field(default=120, ge=10, le=3600)
+
+    # --- Operations (R6): metrics, tracing, AI cost. All environment-driven. ---
+    # Prometheus metrics are served only on the token-protected /api/v1/internal/metrics route.
+    # When no token is configured the route answers 404 (never public by accident).
+    metrics_enabled: bool = True
+    metrics_token: SecretStr | None = None
+    # OpenTelemetry is a no-op unless both are set (no collector required to run the app).
+    otel_enabled: bool = False
+    otel_endpoint: str | None = None
+    otel_service_name: str = "crm-lead-api"
+    otel_sample_ratio: float = Field(default=0.1, ge=0.0, le=1.0)
+    # Price per 1M tokens, used only to ESTIMATE cost (model prices change; set from the provider).
+    ai_input_price_per_million: float = Field(default=0.0, ge=0.0)
+    ai_output_price_per_million: float = Field(default=0.0, ge=0.0)
     # Workflow rules (ADR 0006): automatic actions per organisation per hour, at most.
     workflow_actions_per_hour: int = Field(default=500, ge=1, le=100_000)
 
@@ -158,12 +207,16 @@ class Settings(BaseSettings):
 
     @field_validator(
         "anthropic_api_key",
+        "deepseek_api_key",
+        "voice_api_key",
         "keycloak_admin_client_secret",
         "anthropic_workspace_id",
         "files_s3_access_key",
         "files_s3_secret_key",
         "smtp_username",
         "smtp_password",
+        "metrics_token",
+        "otel_endpoint",
         "embeddings_cache_dir",
         mode="before",
     )

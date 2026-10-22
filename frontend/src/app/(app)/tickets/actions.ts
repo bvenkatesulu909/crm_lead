@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 
-import { toErrorInfo } from "@/lib/api-error";
+import { toErrorInfo, type ApiErrorInfo } from "@/lib/api-error";
 import type { Ticket } from "@/lib/api-types";
 import type { DialogState } from "@/lib/dialog-state";
 import type { FormState } from "@/lib/form-state";
@@ -189,4 +189,36 @@ export async function changePriority(
     return failed(previous, error);
   }
   redirect(`${path}?done=priority`);
+}
+
+
+export type KnowledgeDraftState = {
+  attempt: number;
+  draft: string | null;
+  sources: { document_title: string; heading_path: string; page_from: number | null }[];
+  error: ApiErrorInfo | null;
+};
+
+export async function draftKnowledge(
+  ticketId: string,
+  previous: KnowledgeDraftState,
+): Promise<KnowledgeDraftState> {
+  if (!UUID.test(ticketId)) throw new Error("invalid ticket");
+  try {
+    const result = await apiFetch<{
+      draft: string;
+      sources: { document_title: string; heading_path: string; page_from: number | null }[];
+    }>(`/tickets/${ticketId}/knowledge-draft`, {
+      method: "POST",
+      signal: AbortSignal.timeout(60_000),
+    });
+    return { attempt: previous.attempt + 1, draft: result.draft, sources: result.sources, error: null };
+  } catch (error) {
+    return {
+      attempt: previous.attempt + 1,
+      draft: null,
+      sources: [],
+      error: toErrorInfo(error),
+    };
+  }
 }

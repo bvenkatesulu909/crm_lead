@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Card, EmptyState, ErrorAlert, buttonClass, cx } from "@/components/ui";
+import { SpeakButton } from "@/components/speak-button";
 import { ApiError, toErrorInfo } from "@/lib/api-error";
 import type {
   AssistantAction,
@@ -89,6 +90,18 @@ export default async function AssistantPage({
                 <li key={m.id} className={cx("max-w-[85%] rounded-lg px-4 py-3 text-sm", m.role === "user" ? "ml-auto bg-brand-600 text-white" : "bg-slate-100 text-slate-900")}>
                   <p className="sr-only">{m.role === "user" ? "You:" : "Assistant:"}</p>
                   <p className="whitespace-pre-line">{m.content}</p>
+                  {m.citations.length > 0 && (
+                    <ul aria-label="Sources" className="mt-2 space-y-1 border-t border-slate-200 pt-2 text-xs text-slate-600">
+                      {m.citations.map((citation, index) => (
+                        <li key={`${citation.document}-${citation.heading}-${index}`}>
+                          [${index + 1}] {citation.document}
+                          {citation.heading ? ` - ${citation.heading}` : ""}
+                          {citation.page !== null ? ` (p. ${citation.page})` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {m.role === "assistant" && <SpeakButton text={m.content} />}
                   <time dateTime={m.created_at} className={cx("mt-1 block text-[11px]", m.role === "user" ? "text-brand-100" : "text-slate-500")}>
                     {formatDateTime(m.created_at)}
                   </time>

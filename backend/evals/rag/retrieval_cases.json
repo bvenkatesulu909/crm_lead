@@ -1,0 +1,762 @@
+[
+  {
+    "id": "returns-01",
+    "question": "How long do customers have to return a damaged item?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-02",
+    "question": "What is the return window for damaged goods?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-03",
+    "question": "Can a customer return something that arrived damaged?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-04",
+    "question": "How many days are allowed for a damaged return?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-05",
+    "question": "What are the rules for returning damaged items?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-06",
+    "question": "Is return shipping free for damaged items?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-07",
+    "question": "What happens if an item is damaged on delivery?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-08",
+    "question": "Can unused items be returned after changing their mind?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-09",
+    "question": "How long does a change-of-mind return take?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-10",
+    "question": "Who pays return shipping for a change-of-mind return?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-11",
+    "question": "What is the policy for returning an unused product?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-12",
+    "question": "How do I return a damaged product?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-13",
+    "question": "What is the return period for damaged goods?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-14",
+    "question": "Can customers return items after 20 days?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-15",
+    "question": "What conditions apply to a return?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "returns-16",
+    "question": "Is there a free return for damaged products?",
+    "expected_documents": [
+      "Returns policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-01",
+    "question": "How long does standard delivery take?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-02",
+    "question": "When will an order arrive?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-03",
+    "question": "What is the normal delivery time?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-04",
+    "question": "How many working days for standard delivery?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-05",
+    "question": "Does express delivery exist and how fast is it?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-06",
+    "question": "How does a customer get a tracking number?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-07",
+    "question": "Is tracking information e-mailed?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-08",
+    "question": "How can a customer track an order?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-09",
+    "question": "When does an order leave the warehouse?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-10",
+    "question": "What is the delivery window for orders?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-11",
+    "question": "How fast is express shipping?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-12",
+    "question": "Where does the tracking number come from?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-13",
+    "question": "How long does shipping usually take?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-14",
+    "question": "When is a tracking number sent?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-15",
+    "question": "What are the delivery options?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "delivery-16",
+    "question": "How many days does delivery need?",
+    "expected_documents": [
+      "Delivery and tracking"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-01",
+    "question": "When are invoices due?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-02",
+    "question": "What are the payment terms?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-03",
+    "question": "How many days to pay an invoice?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-04",
+    "question": "Which payment methods are accepted?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-05",
+    "question": "Can a customer pay by bank transfer?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-06",
+    "question": "Are credit cards accepted?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-07",
+    "question": "What happens if an invoice is paid late?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-08",
+    "question": "Is there a reminder fee for late payments?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-09",
+    "question": "How long is the invoice payment period?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-10",
+    "question": "What is the due date for invoices?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-11",
+    "question": "How should an invoice be paid?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-12",
+    "question": "Is bank transfer a valid payment method?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-13",
+    "question": "What fee applies to a late payment?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-14",
+    "question": "How many days until an invoice is overdue?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-15",
+    "question": "Which payment options does the company offer?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "payment-16",
+    "question": "What are the rules for paying invoices?",
+    "expected_documents": [
+      "Payment terms"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-01",
+    "question": "How should the product be cleaned?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-02",
+    "question": "What cleaning product should be used?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-03",
+    "question": "Can I use solvents on the product?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-04",
+    "question": "How should the product be stored?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-05",
+    "question": "Should the product be kept out of sunlight?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-06",
+    "question": "Where should the product be kept?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-07",
+    "question": "What is the care guide for the product?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-08",
+    "question": "How do I prevent damage during storage?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-09",
+    "question": "Can abrasive cleaners be used?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-10",
+    "question": "What is the recommended cleaning method?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-11",
+    "question": "How should I care for the item?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-12",
+    "question": "Is direct sunlight bad for the product?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-13",
+    "question": "What storage conditions are recommended?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-14",
+    "question": "How do I clean the product safely?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-15",
+    "question": "Should I use a soft cloth for cleaning?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "care-16",
+    "question": "What should I avoid when cleaning the product?",
+    "expected_documents": [
+      "Product care guide"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-01",
+    "question": "How much discount may a sales agent offer without approval?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-02",
+    "question": "What is the discount limit for agents?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-03",
+    "question": "When does a discount need a sales manager?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-04",
+    "question": "Can an agent promise any delivery date?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-05",
+    "question": "What are the internal sales rules?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-06",
+    "question": "May an agent offer more than 10 percent?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-07",
+    "question": "Who approves a large discount?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-08",
+    "question": "What does the internal sales policy say about discounts?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-09",
+    "question": "Can a delivery date be promised without warehouse confirmation?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-10",
+    "question": "What is the maximum unapproved discount?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-11",
+    "question": "When is manager approval needed for a discount?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-12",
+    "question": "Are sales agents allowed to guarantee delivery dates?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-13",
+    "question": "What is the policy for sales discounts?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-14",
+    "question": "How large a discount can an agent give?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-15",
+    "question": "What should an agent do for a discount above the limit?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "sales-16",
+    "question": "Which promises are sales agents not allowed to make?",
+    "expected_documents": [
+      "Internal sales policy"
+    ],
+    "unanswerable": false
+  },
+  {
+    "id": "unanswerable-01",
+    "question": "What is the warranty period for the X100 industrial pump?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-02",
+    "question": "What is the current list price of the Alpha widget in EUR?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-03",
+    "question": "Who won the football match last night?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-04",
+    "question": "What is the capital of Australia?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-05",
+    "question": "How do I reset my personal bank card PIN?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-06",
+    "question": "What is the CEO's home address?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-07",
+    "question": "What is the airspeed velocity of an unladen swallow?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-08",
+    "question": "How do I cook a vegetarian lasagna?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-09",
+    "question": "What is the weather forecast for tomorrow?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-10",
+    "question": "What are the HR salary bands for engineers?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-11",
+    "question": "What is the office Wi-Fi password?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-12",
+    "question": "How do I file a personal tax return?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-13",
+    "question": "What is the stock price of the company?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-14",
+    "question": "Which programming language should I learn first?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-15",
+    "question": "What is the warranty on a competitor's product?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-16",
+    "question": "How do I apply for a passport?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-17",
+    "question": "What is the legal advice for a divorce?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-18",
+    "question": "What is the boiling point of mercury?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-19",
+    "question": "How do I fix a leaking kitchen tap?",
+    "expected_documents": [],
+    "unanswerable": true
+  },
+  {
+    "id": "unanswerable-20",
+    "question": "What is the meaning of life?",
+    "expected_documents": [],
+    "unanswerable": true
+  }
+]

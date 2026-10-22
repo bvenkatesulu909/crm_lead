@@ -1,0 +1,79 @@
+groups:
+  - name: crm-api
+    rules:
+      - alert: CrmApiHighErrorRate
+        expr: sum(rate(crm_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(crm_http_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "CRM API 5xx rate is above 5%"
+          runbook: docs/r6-operations-runbook.md#api-errors
+      - alert: CrmApiSlowRequests
+        expr: histogram_quantile(0.95, sum by (le) (rate(crm_http_request_duration_seconds_bucket[5m]))) > 2
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "CRM API p95 latency is above 2 s"
+          runbook: docs/r6-operations-runbook.md#latency
+  - name: crm-ai
+    rules:
+      - alert: CrmAiFailureSpike
+        expr: sum(rate(crm_ai_requests_total{outcome!="ok"}[5m])) > 0.1
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "AI calls are failing or timing out"
+          runbook: docs/r6-operations-runbook.md#ai-provider
+      - alert: CrmAiCostBudget
+        expr: increase(crm_ai_estimated_cost_usd_total[1h]) > 5
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Estimated AI spend above $5 in the last hour"
+          runbook: docs/r6-operations-runbook.md#ai-cost
+  - name: crm-worker
+    rules:
+      - alert: CrmWorkerHeartbeatStale
+        expr: crm_worker_heartbeat_age_seconds > 120 or crm_worker_heartbeat_age_seconds < 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "The background worker heartbeat is stale/missing"
+          runbook: docs/r6-operations-runbook.md#worker
+      - alert: CrmOutboxBacklog
+        expr: crm_outbox_jobs{status="pending"} > 100
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Outbox backlog above 100 pending jobs"
+          runbook: docs/r6-operations-runbook.md#worker
+      - alert: CrmJobsDead
+        expr: increase(crm_outbox_jobs{status="dead"}[15m]) > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "A background job gave up permanently"
+          runbook: docs/r6-operations-runbook.md#worker
+  - name: crm-rag
+    rules:
+      - alert: CrmPgvectorUnavailable
+        expr: crm_pgvector_check{check="extension"} == 0 or crm_pgvector_check{check="hnsw_index"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "pgvector extension or HNSW index is missing"
+          runbook: docs/r6-operations-runbook.md#pgvector
+      - alert: CrmChunksMissingEmbeddings
+        expr: crm_knowledge_chunks_missing_embedding > 0
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Knowledge chunks have no embedding"
+          runbook: docs/r6-operations-runbook.md#ingestion
+      - alert: CrmAnswerUngroundedSpike
+        expr: sum(rate(crm_rag_answers_total{outcome="ungrounded"}[15m])) > 0.2
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Answers are being rejected as ungrounded"
+          runbook: docs/r6-operations-runbook.md#rag-quality

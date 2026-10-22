@@ -23,7 +23,17 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: {
+          args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"],
+        },
+      },
+    },
+  ],
   webServer: [
     {
       command:

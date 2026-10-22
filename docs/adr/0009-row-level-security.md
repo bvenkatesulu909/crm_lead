@@ -1,7 +1,8 @@
 # ADR 0009 — PostgreSQL Row-Level Security as defence in depth
 
-- **Status:** Proposed (2026-10-20; design audited against the code; waiting for the owner's
-  decisions below; no code written yet)
+- **Status:** Accepted (2026-10-21, staged rollout). Step 1 is implemented: per-transaction tenant
+  binding + RLS policies on the knowledge tables. The remaining domains, the worker BYPASSRLS role
+  and the test-fixture bootstrap path follow in later steps (see "Implementation status" below).
 - **Date:** 2026-10-20
 - **Deciders:** Project owner
 - **Depends on:** ADR 0002 (tenant from the verified identity); independent of ADR 0008
@@ -88,6 +89,24 @@ Findings from the code audit (all verified against the tree at migration 0019):
 - RLS does **not** defend against a compromised app process (it could set the GUC): it defends
   against missing filters and coding mistakes, which is exactly the failure mode this project has
   had none of so far but cannot rule out.
+
+## Implementation status (2026-10-21, staged)
+
+- **Owner bootstrap (2026-10-21):** `crm_owner` has `BYPASSRLS` **for migrations/test setup only**
+  (`infrastructure/postgres/init/04-owner-bypassrls.sh`); `crm_app` remains non-superuser and
+  non-BYPASSRLS. Test fixtures must create data with an owner session while API/RLS tests use
+  `crm_app`; that fixture split is the remaining prerequisite before 0029.
+- **Done:** `crm_current_tenant()` (fail-closed when unset); `bind_tenant`
+  (`app/core/db.py`) sets `app.tenant_id` from the verified Principal and an `after_begin`
+  listener re-applies it after every commit/rollback; identity resolution binds it; the worker
+  binds each job's tenant; migration **0022** enables **FORCE** RLS + a tenant-isolation policy on
+  `kb_documents` and `kb_chunks`.
+- **Verified:** raw app-role queries return 0 rows without the setting, only the bound tenant's
+  rows with it, and 0 for another tenant; policy/force flags checked by a test; demo seeding and
+  the knowledge tests work under RLS.
+- **Next:** the worker's dedicated BYPASSRLS role (cross-tenant job claim), the owner-role
+  bootstrap for tests, the identity/sign-up `SECURITY DEFINER` exceptions, and policies for the
+  remaining tenant tables, domain by domain (per the plan above).
 
 ## Open questions for the owner
 

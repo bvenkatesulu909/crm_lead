@@ -1,12 +1,14 @@
 """Public interface of the contacts module. Other modules import only from here."""
 
 import uuid
+from typing import Any
 
 from sqlalchemy import Select, and_, select
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
+from app.core.errors import ForbiddenError
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
 from app.modules.contacts import repository
 from app.modules.contacts.models import Contact
@@ -200,3 +202,60 @@ def export_table(
         status=None,
         filters=filters,
     )
+
+
+# --- customer portal (AI assistant) ---------------------------------------------------------
+
+
+def customer_contacts(
+    session: Session, principal: Principal, *, limit: int = 50
+) -> list[dict[str, Any]]:
+    """Contacts of the customer's granted accounts only; no consent/owner internals."""
+    if principal.user_type != "customer" or principal.tenant_id is None:
+        raise ForbiddenError("Only customers can list their contacts.")
+    from app.modules.identity.api import granted_account_ids
+
+    rows = session.scalars(
+        select(Contact)
+        .where(
+            Contact.tenant_id == principal.tenant_id,
+            Contact.account_id.in_(granted_account_ids(principal)),
+        )
+        .order_by(Contact.last_name, Contact.first_name)
+        .limit(min(limit, 100))
+    ).all()
+    return [
+        {
+            "name": " ".join(part for part in (c.first_name, c.last_name) if part),
+            "email": c.email,
+            "phone": c.phone,
+            "job_title": c.job_title,
+            "account_id": str(c.account_id) if c.account_id else None,
+        }
+        for c in rows
+    ]
+
+
+# --- staff assistant (read-only, record-policy enforced) -------------------------------------
+
+
+def list_account_contacts(
+    session: Session, principal: Principal, account_id: uuid.UUID, *, limit: int = 20
+) -> list[dict[str, Any]]:
+    from app.modules.contacts import service as contact_service
+    from app.modules.contacts.repository import ContactFilters
+
+    items, _ = contact_service.list_contacts(
+        session, principal, ContactFilters(account_id=account_id, limit=min(limit, 50))
+    )
+    return [
+        {
+            "id": str(item.id),
+            "name": " ".join(part for part in (item.first_name, item.last_name) if part),
+            "email": item.email,
+            "phone": item.phone,
+            "job_title": item.job_title,
+            "account_id": str(item.account_id) if item.account_id else None,
+        }
+        for item in items
+    ]

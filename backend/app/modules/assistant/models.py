@@ -78,6 +78,10 @@ class Message(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     conversation_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
+    # Knowledge tool citations for this answer (customer-visible only); empty for user messages.
+    citations: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.clock_timestamp())
     seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
 

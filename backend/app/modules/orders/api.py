@@ -17,14 +17,17 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.auth.rbac import Permission
+from app.core.errors import ForbiddenError
 from app.core.records import RecordFacts
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
-from app.modules.orders import repository
+from app.modules.orders import repository, service
 from app.modules.orders.metrics import (
     OrderMetrics,
     order_metrics,
@@ -33,6 +36,7 @@ from app.modules.orders.metrics import (
 )
 from app.modules.orders.models import ORDER_STATUSES, Order
 from app.modules.orders.policies import readable_orders
+from app.modules.orders.repository import OrderFilters
 from app.modules.orders.service import customer_order, customer_orders
 
 __all__ = [
@@ -261,3 +265,28 @@ def export_table(
         status=Order.status,
         filters=filters,
     )
+
+
+# --- staff assistant (read-only, record-policy enforced) -------------------------------------
+
+
+def search_orders(
+    session: Session, principal: Principal, *, limit: int = 10
+) -> list[dict[str, Any]]:
+    if not (
+        principal.has_permission(Permission.ORDER_READ_ALL)
+        or principal.has_permission(Permission.ORDER_READ_OWN_ACCOUNTS)
+    ):
+        raise ForbiddenError("You may not read orders.")
+    items, _ = service.list_orders(session, principal, OrderFilters(limit=min(limit, 50)))
+    return [
+        {
+            "id": str(x.id),
+            "number": f"SO-{x.number:04d}",
+            "status": x.status,
+            "total": str(x.total),
+            "account_id": str(x.account_id),
+            "link": f"/orders/{x.id}",
+        }
+        for x in items
+    ]

@@ -40,6 +40,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
+from app.core.db import bind_tenant
 from app.core.models import Base, TenantOwnedMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 logger = logging.getLogger(__name__)
@@ -219,6 +220,7 @@ def run_next_job(
         if handler is None:
             raise PermanentJobError(f"no handler for kind {job.kind!r}")
         with session_factory() as session, session.begin():
+            bind_tenant(session, job.tenant_id)
             handler(session, job)
             session.execute(
                 update(OutboxJob)
@@ -235,6 +237,7 @@ def run_next_job(
         else:
             values |= {"status": "pending", "run_after": now() + retry_delay(job.attempt)}
         with session_factory() as session, session.begin():
+            bind_tenant(session, job.tenant_id)
             session.execute(update(OutboxJob).where(OutboxJob.id == job.id).values(**values))
             on_dead = (dead_handlers or {}).get(job.kind) if dead else None
             if on_dead is not None:

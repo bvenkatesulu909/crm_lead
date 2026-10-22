@@ -230,6 +230,34 @@ plus the existing assistant permission for chat.
 data, chunked and replaced atomically by the worker. `kb_articles`, collections, search and chat
 remain later stages.
 
+**R2 status (2026-10-21):** migration 0021 adds `embedding vector(384)`, the generated `tsv`
+keyword column, an HNSW cosine index and a GIN index. The worker embeds every chunk during
+ingestion and records the model; a model failure retries the job.
+
+**R3 status (2026-10-21):** staff hybrid search is live at `GET /api/v1/knowledge/search`:
+pgvector top-40 + full-text top-40, RRF (k=60), top-5, with citations. Every query is filtered by
+permission (`knowledge:read`), tenant (RLS + explicit filter), `indexed` status, current model
+and document/chunk visibility (migration 0023). A local cross-encoder
+(`Xenova/ms-marco-MiniLM-L-6-v2`) reranks the RRF top-10 before the top-k is chosen (soft-fallback
+to RRF); the not-found threshold is configurable but uncalibrated until R5.
+
+**R5 status (2026-10-21, partial):** deterministic groundedness / faithfulness / correctness /
+injection-safety metrics, a 4-case fictional eval set and an opt-in live runner
+(`scripts/eval_rag_answers.py`); answers with no citation or an invalid source number are refused at
+runtime rather than shown. Threshold calibration, reranker-gain measurement and the 100-case target
+are still open.
+
+**R4 portal status (2026-10-21):** `POST /api/v1/portal/knowledge/answer` serves customers only:
+customer_visible chunks with no account (public) plus chunks of accounts in the caller's
+`portal_access_grants`; internal and other-account chunks are filtered out (RLS + explicit
+conditions), staff tokens are rejected. Migration 0025 adds `account_id` to documents/chunks.
+The portal page is `/portal/knowledge` ("Help & policies"). Staff answer path unchanged.
+
+**R4 status (2026-10-21, staff API):** `POST /api/v1/knowledge/answer` turns the reranked
+top-3 chunks into numbered context and asks Claude to answer only from it, with `[n]` citations.
+The response includes sources and the exact chunk; low confidence returns a refusal without calling
+the model. Portal/staff UIs, ticket drafts and the assistant tool are not wired yet.
+
 ## 12. UI (planned)
 
 - **Knowledge** page (staff, admins): collections, upload with progress/status, reindex, delete.

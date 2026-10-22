@@ -5,6 +5,7 @@ whenever a new module gets a models.py.
 """
 
 from app.core import audit as audit_models
+from app.core import heartbeat as heartbeat_models
 from app.core import outbox as outbox_models
 from app.core.models import Base
 from app.modules.accounts import models as accounts_models
@@ -29,6 +30,7 @@ __all__ = [
     "activities_models",
     "assistant_models",
     "audit_models",
+    "heartbeat_models",
     "catalog_models",
     "contacts_models",
     "documents_models",

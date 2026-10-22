@@ -9,6 +9,7 @@ customer's own granted accounts, nothing in another tenant. The caller commits.
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
@@ -38,6 +39,7 @@ __all__ = [
     "EXPORT",
     "export_table",
     "ticket_facts",
+    "ticket_facts_by_reference",
     "TICKET_PRIORITIES",
     "TICKET_CATEGORIES",
     "ticket_assignee",
@@ -146,6 +148,48 @@ def ticket_assignee(
 
 TICKET_PRIORITIES = models_TICKET_PRIORITIES
 TICKET_CATEGORIES = models_TICKET_CATEGORIES
+
+
+def search_tickets(
+    session: Session, principal: Principal, *, q: str, limit: int = 20
+) -> list[dict[str, Any]]:
+    items, _ = service.list_tickets(
+        session, principal, TicketFilters(q=q.strip()[:100], limit=min(limit, 50))
+    )
+    return [
+        {
+            "id": str(t.id),
+            "number": f"T-{t.number:04d}",
+            "subject": t.subject,
+            "status": t.status,
+            "priority": t.priority,
+            "link": f"/tickets/{t.id}",
+        }
+        for t in items
+    ]
+
+
+def ticket_facts_by_reference(
+    session: Session, principal: Principal, reference: str
+) -> RecordFacts | None:
+    """Resolve a ticket number like T-0060 / 60 for this staff principal."""
+    reference = reference.strip()
+    try:
+        return ticket_facts(session, principal, uuid.UUID(reference))
+    except ValueError:
+        pass
+    raw = reference.upper().removeprefix("T-").lstrip("0") or "0"
+    try:
+        number = int(raw)
+    except ValueError:
+        return None
+    items, _ = service.list_tickets(
+        session, principal, TicketFilters(q=f"T-{number:04d}", limit=10)
+    )
+    for ticket in items:
+        if ticket.number == number:
+            return ticket_facts(session, principal, ticket.id)
+    return None
 
 
 def ticket_facts(

@@ -1,0 +1,63 @@
+# Paid, manual RAG answer evaluation (R5). It is intentionally NOT run on pull requests.
+# Configure the GitHub Environment "rag-live-eval" with required reviewers and these secrets:
+#   CRM_DATABASE_URL, CRM_ANTHROPIC_API_KEY
+# and variables: CRM_OIDC_ISSUER. The demo tenant must already be seeded with real embeddings.
+name: RAG live eval (paid, manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenant:
+        description: Demo tenant slug
+        default: alpha-demo
+        required: true
+      max_cases:
+        description: Cost guard - maximum evaluation cases
+        default: "4"
+        required: true
+  # Uncomment only after the owner approves a recurring budget:
+  # schedule:
+  #   - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rag-live-eval
+  cancel-in-progress: false
+
+jobs:
+  answer-eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: rag-live-eval
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Run paid answer evaluation
+        working-directory: backend
+        env:
+          CRM_ENVIRONMENT: staging
+          CRM_RUN_LIVE_EVALS: "1"
+          CRM_DATABASE_URL: ${{ secrets.CRM_DATABASE_URL }}
+          CRM_ANTHROPIC_API_KEY: ${{ secrets.CRM_ANTHROPIC_API_KEY }}
+          CRM_OIDC_ISSUER: ${{ vars.CRM_OIDC_ISSUER }}
+        run: |
+          python -m scripts.eval_rag_answers \
+            --tenant "${{ inputs.tenant }}" \
+            --max-cases "${{ inputs.max_cases }}" \
+            --output "evals/rag/results/live-ci-${{ github.run_id }}.json"
+      - name: Upload evaluation result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-live-eval-${{ github.run_id }}
+          path: backend/evals/rag/results/*.json
+          if-no-files-found: warn

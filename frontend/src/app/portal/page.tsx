@@ -62,6 +62,11 @@ export default async function PortalHome() {
       <p className="mt-1 text-sm text-slate-600">
         Your company&apos;s accounts and services.
       </p>
+      <div className="mt-4">
+        <ButtonLink href="/portal/knowledge" variant="secondary">
+          Ask about policies &amp; help
+        </ButtonLink>
+      </div>
 
       <section aria-labelledby="accounts-heading" className="mt-8">
         <h2

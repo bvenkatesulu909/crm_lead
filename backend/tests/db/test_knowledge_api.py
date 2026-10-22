@@ -1,20 +1,23 @@
 # ruff: noqa: F811 - pytest fixtures imported from test_quotes_api are used as parameters
-"""RAG R1 - knowledge upload, ingestion and isolation through the real API and PostgreSQL.
+"""RAG R1/R2 - knowledge upload, ingestion, embeddings and isolation through the real API.
 
 People and tenants come from test_quotes_api.py (alpha.admin is a tenant admin, alpha.agent1 a
 sales agent, beta.admin another tenant). Files go to an in-memory store.
 """
 
 import uuid
+from collections.abc import Sequence
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 
+from app.core.ai.embeddings import EmbeddingUnavailableError
+from app.core.db import bind_tenant, clear_tenant
 from app.core.outbox import OutboxJob
 from app.core.storage import MemoryFileStore
 from app.modules.knowledge import api as knowledge_api
-from app.modules.knowledge.models import KnowledgeChunk
+from app.modules.knowledge.models import KnowledgeChunk, KnowledgeDocument
 from tests.db.test_quotes_api import Headers, World, api, auth, code_of, ok, world  # noqa: F401
 
 DOCS = "/api/v1/knowledge/documents"
@@ -23,6 +26,27 @@ TEXT = (
     b"Delivery usually takes three to five working days.\n"
 )
 CARD_TEXT = b"Customer card: 4111 1111 1111 1111. Do not index this file.\n"
+
+
+class FakeEmbedder:
+    """Deterministic stand-in for the local model (no download, no network)."""
+
+    model_name = "fake-embedder"
+    dimensions = 384
+
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        return [[0.01 * (index + 1)] * self.dimensions for index, _ in enumerate(texts)]
+
+    def embed_query(self, text: str) -> list[float]:
+        return self.embed_documents([text])[0]
+
+
+class FailingEmbedder(FakeEmbedder):
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        raise EmbeddingUnavailableError("test: model unavailable")
+
+
+EMBEDDER = FakeEmbedder()
 
 
 @pytest.fixture
@@ -58,7 +82,8 @@ def run_ingest(files: MemoryFileStore, db_session, document_id: str) -> None:
             OutboxJob.payload["document_id"].astext == document_id,
         )
     ).one()
-    knowledge_api.ingest_handler(files)(db_session, job)
+    bind_tenant(db_session, job.tenant_id)
+    knowledge_api.ingest_handler(files, EMBEDDER)(db_session, job)
     db_session.commit()
 
 
@@ -73,12 +98,18 @@ def test_upload_creates_one_job_and_the_worker_indexes_chunks(api, auth, world, 
     assert indexed["status"] == "indexed"
     assert indexed["chunk_count"] >= 1
 
+    bind_tenant(db_session, world.users["alpha.admin"].tenant_id)
     chunks = db_session.scalars(
         select(KnowledgeChunk).where(KnowledgeChunk.document_id == uuid.UUID(created["id"]))
     ).all()
     assert chunks and all(
         chunk.tenant_id == world.users["alpha.admin"].tenant_id for chunk in chunks
     )
+    # R2: every chunk has one embedding from the current model plus generated keywords.
+    assert all(chunk.embedding is not None for chunk in chunks)
+    assert all(len(chunk.embedding or []) == 384 for chunk in chunks)
+    assert all(chunk.embedding_model == "fake-embedder" for chunk in chunks)
+    assert all(chunk.tsv is not None for chunk in chunks)
 
 
 def test_reingest_is_idempotent(api, auth, world, files, db_session):
@@ -137,6 +168,19 @@ def test_sales_agent_can_read_but_not_manage(api, auth, files):
     assert ok(api.get(DOCS, headers=auth("alpha.agent1")))["total"] == 0
 
 
+def test_embedding_failure_surfaces_for_retry(api, auth, files, db_session):
+    created = ok(upload(api, auth), 201)
+    job = db_session.scalars(
+        select(OutboxJob).where(
+            OutboxJob.kind == knowledge_api.JOB_KIND,
+            OutboxJob.payload["document_id"].astext == created["id"],
+        )
+    ).one()
+    with pytest.raises(EmbeddingUnavailableError):
+        knowledge_api.ingest_handler(files, FailingEmbedder())(db_session, job)
+    db_session.rollback()
+
+
 def test_delete_removes_chunks_and_file(api, auth, world, files, db_session):
     created = ok(upload(api, auth), 201)
     run_ingest(files, db_session, created["id"])
@@ -144,9 +188,78 @@ def test_delete_removes_chunks_and_file(api, auth, world, files, db_session):
     assert api.delete(f"{DOCS}/{created['id']}", headers=auth("alpha.admin")).status_code == 204
     assert files.objects == {}
     assert api.get(f"{DOCS}/{created['id']}", headers=auth("alpha.admin")).status_code == 404
+    bind_tenant(db_session, world.users["alpha.admin"].tenant_id)
     assert (
         db_session.scalars(
             select(KnowledgeChunk).where(KnowledgeChunk.document_id == uuid.UUID(created["id"]))
         ).all()
         == []
     )
+
+
+def test_rls_hides_knowledge_without_tenant_setting(api, auth, world, files, db_session):
+    created = ok(upload(api, auth), 201)
+    run_ingest(files, db_session, created["id"])
+
+    clear_tenant(db_session)
+    assert db_session.scalar(select(func.count()).select_from(KnowledgeChunk)) == 0
+
+    bind_tenant(db_session, world.users["alpha.admin"].tenant_id)
+    assert db_session.scalar(select(func.count()).select_from(KnowledgeChunk)) >= 1
+
+    bind_tenant(db_session, world.users["beta.admin"].tenant_id)
+    assert db_session.scalar(select(func.count()).select_from(KnowledgeChunk)) == 0
+
+
+def test_rls_policies_exist_on_knowledge_tables(db_session):
+    rows = db_session.execute(
+        text("select tablename from pg_policies where tablename like 'kb_%'")
+    ).all()
+    assert sorted(row[0] for row in rows) == ["kb_chunks", "kb_documents"]
+    flags = db_session.execute(
+        text(
+            "select relrowsecurity, relforcerowsecurity from pg_class "
+            "where relname in ('kb_documents', 'kb_chunks')"
+        )
+    ).all()
+    assert len(flags) == 2
+    assert all(row[0] and row[1] for row in flags)
+
+
+def test_archive_deletes_chunks_and_hides_the_document(api, auth, world, files, db_session):
+    created = ok(upload(api, auth), 201)
+    run_ingest(files, db_session, created["id"])
+    response = api.post(f"{DOCS}/{created['id']}/archive", headers=auth("alpha.admin"))
+    assert response.status_code == 204
+    bind_tenant(db_session, world.users["alpha.admin"].tenant_id)
+    document = db_session.get(KnowledgeDocument, uuid.UUID(created["id"]))
+    assert document is not None and document.is_archived is True
+    assert (
+        db_session.scalars(
+            select(KnowledgeChunk).where(KnowledgeChunk.document_id == uuid.UUID(created["id"]))
+        ).all()
+        == []
+    )
+
+
+def test_new_version_archives_the_previous_one(api, auth, world, files, db_session):
+    first = ok(upload(api, auth), 201)
+    run_ingest(files, db_session, first["id"])
+    # Upload a replacement through the form field (different content, same title).
+    response = api.post(
+        DOCS,
+        data={"title": "Returns", "replaces_document_id": first["id"]},
+        files={
+            "file": ("returns-v2.txt", b"# Returns\n\nUpdated window: 21 days.\n", "text/plain")
+        },
+        headers=auth("alpha.admin"),
+    )
+    assert response.status_code == 201, response.text
+    second = response.json()
+    run_ingest(files, db_session, second["id"])
+    bind_tenant(db_session, world.users["alpha.admin"].tenant_id)
+    old = db_session.get(KnowledgeDocument, uuid.UUID(first["id"]))
+    new = db_session.get(KnowledgeDocument, uuid.UUID(second["id"]))
+    assert old is not None and old.is_archived is True
+    assert new is not None and new.version == 2
+    assert old.group_id == new.group_id

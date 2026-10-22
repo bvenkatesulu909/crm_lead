@@ -41,9 +41,9 @@ export async function apiFetch<T>(
         Authorization: `Bearer ${session.accessToken}`,
       },
       cache: "no-store", // per-user data: never cache across users
-      signal: AbortSignal.timeout(
-        init.body instanceof FormData ? 60_000 : 10_000,
-      ),
+      signal:
+        init.signal ??
+        AbortSignal.timeout(init.body instanceof FormData ? 60_000 : 10_000),
     });
   } catch (error) {
     console.error(

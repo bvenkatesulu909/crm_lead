@@ -2,11 +2,14 @@
 
 import uuid
 from datetime import date, timedelta
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.auth.rbac import Permission
+from app.core.errors import ForbiddenError
 from app.core.mail import Mailer
 from app.core.outbox import DeadJobHandler, Job, JobHandler, PermanentJobError
 from app.core.records import RecordFacts
@@ -16,6 +19,8 @@ from app.modules.quotes import repository, service
 from app.modules.quotes.metrics import quote_table
 from app.modules.quotes.models import QUOTE_STATUSES, Quote
 from app.modules.quotes.policies import readable_quotes
+from app.modules.quotes.repository import QuoteFilters
+from app.modules.quotes.schemas import PortalQuoteRead, PortalQuoteSummary
 
 __all__ = [
     "quote_table",
@@ -25,6 +30,8 @@ __all__ = [
     "expiring_quote_ids",
     "quote_people",
     "quote_brief",
+    "customer_quotes",
+    "customer_quote",
     "EMAIL_JOB",
     "PDF_JOB",
     "email_failed_handler",
@@ -176,3 +183,52 @@ def export_table(
         status=Quote.status,
         filters=filters,
     )
+
+
+# --- customer portal (used by the AI assistant) ---------------------------------------------
+
+
+def customer_quotes(
+    session: Session, principal: Principal, *, limit: int = 20
+) -> list[PortalQuoteSummary]:
+    """The customer's quotes, through the same portal policy used by /portal/quotes."""
+    if principal.user_type != "customer" or not principal.has_permission(
+        Permission.PORTAL_QUOTE_READ
+    ):
+        raise ForbiddenError("Only customers can list their quotes.")
+    items, _ = service.list_quotes(session, principal, QuoteFilters(limit=min(limit, 50)))
+    return [PortalQuoteSummary.model_validate(service.summary_values(x)) for x in items]
+
+
+def customer_quote(session: Session, principal: Principal, quote_id: uuid.UUID) -> PortalQuoteRead:
+    """One of the customer's quotes; another account's quote is a 404."""
+    if principal.user_type != "customer" or not principal.has_permission(
+        Permission.PORTAL_QUOTE_READ
+    ):
+        raise ForbiddenError("Only customers can read their quotes.")
+    return service.to_portal(session, service.get_quote(session, principal, quote_id))
+
+
+# --- staff assistant (read-only, record-policy enforced) -------------------------------------
+
+
+def search_quotes(
+    session: Session, principal: Principal, *, limit: int = 10
+) -> list[dict[str, Any]]:
+    if not (
+        principal.has_permission(Permission.QUOTE_READ_ALL)
+        or principal.has_permission(Permission.QUOTE_READ_OWN)
+    ):
+        raise ForbiddenError("You may not read quotes.")
+    items, _ = service.list_quotes(session, principal, QuoteFilters(limit=min(limit, 50)))
+    return [
+        {
+            "id": str(x.id),
+            "number": f"Q-{x.number:04d}",
+            "status": x.status,
+            "total": str(x.total),
+            "account_id": str(x.account_id),
+            "link": f"/quotes/{x.id}",
+        }
+        for x in items
+    ]

@@ -70,8 +70,15 @@ def replace_chunks(
     tenant_id: uuid.UUID,
     document_id: uuid.UUID,
     chunks: Sequence[Chunk],
+    *,
+    vectors: Sequence[list[float]],
+    embedding_model: str,
+    visibility: str,
+    account_id: uuid.UUID | None,
 ) -> None:
     """Replace every chunk of a document in the caller's transaction (idempotent re-ingest)."""
+    if len(chunks) != len(vectors):
+        raise ValueError("every chunk must have exactly one embedding")
     session.execute(
         delete(KnowledgeChunk).where(
             KnowledgeChunk.tenant_id == tenant_id,
@@ -91,5 +98,9 @@ def replace_chunks(
                 page_to=chunk.page_to,
                 char_count=chunk.char_count,
                 chunking_version=CHUNKING_VERSION,
+                embedding=vectors[number - 1],
+                embedding_model=embedding_model,
+                visibility=visibility,
+                account_id=account_id,
             )
         )

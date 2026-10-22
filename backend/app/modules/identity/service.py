@@ -24,6 +24,7 @@ from app.core.auth.rbac import (
     permissions_for,
 )
 from app.core.auth.tokens import VerifiedToken
+from app.core.db import bind_tenant
 from app.core.errors import ForbiddenError
 from app.modules.identity.models import Tenant, User
 
@@ -71,6 +72,9 @@ def resolve_principal(session: Session, token: VerifiedToken) -> Principal:
     if tenant is None or tenant.status != "active":
         raise forbidden("Your organisation's CRM access is suspended.")
 
+    # From here on every query runs under RLS with this tenant (ADR 0009). The value comes from
+    # the CRM user row, which was found through the verified token - never from the client.
+    bind_tenant(session, user.tenant_id)
     user_type: UserType
     if user.user_type == "customer":
         roles, user_type = token_roles & CUSTOMER_ROLES, "customer"

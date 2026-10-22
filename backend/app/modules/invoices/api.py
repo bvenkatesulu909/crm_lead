@@ -8,15 +8,20 @@ another tenant, no staff-only details.
 
 import uuid
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.auth.rbac import Permission
+from app.core.errors import ForbiddenError
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
+from app.modules.invoices import service
 from app.modules.invoices.metrics import RevenueMetrics, revenue_by_month_table, revenue_metrics
 from app.modules.invoices.models import INVOICE_STATUSES, Invoice
 from app.modules.invoices.policies import readable_invoices
+from app.modules.invoices.repository import InvoiceFilters
 from app.modules.invoices.service import customer_invoice, customer_invoices
 
 __all__ = [
@@ -120,3 +125,28 @@ def export_table(
         status=Invoice.status,
         filters=filters,
     )
+
+
+# --- staff assistant (read-only, record-policy enforced) -------------------------------------
+
+
+def search_invoices(
+    session: Session, principal: Principal, *, limit: int = 10
+) -> list[dict[str, Any]]:
+    if not (
+        principal.has_permission(Permission.INVOICE_READ_ALL)
+        or principal.has_permission(Permission.INVOICE_READ_OWN_ACCOUNTS)
+    ):
+        raise ForbiddenError("You may not read invoices.")
+    items, _ = service.list_invoices(session, principal, InvoiceFilters(limit=min(limit, 50)))
+    return [
+        {
+            "id": str(x.id),
+            "number": f"INV-{x.number:04d}" if x.number else None,
+            "status": x.status,
+            "total": str(x.total),
+            "account_id": str(x.account_id),
+            "link": f"/invoices/{x.id}",
+        }
+        for x in items
+    ]

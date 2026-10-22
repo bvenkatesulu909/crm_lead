@@ -74,6 +74,21 @@ class TicketAssign(_Input):
     assignee_id: uuid.UUID
 
 
+class KnowledgeDraftSource(BaseModel):
+    document_title: str
+    heading_path: str
+    page_from: int | None
+    page_to: int | None
+    text: str
+
+
+class TicketKnowledgeDraft(BaseModel):
+    draft: str
+    sources: list[KnowledgeDraftSource]
+    enough: bool
+    grounded: bool
+
+
 class CommentCreate(_Input):
     body: LongText
     visibility: Literal["public", "internal"] = Field(

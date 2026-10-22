@@ -14,8 +14,10 @@ import uuid
 
 from sqlalchemy import select
 
+from app import model_registry as _model_registry  # noqa: F401 - resolves cross-model FKs
+from app.core.ai.embeddings import build_embedder
 from app.core.config import get_settings
-from app.core.db import create_db_engine, create_session_factory
+from app.core.db import bind_tenant, create_db_engine, create_session_factory
 from app.core.storage import build_file_store, object_key
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import service
@@ -92,6 +94,18 @@ Never promise a delivery date that the warehouse has not confirmed.
     ),
 ]
 
+PORTAL_DOCUMENTS: list[tuple[str, str, str]] = [
+    (
+        "Customer returns help",
+        "customer-returns.md",
+        """# Customer returns help
+
+Damaged items may be returned within 14 days of delivery and damaged returns are free.
+Unused items may be returned within 30 days when the customer pays the return shipping.
+""",
+    ),
+]
+
 BETA_DOCUMENTS: list[tuple[str, str, str]] = [
     (
         "Beta returns policy",
@@ -112,12 +126,19 @@ Orders are delivered within 7 working days by our own van.
 ]
 
 
-def _document_set(tenant: Tenant) -> list[tuple[str, str, str]]:
+def _document_set(tenant: Tenant) -> list[tuple[str, str, str, str]]:
     name = tenant.name.lower()
     if "alpha" in name:
-        return [*DEMO_DOCUMENTS, ("TEST ONLY - poisoned document", "test-poisoned.md", POISONED)]
+        return [
+            *((title, file_name, text, "internal") for title, file_name, text in DEMO_DOCUMENTS),
+            *(
+                (title, file_name, text, "customer_visible")
+                for title, file_name, text in PORTAL_DOCUMENTS
+            ),
+            ("TEST ONLY - poisoned document", "test-poisoned.md", POISONED, "internal"),
+        ]
     if "beta" in name:
-        return BETA_DOCUMENTS
+        return [(*document, "internal") for document in BETA_DOCUMENTS]
     return []
 
 
@@ -125,49 +146,58 @@ def main() -> None:
     settings = get_settings()
     engine = create_db_engine(settings)
     store = build_file_store(settings)
+    embedder = build_embedder(settings)
     created = 0
+    reindexed = 0
     session_factory = create_session_factory(engine)
     with session_factory() as session:
         tenants = session.scalars(select(Tenant).order_by(Tenant.slug)).all()
         for tenant in tenants:
-            for title, file_name, text in _document_set(tenant):
+            bind_tenant(session, tenant.id)
+            for title, file_name, text, visibility in _document_set(tenant):
                 data = text.encode("utf-8")
                 sha256 = hashlib.sha256(data).hexdigest()
-                exists = session.scalar(
+                existing_id = session.scalar(
                     select(KnowledgeDocument.id).where(
                         KnowledgeDocument.tenant_id == tenant.id,
                         KnowledgeDocument.sha256 == sha256,
                     )
                 )
-                if exists is not None:
-                    continue
-                document_id = uuid.uuid4()
-                key = object_key(tenant.id, "knowledge", document_id, document_id)
-                store.put(key, data, "text/markdown")
-                session.add(
-                    KnowledgeDocument(
-                        id=document_id,
-                        tenant_id=tenant.id,
-                        title=title,
-                        file_name=file_name,
-                        content_type="text/markdown",
-                        size_bytes=len(data),
-                        sha256=sha256,
-                        storage_key=key,
-                        status="processing",
-                        page_count=0,
-                        created_by_user_id=None,
+                if existing_id is None:
+                    document_id = uuid.uuid4()
+                    key = object_key(tenant.id, "knowledge", document_id, document_id)
+                    store.put(key, data, "text/markdown")
+                    session.add(
+                        KnowledgeDocument(
+                            id=document_id,
+                            tenant_id=tenant.id,
+                            title=title,
+                            file_name=file_name,
+                            content_type="text/markdown",
+                            size_bytes=len(data),
+                            sha256=sha256,
+                            storage_key=key,
+                            status="processing",
+                            page_count=0,
+                            visibility=visibility,
+                            created_by_user_id=None,
+                        )
                     )
-                )
-                session.flush()
+                    session.flush()
+                    created += 1
+                    action = "indexed"
+                else:
+                    # Re-ingest so a new embedding model / chunker fills old demo chunks too.
+                    document_id = existing_id
+                    reindexed += 1
+                    action = "re-indexed"
                 service.ingest_document(
-                    session, store, tenant_id=tenant.id, document_id=document_id
+                    session, store, embedder, tenant_id=tenant.id, document_id=document_id
                 )
                 session.commit()
-                created += 1
-                print(f"{tenant.slug}: indexed {title}")
+                print(f"{tenant.slug}: {action} {title}")
     engine.dispose()
-    print(f"knowledge demo content: {created} document(s) created")
+    print(f"knowledge demo content: {created} document(s) created, {reindexed} re-indexed")
 
 
 if __name__ == "__main__":

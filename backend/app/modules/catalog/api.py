@@ -3,10 +3,13 @@
 import uuid
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.auth.principal import Principal
+from app.core.errors import ForbiddenError
 from app.modules.catalog.models import PriceBook, PriceBookEntry, Product
 
 __all__ = ["BookInfo", "PriceInfo", "price_book_info", "prices_for"]
@@ -66,3 +69,30 @@ def prices_for(
         )
         for price, product in rows
     }  # fmt: skip
+
+
+# --- customer portal (AI assistant) ---------------------------------------------------------
+
+
+def customer_products(
+    session: Session, principal: Principal, *, limit: int = 50
+) -> list[dict[str, Any]]:
+    """Active products only; no cost/price-book internals."""
+    if principal.user_type != "customer" or principal.tenant_id is None:
+        raise ForbiddenError("Only customers can list products.")
+    rows = session.scalars(
+        select(Product)
+        .where(Product.tenant_id == principal.tenant_id, Product.is_active.is_(True))
+        .order_by(Product.name)
+        .limit(min(limit, 100))
+    ).all()
+    return [
+        {
+            "sku": p.sku,
+            "name": p.name,
+            "description": p.description,
+            "unit": p.unit,
+            "tax_rate": str(p.tax_rate),
+        }
+        for p in rows
+    ]

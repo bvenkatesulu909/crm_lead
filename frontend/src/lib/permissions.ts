@@ -134,6 +134,7 @@ export type NavItem = {
     | "automation"
     | "reports"
     | "knowledge"
+    | "assistant"
     | "organisations";
 };
 
@@ -170,6 +171,8 @@ export function navigationFor(
     items.push({ href: "/products", label: "Products", icon: "products" });
   if (canReadKnowledge(me))
     items.push({ href: "/knowledge", label: "Knowledge", icon: "knowledge" });
+  if (canReadTickets(me))
+    items.push({ href: "/assistant", label: "AI Assistant", icon: "assistant" });
   if (me.permissions.length > 0 && canUseReports(me))
     items.push({ href: "/reports", label: "Reports", icon: "reports" });
   if (canReadUsers(me))

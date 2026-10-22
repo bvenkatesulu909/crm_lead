@@ -28,6 +28,8 @@ anthropic==1.15.0
 # Local text embeddings for the knowledge base (ADR 0010): ONNX Runtime, no PyTorch.
 # First use downloads the model (~130 MB); it is cached locally.
 fastembed==0.9.0
+# SQLAlchemy support for the PostgreSQL vector type (pgvector; ADR 0010).
+pgvector==0.5.1
 # S3 client for the file store (ADR 0005; SeaweedFS locally). Works with any S3-compatible
 # store; used only inside app/core/storage.py.
 minio==7.2.20
@@ -38,3 +40,13 @@ python-multipart==0.0.32
 # Text extraction for knowledge ingestion (RAG R1): PDF and Word documents.
 pypdf==6.21.1
 python-docx==1.2.0
+# --- Operations (R6): metrics and tracing. Prometheus scrapes the token-protected internal route;
+# OpenTelemetry is opt-in (no collector needed to run the app).
+prometheus-client==0.26.0
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+opentelemetry-exporter-otlp-proto-http==1.45.1
+opentelemetry-instrumentation-fastapi==0.66b1
+opentelemetry-instrumentation-sqlalchemy==0.66b1
+opentelemetry-instrumentation-httpx==0.66b1
+faster-whisper>=1.1.0

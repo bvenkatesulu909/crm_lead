@@ -23,8 +23,11 @@ from sqlalchemy.orm import Session
 from app.core.auth.principal import Principal
 from app.core.errors import DomainError, NotFoundError
 from app.modules.accounts import api as accounts_api
+from app.modules.catalog import api as catalog_api
+from app.modules.contacts import api as contacts_api
 from app.modules.invoices import api as invoices_api
 from app.modules.orders import api as orders_api
+from app.modules.quotes import api as quotes_api
 from app.modules.support import api as support_api
 
 MAX_RESULT_CHARS = 6_000
@@ -70,6 +73,10 @@ class InvoiceArgs(_Args):
 
 class InvoiceListArgs(_Args):
     state: Literal["unpaid", "overdue", "paid"] | None = None
+
+
+class QuoteArgs(_Args):
+    quote_id: uuid.UUID = Field(description="The quote id from list_my_quotes.")
 
 
 class TicketArgs(_Args):
@@ -215,6 +222,23 @@ def get_ticket(session: Session, principal: Principal, args: TicketArgs) -> Any:
     }
 
 
+class HelpArgs(_Args):
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
+
+
+def search_help_articles(session: Session, principal: Principal, args: HelpArgs) -> Any:
+    from app.modules.identity import api as identity_api
+    from app.modules.knowledge import api as knowledge_api
+
+    account_ids = list(session.scalars(identity_api.granted_account_ids(principal)).all())
+    results = knowledge_api.search_help_articles(
+        session, principal, args.question, account_ids=account_ids
+    )
+    if not results:
+        raise NotFoundError("No help article matches that question.")
+    return {"articles": results}
+
+
 ProposeHandler = Callable[[ProposeTicketArgs], None]
 
 
@@ -224,6 +248,27 @@ class Tool:
     description: str
     args: type[_Args]
     run: Callable[[Session, Principal, Any], Any] | None  # None: handled by the service
+
+
+def list_my_quotes(session: Session, principal: Principal, args: Any) -> str:
+    return _json(
+        [q.model_dump(mode="json") for q in quotes_api.customer_quotes(session, principal)]
+    )
+
+
+def get_my_quote(session: Session, principal: Principal, args: Any) -> str:
+    if not isinstance(args, QuoteArgs):
+        raise NotFoundError("Quote not found.")
+    quote = quotes_api.customer_quote(session, principal, args.quote_id)
+    return _json(quote.model_dump(mode="json"))
+
+
+def list_products(session: Session, principal: Principal, args: Any) -> str:
+    return _json(catalog_api.customer_products(session, principal))
+
+
+def list_my_contacts(session: Session, principal: Principal, args: Any) -> str:
+    return _json(contacts_api.customer_contacts(session, principal))
 
 
 TOOLS: dict[str, Tool] = {
@@ -254,7 +299,29 @@ TOOLS: dict[str, Tool] = {
             InvoiceArgs,
             get_invoice,
         ),
+        Tool("list_products", "Active products the customer may ask about.", NoArgs, list_products),
+        Tool(
+            "list_my_contacts",
+            "Contacts of the customer's granted accounts.",
+            NoArgs,
+            list_my_contacts,
+        ),
+        Tool("list_my_quotes", "Quotes sent to the customer's company.", NoArgs, list_my_quotes),
+        Tool(
+            "get_my_quote",
+            "Amounts, status and lines of ONE quote sent to the customer's company.",
+            QuoteArgs,
+            get_my_quote,
+        ),
         Tool("list_tickets", "The customer's support tickets.", NoArgs, list_tickets),
+        Tool(
+            "search_help_articles",
+            "Search public help/policy articles visible to this customer (public + granted "
+            "accounts). Use it for policies, returns, delivery, payments and product questions, "
+            "and cite the document names you used.",
+            HelpArgs,
+            search_help_articles,
+        ),
         Tool("get_ticket", "One support ticket by its number.", TicketArgs, get_ticket),
         Tool(
             "propose_support_ticket",

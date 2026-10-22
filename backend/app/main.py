@@ -16,15 +16,20 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api.v1.router import api_router
+from app.core.ai.embeddings import Embedder, build_embedder
 from app.core.auth.identity_admin import IdentityAdmin, build_identity_admin
 from app.core.auth.tokens import JwksKeyProvider, TokenVerifier
 from app.core.config import Settings, get_settings
 from app.core.db import create_db_engine, create_session_factory
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
+from app.core.observability.metrics import MetricsMiddleware
+from app.core.observability.tracing import configure_tracing
 from app.core.request_context import REQUEST_ID_HEADER, RequestContextMiddleware
 from app.core.storage import FileStore, build_file_store
 from app.modules.assistant.llm import ChatModel, build_chat_model
+from app.modules.knowledge.retrieval import Reranker, build_reranker
+from app.modules.voice.provider import SpeechProvider, build_speech_provider
 
 API_V1_PREFIX = "/api/v1"
 
@@ -35,6 +40,8 @@ def create_app(
     identity_admin: IdentityAdmin | None = None,
     chat_model: ChatModel | None = None,
     file_store: FileStore | None = None,
+    embedder: Embedder | None = None,
+    reranker: Reranker | None = None,
 ) -> FastAPI:
     """Build the FastAPI application.
 
@@ -73,14 +80,20 @@ def create_app(
     app.state.identity_admin = identity_admin or build_identity_admin(settings)
     # The AI assistant's model (Claude, or "not configured" without an API key).
     app.state.chat_model = chat_model or build_chat_model(settings)
+    speech_provider: SpeechProvider | None = build_speech_provider(settings)
+    app.state.speech_provider = speech_provider
     # S3 file store (ADR 0005); answers 503 if no keys are configured.
     app.state.file_store = file_store or build_file_store(settings)
+    # Local text embeddings (ADR 0010) and the optional reranker (ADR 0011).
+    app.state.embedder = embedder or build_embedder(settings)
+    app.state.reranker = reranker or build_reranker(settings)
 
     register_exception_handlers(app)
 
     # Middleware added last runs first. CORS is outermost so that even error responses
     # carry CORS headers and the browser lets the frontend read them.
     app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(MetricsMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allowed_origins,
@@ -93,4 +106,5 @@ def create_app(
     )
 
     app.include_router(api_router, prefix=API_V1_PREFIX)
+    configure_tracing(app, engine, settings)
     return app

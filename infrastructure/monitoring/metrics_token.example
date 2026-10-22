@@ -1,0 +1,2 @@
+# Copy to metrics_token (git-ignored) with the SAME value as CRM_METRICS_TOKEN in backend/.env
+change-me

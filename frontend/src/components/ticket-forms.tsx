@@ -122,8 +122,7 @@ export function ReplyForm({
       )}
       <DialogField id="reply-body" label={internal ? "Internal note" : staff ? "Message to customer" : "Your reply"} error={state.fieldErrors.body}>
         {(props) => <textarea name="body" rows={4} maxLength={10000} defaultValue={state.values.body} {...props} />}
-      </DialogField>
-      <div className="flex justify-end">
+      </DialogField>      <div className="flex justify-end">
         <button type="submit" disabled={pending} className={buttonClass(internal ? "secondary" : "primary")}>
           {pending ? "Sending…" : internal ? "Add internal note" : staff ? "Send reply to customer" : "Send reply"}
         </button>
@@ -131,3 +130,4 @@ export function ReplyForm({
     </form>
   ); // prettier-ignore
 }
+

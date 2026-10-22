@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ActionDialog } from "@/components/action-dialog";
 import { KnowledgeUploadForm } from "@/components/knowledge-form";
 import {
+  ButtonLink,
   Card,
   EmptyState,
   ErrorAlert,
@@ -95,6 +96,9 @@ export default async function KnowledgePage({
       <PageHeader
         title="Knowledge"
         description="Company policies and manuals become searchable passages, with citations. Uploads are indexed in the background."
+        actions={
+          <ButtonLink href="/knowledge/search">Search &amp; ask</ButtonLink>
+        }
       />
       {done === "uploaded" && (
         <div className="mb-5">
@@ -143,7 +147,10 @@ export default async function KnowledgePage({
                         <td className="px-5 py-3">
                           <p className="font-medium text-slate-900">{document.title}</p>
                           <p className="text-xs text-slate-500">
-                            {document.file_name} · {fileSize(document.size_bytes)}
+                            {document.file_name} · {fileSize(document.size_bytes)} ·{" "}
+                            {document.visibility === "customer_visible"
+                              ? "Customer-visible"
+                              : "Internal"}
                           </p>
                         </td>
                         <td className="px-5 py-3">

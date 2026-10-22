@@ -17,7 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import __version__
 from app.core.config import Settings
-from app.core.db import check_database
+from app.core.db import check_database, check_vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ def get_health(request: Request) -> HealthResponse:
 class ReadinessResponse(BaseModel):
     status: Literal["ok"]
     database: Literal["ok"]
+    vector: Literal["ok"]
 
 
 @router.get(
@@ -50,8 +51,9 @@ def get_readiness(request: Request) -> ReadinessResponse:
     engine: Engine = request.app.state.db_engine
     try:
         check_database(engine)
-    except SQLAlchemyError as exc:
+        check_vector_store(engine)
+    except (SQLAlchemyError, RuntimeError) as exc:
         # The exception type is enough to diagnose; the message could include host names.
         logger.warning("database readiness check failed", extra={"error": type(exc).__name__})
         raise HTTPException(status_code=503, detail="Database unavailable.") from exc
-    return ReadinessResponse(status="ok", database="ok")
+    return ReadinessResponse(status="ok", database="ok", vector="ok")

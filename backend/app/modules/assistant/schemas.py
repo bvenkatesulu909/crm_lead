@@ -20,11 +20,18 @@ class MessageCreate(BaseModel):
     text: UserText
 
 
+class CitationRead(BaseModel):
+    document: str
+    heading: str
+    page: int | None
+
+
 class MessageRead(BaseModel):
     id: uuid.UUID
     role: Literal["user", "assistant"]
     content: str
     created_at: datetime
+    citations: list[CitationRead] = []
 
 
 class PendingActionRead(BaseModel):

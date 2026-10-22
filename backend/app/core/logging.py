@@ -11,6 +11,7 @@ import sys
 from datetime import UTC, datetime
 from typing import Any
 
+from app.core.observability.redaction import redact_text, redact_value
 from app.core.request_context import get_request_id
 
 # Attributes every LogRecord has; anything else on a record came from ``extra=...``.
@@ -21,22 +22,38 @@ _STANDARD_ATTRS = set(vars(logging.LogRecord("", 0, "", 0, "", None, None))) | {
 }
 
 
+def _current_trace_ids() -> tuple[str | None, str | None]:
+    try:
+        from opentelemetry import trace
+
+        context = trace.get_current_span().get_span_context()
+        if context.is_valid:
+            return format(context.trace_id, "032x"), format(context.span_id, "016x")
+    except Exception:  # noqa: BLE001 - logging must never fail because tracing is absent
+        return None, None
+    return None, None
+
+
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": redact_text(record.getMessage()),
         }
         request_id = get_request_id()
         if request_id:
             payload["request_id"] = request_id
+        trace_id, span_id = _current_trace_ids()
+        if trace_id:
+            payload["trace_id"] = trace_id
+            payload["span_id"] = span_id
         for key, value in vars(record).items():
             if key not in _STANDARD_ATTRS and not key.startswith("_"):
-                payload[key] = value
+                payload[key] = redact_value(key, value)
         if record.exc_info:
-            payload["exception"] = self.formatException(record.exc_info)
+            payload["exception"] = redact_text(self.formatException(record.exc_info))
         return json.dumps(payload, default=str)
 
 

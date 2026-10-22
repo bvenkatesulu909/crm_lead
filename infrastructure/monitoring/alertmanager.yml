@@ -1,0 +1,20 @@
+route:
+  receiver: default
+  group_by: [alertname]
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: critical
+
+receivers:
+  - name: default
+    webhook_configs:
+      - url: http://webhook:9999/alerts
+        send_resolved: true
+  - name: critical
+    webhook_configs:
+      - url: http://webhook:9999/alerts
+        send_resolved: true
+

@@ -46,6 +46,9 @@ const icons: Record<NavItem["icon"], ReactNode> = {
   support: (
     <path d="M4 13a8 8 0 1 1 16 0v4a2 2 0 0 1-2 2h-2v-6h4M4 13v4a2 2 0 0 0 2 2h2v-6H4" />
   ),
+  assistant: (
+    <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
+  ),
 };
 
 function NavIcon({ name }: { name: NavItem["icon"] }) {

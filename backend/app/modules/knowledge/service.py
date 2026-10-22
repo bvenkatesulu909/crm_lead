@@ -8,17 +8,19 @@ document's chunks.
 import hashlib
 import uuid
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.core.ai.embeddings import Embedder
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.errors import ConflictError, DomainError, NotFoundError
 from app.core.outbox import enqueue
 from app.core.storage import FileStore, StoredFileMissingError, object_key
 from app.modules.knowledge import chunking, extraction, pii, repository, rules
-from app.modules.knowledge.models import KnowledgeChunk, KnowledgeDocument
+from app.modules.knowledge.models import KnowledgeChunk, KnowledgeDocument, RagFeedback, RagQuery
 
 JOB_KIND = "knowledge.ingest"
 CHUNKING_VERSION = chunking.CHUNKING_VERSION
@@ -69,8 +71,21 @@ def create_document(
     content_type: str,
     data: bytes,
     max_bytes: int,
+    visibility: str = "internal",
+    account_id: uuid.UUID | None = None,
+    replaces_document_id: uuid.UUID | None = None,
 ) -> KnowledgeDocument:
     tenant_id = _tenant(principal)
+    visibility = visibility.strip().lower()
+    if visibility not in ("internal", "customer_visible"):
+        raise InvalidKnowledgeFileError("Visibility must be 'internal' or 'customer_visible'.")
+    if visibility == "internal" and account_id is not None:
+        raise InvalidKnowledgeFileError("Internal documents cannot be linked to one account.")
+    if account_id is not None:
+        from app.modules.accounts import api as accounts_api
+
+        if not accounts_api.is_readable_account(session, principal, account_id):
+            raise InvalidKnowledgeFileError("The selected account is not available.")
     if not data:
         raise InvalidKnowledgeFileError("The file is empty.")
     if len(data) > max_bytes:
@@ -90,6 +105,20 @@ def create_document(
     if existing is not None:
         raise DuplicateKnowledgeDocumentError()
 
+    group_id = uuid.uuid4()
+    version = 1
+    if replaces_document_id is not None:
+        previous = session.scalar(
+            select(KnowledgeDocument).where(
+                KnowledgeDocument.tenant_id == tenant_id,
+                KnowledgeDocument.id == replaces_document_id,
+            )
+        )
+        if previous is None or previous.is_archived:
+            raise InvalidKnowledgeFileError("The document to replace is not available.")
+        _archive_document(session, previous)
+        group_id = previous.group_id
+        version = previous.version + 1
     document_id = uuid.uuid4()
     storage_key = object_key(tenant_id, "knowledge", document_id, document_id)
     store.put(storage_key, data, content_type or kind.content_type)
@@ -104,6 +133,10 @@ def create_document(
         storage_key=storage_key,
         status="processing",
         page_count=0,
+        group_id=group_id,
+        version=version,
+        visibility=visibility,
+        account_id=account_id,
         created_by_user_id=principal.user_id,
     )
     session.add(document)
@@ -124,8 +157,39 @@ def create_document(
     return document
 
 
+def _archive_document(session: Session, document: KnowledgeDocument) -> None:
+    document.is_archived = True
+    document.archived_at = datetime.now(UTC)
+    session.execute(
+        delete(KnowledgeChunk).where(
+            KnowledgeChunk.tenant_id == document.tenant_id,
+            KnowledgeChunk.document_id == document.id,
+        )
+    )
+
+
+def archive_document(session: Session, principal: Principal, document_id: uuid.UUID) -> None:
+    document = get_document(session, principal, document_id)
+    if document.is_archived:
+        return
+    _archive_document(session, document)
+    record_audit(
+        session,
+        principal,
+        action="knowledge.document_archived",
+        entity_type="knowledge_document",
+        entity_id=document.id,
+        changes={"file_name": document.file_name},
+    )
+
+
 def ingest_document(
-    session: Session, store: FileStore, *, tenant_id: uuid.UUID, document_id: uuid.UUID
+    session: Session,
+    store: FileStore,
+    embedder: Embedder,
+    *,
+    tenant_id: uuid.UUID,
+    document_id: uuid.UUID,
 ) -> None:
     """Worker job body: turn one document's bytes into chunks, atomically per version."""
     document = repository.get_document_for_worker(session, tenant_id, document_id)
@@ -163,10 +227,74 @@ def ingest_document(
         return
 
     chunks = chunking.chunk_sections(sections)
-    repository.replace_chunks(session, tenant_id, document_id, chunks)
+    # Embedding is part of ingestion: if the model fails, the whole job is retried (chunk
+    # replacement is idempotent) instead of storing chunks that search can never find.
+    vectors = embedder.embed_documents([chunk.embedding_text for chunk in chunks])
+    repository.replace_chunks(
+        session,
+        tenant_id,
+        document_id,
+        chunks,
+        vectors=vectors,
+        embedding_model=embedder.model_name,
+        visibility=document.visibility,
+        account_id=document.account_id,
+    )
     document.status = "indexed"
     document.error = None
     document.page_count = extraction.page_count(sections)
+
+
+def record_rag_query(
+    session: Session,
+    principal: Principal,
+    *,
+    surface: str,
+    question: str,
+    answer: str | None,
+    sources: list[dict[str, object]],
+) -> uuid.UUID:
+    row = RagQuery(
+        tenant_id=_tenant(principal),
+        user_id=principal.user_id,
+        surface=surface,
+        question=question[:500],
+        answer=(answer or "")[:8000] or None,
+        sources=sources,
+    )
+    session.add(row)
+    session.flush()
+    return row.id
+
+
+def record_rag_feedback(
+    session: Session, principal: Principal, query_id: uuid.UUID, helpful: bool
+) -> None:
+    tenant_id = _tenant(principal)
+    query = session.scalar(
+        select(RagQuery).where(RagQuery.tenant_id == tenant_id, RagQuery.id == query_id)
+    )
+    if query is None:
+        raise KnowledgeDocumentNotFoundError()
+    existing = session.scalar(
+        select(RagFeedback).where(
+            RagFeedback.tenant_id == tenant_id,
+            RagFeedback.query_id == query_id,
+            RagFeedback.user_id == principal.user_id,
+        )
+    )
+    if existing is None:
+        session.add(
+            RagFeedback(
+                tenant_id=tenant_id,
+                query_id=query_id,
+                user_id=principal.user_id,
+                helpful=helpful,
+            )
+        )
+    else:
+        existing.helpful = helpful
+    session.flush()
 
 
 def list_documents(

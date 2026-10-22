@@ -90,6 +90,12 @@ searches still get 40 candidates.
 A cross-encoder reranker (for example BAAI/bge-reranker-v2-m3) can improve the final top 5, but it
 adds latency and a second model. It stays **off** until the R5 evaluation set shows a measured gain.
 
+**Update 2026-10-21 (measured):** a small English cross-encoder
+(`Xenova/ms-marco-MiniLM-L-6-v2`) was evaluated on the RRF top-10. On 13 free cases / 8 demo
+documents the gain was **+0.000 hit@5 and +0.000 MRR**, so it is **off by default** again, as this
+ADR originally required. The code and flag remain for a future experiment; re-enable only if the
+100-case set shows a measurable gain. It soft-fails to the RRF order if the model cannot load.
+
 ### 7. "Not good enough" is a threshold, calibrated by measurement
 
 RRF produces a ranking but not a confidence. The decision "we have no answer" uses the **best

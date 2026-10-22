@@ -30,7 +30,10 @@ export async function uploadKnowledge(
   formData: FormData,
 ): Promise<FormState> {
   const title = String(formData.get("title") ?? "").trim();
-  const values = { title };
+  const visibility = String(formData.get("visibility") ?? "internal");
+  const values = { title, visibility };
+  if (visibility !== "internal" && visibility !== "customer_visible")
+    return failed(previous, values, { visibility: "Choose who can see it." });
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0)
     return failed(previous, values, { file: "Choose a file." });
@@ -42,6 +45,7 @@ export async function uploadKnowledge(
   const body = new FormData();
   body.set("file", file, file.name);
   if (title) body.set("title", title);
+  body.set("visibility", visibility);
   try {
     await apiFetch("/knowledge/documents", { method: "POST", body });
   } catch (error) {

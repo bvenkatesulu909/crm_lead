@@ -135,8 +135,69 @@ services:
     volumes:
       - files_data:/data
 
+
+  # --- R6 operations: local monitoring, bound to 127.0.0.1 only ---
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./monitoring/metrics_token:/etc/prometheus/metrics_token:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    environment:
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-http://host.docker.internal:9999/alerts}
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - prometheus
+
+  webhook:
+    image: python:3.12-alpine
+    restart: unless-stopped
+    command: ["python", "/srv/webhook_receiver.py"]
+    volumes:
+      - ./monitoring/webhook_receiver.py:/srv/webhook_receiver.py:ro
+      - ./monitoring:/data
+    expose:
+      - "9999"
+
 volumes:
-  # Named volume: data survives "docker compose down" and container upgrades.
-  # Only "docker compose down -v" (or deleting the volume) erases it.
   postgres_data:
   files_data:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:

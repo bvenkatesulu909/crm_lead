@@ -83,6 +83,8 @@ class Permission(StrEnum):
     PORTAL_INVOICE_READ = "portal:invoice:read"
     # Customer portal AI assistant (ADR 0003): chat that can only read the customer's own data.
     PORTAL_ASSISTANT_USE = "portal:assistant:use"
+    # Customer portal knowledge answers: only customer-visible chunks + granted accounts.
+    PORTAL_KNOWLEDGE_READ = "portal:knowledge:read"
 
     # Opportunities (deals in the sales pipeline). "own" = opportunities the user owns.
     OPPORTUNITY_READ_ALL = "opportunity:read:all"
@@ -227,6 +229,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.PORTAL_QUOTE_READ,
             _P.PORTAL_QUOTE_RESPOND,
             _P.PORTAL_DOCUMENT_READ,
+            _P.PORTAL_KNOWLEDGE_READ,
         }
     ),
 }

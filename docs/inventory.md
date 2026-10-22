@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **173** operations over **136** paths and **194** schemas.
+- **183** operations over **146** paths and **208** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -20,39 +20,41 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | user administration | 11 |
 | opportunities | 10 |
 | accounts | 9 |
+| tickets | 9 |
 | activities | 8 |
 | invoices | 8 |
-| tickets | 8 |
+| knowledge | 8 |
+| assistant | 7 |
 | contacts | 7 |
 | workflows | 7 |
-| assistant | 6 |
 | documents | 5 |
 | notifications | 5 |
 | orders | 5 |
 | reports | 5 |
-| knowledge | 4 |
 | customer relationships | 3 |
 | identity | 3 |
 | portal access | 3 |
 | health | 2 |
 | onboarding | 2 |
+| portal-knowledge | 2 |
+| voice | 2 |
 | dashboard | 1 |
 | platform | 1 |
 
 ## Database (live)
 
-- Alembic revision: **0020**
-- Tables in the current schema: **48**
-- Tables with Row-Level Security: **0** (0 policies)
+- Alembic revision: **0028**
+- Tables in the current schema: **51**
+- Tables with Row-Level Security: **2** (2 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **20**
-- Heads: `0020`
+- Migration files: **28**
+- Heads: `0028`
 
 ## Web app (`frontend/src/app`)
 
-- 65 pages and 8 route handlers.
+- 68 pages and 8 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -64,6 +66,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/accounts/new` | page |
 | `/api/auth/callback/keycloak` | route handler |
 | `/api/auth/login` | route handler |
+| `/assistant` | page |
 | `/automation` | page |
 | `/automation/[id]` | page |
 | `/automation/new` | page |
@@ -76,6 +79,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/invoices` | page |
 | `/invoices/[id]` | page |
 | `/knowledge` | page |
+| `/knowledge/search` | page |
 | `/leads` | page |
 | `/leads/[id]` | page |
 | `/leads/[id]/edit` | page |
@@ -99,6 +103,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/portal/documents/[id]/download` | route handler |
 | `/portal/invoices` | page |
 | `/portal/invoices/[id]` | page |
+| `/portal/knowledge` | page |
 | `/portal/orders` | page |
 | `/portal/orders/[id]` | page |
 | `/portal/quotes` | page |
@@ -132,10 +137,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **51**
-- Frontend component test files: **13**
-- Playwright end-to-end specs: **19**
+- Backend test files: **68**
+- Frontend component test files: **14**
+- Playwright end-to-end specs: **20**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **37** (12 in `docs/adr/`)
+- Markdown documents under `docs/`: **45** (12 in `docs/adr/`)

@@ -32,6 +32,23 @@ export function KnowledgeUploadForm({
         )}
       </DialogField>
       <DialogField
+        id="knowledge-visibility"
+        label="Who can see this?"
+        error={e.visibility}
+        hint="Staff only, or also customers in the portal (once portal search exists)"
+      >
+        {(p) => (
+          <select
+            name="visibility"
+            defaultValue={state.values.visibility ?? "internal"}
+            {...p}
+          >
+            <option value="internal">Staff only</option>
+            <option value="customer_visible">Staff and customers</option>
+          </select>
+        )}
+      </DialogField>
+      <DialogField
         id="knowledge-file"
         label="File"
         error={e.file}

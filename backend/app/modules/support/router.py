@@ -4,7 +4,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
@@ -12,11 +12,13 @@ from app.core.auth.rbac import Permission
 from app.core.db import get_db_session
 from app.core.errors import problem_responses
 from app.modules.identity.api import require_any_permission
+from app.modules.knowledge import api as knowledge_api
 from app.modules.support import service
 from app.modules.support.repository import TicketFilters
 from app.modules.support.schemas import (
     CommentCreate,
     CommentRead,
+    KnowledgeDraftSource,
     PortalCommentCreate,
     PortalCommentRead,
     PortalTicketCreate,
@@ -24,6 +26,7 @@ from app.modules.support.schemas import (
     TicketAssign,
     TicketCategory,
     TicketCreate,
+    TicketKnowledgeDraft,
     TicketPage,
     TicketPriority,
     TicketRating,
@@ -113,6 +116,45 @@ def create_ticket(
 @router.get("/{ticket_id}", summary="Get one ticket", responses=problem_responses(404))
 def get_ticket(ticket_id: TicketId, principal: Reader, session: Db) -> TicketRead:
     return service.to_staff_view(service.get_ticket(session, principal, ticket_id))
+
+
+@router.post(
+    "/{ticket_id}/knowledge-draft",
+    summary="Draft a customer reply from the knowledge base (customer-visible scope)",
+    responses=problem_responses(404, 503),
+)
+def ticket_knowledge_draft(
+    ticket_id: TicketId,
+    principal: Reader,
+    session: Db,
+    request: Request,
+) -> TicketKnowledgeDraft:
+    ticket = service.get_ticket(session, principal, ticket_id)
+    outcome = knowledge_api.answer_customer_scope(
+        session,
+        principal,
+        question=f"{ticket.subject}\n\n{ticket.description}",
+        account_ids=[ticket.account_id],
+        settings=request.app.state.settings,
+        embedder=request.app.state.embedder,
+        chat_model=request.app.state.chat_model,
+        reranker=request.app.state.reranker,
+    )
+    return TicketKnowledgeDraft(
+        draft=outcome.answer,
+        sources=[
+            KnowledgeDraftSource(
+                document_title=source.document_title,
+                heading_path=source.heading_path,
+                page_from=source.page_from,
+                page_to=source.page_to,
+                text=source.text,
+            )
+            for source in outcome.sources
+        ],
+        enough=outcome.enough,
+        grounded=outcome.grounded,
+    )
 
 
 @router.patch(

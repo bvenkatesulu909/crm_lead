@@ -5,11 +5,14 @@ their own leads.
 """
 
 import uuid
+from typing import Any
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.auth.rbac import Permission
+from app.core.errors import ForbiddenError
 from app.core.records import RecordFacts
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
 from app.modules.leads import repository, service
@@ -26,6 +29,7 @@ from app.modules.leads.metrics import (
 )
 from app.modules.leads.models import LEAD_STATUSES, Lead
 from app.modules.leads.policies import readable_leads
+from app.modules.leads.repository import LeadFilters
 
 __all__ = [
     "conversion_table",
@@ -130,3 +134,30 @@ def export_table(
         status=Lead.status,
         filters=filters,
     )
+
+
+# --- staff assistant (read-only, record-policy enforced) -------------------------------------
+
+
+def search_leads(
+    session: Session, principal: Principal, *, q: str = "", limit: int = 10
+) -> list[dict[str, Any]]:
+    if not (
+        principal.has_permission(Permission.LEAD_READ_ALL)
+        or principal.has_permission(Permission.LEAD_READ_OWN)
+    ):
+        raise ForbiddenError("You may not read leads.")
+    items, _ = service.list_leads(
+        session, principal, LeadFilters(q=q.strip()[:100] or None, limit=min(limit, 50))
+    )
+    return [
+        {
+            "id": str(lead.id),
+            "name": " ".join(part for part in (lead.first_name, lead.last_name) if part),
+            "company": lead.company_name,
+            "email": lead.email,
+            "status": lead.status,
+            "link": f"/leads/{lead.id}",
+        }
+        for lead in items
+    ]

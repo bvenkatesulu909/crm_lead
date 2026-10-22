@@ -2,10 +2,11 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import health
+from app.api.v1 import health, internal
 from app.modules.accounts.router import router as accounts_router
 from app.modules.activities.router import router as activities_router
 from app.modules.assistant.router import router as assistant_router
+from app.modules.assistant.staff_router import router as staff_assistant_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.contacts.router import router as contacts_router
 from app.modules.dashboard.router import router as dashboard_router
@@ -20,6 +21,7 @@ from app.modules.identity.onboarding_router import (
 from app.modules.identity.router import router as identity_router
 from app.modules.invoices.router import portal_router as portal_invoices_router
 from app.modules.invoices.router import router as invoices_router
+from app.modules.knowledge.router import portal_router as portal_knowledge_router
 from app.modules.knowledge.router import router as knowledge_router
 from app.modules.leads.router import router as leads_router
 from app.modules.notifications.router import router as notifications_router
@@ -33,10 +35,12 @@ from app.modules.reports.router import router as reports_router
 from app.modules.sales.router import router as opportunities_router
 from app.modules.support.router import portal_router as portal_tickets_router
 from app.modules.support.router import router as tickets_router
+from app.modules.voice.router import router as voice_router
 from app.modules.workflows.router import router as workflows_router
 
 api_router = APIRouter()
 api_router.include_router(health.router)
+api_router.include_router(internal.router)
 api_router.include_router(identity_router)
 api_router.include_router(relationships_router)
 api_router.include_router(accounts_router)
@@ -59,10 +63,13 @@ api_router.include_router(orders_router)
 api_router.include_router(portal_orders_router)
 api_router.include_router(invoices_router)
 api_router.include_router(knowledge_router)
+api_router.include_router(portal_knowledge_router)
 api_router.include_router(portal_invoices_router)
 api_router.include_router(tenant_router)
 api_router.include_router(portal_access_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(platform_router)
 api_router.include_router(assistant_router)
+api_router.include_router(staff_assistant_router)
 api_router.include_router(dashboard_router)
+api_router.include_router(voice_router)

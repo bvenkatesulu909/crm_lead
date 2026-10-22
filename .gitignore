@@ -89,3 +89,6 @@ Desktop.ini
 
 # ---------- Local database backups (ADR 0010 R0): never commit dumps ----------
 infrastructure/backups/
+# Monitoring credentials (R6): the Prometheus scrape token is never committed.
+infrastructure/monitoring/metrics_token
+infrastructure/monitoring/alerts-received.jsonl

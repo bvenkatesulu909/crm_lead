@@ -168,7 +168,9 @@ export default async function TicketPage({
           </div>
           <CommentThread items={comments} emptyText="No replies yet." />
           {manage && ticket.status !== "closed" && (
-            <ReplyForm key={ticket.version} action={addStaffComment.bind(null, ticket.id)} initialState={initialFormState} staff />
+            <>
+              <ReplyForm key={ticket.version} action={addStaffComment.bind(null, ticket.id)} initialState={initialFormState} staff />
+            </>
           )}
           {ticket.status === "closed" && (
             <p className="border-t border-slate-200 px-5 py-4 text-sm text-slate-600">This ticket is closed.</p>
@@ -189,3 +191,4 @@ export default async function TicketPage({
     </>
   ); // prettier-ignore
 }
+

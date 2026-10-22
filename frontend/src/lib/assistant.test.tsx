@@ -41,9 +41,15 @@ describe("assistant chat box", () => {
 }); // prettier-ignore
 
 describe("module overview", () => {
-  it("shows the assistant honestly as in progress (staff have no assistant screen yet)", () => {
-    const assistant = modulesFor({ permissions: [] }).find((m) => m.key === "assistant");
-    expect(assistant?.note).toBe("Screens coming soon");
-    expect(assistant?.link).toBeUndefined();
+  it("links the staff assistant to its own page", () => {
+    const assistant = modulesFor({ permissions: ["ticket:read:all"] }).find(
+      (m) => m.key === "assistant",
+    );
+    expect(assistant?.note).toBe("Open");
+    expect(assistant?.link).toBe("/assistant");
   });
 }); // prettier-ignore
+
+
+
+

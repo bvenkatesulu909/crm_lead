@@ -458,8 +458,13 @@ def test_invented_tools_and_bad_arguments_are_refused(api, auth, data, model, db
         "get_order",
         "list_invoices",
         "get_invoice",
+        "list_products",
+        "list_my_contacts",
+        "list_my_quotes",
+        "get_my_quote",
         "list_tickets",
         "get_ticket",
+        "search_help_articles",
         "propose_support_ticket",
     }  # noqa: E501
 

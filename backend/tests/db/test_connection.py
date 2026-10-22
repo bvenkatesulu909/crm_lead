@@ -64,4 +64,4 @@ def test_readiness_endpoint_reports_database_ok(
         response = client.get("/api/v1/health/ready")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "database": "ok"}
+    assert response.json() == {"status": "ok", "database": "ok", "vector": "ok"}

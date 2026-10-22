@@ -22,9 +22,11 @@ jobs:
     timeout-minutes: 20
 
     # A temporary PostgreSQL 16 for the database tests (real PostgreSQL, as the project requires).
+    # pgvector image here only for CI's throwaway cluster: a fresh database has no existing
+    # collation-sensitive indexes, so the Alpine/glibc concern from ADR 0010 does not apply.
     services:
       postgres:
-        image: postgres:16
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -66,6 +68,11 @@ jobs:
         # The same script the Docker container runs on first start: owner role + app role,
         # crm and crm_test databases. Keeping it identical means CI tests the real setup.
         run: sh infrastructure/postgres/init/01-create-roles-and-databases.sh
+
+      - name: Enable pgvector in the test database
+        # The service container is not the local Docker image, so its init scripts do not run.
+        # A fresh CI database has no indexes yet, so the extension can be created now.
+        run: psql -U "$POSTGRES_USER" -d crm_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Install the backend dependencies
         working-directory: backend

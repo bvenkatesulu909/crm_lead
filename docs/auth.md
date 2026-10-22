@@ -163,6 +163,7 @@ token and the database — never from request bodies, query strings or headers l
 | `portal:quote:read` / `portal:quote:respond` (sent quotes, accept/decline) |  |  |  |  |  | ✔ |
 | `portal:document:read` (public documents of granted accounts) |  |  |  |  |  | ✔ |
 | `portal:assistant:use` (AI assistant on own data) |  |  |  |  |  | ✔ |
+| `portal:knowledge:read` (portal knowledge answers: public + granted-account chunks) |  |  |  |  |  | ✔ |
 
 - **Super Admin** runs the platform (tenants). By design it sees **no tenant business data**.
 - `own` = records whose `owner_id` is the caller; `all` = all records **of the caller's tenant**.
@@ -254,8 +255,9 @@ those tests are skipped.
 
 ## 10. Not done yet (planned)
 
-- PostgreSQL Row-Level Security as a second safety net (Phase 5). It will need a narrow,
-  audited exception for the `(issuer, subject)` user lookup, which happens before the tenant is known.
+- PostgreSQL Row-Level Security as a second safety net: **staged** (ADR 0009). The knowledge
+  tables are enforced now; the remaining domains, worker BYPASSRLS role and the audited
+  `(issuer, subject)` lookup exception follow in later steps.
 - Teams/hierarchies for sales managers (today an `all` scope means the whole tenant).
 - Production Keycloak: `start` mode with HTTPS, real SMTP, real secrets management (prepared in
   ADR 0007: `infrastructure/keycloak/Dockerfile.production` + `realm-crm-production.json`).

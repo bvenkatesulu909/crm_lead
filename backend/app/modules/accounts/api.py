@@ -1,13 +1,16 @@
 """Public interface of the accounts module. Other modules import only from here."""
 
 import uuid
+from typing import Any
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.auth.rbac import Permission
+from app.core.errors import ForbiddenError
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
-from app.modules.accounts import repository
+from app.modules.accounts import repository, service
 from app.modules.accounts.metrics import (
     CustomerMetrics,
     accounts_owned_by,
@@ -17,6 +20,7 @@ from app.modules.accounts.metrics import (
 from app.modules.accounts.models import ACCOUNT_SEGMENTS as models_ACCOUNT_SEGMENTS
 from app.modules.accounts.models import ACCOUNT_STATUSES, Account
 from app.modules.accounts.policies import readable_accounts
+from app.modules.accounts.repository import AccountFilters
 from app.modules.accounts.schemas import PortalAccountRead
 from app.modules.accounts.service import (
     get_account,
@@ -182,3 +186,45 @@ def account_names(
         )
     ).all()
     return {row.id: row.name for row in rows}
+
+
+# --- staff assistant (read-only, record-policy enforced) -------------------------------------
+
+
+def search_accounts(
+    session: Session, principal: Principal, *, q: str = "", limit: int = 20
+) -> list[dict[str, Any]]:
+    if not (
+        principal.has_permission(Permission.ACCOUNT_READ_ALL)
+        or principal.has_permission(Permission.ACCOUNT_READ_OWN)
+    ):
+        raise ForbiddenError("You may not read accounts.")
+    items, _ = service.list_accounts(
+        session, principal, AccountFilters(q=q.strip()[:100] or None, limit=min(limit, 50))
+    )
+    return [
+        {
+            "id": str(item.id),
+            "name": item.name,
+            "status": item.status,
+            "segment": item.segment,
+            "industry": item.industry,
+            "country": item.country,
+        }
+        for item in items
+    ]
+
+
+def get_account_brief(
+    session: Session, principal: Principal, account_id: uuid.UUID
+) -> dict[str, Any]:
+    account = service.get_account(session, principal, account_id)
+    return {
+        "id": str(account.id),
+        "name": account.name,
+        "status": account.status,
+        "segment": account.segment,
+        "industry": account.industry,
+        "country": account.country,
+        "link": f"/accounts/{account.id}",
+    }

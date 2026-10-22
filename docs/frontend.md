@@ -75,6 +75,7 @@ Browser ──cookie (encrypted, httpOnly)──► Next.js server ──Bearer 
 | `/tickets`, `/tickets/new`, `/tickets/[id]` | Support (staff) | See [support.md](support.md) |
 | `/documents`, `/documents/[id]/download` | Documents | Upload versions on accounts/deals; download through a route handler with an authorization check (see [documents.md](documents.md)) |
 | `/knowledge` | Knowledge (staff) | Upload PDF/DOCX/TXT/Markdown, see the indexing status, delete; tenant admins manage, all staff read (see [rag-knowledge-base.md](rag-knowledge-base.md)) |
+| `/knowledge/search` | Search & ask (staff) | Hybrid passage search with reranked results and a question box whose answer cites the exact passages; permission `knowledge:read` |
 | `/reports`, `/reports/builder` | Reports | Standard reports and the report builder (see [reports.md](reports.md)) |
 | `/reports/[key]/csv`, `/reports/builder/csv` | CSV export | Route handlers; audit entry and formula-injection protection |
 | `/notifications`, `/notifications/settings` | Notifications | Inbox, mark read, e-mail notification settings (see [workflows.md](workflows.md)) |
@@ -91,6 +92,7 @@ Browser ──cookie (encrypted, httpOnly)──► Next.js server ──Bearer 
 | `/portal/tickets`, `/portal/tickets/new`, `/portal/tickets/[id]` | Support (customers) | See [support.md](support.md) |
 | `/portal/documents/[id]/download` | Document download (customers) | Public documents of granted accounts only |
 | `/portal/assistant` | AI assistant (customers) | See [assistant.md](assistant.md): chat about own orders/invoices/tickets, prepared tickets to confirm, "not available" without an API key |
+| `/portal/knowledge` | Help & policies (customers) | Ask the knowledge base; only customer-visible public help plus chunks of accounts in the customer's `portal_access_grants`; internal documents/staff are rejected by the API |
 | `/api/auth/login`, `/api/auth/callback/keycloak` | OIDC login handlers | Authorization Code + PKCE; stores the encrypted `crm_session` cookie |
 | `/_not-found`, error pages | Not found / error | Friendly pages; errors show a reference ID |
 

@@ -20,9 +20,11 @@ from types import FrameType
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.ai.embeddings import build_embedder
 from app.core.config import Settings, get_settings
 from app.core.db import create_db_engine, create_session_factory
 from app.core.events import EventHandler, dispatcher
+from app.core.heartbeat import record_heartbeat
 from app.core.logging import configure_logging
 from app.core.mail import Mailer, MailRejectedError, build_mailer
 from app.core.outbox import DeadJobHandler, JobHandler, run_next_job
@@ -50,7 +52,9 @@ class WorkerServices:
 def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
     """Every job kind the worker knows. Modules provide handlers through their api.py."""
     return {
-        knowledge_api.JOB_KIND: knowledge_api.ingest_handler(services.file_store),
+        knowledge_api.JOB_KIND: knowledge_api.ingest_handler(
+            services.file_store, build_embedder(services.settings)
+        ),
         quotes_api.PDF_JOB: quotes_api.pdf_job_handler(services.file_store),
         quotes_api.EMAIL_JOB: quotes_api.email_job_handler(
             services.file_store, services.mailer, services.settings.web_app_url
@@ -147,15 +151,26 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("worker started", extra={"job_kinds": sorted(handlers), "once": args.once})
     try:
         if args.once:
+            record_heartbeat(session_factory)
             run_schedules(session_factory, settings)
+            knowledge_api.run_maintenance(
+                session_factory, embedding_model=settings.embeddings_model
+            )
             ran = run_due_jobs(session_factory, handlers, settings, stop)
             logger.info("worker finished", extra={"jobs_run": ran})
             return
         last_rules = 0.0
         while not stop.is_set():
             try:
+                record_heartbeat(session_factory)
                 due = time.monotonic() - last_rules >= WORKFLOW_SCHEDULE_SECONDS
                 run_schedules(session_factory, settings, include_workflows=due)
+                try:
+                    knowledge_api.run_maintenance(
+                        session_factory, embedding_model=settings.embeddings_model
+                    )
+                except Exception:  # noqa: BLE001 - maintenance must never stop the worker
+                    logger.exception("knowledge maintenance failed")
                 if due:
                     last_rules = time.monotonic()
                 run_due_jobs(session_factory, handlers, settings, stop)

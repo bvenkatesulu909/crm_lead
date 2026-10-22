@@ -19,7 +19,7 @@ from alembic import command
 from alembic.config import Config
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import Connection, Engine, create_engine, make_url
+from sqlalchemy import Connection, Engine, create_engine, make_url, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -91,6 +91,58 @@ def app_engine(app_database_url: str, migrated_database: str) -> Iterator[Engine
     engine.dispose()
 
 
+@pytest.fixture(scope="session")
+def owner_engine(migration_database_url: str, migrated_database: str) -> Iterator[Engine]:
+    """Privileged (crm_owner, BYPASSRLS) engine for TEST SETUP ONLY.
+
+    API/RLS assertions must keep using app_engine (crm_app, no BYPASSRLS). Data created through
+    this engine is not part of the app connection's rollback; callers own cleanup.
+    """
+    engine = create_engine(migration_database_url, poolclass=NullPool)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture
+def owner_db_session(owner_engine: Engine) -> Iterator[Session]:
+    """Setup session as crm_owner. Do not use it to assert application/RLS behaviour."""
+    with sessionmaker(bind=owner_engine, expire_on_commit=False)() as session:
+        yield session
+
+
+@pytest.fixture
+def committed_owner_data(owner_db_session: Session) -> Iterator[Session]:
+    """Setup session for data that must be COMMITTED and visible to the app connection.
+
+    Pair with clean_committed_data so the rows are removed after the test. Never assert RLS
+    behaviour through this session.
+    """
+    yield owner_db_session
+
+
+@pytest.fixture
+def clean_committed_data(owner_engine: Engine, db_session: Session) -> Iterator[None]:
+    """After the test, truncate all application tables on the test database (owner role)."""
+    yield
+    db_session.rollback()
+    db_session.close()
+    with owner_engine.begin() as connection:
+        names = (
+            connection.execute(
+                text(
+                    "select tablename from pg_tables "
+                    "where schemaname = current_schema() and tablename <> 'alembic_version'"
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if names:
+            connection.execute(
+                text("TRUNCATE TABLE " + ", ".join(names) + " RESTART IDENTITY CASCADE")
+            )
+
+
 @pytest.fixture
 def db_connection(app_engine: Engine) -> Iterator[Connection]:
     """One connection + transaction per test, rolled back afterwards: tests never see each
@@ -118,3 +170,4 @@ def db_session(db_connection: Connection) -> Iterator[Session]:
         yield session
     finally:
         session.close()
+

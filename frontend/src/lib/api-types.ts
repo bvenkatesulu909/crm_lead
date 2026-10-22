@@ -757,11 +757,18 @@ export type TenantSummary = {
 };
 
 /** AI assistant (customer portal). */
+export type AssistantCitation = {
+  document: string;
+  heading: string;
+  page: number | null;
+};
+
 export type AssistantMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  citations: AssistantCitation[];
 };
 
 export type AssistantAction = {
@@ -1197,6 +1204,7 @@ export type KnowledgeDocument = {
   content_type: string;
   size_bytes: number;
   status: KnowledgeDocumentStatus;
+  visibility: "internal" | "customer_visible";
   page_count: number;
   chunk_count: number;
   error: string | null;
@@ -1206,4 +1214,50 @@ export type KnowledgeDocument = {
 export type KnowledgeDocumentPage = {
   items: KnowledgeDocument[];
   total: number;
+};
+
+export type KnowledgeSearchHit = {
+  chunk_id: string;
+  document_id: string;
+  document_title: string;
+  file_name: string;
+  heading_path: string;
+  page_from: number | null;
+  page_to: number | null;
+  text: string;
+  blocks: string[];
+  visibility: "internal" | "customer_visible";
+  similarity: number | null;
+  keyword_rank: number | null;
+  score: number;
+  rerank_score: number | null;
+};
+
+export type KnowledgeSearchResponse = {
+  query: string;
+  results: KnowledgeSearchHit[];
+  best_similarity: number | null;
+  threshold: number | null;
+  enough: boolean;
+};
+
+export type KnowledgeAnswerSource = {
+  chunk_id: string;
+  document_id: string;
+  document_title: string;
+  heading_path: string;
+  page_from: number | null;
+  page_to: number | null;
+  text: string;
+};
+
+export type KnowledgeAnswerResponse = {
+  query_id: string | null;
+  answer: string;
+  sources: KnowledgeAnswerSource[];
+  exact_chunk_id: string | null;
+  enough: boolean;
+  model_used: boolean;
+  grounded: boolean;
+  citations: number[];
 };

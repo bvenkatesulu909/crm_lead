@@ -31,12 +31,16 @@ def test_rrf_k_controls_how_flat_the_ranks_are():
     assert small[a] / small[b] > large[a] / large[b]
 
 
-def test_reranker_can_be_disabled_and_uses_the_configured_model():
-    assert build_reranker(Settings(knowledge_reranker_enabled=False)) is None
+def test_reranker_can_be_disabled_and_uses_the_configured_model(settings: Settings):
+    # The shared `settings` fixture ignores any local .env and supplies the required values, so
+    # this test behaves the same on a developer's computer and on a clean CI machine.
+    assert build_reranker(settings.model_copy(update={"knowledge_reranker_enabled": False})) is None
     reranker = build_reranker(
-        Settings(
-            knowledge_reranker_enabled=True,
-            knowledge_reranker_model="Xenova/ms-marco-MiniLM-L-6-v2",
+        settings.model_copy(
+            update={
+                "knowledge_reranker_enabled": True,
+                "knowledge_reranker_model": "Xenova/ms-marco-MiniLM-L-6-v2",
+            }
         )
     )
     assert isinstance(reranker, CrossEncoderReranker)

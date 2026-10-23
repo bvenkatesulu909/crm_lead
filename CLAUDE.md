@@ -177,13 +177,13 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   - ENABLE + FORCE RLS and a tenant policy on all 47 tables with `tenant_id` (migrations 0022, 0029-0035); `leads` also checks the owner scope; narrow SECURITY DEFINER functions for login, sign-up, the worker claim and the metrics counts (0030-0032, 0036). The worker stays on `crm_app`.
   - Test bootstrap: worlds are built as `crm_owner` (`committed_world`) and committed; API calls and assertions run as `crm_app`. Guard test `test_rls_tenant_tables.py` fails any new tenant table without RLS.
   - Fixed on the way: `POST /platform/tenants` returned 500 under users RLS; `/metrics` queue gauges were always 0.
-  - Tests (run 2026-10-23): backend 1150 passed (+4 opt-in skipped), ruff/mypy/import-linter clean. **Playwright not run yet** - needs the dev database upgraded to 0036 and this branch's API/web running on :8000/:3000.
+  - Tests (run 2026-10-23): backend 1150 passed (+4 opt-in skipped), ruff/mypy/import-linter clean. Dev database upgraded to 0036 (`rls_audit`: 47/47 protected, 0 rows without tenant). **Playwright not run yet** - needs this branch's API/web running on :8000/:3000.
 - **Pending:**
   - Assistant live check against real Claude. Blocked by Anthropic billing ("credit balance too
     low"); test with `python -m scripts.check_anthropic`.
   - Teams (rest of Phase C; RLS, the outbox, worker and reminder e-mails are done).
-  - RLS: `alembic upgrade head` on the development database and a Playwright run against the
-    `rls-leads-policy` branch, then owner review of PR #1.
+  - RLS: a Playwright run against the `rls-leads-policy` branch (dev database already at 0036),
+    then owner review of PR #1.
   - Modules not started: marketing (Phase 16), Communication Center, integrations (Phase 19),
     staff AI assistant (Phase 20b/20c: knowledge base, voice).
   - Full end-to-end suite re-run after the latest fixes (last recorded 2026-10-19: backend 987,

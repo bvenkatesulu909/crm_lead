@@ -149,8 +149,9 @@ Findings from the code audit (all verified against the tree at migration 0019):
   yet run against this branch.
 - **Decision 4 in practice:** no `crm_worker` BYPASSRLS role. The worker claims through
   `outbox_claim()` and then binds each job's tenant, so it is as restricted as the API.
-- **Next:** apply 0033-0036 to the development database and run the Playwright suite against
-  this branch; then Teams (record-level, not RLS).
+- **Development database:** upgraded to 0036 on 2026-10-23; `rls_audit` shows 47/47 protected
+  and 0 rows in every tenant table without a tenant context (before: 187 accounts visible).
+- **Next:** run the Playwright suite against this branch; then Teams (record-level, not RLS).
 
 ## Open questions for the owner
 

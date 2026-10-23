@@ -92,10 +92,13 @@ is unprotected or shows rows without a tenant context).
 Result against `crm_test` at migration 0036: tenant tables 47, protected 47, unprotected none,
 47 policies, `crm_app` BYPASSRLS false, `crm_owner` BYPASSRLS true.
 
-The development database (`crm`) is still at **0032** until `alembic upgrade head` is run there.
+Result against the development database `crm` (upgraded to 0036 on 2026-10-23): tenant tables
+47, protected 47, unprotected none; as `crm_app` with no tenant context **every** tenant table
+shows 0 rows, while the owner role still sees the data (187 accounts, 60 tickets). Before step 5
+the same probe showed 187 accounts from 2 tenants and 60 tickets.
 
 ## Next
 
-- Apply 0033–0036 to the development database and run the Playwright suite against this
-  branch's API and web app.
+- Run the Playwright suite against this branch's API and web app (the development database is
+  already at 0036).
 - Teams (manager hierarchies) - record-level, not RLS.

@@ -19,7 +19,8 @@ backend/tests/db/conftest.py.
   CLAUDE.md).
 
 ## Not done
-- Development database (crm) is still at 0032: run `alembic upgrade head` (owner's call).
+- Development database (crm) upgraded to 0036 on 2026-10-23 (owner approved); rls_audit:
+  47/47 protected, 0 rows visible without a tenant.
 - Playwright has NOT been run against this branch. The servers on :8000/:3000 were running from
   the main checkout E:\crm-lead (older commit), so E2E there would not test this branch.
 

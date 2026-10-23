@@ -38,6 +38,10 @@ EVENT_NAMES = frozenset(
         "ticket.assigned",
         "ticket.customer_replied",
         "order.status_changed",
+        "contract.activated",
+        "contract.terminated",
+        "contract.renewal_due",
+        "contract.expired",
     }
 )
 MAX_DEPTH = 3

@@ -1,6 +1,6 @@
 # Contracts and renewals (design, 2026-10-23)
 
-**Status: design approved to start; step C1 (database) built, C2-C4 not started.**
+**Status: C1 (database) and C2 (API) built; C3 (worker) and C4 (screens) in progress.**
 Branch `feat/contracts`. Written before the code because the plan had no spec for this module.
 
 ## What it is for
@@ -50,8 +50,9 @@ draft ──activate──► active ──terminate──► terminated
 
 - Only `draft` contracts can be edited freely; active ones can change owner, notice days, terms
   notes and auto-renew, but not account, dates or value (a change of those is a renewal).
-- `activate` needs start date, end date and total value; the owner or a manager may do it.
-- `terminate` needs a reason and is a manager action.
+- `activate`, `terminate` and `renew` are manager actions (`contract:manage`); agents create and edit.
+- `activate` needs a start and an end date, and the end date must not be in the past.
+- `terminate` needs a reason and only works on an active contract.
 - The worker, once a day: marks `active` contracts past `end_date` as `expired` (unless
   `auto_renew`, which creates the renewal draft instead) and publishes the domain event
   `contract.renewal_due` once per contract when the renewal date is reached.
@@ -74,7 +75,7 @@ answers 404, never 403.
 | Step | Content | State |
 |---|---|---|
 | **C1** | this design; migration 0037 (3 tables, RLS, insert-only history); SQLAlchemy models; permissions registered; guard tests | built |
-| C2 | `rules.py`, schemas (separate input schemas, no server fields), repository, service, router `/contracts`, audit and events, tests (happy path, validation, tenant isolation, role denial, record denial, ID tampering) | not started |
+| C2 | `rules.py`, schemas (separate input schemas, no server fields), repository, policies, service, router `/api/v1/contracts`, audit and domain events, 64 tests (happy path, validation, tenant isolation, role denial, record denial, ID tampering, version conflicts, filters, audit) | built |
 | C3 | worker job: expiry sweep and renewal reminders (notification to the owner; a workflow rule can add a task) | not started |
 | C4 | screens: list with filters, detail with history, create/edit, activate/terminate/renew, a card on the account page, "Contracts" tile available in the module grid; Playwright journey; this document completed | not started |
 
@@ -84,3 +85,23 @@ Happy path, validation, tenant isolation (another organisation's contract is inv
 cannot be referenced), role denial (support agent, customer), record-level denial (an agent
 sees only own), ID tampering (account of another organisation, foreign `owner_id`), status-flow
 rules (every illegal transition refused), insert-only history, RLS guard.
+
+## The API (step C2)
+
+All under `/api/v1/contracts`, staff only; every call is checked twice (RBAC permission, then the
+record-level policy in SQL). A contract the user may not see is a 404.
+
+| Call | Who | What |
+|---|---|---|
+| `GET /contracts` | readers | list; filters `q` (title or CT-0001), `status` (repeatable), `account_id`, `owner_id`, `ending_within_days`; paging |
+| `POST /contracts` | writers | create a draft; account, contact, deal and quote must belong together and be visible |
+| `GET /contracts/{id}` and `/history` | readers | one contract (with `renewed_to_id`), its events newest first |
+| `PATCH /contracts/{id}` | writers | draft: any business field; active: owner, title, contact, auto-renew, notice, renewal term, terms |
+| `POST /contracts/{id}/notes` | writers | add a note to the history |
+| `POST /contracts/{id}/activate` | managers | draft becomes active; a renewal marks the old contract "renewed" |
+| `POST /contracts/{id}/terminate` | managers | needs a `reason`; active contracts only |
+| `POST /contracts/{id}/renew` | managers | creates a linked draft (dates and value default from the old one); one renewal at a time |
+
+Changes carry the `version` the client saw; a stale version answers 409 `version_conflict`.
+Error codes: `contract_not_found` (404), `related_not_found` (404), `invalid_contract` (422),
+`contract_state` (409), `version_conflict` (409).

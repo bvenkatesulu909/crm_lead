@@ -207,13 +207,6 @@ def refresh_operational_gauges(engine: Engine) -> None:
             PGVECTOR.labels(check="hnsw_index").set(1 if index else 0)
             PGVECTOR.labels(check="schema_revision").set(1 if revision else 0)
 
-            for status in _KNOWN_JOB_STATUSES:
-                OUTBOX_JOBS.labels(status=status).set(0)
-            for row in connection.execute(
-                text("SELECT status, count(*) FROM outbox_jobs GROUP BY status")
-            ):
-                OUTBOX_JOBS.labels(status=str(row[0])).set(int(row[1]))
-
             age = connection.scalar(
                 text(
                     "SELECT EXTRACT(EPOCH FROM (now() - last_seen)) "
@@ -222,20 +215,22 @@ def refresh_operational_gauges(engine: Engine) -> None:
             )
             WORKER_HEARTBEAT_AGE.set(float(age) if age is not None else -1.0)
 
+            # The scrape has no tenant, so plain counts would be zero under RLS (ADR 0009).
+            # ops_queue_counts() returns only cross-tenant aggregates per status.
+            for status in _KNOWN_JOB_STATUSES:
+                OUTBOX_JOBS.labels(status=status).set(0)
             for status in _KNOWN_DOCUMENT_STATUSES:
                 KNOWLEDGE_DOCUMENTS.labels(status=status).set(0)
-            for row in connection.execute(
-                text("SELECT status, count(*) FROM kb_documents GROUP BY status")
+            CHUNKS_MISSING_EMBEDDING.set(0)
+            for metric, status, total in connection.execute(
+                text("SELECT metric, status, total FROM ops_queue_counts()")
             ):
-                KNOWLEDGE_DOCUMENTS.labels(status=str(row[0])).set(int(row[1]))
-            CHUNKS_MISSING_EMBEDDING.set(
-                int(
-                    connection.scalar(
-                        text("SELECT count(*) FROM kb_chunks WHERE embedding IS NULL")
-                    )
-                    or 0
-                )
-            )
+                if metric == "outbox_jobs":
+                    OUTBOX_JOBS.labels(status=str(status)).set(int(total))
+                elif metric == "kb_documents":
+                    KNOWLEDGE_DOCUMENTS.labels(status=str(status)).set(int(total))
+                else:
+                    CHUNKS_MISSING_EMBEDDING.set(int(total))
     except Exception:  # noqa: BLE001 - a scrape must never raise
         DB_UP.set(0)
 

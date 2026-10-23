@@ -18,6 +18,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.audit import AuditLog
+from app.core.db import bind_tenant
 from app.modules.leads.models import Lead
 from app.modules.sales.models import Opportunity
 from tests.db.conftest import setup_lead_context
@@ -57,6 +58,7 @@ def alpha(world: World) -> uuid.UUID:
 
 def add_deal(db_session: Session, world: World, owner: str, stage: str, amount: str, **kw: Any):
     now = datetime.now(UTC)
+    bind_tenant(db_session, alpha(world))  # created as if in an alpha request
     deal = Opportunity(
         tenant_id=alpha(world),
         name=f"Deal {owner} {stage} {amount}",

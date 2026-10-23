@@ -14,6 +14,7 @@ from sqlalchemy import Connection, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.db import bind_tenant
 from app.core.mail import MailRejectedError, MailUnavailableError, MemoryMailer
 from app.core.outbox import OutboxJob
 from app.core.storage import MemoryFileStore
@@ -67,6 +68,8 @@ def worker(db_connection: Connection, files: MemoryFileStore, mailer: MemoryMail
 
 
 def give_email(db_session: Session, world: World, key: str = "C1", email: str | None = C1_EMAIL):
+    # The contacts belong to tenant alpha; change them with the context a request would have.
+    bind_tenant(db_session, world.users["alpha.admin"].tenant_id)
     db_session.execute(
         update(Contact).where(Contact.id == world.ids[key]).values(email=email, first_name="Ada")
     )

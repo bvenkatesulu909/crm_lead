@@ -47,6 +47,7 @@ def make_user(session: Session, tenant: Tenant, email: str = "staff@example.test
 
 
 def make_account(session: Session, tenant: Tenant, **fields: object) -> Account:
+    bind_tenant(session, tenant.id)  # accounts is RLS-protected, like users
     account = Account(tenant_id=tenant.id, name="Test Account Ltd", **fields)
     session.add(account)
     session.flush()
@@ -104,6 +105,7 @@ def test_contact_cannot_link_to_account_of_another_tenant(db_session: Session) -
     tenant_b = make_tenant(db_session, "beta")
     account_of_a = make_account(db_session, tenant_a)
 
+    bind_tenant(db_session, tenant_b.id)  # the contact's own tenant: only the FK may object
     db_session.add(Contact(tenant_id=tenant_b.id, last_name="Tester", account_id=account_of_a.id))
     with pytest.raises(IntegrityError) as error:
         db_session.flush()

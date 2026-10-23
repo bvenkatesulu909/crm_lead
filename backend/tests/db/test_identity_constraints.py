@@ -29,6 +29,7 @@ def make_person(session: Session, tenant: Tenant, subject: str, user_type: str) 
 
 
 def grant(session: Session, user: User, account: Account, **extra: str) -> None:
+    bind_tenant(session, user.tenant_id)  # the grant's own tenant: only constraints may object
     session.add(
         PortalAccessGrant(tenant_id=user.tenant_id, user_id=user.id, account_id=account.id, **extra)
     )

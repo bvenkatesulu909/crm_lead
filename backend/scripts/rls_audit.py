@@ -6,7 +6,7 @@ python -m scripts.rls_audit
 import json
 import sys
 
-from sqlalchemy import text
+from sqlalchemy import column, func, select, table, text
 
 from app import model_registry as _model_registry  # noqa: F401
 from app.core.config import get_settings
@@ -37,7 +37,7 @@ def main() -> int:
         policies = session.execute(
             text("select tablename, policyname from pg_policies order by tablename")
         ).all()
-        roles = dict(
+        roles: dict[str, bool] = dict(
             session.execute(
                 text(
                     "select rolname, rolbypassrls from pg_roles "
@@ -46,37 +46,28 @@ def main() -> int:
             ).all()
         )
         tenant_tables = [row for row in tables if row.has_tenant]
-        protected = [row for row in tenant_tables if row.relrowsecurity]
-        unprotected = [row for row in tenant_tables if not row.relrowsecurity]
-        probes: dict[str, object] = {}
-        for name in ("users", "access_requests", "outbox_jobs", "accounts", "tickets", "leads"):
-            if any(row.relname == name for row in tables):
-                probes[name] = (
-                    session.execute(
-                        text(
-                            f"select count(*) as rows, count(distinct tenant_id) as tenants "  # noqa: S608
-                            f"from {name}"
-                        )
-                    )
-                    .one()
-                    ._asdict()
-                )
+        protected = [row for row in tenant_tables if row.relrowsecurity and row.relforcerowsecurity]
+        unprotected = [row for row in tenant_tables if row not in protected]
+        # Run as crm_app with no tenant context: every tenant table must show 0 rows.
         clear_tenant(session)
-        kb_without_context = session.scalar(text("select count(*) from kb_documents"))
-        lead_without_context = session.scalar(text("select count(*) from leads"))
+        visible_without_context = {
+            row.relname: session.scalar(
+                select(func.count()).select_from(table(row.relname, column("tenant_id")))
+            )
+            for row in tenant_tables
+        }
+        leaking = {name: rows for name, rows in visible_without_context.items() if rows}
         report = {
             "tenant_tables": len(tenant_tables),
             "protected_tables": [row.relname for row in protected],
             "unprotected_tenant_tables": [row.relname for row in unprotected],
-            "policies": [f"{table}.{policy}" for table, policy in policies],
+            "policies": [f"{name}.{policy}" for name, policy in policies],
             "roles": roles,
-            "cross_tenant_probe": probes,
-            "knowledge_rows_without_tenant_context": kb_without_context,
-            "lead_rows_without_tenant_context": lead_without_context,
+            "tables_visible_without_tenant_context": leaking,
         }
     engine.dispose()
     print(json.dumps(report, indent=2, default=str))
-    return 0
+    return 1 if unprotected or leaking else 0
 
 
 if __name__ == "__main__":

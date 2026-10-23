@@ -16,6 +16,7 @@ from sqlalchemy import Connection, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.db import bind_tenant
 from app.core.events import Event, publish
 from app.core.mail import MemoryMailer
 from app.core.outbox import OutboxJob
@@ -258,6 +259,7 @@ def test_task_reminders_are_sent_once(api, auth, world, worker, mailer, db_sessi
         tenant_id=alpha(world), kind="task", subject="Not yet", status="open",
         assignee_id=uid(world, "alpha.agent1"), reminder_at=now + timedelta(days=1),
     )  # fmt: skip
+    bind_tenant(db_session, alpha(world))  # created as if in an alpha request
     db_session.add_all([task, later])
     db_session.flush()
     worker()
@@ -270,6 +272,7 @@ def test_task_reminders_are_sent_once(api, auth, world, worker, mailer, db_sessi
     assert "/notifications/settings" in mail.text
     worker()
     assert len(titles(api, auth, "alpha.agent1")) == 1 and len(mailer.sent) == 1
+    bind_tenant(db_session, alpha(world))  # the worker bound every tenant in turn
     db_session.refresh(task)
     assert task.reminder_sent_at is not None
 

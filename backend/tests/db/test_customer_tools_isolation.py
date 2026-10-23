@@ -11,6 +11,7 @@ from app.modules.assistant import tools
 from app.modules.catalog import api as catalog_api
 from app.modules.contacts import api as contacts_api
 from app.modules.quotes import api as quotes_api
+from tests.db.conftest import bind_principal
 from tests.db.test_quotes_api import (  # noqa: F401
     api,
     auth,
@@ -40,6 +41,7 @@ def test_get_my_quote_tool_hides_another_customers_quote(api, auth, world, db_se
     other = ok(step(api, auth, "alpha.agent2", other, "submit"))
     other = ok(step(api, auth, "alpha.agent2", other, "send"))
     principal = _customer(world, "alpha.customer", "alpha", {Permission.PORTAL_QUOTE_READ})
+    bind_principal(db_session, principal)
 
     assert quotes_api.customer_quote(db_session, principal, __import__("uuid").UUID(mine["id"]))
     with pytest.raises(NotFoundError):
@@ -54,6 +56,7 @@ def test_get_my_quote_tool_hides_another_customers_quote(api, auth, world, db_se
 
 def test_product_and_contact_results_are_customer_safe(api, auth, world, db_session):  # noqa: F811
     principal = _customer(world, "alpha.customer", "alpha", set())
+    bind_principal(db_session, principal)
 
     products = catalog_api.customer_products(db_session, principal)
     assert products
@@ -69,11 +72,14 @@ def test_other_tenant_products_and_contacts_are_not_visible(api, auth, world, db
     alpha = _customer(world, "alpha.customer", "alpha", set())
     beta = _customer(world, "beta.admin", "beta", set())
 
+    bind_principal(db_session, alpha)
     alpha_products = catalog_api.customer_products(db_session, alpha)
+    bind_principal(db_session, beta)
     beta_products = catalog_api.customer_products(db_session, beta)
     assert alpha_products and beta_products
     assert {p["sku"] for p in alpha_products}.isdisjoint({p["sku"] for p in beta_products})
 
+    bind_principal(db_session, alpha)
     alpha_contacts = contacts_api.customer_contacts(db_session, alpha)
     assert all(row["account_id"] is not None for row in alpha_contacts)
     beta_account_ids = {

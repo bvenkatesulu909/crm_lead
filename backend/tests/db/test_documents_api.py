@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.audit import AuditLog
+from app.core.db import bind_tenant
 from app.core.storage import MemoryFileStore
 from app.modules.documents.models import Document
 from tests.db.test_quotes_api import (  # noqa: F401 - fixtures used by name
@@ -260,6 +261,7 @@ def test_without_a_file_store_uploads_answer_503(api, auth, world, db_session) -
 def test_quote_pdfs_are_not_served_here(api, auth, world, files, db_session) -> None:
     tenant = world.users["alpha.agent1"].tenant_id
     pdf_id = uuid.uuid4()
+    bind_tenant(db_session, tenant)  # created as if in an alpha request
     db_session.add(
         Document(
             id=pdf_id, tenant_id=tenant, record_type="quote", record_id=uuid.uuid4(),

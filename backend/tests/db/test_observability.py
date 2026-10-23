@@ -43,3 +43,22 @@ def test_metrics_endpoint_reflects_db_pgvector_and_worker_heartbeat(
     assert "crm_worker_heartbeat_age_seconds" in body
     assert "crm_outbox_jobs" in body
     assert "crm_knowledge_documents" in body
+
+
+def test_queue_gauges_count_every_tenant_under_rls(app_engine, committed_world) -> None:
+    """The scrape has no tenant; RLS must not turn the operational counts into zeros."""
+    from app.core.observability.metrics import OUTBOX_JOBS, refresh_operational_gauges
+    from app.core.outbox import OutboxJob
+    from app.modules.identity.models import Tenant
+
+    tenants = [Tenant(slug=f"metrics-{n}", name=f"Metrics {n}") for n in ("a", "b")]
+    committed_world.add_all(tenants)
+    committed_world.flush()
+    committed_world.add_all(
+        OutboxJob(tenant_id=t.id, kind="test.ping", payload={}) for t in tenants
+    )
+    committed_world.commit()
+
+    refresh_operational_gauges(app_engine)
+
+    assert OUTBOX_JOBS.labels(status="pending")._value.get() == 2

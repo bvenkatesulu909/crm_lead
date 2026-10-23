@@ -11,6 +11,7 @@ from app.core.auth.rbac import Permission
 from app.core.errors import ForbiddenError, NotFoundError
 from app.modules.accounts import api as accounts_api
 from app.modules.contacts import api as contacts_api
+from tests.db.conftest import bind_principal
 from tests.db.test_quotes_api import world  # noqa: F401
 
 
@@ -31,7 +32,9 @@ def _agent(world) -> Principal:
 
 
 def test_search_accounts_is_owner_and_tenant_scoped(world, db_session):
-    rows = accounts_api.search_accounts(db_session, _agent(world), q="A")
+    agent = _agent(world)
+    bind_principal(db_session, agent)
+    rows = accounts_api.search_accounts(db_session, agent, q="A")
     ids = {row["id"] for row in rows}
     assert str(world.ids["A1"]) in ids
     assert str(world.ids["A2"]) not in ids
@@ -40,6 +43,7 @@ def test_search_accounts_is_owner_and_tenant_scoped(world, db_session):
 
 def test_get_account_brief_hides_other_account_and_tenant(world, db_session):
     agent = _agent(world)
+    bind_principal(db_session, agent)
     assert accounts_api.get_account_brief(db_session, agent, world.ids["A1"])["id"] == str(
         world.ids["A1"]
     )
@@ -51,6 +55,7 @@ def test_get_account_brief_hides_other_account_and_tenant(world, db_session):
 
 def test_contacts_only_for_readable_accounts(world, db_session):
     agent = _agent(world)
+    bind_principal(db_session, agent)
     mine = contacts_api.list_account_contacts(db_session, agent, world.ids["A1"])
     assert any(row["id"] == str(world.ids["C1"]) for row in mine)
     assert contacts_api.list_account_contacts(db_session, agent, world.ids["A2"]) == []

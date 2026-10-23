@@ -28,7 +28,7 @@ from app.modules.support.api import create_customer_ticket
 from app.modules.support.models import Ticket
 from tests.auth_helpers import TEST_ISSUER, TokenFactory, bearer
 from tests.conftest import UNREACHABLE_DATABASE_URL
-from tests.db.conftest import session_factory_for
+from tests.db.conftest import bind_principal, session_factory_for
 
 PEOPLE = {
     "alpha.admin": ("alpha", "tenant_admin"),
@@ -508,6 +508,7 @@ def test_comments_are_append_only(app_engine, statement) -> None:
 
 def test_assistant_handoff_creates_ticket_as_the_customer(world, db_session, api, auth) -> None:
     customer = principal_for(world.users["alpha.customer1"], Role.CUSTOMER)
+    bind_principal(db_session, customer)  # the assistant runs inside the customer's request
 
     ticket = create_customer_ticket(
         db_session,

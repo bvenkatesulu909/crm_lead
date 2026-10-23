@@ -14,6 +14,7 @@ The schema is built with Alembic migrations, exactly as in development - never c
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from alembic import command
@@ -23,6 +24,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import Connection, Engine, create_engine, make_url, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
+
+if TYPE_CHECKING:
+    from app.core.auth.principal import Principal
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
@@ -210,3 +214,19 @@ def db_session(db_connection: Connection) -> Iterator[Session]:
         yield session
     finally:
         session.close()
+
+
+def bind_principal(session: Session, principal: "Principal") -> None:
+    """Bind the RLS context identity resolution gives a request for this principal.
+
+    For tests that call a module's service/api directly with a hand-built Principal: in the
+    application those calls always run inside a request session already bound by
+    identity.service.resolve_principal(). Same values, same rule for the lead scope.
+    """
+    from app.core.db import bind_tenant, bind_user
+
+    assert principal.tenant_id is not None and principal.user_id is not None
+    bind_tenant(session, principal.tenant_id)
+    managers = {"sales_manager", "tenant_admin"}
+    scope = "all" if any(role.value in managers for role in principal.roles) else "own"
+    bind_user(session, principal.user_id, scope)

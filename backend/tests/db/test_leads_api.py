@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 import app.modules.sales.api as sales_api
 from app.core.audit import AuditLog
 from app.core.config import Settings
+from app.core.db import bind_tenant
 from app.main import create_app
 from app.modules.accounts.models import Account
 from app.modules.contacts.models import Contact
@@ -116,6 +117,7 @@ def audit_rows(session: Session, lead_id: str) -> list[AuditLog]:
 
 
 def count(session: Session, model: Any, tenant_id: uuid.UUID) -> int:
+    bind_tenant(session, tenant_id)  # explicit RLS context, not whatever the last request left
     statement = select(func.count()).select_from(model).where(model.tenant_id == tenant_id)
     return session.scalar(statement) or 0
 
@@ -532,11 +534,13 @@ def test_converted_lead_is_read_only(api, auth, people) -> None:
         assert response.json()["code"] == "lead_converted"
 
 
-def test_conversion_can_link_an_existing_visible_account(api, auth, people, db_session) -> None:
+def test_conversion_can_link_an_existing_visible_account(
+    api, auth, people, db_session, committed_world
+) -> None:
     agent = people["alpha.agent1"]
     existing = Account(tenant_id=agent.tenant_id, name="Existing Customer", owner_id=agent.id)
-    db_session.add(existing)
-    db_session.flush()
+    committed_world.add(existing)
+    committed_world.commit()
     lead = qualified_lead(api, auth, "alpha.agent1")
     before = count(db_session, Account, agent.tenant_id)
 
@@ -553,12 +557,12 @@ def test_conversion_can_link_an_existing_visible_account(api, auth, people, db_s
 
 @pytest.mark.parametrize("owner", ["beta.agent", "alpha.agent2"])
 def test_conversion_cannot_link_an_account_you_cannot_see(
-    api, auth, people, db_session, owner
+    api, auth, people, db_session, committed_world, owner
 ) -> None:
     other = people[owner]
     hidden = Account(tenant_id=other.tenant_id, name="Not yours", owner_id=other.id)
-    db_session.add(hidden)
-    db_session.flush()
+    committed_world.add(hidden)
+    committed_world.commit()
     lead = qualified_lead(api, auth, "alpha.agent1")
     tenant = people["alpha.agent1"].tenant_id
     before = (count(db_session, Contact, tenant), count(db_session, Opportunity, tenant))

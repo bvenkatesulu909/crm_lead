@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Role, permissions_for
 from app.core.config import Settings
+from app.core.db import bind_tenant
 from app.main import create_app
 from app.modules.accounts.models import Account
 from app.modules.activities.models import Activity
@@ -277,6 +278,7 @@ def test_account_duplicates_by_name_website_and_phone(api, auth, world) -> None:
 
 def test_contact_duplicates(api, auth, world, db_session) -> None:
     a1, a2 = world.ids["A1"], world.ids["A2"]
+    bind_tenant(db_session, world.users["alpha.agent1"].tenant_id)  # as in an alpha request
     for first, last, email, mobile, account, owner in [
         ("Sam", "Sample", "Sam@Example.test", "+44 7700 900123", a1, "alpha.agent1"),
         ("Pat", "Private", "pat@example.test", None, a2, "alpha.agent2"),
@@ -318,6 +320,7 @@ def _relationship(db_session: Session, world: World) -> dict[str, uuid.UUID]:
     """A1 (agent1) with contacts, deals and tasks owned by different people."""
     agent1, manager = world.users["alpha.agent1"], world.users["alpha.manager"]
     tenant = agent1.tenant_id
+    bind_tenant(db_session, tenant)  # created as if in an alpha request
     a1 = world.ids["A1"]
     ids: dict[str, uuid.UUID] = {}
     for key, owner in [("c_agent", agent1), ("c_manager", manager)]:
@@ -463,6 +466,7 @@ def test_account_health_follows_real_interactions(api, auth, world, db_session) 
     assert [f["label"] for f in first["factors"]] == ["No recorded interaction yet"]
 
     agent = world.users["alpha.agent1"]
+    bind_tenant(db_session, agent.tenant_id)  # explicit, not left over from the last request
     db_session.add(
         Activity(
             tenant_id=agent.tenant_id,
@@ -497,6 +501,7 @@ def test_account_health_follows_real_interactions(api, auth, world, db_session) 
 
 
 def test_health_overview_lists_least_healthy_first(api, auth, world, db_session) -> None:
+    bind_tenant(db_session, world.users["alpha.manager"].tenant_id)  # as in an alpha request
     account = db_session.get(Account, world.ids["A2"])
     account.lifecycle_stage = "churned"
     db_session.flush()

@@ -120,6 +120,8 @@ def test_simultaneous_conversions_create_records_only_once(app_engine, committed
     assert results[0].contact_id == results[1].contact_id
     with Session(app_engine) as session:
         tenant = principal.tenant_id
+        assert tenant is not None
+        bind_tenant(session, tenant)
         accounts = session.scalar(
             select(func.count()).select_from(Account).where(Account.tenant_id == tenant)
         )

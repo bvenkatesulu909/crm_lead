@@ -41,7 +41,7 @@ from app.modules.sales.api import pipeline_metrics
 from app.modules.sales.models import Opportunity
 from tests.auth_helpers import TEST_ISSUER, TokenFactory, bearer
 from tests.conftest import UNREACHABLE_DATABASE_URL
-from tests.db.conftest import session_factory_for
+from tests.db.conftest import bind_principal, session_factory_for
 
 PEOPLE = {
     "alpha.admin": ("alpha", "tenant_admin"),
@@ -518,7 +518,7 @@ def test_pipeline_figures_apply_the_opportunity_policy_on_their_own(
 
     def principal(name: str, role: Role) -> Principal:
         user = world.users[name]
-        return Principal(
+        acting = Principal(
             subject=user.idp_subject,
             issuer=TEST_ISSUER,
             user_type="staff",
@@ -527,6 +527,8 @@ def test_pipeline_figures_apply_the_opportunity_policy_on_their_own(
             user_id=user.id,
             tenant_id=user.tenant_id,
         )
+        bind_principal(db_session, acting)  # what identity resolution does for a request
+        return acting
 
     filters = Filters(Period(TODAY - timedelta(29), TODAY))
     agent = pipeline_metrics(db_session, principal("alpha.agent2", Role.SALES_AGENT), filters)

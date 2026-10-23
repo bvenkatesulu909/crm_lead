@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import AuditLog
 from app.core.config import Settings
+from app.core.db import bind_tenant
 from app.core.events import Event
 from app.core.mail import MemoryMailer
 from app.core.storage import MemoryFileStore
@@ -94,13 +95,17 @@ def quote_with_discount(
     )
 
 
-def tasks(db_session: Session, subject_start: str) -> list[Activity]:
+def tasks(db_session: Session, tenant: uuid.UUID, subject_start: str) -> list[Activity]:
+    # Explicit RLS context: the worker binds every tenant in turn, so whatever it left on the
+    # shared test connection is not necessarily this one.
+    bind_tenant(db_session, tenant)
     return list(
         db_session.scalars(select(Activity).where(Activity.subject.like(f"{subject_start}%")))
     )
 
 
-def runs(db_session: Session) -> list[WorkflowRun]:
+def runs(db_session: Session, tenant: uuid.UUID) -> list[WorkflowRun]:
+    bind_tenant(db_session, tenant)
     return list(db_session.scalars(select(WorkflowRun).order_by(WorkflowRun.created_at)))
 
 
@@ -198,7 +203,7 @@ def test_a_matching_event_runs_the_actions(api, auth, world, worker, db_session)
     big = quote_with_discount(api, auth, world, "25")
     worker()
 
-    [task] = tasks(db_session, "Check discount on")
+    [task] = tasks(db_session, alpha(world), "Check discount on")
     assert task.subject == f"Check discount on QT-{big['number']:04d}: 50 widgets"
     assert (task.assignee_id, task.account_id, task.status) == (
         world.users["alpha.agent1"].id,
@@ -212,17 +217,18 @@ def test_a_matching_event_runs_the_actions(api, auth, world, worker, db_session)
     )
     assert task.due_at is not None and task.due_at > datetime.now(UTC) + timedelta(days=1)
 
+    bind_tenant(db_session, alpha(world))
     managers = db_session.scalars(
         select(Notification.user_id).where(Notification.type == "workflow.message")
     ).all()
     assert set(managers) == {world.users["alpha.manager"].id, world.users["alpha.manager2"].id}
-    [run] = runs(db_session)
+    [run] = runs(db_session, alpha(world))
     assert (run.status, run.record_id, run.message) == (
         "done",
         uuid.UUID(big["id"]),
         "task created; 2 notified",
     )
-    assert uuid.UUID(small["id"]) not in {r.record_id for r in runs(db_session)}
+    assert uuid.UUID(small["id"]) not in {r.record_id for r in runs(db_session, alpha(world))}
     # The run log is visible to admins.
     log = ok(api.get("/api/v1/workflows/runs", headers=auth("alpha.admin")))
     assert (log[0]["rule_name"], log[0]["status"]) == ("Big discounts", "done")
@@ -232,14 +238,16 @@ def test_rules_never_reach_another_organisation(api, auth, world, worker, db_ses
     ok(rule(api, auth, user="beta.admin", conditions=[]), 201)  # beta: every approval request
     quote_with_discount(api, auth, world, "25")  # in alpha
     worker()
-    assert runs(db_session) == [] and tasks(db_session, "Check discount") == []
+    beta = world.users["beta.admin"].tenant_id
+    for tenant in (alpha(world), beta):  # checked per tenant: RLS shows one at a time
+        assert runs(db_session, tenant) == [] and tasks(db_session, tenant, "Check discount") == []
 
 
 def test_inactive_rules_do_nothing(api, auth, world, worker, db_session) -> None:
     ok(rule(api, auth, is_active=False), 201)
     quote_with_discount(api, auth, world, "25")
     worker()
-    assert runs(db_session) == []
+    assert runs(db_session, alpha(world)) == []
 
 
 def test_lead_status_is_changed_through_the_leads_rules(
@@ -355,12 +363,13 @@ def test_a_failing_action_is_logged_and_undone(api, auth, world, worker, db_sess
         )
     )
     worker()
-    by_rule = {r.rule_id: r for r in runs(db_session)}
+    by_rule = {r.rule_id: r for r in runs(db_session, alpha(world))}
     assert sorted(r.status for r in by_rule.values()) == ["done", "failed"]
     [failed] = [r for r in by_rule.values() if r.status == "failed"]
     assert failed.message == "A lead cannot go from 'qualified' to 'new'."
     assert (
-        tasks(db_session, "Should not exist") == [] and len(tasks(db_session, "Still works")) == 1
+        tasks(db_session, alpha(world), "Should not exist") == []
+        and len(tasks(db_session, alpha(world), "Still works")) == 1
     )
 
 
@@ -377,7 +386,7 @@ def test_loops_and_floods_are_stopped(api, auth, world, db_session) -> None:
     engine.on_event(db_session, event(3), hourly_limit=100)  # caused by 3 automatic steps
     engine.on_event(db_session, event(0), hourly_limit=100)
     engine.on_event(db_session, event(0), hourly_limit=1)  # second run within the hour
-    assert [(r.status, (r.message or "")[:13]) for r in runs(db_session)] == [
+    assert [(r.status, (r.message or "")[:13]) for r in runs(db_session, alpha(world))] == [
         ("limited", "Stopped: star"),
         ("done", "task created"),
         ("limited", "Stopped: the "),
@@ -385,7 +394,7 @@ def test_loops_and_floods_are_stopped(api, auth, world, db_session) -> None:
     same = event(0)
     engine.on_event(db_session, same, hourly_limit=100)
     engine.on_event(db_session, same, hourly_limit=100)  # the worker delivered it twice
-    assert len(runs(db_session)) == 4 and rule_row is not None
+    assert len(runs(db_session, alpha(world))) == 4 and rule_row is not None
 
 
 def test_actions_publish_events_one_level_deeper(api, auth, world, worker, db_session) -> None:
@@ -422,6 +431,7 @@ def test_notifications_only_reach_people_who_may_see_the_record(
     )
     quote_with_discount(api, auth, world, "25")  # agent1's quote: agent2 may not see it
     worker()
+    bind_tenant(db_session, alpha(world))
     told = set(
         db_session.scalars(
             select(Notification.user_id).where(Notification.type == "workflow.message")
@@ -457,7 +467,7 @@ def test_expiring_quotes_get_a_follow_up_task_once(api, auth, world, worker, db_
     )  # valid 30 days
     worker()
     worker()
-    [task] = tasks(db_session, "Follow up")
+    [task] = tasks(db_session, alpha(world), "Follow up")
     assert later["id"] not in task.subject and quote["title"] in task.subject
 
 
@@ -489,6 +499,7 @@ def test_overdue_tasks_trigger_rules(api, auth, world, worker, db_session) -> No
         )
     db_session.flush()
     worker()
+    bind_tenant(db_session, alpha(world))
     titles = db_session.scalars(
         select(Notification.title).where(Notification.type == "workflow.message")
     ).all()

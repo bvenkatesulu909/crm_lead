@@ -19,14 +19,14 @@ from app.modules.contracts.repository import ContractFilters
 from app.modules.contracts.schemas import (
     ContractCreate,
     ContractEventRead,
+    ContractNote,
     ContractPage,
     ContractRead,
+    ContractRenewal,
     ContractStatus,
+    ContractStep,
+    ContractTerminate,
     ContractUpdate,
-    NoteInput,
-    RenewInput,
-    Step,
-    TerminateStep,
 )
 from app.modules.identity.api import require_any_permission
 
@@ -124,7 +124,7 @@ def update_contract(
     "/{contract_id}/notes", summary="Add a note to the history", responses=problem_responses(404)
 )
 def add_note(
-    contract_id: uuid.UUID, data: NoteInput, principal: Writer, session: Db
+    contract_id: uuid.UUID, data: ContractNote, principal: Writer, session: Db
 ) -> ContractRead:
     contract = service.add_note(session, principal, contract_id, data.note)
     session.commit()
@@ -136,7 +136,9 @@ def add_note(
     summary="Activate a draft (managers); a renewal replaces the contract it renews",
     responses=STEP,
 )
-def activate(contract_id: uuid.UUID, data: Step, principal: Manager, session: Db) -> ContractRead:
+def activate(
+    contract_id: uuid.UUID, data: ContractStep, principal: Manager, session: Db
+) -> ContractRead:
     contract = service.activate(
         session, principal, contract_id, version=data.version, note=data.note
     )
@@ -150,7 +152,7 @@ def activate(contract_id: uuid.UUID, data: Step, principal: Manager, session: Db
     responses=STEP,
 )
 def terminate(
-    contract_id: uuid.UUID, data: TerminateStep, principal: Manager, session: Db
+    contract_id: uuid.UUID, data: ContractTerminate, principal: Manager, session: Db
 ) -> ContractRead:
     contract = service.terminate(
         session, principal, contract_id, version=data.version, reason=data.reason
@@ -167,7 +169,7 @@ def terminate(
 )
 def renew(
     contract_id: uuid.UUID,
-    data: RenewInput,
+    data: ContractRenewal,
     principal: Manager,
     session: Db,
     response: Response,

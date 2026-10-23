@@ -33,9 +33,9 @@ from app.modules.contracts.schemas import (
     ContractCreate,
     ContractEventRead,
     ContractRead,
+    ContractRenewal,
     ContractSummary,
     ContractUpdate,
-    RenewInput,
 )
 from app.modules.identity import api as identity_api
 from app.modules.quotes import api as quotes_api
@@ -358,7 +358,7 @@ def terminate(
 
 
 def renew(
-    session: Session, principal: Principal, contract_id: uuid.UUID, data: RenewInput
+    session: Session, principal: Principal, contract_id: uuid.UUID, data: ContractRenewal
 ) -> Contract:
     """Create the renewal as a new draft; activate it later to replace the old contract."""
     _require_manage(principal)

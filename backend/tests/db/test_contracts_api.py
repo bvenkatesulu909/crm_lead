@@ -560,7 +560,7 @@ def test_the_service_itself_refuses_manager_steps_to_an_agent(api, auth, world, 
     from app.core.db import bind_tenant
     from app.core.errors import ForbiddenError
     from app.modules.contracts import service
-    from app.modules.contracts.schemas import RenewInput
+    from app.modules.contracts.schemas import ContractRenewal
     from tests.auth_helpers import TEST_ISSUER
 
     draft = new_contract(api, auth, world)
@@ -581,4 +581,4 @@ def test_the_service_itself_refuses_manager_steps_to_an_agent(api, auth, world, 
     with pytest.raises(ForbiddenError):
         service.terminate(db_session, principal, contract_id, version=1, reason="x")
     with pytest.raises(ForbiddenError):
-        service.renew(db_session, principal, contract_id, RenewInput(version=1))
+        service.renew(db_session, principal, contract_id, ContractRenewal(version=1))

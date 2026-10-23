@@ -95,17 +95,17 @@ class ContractUpdate(_Input):
         return self
 
 
-class Step(_Input):
+class ContractStep(_Input):
     version: int = Field(ge=1, description="The version you are looking at (detects lost updates).")
     note: Note | None = None
 
 
-class TerminateStep(_Input):
+class ContractTerminate(_Input):
     version: int = Field(ge=1)
     reason: Reason = Field(min_length=1, description="Why the contract ends early (required).")
 
 
-class RenewInput(_Input):
+class ContractRenewal(_Input):
     """Create the renewal as a new draft. Dates and value default from the old contract."""
 
     version: int = Field(ge=1)
@@ -115,12 +115,12 @@ class RenewInput(_Input):
     note: Note | None = None
 
     @model_validator(mode="after")
-    def _check(self) -> "RenewInput":
+    def _check(self) -> "ContractRenewal":
         _dates_in_order(self.start_date, self.end_date)
         return self
 
 
-class NoteInput(_Input):
+class ContractNote(_Input):
     note: Note
 
 

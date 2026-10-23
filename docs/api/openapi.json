@@ -2511,6 +2511,22 @@
         "title": "ContractEventRead",
         "type": "object"
       },
+      "ContractNote": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "ContractNote",
+        "type": "object"
+      },
       "ContractPage": {
         "properties": {
           "items": {
@@ -2845,6 +2861,103 @@
         "title": "ContractRead",
         "type": "object"
       },
+      "ContractRenewal": {
+        "additionalProperties": false,
+        "description": "Create the renewal as a new draft. Dates and value default from the old contract.",
+        "properties": {
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "total_value": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Value"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "ContractRenewal",
+        "type": "object"
+      },
+      "ContractStep": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "version": {
+            "description": "The version you are looking at (detects lost updates).",
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "ContractStep",
+        "type": "object"
+      },
       "ContractSummary": {
         "properties": {
           "account_id": {
@@ -3057,6 +3170,29 @@
           "version"
         ],
         "title": "ContractSummary",
+        "type": "object"
+      },
+      "ContractTerminate": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "description": "Why the contract ends early (required).",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "reason"
+        ],
+        "title": "ContractTerminate",
         "type": "object"
       },
       "ContractUpdate": {
@@ -6294,22 +6430,6 @@
           "amount"
         ],
         "title": "MoneyRead",
-        "type": "object"
-      },
-      "NoteInput": {
-        "additionalProperties": false,
-        "properties": {
-          "note": {
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Note",
-            "type": "string"
-          }
-        },
-        "required": [
-          "note"
-        ],
-        "title": "NoteInput",
         "type": "object"
       },
       "NotificationPage": {
@@ -10987,74 +11107,6 @@
         "title": "Reminders",
         "type": "object"
       },
-      "RenewInput": {
-        "additionalProperties": false,
-        "description": "Create the renewal as a new draft. Dates and value default from the old contract.",
-        "properties": {
-          "end_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "End Date"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "start_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Date"
-          },
-          "total_value": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Total Value"
-          },
-          "version": {
-            "minimum": 1.0,
-            "title": "Version",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "version"
-        ],
-        "title": "RenewInput",
-        "type": "object"
-      },
       "RepFigures": {
         "properties": {
           "converted_in_period": {
@@ -11822,6 +11874,34 @@
         "title": "StageRead",
         "type": "object"
       },
+      "Step": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "Step",
+        "type": "object"
+      },
       "StepWithReason": {
         "additionalProperties": false,
         "properties": {
@@ -12038,29 +12118,6 @@
           "status"
         ],
         "title": "TenantSummary",
-        "type": "object"
-      },
-      "TerminateStep": {
-        "additionalProperties": false,
-        "properties": {
-          "reason": {
-            "description": "Why the contract ends early (required).",
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Reason",
-            "type": "string"
-          },
-          "version": {
-            "minimum": 1.0,
-            "title": "Version",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "version",
-          "reason"
-        ],
-        "title": "TerminateStep",
         "type": "object"
       },
       "TicketAssign": {
@@ -13141,35 +13198,6 @@
         "title": "Reopen",
         "type": "object"
       },
-      "app__modules__contracts__schemas__Step": {
-        "additionalProperties": false,
-        "properties": {
-          "note": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "version": {
-            "description": "The version you are looking at (detects lost updates).",
-            "minimum": 1.0,
-            "title": "Version",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "version"
-        ],
-        "title": "Step",
-        "type": "object"
-      },
       "app__modules__dashboard__schemas__ActivityRead": {
         "properties": {
           "actor_name": {
@@ -13345,34 +13373,6 @@
           "actor_user_id"
         ],
         "title": "ActivityRead",
-        "type": "object"
-      },
-      "app__modules__quotes__schemas__Step": {
-        "additionalProperties": false,
-        "properties": {
-          "note": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "version": {
-            "minimum": 1.0,
-            "title": "Version",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "version"
-        ],
-        "title": "Step",
         "type": "object"
       },
       "app__modules__sales__schemas__Reopen": {
@@ -17126,7 +17126,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__modules__contracts__schemas__Step"
+                "$ref": "#/components/schemas/ContractStep"
               }
             }
           },
@@ -17306,7 +17306,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NoteInput"
+                "$ref": "#/components/schemas/ContractNote"
               }
             }
           },
@@ -17394,7 +17394,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RenewInput"
+                "$ref": "#/components/schemas/ContractRenewal"
               }
             }
           },
@@ -17492,7 +17492,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TerminateStep"
+                "$ref": "#/components/schemas/ContractTerminate"
               }
             }
           },
@@ -24607,7 +24607,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__modules__quotes__schemas__Step"
+                "$ref": "#/components/schemas/Step"
               }
             }
           },
@@ -26948,7 +26948,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__modules__quotes__schemas__Step"
+                "$ref": "#/components/schemas/Step"
               }
             }
           },
@@ -27046,7 +27046,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__modules__quotes__schemas__Step"
+                "$ref": "#/components/schemas/Step"
               }
             }
           },
@@ -27712,7 +27712,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__modules__quotes__schemas__Step"
+                "$ref": "#/components/schemas/Step"
               }
             }
           },
@@ -27810,7 +27810,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__modules__quotes__schemas__Step"
+                "$ref": "#/components/schemas/Step"
               }
             }
           },
@@ -27908,7 +27908,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/app__modules__quotes__schemas__Step"
+                "$ref": "#/components/schemas/Step"
               }
             }
           },

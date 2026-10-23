@@ -633,7 +633,10 @@ live = pytest.mark.skipif(
 
 @pytest.fixture
 def live_api(db_connection: Connection, token_factory: TokenFactory) -> Iterator[TestClient]:
-    settings = Settings()
+    try:
+        settings = Settings()  # the live check needs the REAL key, so it reads backend/.env
+    except Exception:
+        pytest.skip("backend/.env is not configured")
     if settings.anthropic_api_key is None:
         pytest.skip("CRM_ANTHROPIC_API_KEY is not set in backend/.env")
     with make_api(db_connection, token_factory, ClaudeChatModel(settings)) as client:

@@ -26,6 +26,9 @@ const icons: Record<NavItem["icon"], ReactNode> = {
   quotes: (
     <path d="M6 2h9l5 5v15H6zM14 2v6h6M9 12h3M9 16h7M15 11.5a1.5 1.5 0 1 0 0 .01" />
   ),
+  contracts: (
+    <path d="M6 2h9l5 5v15H6zM14 2v6h6M9 12h5M9 16h3M14 17l1.5 1.5L19 15" />
+  ),
   products: <path d="M20 7 12 3 4 7v10l8 4 8-4zM4 7l8 4 8-4M12 11v10" />,
   tasks: (
     <path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" />

@@ -11,6 +11,7 @@ import {
   formatMoney,
   orderNumber,
 } from "@/components/orders";
+import { ContractStatusBadge, EndHint } from "@/components/contract-view";
 import { QuoteStatusBadge } from "@/components/quote-view";
 import { TicketStatusBadge, ticketNumber } from "@/components/tickets";
 import {
@@ -33,6 +34,7 @@ import type {
   OpportunityPage,
   OrderPage,
   PortalUser,
+  ContractPage,
   QuotePage,
   TicketPage,
   TimelineEntry,
@@ -61,12 +63,14 @@ import {
   canReadLeads,
   canReadOpportunities,
   canReadOrders,
+  canReadContracts,
   canReadQuotes,
   canReadTickets,
   canWriteAccounts,
   canWriteContacts,
   canWriteOpportunities,
   canWriteOrders,
+  canWriteContracts,
   canWriteQuotes,
 } from "@/lib/permissions";
 import { quoteNumber } from "@/lib/quotes";
@@ -203,7 +207,7 @@ export default async function AccountPage({
   // Every list comes from the API, which returns only records this user may see.
   const [
     people, parent, children, contacts, opportunities, history, orders, invoices, tickets,
-    portalUsers, audit, health, quotes,
+    portalUsers, audit, health, quotes, contracts,
   ] = await Promise.all([
     apiFetch<DirectoryUser[]>("/users"),
     account.parent_account_id
@@ -220,6 +224,7 @@ export default async function AccountPage({
     apiFetch<TimelineEntry[]>(`/accounts/${a}/timeline`).catch(() => null),
     apiFetch<CustomerHealth>(`/accounts/${a}/health`).catch(() => null),
     section(canReadQuotes(me), () => apiFetch<QuotePage>(`/quotes?account_id=${a}&limit=10`)),
+    section(canReadContracts(me), () => apiFetch<ContractPage>(`/contracts?account_id=${a}&limit=10`)),
   ]); // prettier-ignore
 
   // Display only: the API applies the same rules again on every change.
@@ -484,6 +489,40 @@ export default async function AccountPage({
               {quotes.total > quotes.items.length && (
                 <p className="border-t border-slate-100 px-5 py-3 text-sm">
                   <Link href={`/quotes?account_id=${a}`} className="text-brand-700 hover:underline">All {quotes.total} quotes</Link>
+                </p>
+              )}
+            </SectionCard>
+          )}
+
+          {contracts && (
+            <SectionCard
+              title="Contracts"
+              action={canWriteContracts(me) && (
+                <ButtonLink href={`/contracts/new?account=${a}`} variant="secondary">New contract</ButtonLink>
+              )}
+            >
+              {contracts.items.length === 0 ? (
+                <Empty>No contracts for this account.</Empty>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {contracts.items.map((c) => (
+                    <li key={c.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                      <div className="min-w-0">
+                        <Link href={`/contracts/${c.id}`} className="text-sm font-medium text-brand-700 hover:underline">
+                          <span className="font-mono">{c.label}</span> {c.title}
+                        </Link>
+                        <p className="text-xs text-slate-500">
+                          {formatMoney(c.total_value, c.currency)}{c.end_date && ` · ends ${formatDate(c.end_date)}`} <EndHint status={c.status} daysToEnd={c.days_to_end} />
+                        </p>
+                      </div>
+                      <ContractStatusBadge status={c.status} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {contracts.total > contracts.items.length && (
+                <p className="border-t border-slate-100 px-5 py-3 text-sm">
+                  <Link href={`/contracts?account_id=${a}`} className="text-brand-700 hover:underline">All {contracts.total} contracts</Link>
                 </p>
               )}
             </SectionCard>

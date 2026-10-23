@@ -1,6 +1,6 @@
 # Contracts and renewals (design, 2026-10-23)
 
-**Status: C1 (database), C2 (API) and C3 (worker) built; C4 (screens) in progress.**
+**Status: C1 (database), C2 (API), C3 (worker) and C4 (screens) built.** Contact, deal and quote links are supported by the API but not yet offered on the form (a later small step).
 Branch `feat/contracts`. Written before the code because the plan had no spec for this module.
 
 ## What it is for
@@ -84,7 +84,7 @@ answers 404, never 403.
 | **C1** | this design; migration 0037 (3 tables, RLS, insert-only history); SQLAlchemy models; permissions registered; guard tests | built |
 | C2 | `rules.py`, schemas (separate input schemas, no server fields), repository, policies, service, router `/api/v1/contracts`, audit and domain events, 64 tests (happy path, validation, tenant isolation, role denial, record denial, ID tampering, version conflicts, filters, audit) | built |
 | C3 | worker: expiry sweep, auto-renew draft and renewal reminders (notification to the owner and creator, e-mail for reminders; a workflow rule can add a task) | built |
-| C4 | screens: list with filters, detail with history, create/edit, activate/terminate/renew, a card on the account page, "Contracts" tile available in the module grid; Playwright journey; this document completed | not started |
+| C4 | screens: list with filters, detail with history, create/edit, activate/terminate/renew, a card on the account page, "Contracts" tile available in the module grid; Playwright journey; this document completed | built |
 
 ## Tests required before C2 is called done
 
@@ -112,3 +112,24 @@ record-level policy in SQL). A contract the user may not see is a 404.
 Changes carry the `version` the client saw; a stale version answers 409 `version_conflict`.
 Error codes: `contract_not_found` (404), `related_not_found` (404), `invalid_contract` (422),
 `contract_state` (409), `version_conflict` (409).
+
+## The screens (step C4)
+
+| Screen | What it does |
+|---|---|
+| `/contracts` | Table with the status, value, end date and an "Ends in N days" hint (amber inside 30 days, red once past); filters: search (title or CT-0007), status, ending within 30/60/90 days; "New contract" for people who may write |
+| `/contracts/new` | Form for a draft. The account is chosen with the type-to-search field (works with any number of accounts); "New contract" on an account page pre-selects it |
+| `/contracts/[id]` | Details (account, owner, period, value, renewal reminder, links to the previous and the following contract), terms, history with who and when ("The system" for worker entries) and the action buttons |
+| `/contracts/[id]/edit` | A draft shows every field; an active contract shows only the title, renewal settings and terms, with a note that dates and value change by renewing |
+| Account page | A "Contracts" card (latest 10, "All N contracts") |
+
+The buttons follow the permissions (agents: edit and note; managers: also activate, renew,
+terminate) and the status (a renewal can be made once; terminated and renewed contracts are
+final). This is **display only**: the API checks permissions, versions and the status flow on
+every call. The sidebar entry and the "Contracts & Renewals" tile appear only for people who
+may read contracts (sales agents, managers, tenant admins - not support or customers).
+
+Tests: 33 component tests (labels, the end-of-contract hint, form validation against the API's
+limits, menu visibility, which buttons show in each state) and 3 Playwright journeys (draft ->
+activated -> renewed -> the renewal replaces it; terminate with a reason; filters and
+visibility for other agents and support).

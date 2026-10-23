@@ -9,6 +9,7 @@ export const MODULE_ICON_PATHS: Record<ModuleIcon, string> = {
     "M8 3v3M16 3v3M3 9h18M5 6h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM8 14l2.5 2.5L16 12",
   catalog: "M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8",
   quotes: "M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6",
+  contracts: "M7 3h7l5 5v13H7zM14 3v5h5M10 12h6M10 16h3M15 17l1.5 1.5L20 15",
   orders: "M3 4h2l2.5 11h11L21 7H6.5M10 20h.01M17 20h.01",
   invoices: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3",
   support:

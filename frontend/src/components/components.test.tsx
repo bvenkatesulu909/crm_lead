@@ -234,7 +234,7 @@ describe("ModuleGrid", () => {
       screen.getByRole("heading", { name: "CRM modules" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("17 of 20 available · more are added phase by phase"),
+      screen.getByText("18 of 21 available · more are added phase by phase"),
     ).toBeInTheDocument();
     const links = screen.getAllByRole("link");
     expect(links).toHaveLength(1);
@@ -248,6 +248,6 @@ describe("ModuleGrid", () => {
         "Customer Management: Available. Not included in your role.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(20);
+    expect(screen.getAllByRole("listitem")).toHaveLength(21);
   });
 });

@@ -222,6 +222,7 @@ describe("dashboard module catalog", () => {
       "Activities",
       "Product Catalog",
       "Quotations",
+      "Contracts & Renewals",
       "Orders",
       "Invoices",
       "Customer Support",

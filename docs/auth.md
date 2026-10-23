@@ -3,7 +3,7 @@
 How a request proves **who** it comes from, and how the API decides **what** that person may see.
 Status: the foundation is implemented and used by every shipped staff and portal module
 (identity, accounts, contacts, leads, sales, activities, catalogue, orders, billing, support,
-portal, documents, reports, workflows, assistant). Teams and Row-Level Security are still open.
+portal, documents, reports, workflows, assistant). Row-Level Security is enforced on every tenant table (ADR 0009, `docs/rls-audit.md`); Teams are still open.
 
 ## 1. The big picture
 
@@ -107,6 +107,14 @@ token and the database — never from request bodies, query strings or headers l
    staff users get only staff roles, customers only `customer`, and tenant members never get
    `super_admin`. Unknown role names are ignored.
 6. Permissions = the fixed role → permission table below.
+
+**Row-Level Security (ADR 0009).** Every table with `tenant_id` is protected by PostgreSQL RLS,
+so the database itself refuses other tenants' rows. Step 1 above cannot read `users` directly
+(no tenant is known yet): it calls the narrow function `identity_lookup_user(issuer, subject)`,
+which returns only id, tenant and active flag. Then `bind_tenant()` sets `app.tenant_id` for the
+transaction (and `bind_user()` the lead scope), and only after that is the full user row
+loaded. Without a binding a query sees **no rows** - it fails closed. The full list of the
+narrow exceptions (login, sign-up, worker claim, metrics counts) is in `docs/rls-audit.md`.
 
 ## 5. Roles and permissions (`backend/app/core/auth/rbac.py`)
 
@@ -255,9 +263,6 @@ those tests are skipped.
 
 ## 10. Not done yet (planned)
 
-- PostgreSQL Row-Level Security as a second safety net: **staged** (ADR 0009). The knowledge
-  tables are enforced now; the remaining domains, worker BYPASSRLS role and the audited
-  `(issuer, subject)` lookup exception follow in later steps.
 - Teams/hierarchies for sales managers (today an `all` scope means the whole tenant).
 - Production Keycloak: `start` mode with HTTPS, real SMTP, real secrets management (prepared in
   ADR 0007: `infrastructure/keycloak/Dockerfile.production` + `realm-crm-production.json`).

@@ -2,44 +2,72 @@
 
 ## Enforced today
 
-Six tables have ENABLE + FORCE row-level security and one policy each:
+**All 47 tables with a `tenant_id` column** have ENABLE + FORCE row-level security and a
+tenant policy. Tables without `tenant_id` are the documented exceptions: `tenants` (the root),
+`signup_code_attempts` (identity-scoped) and `service_heartbeats` (worker liveness, no tenant
+data).
 
-- `kb_documents`, `kb_chunks` (migration 0022): `tenant_id = crm_current_tenant()`.
-- `leads` (migration 0029):
-  `tenant_id = crm_current_tenant() AND (crm_lead_scope() = 'all' OR owner_id = crm_current_user())`.
-- `users` (migration 0030): `tenant_id = crm_current_tenant()`. Login goes through the narrow
-  `SECURITY DEFINER` function `identity_lookup_user(issuer, subject)` (owner `crm_owner`, fixed
-  `search_path`, EXECUTE only for `crm_app`), which returns only id, tenant_id and is_active.
-  The full User row is loaded after `bind_tenant()`.
-- `access_requests` (migration 0031): `tenant_id = crm_current_tenant()`. Signup uses the
-  narrow `SECURITY DEFINER` functions `access_request_latest` (latest status/tenant only) and
-  `access_request_submit` (insert-only, active signup code + length validation), owned by
-  `crm_owner` with EXECUTE only for `crm_app`.
-- `outbox_jobs` (migration 0032): `tenant_id = crm_current_tenant()`. The worker claims one job
-  through `outbox_claim(now, stale_before)` (`FOR UPDATE SKIP LOCKED`, returns only that job),
-  then binds `app.tenant_id = job.tenant_id`. Schedulers iterate active tenants and bind each.
+| Migration | Tables | Policy |
+|---|---|---|
+| 0022 | `kb_documents`, `kb_chunks` | `tenant_id = crm_current_tenant()` |
+| 0029 | `leads` | tenant **and** (`crm_lead_scope() = 'all'` OR `owner_id = crm_current_user()`) |
+| 0030 | `users` | `tenant_id = crm_current_tenant()` |
+| 0031 | `access_requests` | `tenant_id = crm_current_tenant()` |
+| 0032 | `outbox_jobs` | `tenant_id = crm_current_tenant()` |
+| 0033 | `accounts`, `contacts`, `portal_access_grants`, `lead_activities`, `lead_assignments`, `activities`, `audit_log` | `tenant_id = crm_current_tenant()` |
+| 0034 | `opportunities`, `opportunity_stage_changes`, `products`, `price_books`, `price_book_entries`, `quotes`, `quote_lines`, `quote_events`, `quote_number_counters`, `quote_settings`, `orders`, `order_lines`, `order_status_events`, `order_number_counters`, `invoices`, `invoice_lines`, `credit_notes`, `credit_note_lines`, `payments`, `billing_number_counters` | `tenant_id = crm_current_tenant()` |
+| 0035 | `tickets`, `ticket_comments`, `ticket_number_counters`, `documents`, `notifications`, `notification_preferences`, `workflow_rules`, `workflow_runs`, `assistant_conversations`, `assistant_messages`, `assistant_pending_actions`, `assistant_tool_calls`, `rag_queries`, `rag_feedback` | `tenant_id = crm_current_tenant()` |
 
-`crm_current_tenant()`, `crm_current_user()` and `crm_lead_scope()` are fail-closed when their
-setting is unset (NULL), so an unbound connection sees no rows and cannot insert them.
+Every policy uses the same expression for USING and WITH CHECK, so rows can neither be read
+nor written for another tenant. `crm_current_tenant()`, `crm_current_user()` and
+`crm_lead_scope()` are fail-closed when their setting is unset (NULL): an unbound connection
+sees no rows and cannot insert any.
+
+RLS is the **second** layer. Record-level rules (owner, team, portal grants) stay in each
+module's `policies.py`; RLS guarantees that a forgotten tenant filter cannot leak another
+organisation's data.
 
 `crm_app` has no BYPASSRLS; `crm_owner` does (migrations and test setup only).
 
-A sales agent (scope "own") sees only leads they own; sales managers and tenant admins
-(scope "all") see every lead in their tenant. A missing setting shows nothing.
+## Narrow SECURITY DEFINER exceptions
 
-Tests:
+Each is owned by `crm_owner`, has a fixed `search_path`, is executable only by `crm_app` (not
+PUBLIC) and returns the minimum needed:
 
-- `backend/tests/db/test_rls_leads.py` — 2 passed: agent own vs manager all, and no settings
-  returns zero rows.
-- `backend/tests/db/test_rls_identity.py` — 3 passed: login lookup then normal load, tenant B
-  cannot read tenant A's user, and the function is not executable by PUBLIC.
-- `backend/tests/db/test_rls_access_requests.py` — 4 passed: signup without a tenant,
-  anonymous read/insert denied, tenant isolation, functions not PUBLIC.
-- `backend/tests/db/test_rls_outbox.py` — 2 passed: two tenants' jobs run with the right
-  tenant setting; a handler cannot read the other tenant's user; claim not PUBLIC.
-- `backend/tests/db/test_rls_knowledge_deep.py` — 7 passed: select/insert/update/delete
-  isolation, missing-context fail-closed, cross-tenant chunk FK, transaction-local tenant
-  setting, and the app role cannot disable row security.
+| Function | Why it cannot run under a tenant | Returns |
+|---|---|---|
+| `identity_lookup_user(issuer, subject)` (0030) | login: the tenant is not known yet | id, tenant_id, is_active |
+| `access_request_latest(issuer, subject)` (0031) | sign-up status before membership | latest status + tenant |
+| `access_request_submit(...)` (0031) | sign-up with an organisation code | insert only; request id + tenant |
+| `outbox_claim(now, stale_before)` (0032) | the worker finds a due job before its tenant | the one claimed job |
+| `ops_queue_counts()` (0036) | the `/metrics` scrape has no tenant | counts per status only - no ids |
+
+## How the tenant is set
+
+- API: `identity.service.resolve_principal()` looks up the user through
+  `identity_lookup_user`, then `bind_tenant()` (+ `bind_user()` for the lead scope). An
+  `after_begin` listener re-applies the settings after every commit/rollback.
+- Platform "create organisation": binds the **new, server-generated** tenant id before inserting
+  its first admin (fixed 2026-10-23; it returned 500 under users RLS).
+- Worker: claims through `outbox_claim`, then binds `job.tenant_id`. Schedulers iterate active
+  tenants and bind each one in its own transaction.
+- Scripts: `seed_dev_data` connects as the owner (migration URL); the knowledge scripts bind each
+  tenant.
+
+## Tests
+
+- `backend/tests/db/test_rls_tenant_tables.py` — the guard for future migrations: every table
+  with `tenant_id` has ENABLE + FORCE and a policy whose USING and WITH CHECK both use
+  `crm_current_tenant()`; no other table may appear without `tenant_id`; with real data in two
+  tenants, no context shows 0 rows in every tenant table and each tenant sees only itself;
+  cross-tenant INSERT and tenant-changing UPDATE are rejected; another tenant's rows cannot be
+  updated or deleted; `crm_app` cannot disable RLS or set `row_security = off`.
+- `test_rls_leads.py`, `test_rls_identity.py`, `test_rls_access_requests.py`,
+  `test_rls_outbox.py`, `test_rls_knowledge*.py` — the per-domain behaviour above.
+- `test_observability.py::test_queue_gauges_count_every_tenant_under_rls` — metrics count every
+  tenant.
+- Full backend suite (2026-10-23, crm_test at 0036): **1150 passed, 4 skipped** (opt-in live
+  assistant). Playwright was **not** run for this change yet.
 
 ## Test bootstrap (owner-based)
 
@@ -47,50 +75,27 @@ Setup writes that must be visible to the restricted app role are created as `crm
 (BYPASSRLS) and committed, then truncated after the test (`tests/db/conftest.py`:
 `committed_world`, `clean_committed_data`). API requests and RLS assertions keep using
 `crm_app` (`db_connection`), so the policies are genuinely exercised.
-`clean_committed_data` finishes the app connection's transaction before TRUNCATE so API row
-locks cannot block cleanup.
 
-Rows created inside a test's rolled-back transaction (for example an extra lead used by a
-report) cannot go through a second owner transaction: their tenant/user rows are uncommitted,
-so the owner connection could not see those foreign keys. Those inserts call
-`setup_lead_context()`, which applies the per-transaction settings a real request would set
-(tenant + owner with scope "own", or scope "all" for an ownerless/manager row). It never
+Rows created inside a test's rolled-back transaction cannot go through a second owner
+transaction (their foreign keys may be uncommitted). Those helpers give the session exactly the
+context a real request would have: `bind_tenant` for the row's own tenant, `setup_lead_context`
+for leads, `bind_principal` for tests that call a service directly with a Principal. Reads in
+tests bind the tenant they are about explicitly - the worker binds every tenant in turn, so the
+setting left on the shared test connection is not necessarily the one a test means. Nothing
 disables a policy or opens a fail-open path.
 
 ## Gap inventory
 
-Run: `cd backend && .venv\Scripts\python -m scripts.rls_audit`
+Run: `cd backend && .venv\Scripts\python -m scripts.rls_audit` (exit code 1 if any tenant table
+is unprotected or shows rows without a tenant context).
 
-Current result (dev database, migration 0032):
+Result against `crm_test` at migration 0036: tenant tables 47, protected 47, unprotected none,
+47 policies, `crm_app` BYPASSRLS false, `crm_owner` BYPASSRLS true.
 
-- tenant tables: 47
-- protected: 6 (kb_documents, kb_chunks, leads, users, access_requests, outbox_jobs)
-- unprotected: 41, including accounts, contacts, opportunities,
-  activities, quotes, orders, invoices, tickets, documents, products, notifications, audit_log,
-  outbox_jobs, rag_queries, rag_feedback, assistant conversations/messages/tool_calls,
-  portal_access_grants, lead_activities, lead_assignments.
-
-Cross-tenant probe as `crm_app` with no tenant context:
-
-| Table | Rows visible | Distinct tenants visible |
-|---|---:|---:|
-| users | 0 | 0 |
-| access_requests | 0 | 0 |
-| accounts | 187 | 2 |
-| outbox_jobs | 0 | 0 |
-| tickets | 60 | 1 in this dataset |
-| leads | 0 | 0 |
-
-Knowledge rows with no tenant context: 0. Lead rows with no tenant context: 0. User rows with
-no tenant context: 0 (RLS working).
-
-## Confirmed design blockers
-
-1. Test/seed bootstrap — fixture and seed setup still writes through `crm_app` for many
-   domains; Step 4 moves setup to the owner connection.
-2. Remaining tenant tables (41) — each domain needs its own policy and tests (see above).
+The development database (`crm`) is still at **0032** until `alembic upgrade head` is run there.
 
 ## Next
 
-Step 4 owner-based test/seed bootstrap -> remaining domains (accounts/contacts,
-sales/quotes/orders, support, documents, notifications/workflows/assistant).
+- Apply 0033–0036 to the development database and run the Playwright suite against this
+  branch's API and web app.
+- Teams (manager hierarchies) - record-level, not RLS.

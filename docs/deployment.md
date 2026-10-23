@@ -152,6 +152,8 @@ Tick **every** item of the checklist below, remove the staging password, announc
 - [ ] **All secrets freshly generated** and stored only in the hosts; the Anthropic key shown in chat
       earlier is **revoked** in the Anthropic console and replaced.
 - [ ] **Row-level security** (gap-analysis Phase C) finished - or only one organisation online.
+      Backend done 2026-10-23 (all 47 tenant tables, ADR 0009); tick after the migrations are on
+      the target database and the Playwright suite has passed against them.
 - [ ] Database backups on, and a **restore tested**; the file bucket versioned or backed up.
 - [ ] **Upload/PDF sizes verified** on the chosen hosts: Netlify functions limit request and response
       sizes and run time, and our files can be 20 MB. If too small: browser → bucket uploads with

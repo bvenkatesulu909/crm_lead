@@ -1,10 +1,9 @@
 # ADR 0009 — PostgreSQL Row-Level Security as defence in depth
 
-- **Status:** Accepted (2026-10-21, staged rollout). Steps 1-2 are implemented: per-transaction
-  tenant binding + RLS on the knowledge tables (0022), and a tenant/owner policy on `leads`
-  (0029) together with the owner-based test bootstrap. The remaining domains, the worker
-  BYPASSRLS role and the identity bootstrap exceptions follow in later steps (see
-  "Implementation status" below).
+- **Status:** Accepted (2026-10-21, staged rollout). **Implemented 2026-10-23:** all 47 tables
+  with `tenant_id` have ENABLE + FORCE RLS and a tenant policy (0022, 0029-0035), with narrow
+  SECURITY DEFINER exceptions for login, sign-up, the worker claim and the metrics counts. The
+  worker runs as `crm_app` (no separate BYPASSRLS role was needed). See "Implementation status".
 - **Date:** 2026-10-20
 - **Deciders:** Project owner
 - **Depends on:** ADR 0002 (tenant from the verified identity); independent of ADR 0008
@@ -131,14 +130,32 @@ Findings from the code audit (all verified against the tree at migration 0019):
 - **Verified:** raw app-role queries return 0 rows without the setting, only the bound tenant's
   rows with it, and 0 for another tenant; policy/force flags checked by a test; demo seeding and
   the knowledge tests work under RLS.
-- **Next:** the test/seed owner-bootstrap migration and policies for the remaining tenant
-  tables, domain by domain
-  (per the plan above).
+- **Test/seed bootstrap (step 4, 2026-10-23):** shared test worlds are built through
+  `committed_world` (crm_owner) and committed; API calls and assertions stay on `crm_app`.
+  Rolled-back setup binds the row's own tenant like a request; tests that call services directly
+  use `bind_principal()`. `seed_dev_data` connects with the owner (migration) URL. Found and
+  fixed on the way: `POST /platform/tenants` returned 500 under users RLS - the new tenant's
+  server-generated id is now bound before its first admin is inserted. Verified: full backend
+  suite 1143 passed, 4 skipped.
+- **Remaining domains (step 5, 2026-10-23):** migrations **0033** (customers, activities,
+  audit), **0034** (sales, quotes, orders, billing) and **0035** (support, documents,
+  notifications, workflows, assistant, RAG logs) enable FORCE RLS with
+  `<table>_tenant_isolation` (`tenant_id = crm_current_tenant()` for USING and WITH CHECK) on
+  the remaining 41 tables; each has a downgrade. **0036** adds `ops_queue_counts()` because the
+  `/metrics` queue gauges had silently become 0 under RLS (aggregates per status only, EXECUTE
+  only for `crm_app`). Guard test `test_rls_tenant_tables.py` fails any future table with a
+  `tenant_id` column but no FORCE RLS + tenant policy. Verified: full backend suite 1150
+  passed, 4 skipped; ruff, mypy, lint-imports clean; `rls_audit` 47/47 protected. Playwright not
+  yet run against this branch.
+- **Decision 4 in practice:** no `crm_worker` BYPASSRLS role. The worker claims through
+  `outbox_claim()` and then binds each job's tenant, so it is as restricted as the API.
+- **Next:** apply 0033-0036 to the development database and run the Playwright suite against
+  this branch; then Teams (record-level, not RLS).
 
 ## Open questions for the owner
 
-1. **Worker credentials:** a dedicated `crm_worker` role with `BYPASSRLS` (recommended), or run the
-   worker with the owner role?
+1. **Worker credentials:** resolved 2026-10-23 - neither: the worker stays on `crm_app`, claims
+   through `outbox_claim()` and binds each job's tenant.
 2. **Owner `BYPASSRLS`:** confirm the migration role may bypass RLS for bootstrap and tests
    (recommended, documented), or keep `FORCE` strict and rewrite the few guards?
 3. **Test setup:** resolved 2026-10-22 — owner-connection fixtures for committed data, plus an

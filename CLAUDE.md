@@ -25,7 +25,7 @@ Alembic (`backend/`) · PostgreSQL · Keycloak (OIDC) · SeaweedFS (S3 files) ·
 
 ## Security rules (non-negotiable)
 
-- **Tenant isolation:** every tenant-owned table has `tenant_id`; every query goes through a tenant-scoped repository; PostgreSQL RLS is enabled. `tenant_id` comes **only** from the verified token.
+- **Tenant isolation:** every tenant-owned table has `tenant_id`; every query goes through a tenant-scoped repository; PostgreSQL RLS is enabled (ENABLE + FORCE + tenant policy on every new tenant table, in its migration - `test_rls_tenant_tables.py` enforces it). Tests create setup data as `crm_owner` (`committed_world`) and assert as `crm_app`; never weaken a policy to make a test pass. `tenant_id` comes **only** from the verified token.
 - **Identity:** use `get_principal` / `require_any_permission` from `app.modules.identity.api` on every non-public endpoint; never write custom password storage (Keycloak owns credentials). See `docs/auth.md`.
 - **Never trust client-supplied IDs** (account, contact, customer, owner, tenant…). Load them through the scoped repository + policy; return **404** if missing or not allowed.
 - **Authorization on every endpoint:** RBAC permission (`require_permission("x:y")`) **and** record-level policy. Lists are filtered in SQL, not after loading.
@@ -161,7 +161,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
 - **Online deployment, step D1 (ADR 0007)** — prepared 2026-10-19, nothing is online. See `docs/deployment.md`.
   - `netlify.toml`; `backend/Dockerfile` (API + worker); `infrastructure/keycloak/Dockerfile.production` + generated `realm-crm-production.json` (no users); tests for requirements and the production realm; production web build is clean.
   - Fixed: `requirements.txt` lacked PyJWT/cryptography (a clean install crashed).
-  - Still needed: D2 staging and D3 go-live (accounts, domain, secrets - owner's actions), RLS, direct-to-bucket uploads if hosting limits require.
+  - Still needed: D2 staging and D3 go-live (accounts, domain, secrets - owner's actions), direct-to-bucket uploads if hosting limits require.
 - **Netlify 404 fix and documentation audit** — done 2026-10-20, not committed. See `docs/deployment.md`.
   - `netlify.toml` sets `publish = ".next"` (the Next.js adapter deploys the server build, not
     static files); a "Page not found" troubleshooting section was added to `docs/deployment.md`.
@@ -173,11 +173,17 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   - New generated `docs/inventory.md` and `backend/scripts/report_inventory.py` (command in the
     table above): current API, database, route and test counts; the database part is skipped
     when PostgreSQL is unreachable.
+- **PostgreSQL Row-Level Security (ADR 0009)** — done 2026-10-23 on branch `rls-leads-policy` (PR #1, not merged). See `docs/rls-audit.md`.
+  - ENABLE + FORCE RLS and a tenant policy on all 47 tables with `tenant_id` (migrations 0022, 0029-0035); `leads` also checks the owner scope; narrow SECURITY DEFINER functions for login, sign-up, the worker claim and the metrics counts (0030-0032, 0036). The worker stays on `crm_app`.
+  - Test bootstrap: worlds are built as `crm_owner` (`committed_world`) and committed; API calls and assertions run as `crm_app`. Guard test `test_rls_tenant_tables.py` fails any new tenant table without RLS.
+  - Fixed on the way: `POST /platform/tenants` returned 500 under users RLS; `/metrics` queue gauges were always 0.
+  - Tests (run 2026-10-23): backend 1150 passed (+4 opt-in skipped), ruff/mypy/import-linter clean. **Playwright not run yet** - needs the dev database upgraded to 0036 and this branch's API/web running on :8000/:3000.
 - **Pending:**
   - Assistant live check against real Claude. Blocked by Anthropic billing ("credit balance too
     low"); test with `python -m scripts.check_anthropic`.
-  - Teams and PostgreSQL Row-Level Security (rest of Phase C; the outbox, worker and reminder
-    e-mails are done).
+  - Teams (rest of Phase C; RLS, the outbox, worker and reminder e-mails are done).
+  - RLS: `alembic upgrade head` on the development database and a Playwright run against the
+    `rls-leads-policy` branch, then owner review of PR #1.
   - Modules not started: marketing (Phase 16), Communication Center, integrations (Phase 19),
     staff AI assistant (Phase 20b/20c: knowledge base, voice).
   - Full end-to-end suite re-run after the latest fixes (last recorded 2026-10-19: backend 987,
@@ -187,5 +193,5 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   is being resolved: `netlify.toml` now sets `publish = ".next"`; the next check is the
   **Deploy summary Functions count** (steps in `docs/deployment.md`).
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
-  (Phase 19), staff AI assistant (Phase 20b/20c), contracts and renewals. Teams and RLS come
-  before the features that need them and need an ADR.
+  (Phase 19), staff AI assistant (Phase 20b/20c), contracts and renewals. Teams come before the
+  features that need them and need an ADR.

@@ -100,7 +100,8 @@ Python 3.12, FastAPI, SQLAlchemy 2, Alembic, psycopg 3, httpx, anthropic SDK. Mo
 | Cross-cutting | `audit_log` |
 
 Every tenant-owned table has `tenant_id`, with composite foreign keys `(tenant_id, x_id)`. There is
-one trigger (`trg_invoices_freeze_issued`). **Row-Level Security is enabled on 0 tables.**
+one trigger (`trg_invoices_freeze_issued`). **Row-Level Security** (ADR 0009): ENABLE + FORCE and a
+tenant policy on all 47 tables with `tenant_id` since 2026-10-23 (`docs/rls-audit.md`).
 
 ### 1.4 Frontend ↔ API consistency (checked)
 
@@ -120,7 +121,7 @@ one trigger (`trg_invoices_freeze_issued`). **Row-Level Security is enabled on 0
 | Modules import other modules only via `api.py` | **Followed and enforced** since Phase A: import-linter contracts in `pyproject.toml`, `lint-imports`, and `tests/test_architecture.py` |
 | Each module has `permissions.py`, `events.py` | Rule **updated in Phase A** to match the code: permissions are central in `core/auth/rbac.py`; events come with the outbox (Phase C) |
 | Cross-module side effects via outbox events | **Implemented** in Phase C1 (ADR 0005): the outbox row is written in the same transaction and dispatched by the worker; the invoiced-order lock still uses a direct `orders.api` call (documented choice) |
-| PostgreSQL RLS enabled | **Not yet** (planned Phase 5; isolation today = policies + composite FKs + tests) |
+| PostgreSQL RLS enabled | **Done 2026-10-23** (ADR 0009): all 47 tenant tables, FORCE, fail-closed; guard test `test_rls_tenant_tables.py`. Playwright re-run against it still pending |
 | Tests per module: happy path, validation, tenant isolation, role denial, record-level denial, ID tampering | Followed by every module built since Phase A (leads, accounts, contacts, pipeline, tasks, quotes, orders, invoices, tickets, documents, workflows, reports, assistant) |
 
 ### 1.6 Quality status (recorded runs)
@@ -164,7 +165,7 @@ Legend: ✅ done · 🟡 partly · ❌ not started
   Netlify/documentation changes are still uncommitted.
 - ~~**Outbox + background worker**~~ Done in Phase C1 (ADR 0005): `outbox_jobs` (migration 0014),
   the worker, domain events and notifications.
-- **PostgreSQL RLS** - still not enabled (planned Phase 5/C).
+- ~~**PostgreSQL RLS**~~ Done 2026-10-23 (ADR 0009, migrations 0022, 0029-0036).
 - **Teams** - still not built (Phase 5/C).
 - ~~**MinIO**~~ Replaced by **SeaweedFS** (S3 API) in Phase C1.
 - ~~**import-linter**~~ Added in Phase A and runs in the checks.
@@ -205,8 +206,8 @@ only features that do not exist yet.
 ### Phase C — Platform foundations (plan Phases 5 rest + 1 rest), ADR needed
 - ~~**Outbox table + worker skeleton**, with retries.~~ Done 2026-10-19 as Phase C1 (ADR 0005, docs/background-jobs.md).
 - **Teams**, so managers can see their team's records (today: the whole tenant).
-- **Row-Level Security** on tenant tables, with `SET LOCAL app.tenant_id` per request, plus the
-  "raw query without tenant returns nothing" test.
+- ~~**Row-Level Security** on tenant tables, with the tenant set per transaction, plus the
+  "raw query without tenant returns nothing" test.~~ Done 2026-10-23 (ADR 0009, `docs/rls-audit.md`).
 - ~~**MinIO** service in Docker Compose.~~ Done as **SeaweedFS** (S3 API) in Phase C1 - MinIO images are no longer published (ADR 0005).
 
 *Why now:* activities/reminders, marketing, workflows, documents and integrations all depend on

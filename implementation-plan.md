@@ -106,7 +106,7 @@ JWKS producing a `Principal`; `/api/v1/me` endpoint.
 - `/api/v1/me` returns the user, tenant and roles from the token.
 - Playwright: login → see name → logout.
 
-## Phase 5 — Tenancy, authorization foundation & User/Role Management (Module 1)  *(roles, permissions, tenant + record-level policies, portal grants, audit log, user administration + onboarding (ADR 0004, docs/onboarding.md) done; RLS, teams, outbox pending)*
+## Phase 5 — Tenancy, authorization foundation & User/Role Management (Module 1)  *(roles, permissions, tenant + record-level policies, portal grants, audit log, user administration + onboarding (ADR 0004, docs/onboarding.md), outbox (ADR 0005) and RLS on every tenant table (ADR 0009, 2026-10-23, docs/rls-audit.md) done; teams pending)*
 
 **Work:** `tenants`, `users`, `teams`, `roles`, `permissions` tables; `TenantScopedRepository`;
 RLS policies + `SET LOCAL app.tenant_id`; `require_permission` dependency; policy framework;
@@ -114,7 +114,7 @@ audit log; outbox table + worker skeleton; admin UI to list users, assign roles 
 
 **Acceptance criteria**
 - Tenant admin can manage users/roles/teams of **their** tenant only.
-- RLS test: a raw query without `app.tenant_id` set returns no rows.
+- RLS test: a raw query without `app.tenant_id` set returns no rows. *(done: `tests/db/test_rls_tenant_tables.py`, every tenant table)*
 - Cross-tenant tests return 404; missing permission returns 403.
 - Audit entries recorded for role changes.
 - Worker processes a test outbox event and retries on failure.

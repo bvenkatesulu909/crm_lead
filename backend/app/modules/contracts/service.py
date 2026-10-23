@@ -14,6 +14,7 @@
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -357,6 +358,54 @@ def terminate(
     return contract
 
 
+def _build_renewal(
+    session: Session,
+    old: Contract,
+    *,
+    start: date,
+    end: date,
+    total_value: Decimal | None,
+    created_by_user_id: uuid.UUID | None,
+) -> Contract:
+    """A new draft that renews ``old``. Used by people (renew) and by the worker (auto-renew)."""
+    renewal = Contract(
+        id=uuid.uuid4(),
+        tenant_id=old.tenant_id,
+        number=repository.next_contract_number(session, old.tenant_id),
+        title=old.title,
+        status="draft",
+        account_id=old.account_id,
+        contact_id=old.contact_id,
+        opportunity_id=old.opportunity_id,
+        quote_id=None,
+        owner_id=old.owner_id,
+        created_by_user_id=created_by_user_id,
+        renewed_from_id=old.id,
+        start_date=start,
+        end_date=end,
+        auto_renew=old.auto_renew,
+        renewal_notice_days=old.renewal_notice_days,
+        renewal_term_months=old.renewal_term_months,
+        currency=old.currency,
+        total_value=total_value if total_value is not None else old.total_value,
+        billing_frequency=old.billing_frequency,
+        terms=old.terms,
+    )
+    session.add(renewal)
+    return renewal
+
+
+def _renewal_dates(old: Contract, start: date | None, end: date | None) -> tuple[date, date]:
+    if old.start_date is None or old.end_date is None:  # cannot happen (database rule)
+        raise InvalidContractError("The contract has no dates to renew from.")
+    new_start = start or rules.renewal_defaults(old.start_date, old.end_date, None)[0]
+    new_end = end or rules.renewal_end(
+        new_start, old.renewal_term_months, (old.end_date - old.start_date).days
+    )
+    _check_dates(new_start, new_end)
+    return new_start, new_end
+
+
 def renew(
     session: Session, principal: Principal, contract_id: uuid.UUID, data: ContractRenewal
 ) -> Contract:
@@ -371,38 +420,15 @@ def renew(
         raise rules.ContractStateError(
             f"{rules.label(existing.number)} already renews this contract."
         )
-    if old.start_date is None or old.end_date is None:  # cannot happen (database rule); be safe
-        raise InvalidContractError("The contract has no dates to renew from.")
-
-    start = data.start_date or rules.renewal_defaults(old.start_date, old.end_date, None)[0]
-    end = data.end_date or rules.renewal_end(
-        start, old.renewal_term_months, (old.end_date - old.start_date).days
-    )
-    _check_dates(start, end)
-    renewal = Contract(
-        id=uuid.uuid4(),
-        tenant_id=old.tenant_id,
-        number=repository.next_contract_number(session, old.tenant_id),
-        title=old.title,
-        status="draft",
-        account_id=old.account_id,
-        contact_id=old.contact_id,
-        opportunity_id=old.opportunity_id,
-        quote_id=None,
-        owner_id=old.owner_id,
+    start, end = _renewal_dates(old, data.start_date, data.end_date)
+    renewal = _build_renewal(
+        session,
+        old,
+        start=start,
+        end=end,
+        total_value=data.total_value,
         created_by_user_id=principal.user_id,
-        renewed_from_id=old.id,
-        start_date=start,
-        end_date=end,
-        auto_renew=old.auto_renew,
-        renewal_notice_days=old.renewal_notice_days,
-        renewal_term_months=old.renewal_term_months,
-        currency=old.currency,
-        total_value=data.total_value if data.total_value is not None else old.total_value,
-        billing_frequency=old.billing_frequency,
-        terms=old.terms,
     )
-    session.add(renewal)
     _add_event(
         session,
         principal,
@@ -412,11 +438,7 @@ def renew(
         note=data.note or f"Renewal of {rules.label(old.number)}",
     )
     _add_event(
-        session,
-        principal,
-        old,
-        "note",
-        note=f"Renewal {rules.label(renewal.number)} created",
+        session, principal, old, "note", note=f"Renewal {rules.label(renewal.number)} created"
     )
     _audit(
         session,
@@ -505,3 +527,100 @@ def history(
         )
         for e in events
     ]
+
+
+# --- scheduled work (the worker, no signed-in user) ---------------------------------------
+
+SWEEP_BATCH = 200
+
+
+def _system_event(
+    session: Session,
+    contract: Contract,
+    event_type: str,
+    *,
+    old: str | None = None,
+    new: str | None = None,
+    note: str,
+) -> None:
+    # Written by the worker (no signed-in user), so the history has no actor and there is no
+    # audit row (audit entries need a person) - the same convention as the quote worker jobs.
+    session.add(
+        ContractEvent(
+            id=uuid.uuid4(),
+            tenant_id=contract.tenant_id,
+            contract_id=contract.id,
+            event_type=event_type,
+            from_status=old,
+            to_status=new,
+            actor_user_id=None,
+            note=note[:500],
+        )
+    )
+
+
+def _expire(session: Session, contract: Contract) -> None:
+    rules.check_transition(contract.status, "expired")
+    contract.status = "expired"
+    _system_event(
+        session,
+        contract,
+        "expired",
+        old="active",
+        new="expired",
+        note=f"The contract ended on {contract.end_date}.",
+    )
+    publish_event(
+        session, contract.tenant_id, "contract.expired", {"contract_id": str(contract.id)}
+    )
+    if contract.auto_renew and repository.renewal_of(session, contract) is None:
+        # Auto-renew prepares the renewal as a DRAFT; activating it stays a manager's decision
+        # (the terms or the price may have to change first).
+        start, end = _renewal_dates(contract, None, None)
+        renewal = _build_renewal(
+            session, contract, start=start, end=end, total_value=None, created_by_user_id=None
+        )
+        _system_event(
+            session,
+            renewal,
+            "created",
+            new="draft",
+            note=f"Renewal of {rules.label(contract.number)}, prepared automatically.",
+        )
+        _system_event(
+            session,
+            contract,
+            "note",
+            note=f"Renewal {rules.label(renewal.number)} prepared automatically (auto-renew).",
+        )
+
+
+def _remind(session: Session, contract: Contract, now: datetime) -> None:
+    contract.renewal_reminded_at = now  # once per renewal date; editing the dates resets it
+    _system_event(
+        session,
+        contract,
+        "renewal_reminder",
+        note=f"Renewal due: the contract ends on {contract.end_date}.",
+    )
+    publish_event(
+        session, contract.tenant_id, "contract.renewal_due", {"contract_id": str(contract.id)}
+    )
+
+
+def run_schedules(session: Session, now: datetime, *, tenant_id: uuid.UUID) -> int:
+    """Expire contracts whose end date has passed and remind about renewals that are due.
+
+    Safe to run as often as you like: an expired contract is no longer active, and a reminder
+    is sent once (``renewal_reminded_at``). Returns how many contracts it changed.
+    """
+    today = now.date()
+    changed = 0
+    for contract in repository.due_for_expiry(session, tenant_id, today, SWEEP_BATCH):
+        _expire(session, contract)
+        changed += 1
+    for contract in repository.due_for_reminder(session, tenant_id, today, SWEEP_BATCH):
+        _remind(session, contract, now)
+        changed += 1
+    session.flush()
+    return changed

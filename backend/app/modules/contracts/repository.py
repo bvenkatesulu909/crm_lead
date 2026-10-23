@@ -111,6 +111,46 @@ def get_in_tenant(
     ).one_or_none()
 
 
+def due_for_expiry(
+    session: Session, tenant_id: uuid.UUID, today: date, limit: int
+) -> Sequence[Contract]:
+    """Active contracts whose end date has passed. Rows are locked and skipped if another
+    worker already holds them, so two workers never expire the same contract twice."""
+    return session.scalars(
+        select(Contract)
+        .where(
+            Contract.tenant_id == tenant_id,
+            Contract.status == "active",
+            Contract.end_date < today,
+        )
+        .order_by(Contract.end_date, Contract.id)
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+        .execution_options(populate_existing=True)
+    ).all()
+
+
+def due_for_reminder(
+    session: Session, tenant_id: uuid.UUID, today: date, limit: int
+) -> Sequence[Contract]:
+    """Active contracts whose renewal date has come (end date minus notice days), that have
+    not ended yet and have not been reminded for this renewal date."""
+    return session.scalars(
+        select(Contract)
+        .where(
+            Contract.tenant_id == tenant_id,
+            Contract.status == "active",
+            Contract.end_date >= today,
+            Contract.end_date - Contract.renewal_notice_days <= today,
+            Contract.renewal_reminded_at.is_(None),
+        )
+        .order_by(Contract.end_date, Contract.id)
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+        .execution_options(populate_existing=True)
+    ).all()
+
+
 def renewal_of(session: Session, contract: Contract) -> Contract | None:
     """The contract that renews this one (a draft or later), if somebody already made it."""
     return session.scalars(

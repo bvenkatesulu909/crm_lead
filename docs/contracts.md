@@ -1,6 +1,6 @@
 # Contracts and renewals (design, 2026-10-23)
 
-**Status: C1 (database) and C2 (API) built; C3 (worker) and C4 (screens) in progress.**
+**Status: C1 (database), C2 (API) and C3 (worker) built; C4 (screens) in progress.**
 Branch `feat/contracts`. Written before the code because the plan had no spec for this module.
 
 ## What it is for
@@ -53,9 +53,16 @@ draft ──activate──► active ──terminate──► terminated
 - `activate`, `terminate` and `renew` are manager actions (`contract:manage`); agents create and edit.
 - `activate` needs a start and an end date, and the end date must not be in the past.
 - `terminate` needs a reason and only works on an active contract.
-- The worker, once a day: marks `active` contracts past `end_date` as `expired` (unless
-  `auto_renew`, which creates the renewal draft instead) and publishes the domain event
-  `contract.renewal_due` once per contract when the renewal date is reached.
+- The worker (about once a minute, safe to repeat), for each organisation:
+  - marks `active` contracts past `end_date` as `expired` and publishes `contract.expired`;
+    with `auto_renew` it also prepares the renewal as a **draft** (never activated by itself:
+    the terms or the price may have to change first);
+  - once the renewal date is reached (end date minus `renewal_notice_days`) it writes a
+    `renewal_reminder` entry to the history and publishes `contract.renewal_due` **once**.
+    Changing the end date or the notice days re-arms the reminder.
+  The owner and creator are notified (the reminder also by e-mail, by default), each only if
+  they may see the contract. The worker's history entries have no person; there is no audit row
+  for them, as with the quote jobs.
 
 ## Who may do what (permissions, step C1 registers them)
 
@@ -76,7 +83,7 @@ answers 404, never 403.
 |---|---|---|
 | **C1** | this design; migration 0037 (3 tables, RLS, insert-only history); SQLAlchemy models; permissions registered; guard tests | built |
 | C2 | `rules.py`, schemas (separate input schemas, no server fields), repository, policies, service, router `/api/v1/contracts`, audit and domain events, 64 tests (happy path, validation, tenant isolation, role denial, record denial, ID tampering, version conflicts, filters, audit) | built |
-| C3 | worker job: expiry sweep and renewal reminders (notification to the owner; a workflow rule can add a task) | not started |
+| C3 | worker: expiry sweep, auto-renew draft and renewal reminders (notification to the owner and creator, e-mail for reminders; a workflow rule can add a task) | built |
 | C4 | screens: list with filters, detail with history, create/edit, activate/terminate/renew, a card on the account page, "Contracts" tile available in the module grid; Playwright journey; this document completed | not started |
 
 ## Tests required before C2 is called done

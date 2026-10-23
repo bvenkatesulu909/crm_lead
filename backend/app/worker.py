@@ -31,6 +31,7 @@ from app.core.mail import Mailer, MailRejectedError, build_mailer
 from app.core.outbox import DeadJobHandler, JobHandler, run_next_job
 from app.core.storage import FileStore, build_file_store
 from app.modules.activities import api as activities_api
+from app.modules.contracts import api as contracts_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
 from app.modules.notifications import api as notifications_api
@@ -104,6 +105,10 @@ def run_schedules(
             bind_tenant(session, tenant_id)
             count += activities_api.publish_due_reminders(session, now, tenant_id=tenant_id)
         if include_workflows:
+            # Contract expiry and renewal reminders: cheap, indexed and safe to repeat.
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += contracts_api.run_schedules(session, now, tenant_id=tenant_id)
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += workflows_api.run_schedules(

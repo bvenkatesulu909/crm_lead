@@ -4,6 +4,10 @@ Run from the backend folder (venv active, PostgreSQL running, migrations applied
 
     python -m scripts.seed_dev_data
 
+Connects with CRM_MIGRATION_DATABASE_URL (the owner role, like Alembic): the app role is
+subject to row-level security (ADR 0009) and could not create users for a tenant before a
+tenant context exists. Seeding is setup, not application behaviour, so it uses the owner.
+
 Safe to run repeatedly: existing rows are left unchanged. All names and e-mail addresses are
 invented (".example.test"). The user IDs equal the fixed Keycloak user IDs in
 infrastructure/keycloak/realm-crm.json, so a login maps to the right CRM user.
@@ -15,7 +19,7 @@ from typing import Any
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from app.core.config import Settings
+from app.core.config import MigrationSettings, Settings
 from app.model_registry import metadata
 
 TENANT_ALPHA = uuid.UUID("1e000000-0000-4000-8000-000000000001")
@@ -87,7 +91,7 @@ def _insert_missing(
 
 def main() -> None:
     settings = Settings()
-    engine = create_engine(settings.database_url.get_secret_value())
+    engine = create_engine(MigrationSettings().migration_database_url.get_secret_value())
     with engine.begin() as connection:
         _insert_missing(
             connection,

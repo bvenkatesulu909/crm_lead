@@ -46,13 +46,13 @@ class World:
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     tenants: dict[str, uuid.UUID] = {}
     for slug in ("alpha", "beta"):
         new_tenant = Tenant(slug=f"{slug}-custdata", name=f"{slug.title()} Customer Data Test")
-        db_session.add(new_tenant)
-        db_session.flush()
+        committed_world.add(new_tenant)
+        committed_world.flush()
         tenants[slug] = new_tenant.id
     w.users = {}
     for name, (slug, role) in PEOPLE.items():
@@ -65,9 +65,9 @@ def world(db_session: Session) -> World:
             user_type="customer" if role == "customer" else "staff",
             roles=[role],
         )
-        db_session.add(user)
+        committed_world.add(user)
         w.users[name] = user
-    db_session.flush()
+    committed_world.flush()
     w.accounts = {}
     for key, slug, owner in [
         ("A1", "alpha", "alpha.agent1"),
@@ -77,11 +77,11 @@ def world(db_session: Session) -> World:
         account = Account(
             tenant_id=tenants[slug], name=f"CustData {key}", owner_id=w.users[owner].id
         )
-        db_session.add(account)
-        db_session.flush()
+        committed_world.add(account)
+        committed_world.flush()
         w.accounts[key] = account.id
     customer = w.users["alpha.customer"]
-    db_session.add(
+    committed_world.add(
         PortalAccessGrant(
             tenant_id=customer.tenant_id, user_id=customer.id, account_id=w.accounts["A1"]
         )
@@ -100,9 +100,10 @@ def world(db_session: Session) -> World:
             amount=Decimal("1000.00"),
             currency="EUR",
         )
-        db_session.add(opp)
-        db_session.flush()
+        committed_world.add(opp)
+        committed_world.flush()
         w.opportunities[key] = opp.id
+    committed_world.commit()
     return w
 
 

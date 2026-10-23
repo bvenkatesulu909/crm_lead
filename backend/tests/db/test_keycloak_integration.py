@@ -262,10 +262,10 @@ def real_api(db_connection: Connection, real_verifier: TokenVerifier) -> Iterato
         yield client
 
 
-def test_real_keycloak_token_gets_only_own_records(kc, real_api, db_session: Session) -> None:
+def test_real_keycloak_token_gets_only_own_records(kc, real_api, committed_world: Session) -> None:
     tenant = Tenant(slug="kc-it", name="Keycloak Integration Tenant")
-    db_session.add(tenant)
-    db_session.flush()
+    committed_world.add(tenant)
+    committed_world.flush()
     agent = User(
         id=uuid.UUID(AGENT1_SUBJECT),
         tenant_id=tenant.id,
@@ -275,12 +275,12 @@ def test_real_keycloak_token_gets_only_own_records(kc, real_api, db_session: Ses
         display_name="Agent One",
         user_type="staff",
     )
-    db_session.add(agent)
-    db_session.flush()
+    committed_world.add(agent)
+    committed_world.flush()
     mine = Account(tenant_id=tenant.id, name="Mine", owner_id=agent.id)
     not_mine = Account(tenant_id=tenant.id, name="Not mine", owner_id=None)
-    db_session.add_all([mine, not_mine])
-    db_session.flush()
+    committed_world.add_all([mine, not_mine])
+    committed_world.commit()
 
     headers = bearer(login(kc, "alpha.agent1")["access_token"])
 

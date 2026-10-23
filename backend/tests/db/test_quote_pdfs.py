@@ -15,6 +15,7 @@ from sqlalchemy import Connection, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.db import bind_tenant
 from app.core.mail import MemoryMailer
 from app.core.outbox import OutboxJob, enqueue, run_next_job
 from app.core.storage import MemoryFileStore
@@ -177,10 +178,12 @@ def test_a_pdf_job_for_a_missing_quote_is_dead_not_retried(
     factory = session_factory_for(db_connection)
     tenant = world.users["alpha.agent1"].tenant_id
     with factory() as session, session.begin():
+        bind_tenant(session, tenant)  # producers enqueue inside a tenant-bound transaction
         job_id = enqueue(
             session, tenant_id=tenant, kind="quote.pdf", payload={"quote_id": str(uuid.uuid4())}
         ).id
     run_next_job(factory, job_handlers(worker_services(files)), max_attempts=5)
+    bind_tenant(db_session, tenant)
     job = db_session.get(OutboxJob, job_id)
     assert job is not None
     db_session.refresh(job)

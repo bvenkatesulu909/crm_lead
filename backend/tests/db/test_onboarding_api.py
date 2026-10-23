@@ -25,6 +25,7 @@ from app.core.auth.identity_admin import (
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Role, permissions_for
 from app.core.config import Settings
+from app.core.db import bind_tenant
 from app.main import create_app
 from app.modules.accounts.models import Account
 from app.modules.identity import onboarding
@@ -90,14 +91,14 @@ class World:
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     w.tenants = {}
     for slug in ("alpha", "beta"):
         tenant = Tenant(slug=f"{slug}-onboarding", name=f"{slug.title()} Onboarding Test")
-        db_session.add(tenant)
-        db_session.flush()
-        db_session.refresh(tenant)
+        committed_world.add(tenant)
+        committed_world.flush()
+        committed_world.refresh(tenant)
         w.tenants[slug] = tenant
     w.users = {}
     for name, (slug, role) in PEOPLE.items():
@@ -110,9 +111,9 @@ def world(db_session: Session) -> World:
             user_type="customer" if role == "customer" else "staff",
             roles=[role],
         )
-        db_session.add(user)
+        committed_world.add(user)
         w.users[name] = user
-    db_session.flush()
+    committed_world.flush()
     w.accounts = {}
     for key, slug, owner in [
         ("A1", "alpha", "alpha.agent1"),
@@ -122,15 +123,15 @@ def world(db_session: Session) -> World:
         account = Account(
             tenant_id=w.tenants[slug].id, name=f"Onboarding {key}", owner_id=w.users[owner].id
         )
-        db_session.add(account)
-        db_session.flush()
+        committed_world.add(account)
+        committed_world.flush()
         w.accounts[key] = account.id
     for customer, key in [("alpha.customer1", "A1"), ("beta.customer", "B1")]:
         u = w.users[customer]
-        db_session.add(
+        committed_world.add(
             PortalAccessGrant(tenant_id=u.tenant_id, user_id=u.id, account_id=w.accounts[key])
         )
-    db_session.flush()
+    committed_world.commit()
     return w
 
 
@@ -315,6 +316,7 @@ def test_last_active_tenant_admin_is_protected(world, db_session, kc) -> None:
         tenant_id=acting.tenant_id,
     )
     only_admin = world.users["alpha.admin"].id
+    bind_tenant(db_session, acting.tenant_id)  # what identity resolution does for a request
 
     with pytest.raises(LastAdminError):
         onboarding.set_active(db_session, principal, kc, only_admin, False)
@@ -675,11 +677,12 @@ def test_sign_in_is_recorded_at_most_every_15_minutes(api, auth, world, db_sessi
     agent = world.users["alpha.agent1"]
     assert agent.last_login_at is None
 
+    bind_tenant(db_session, agent.tenant_id)
+    last_login = select(User.last_login_at).where(User.id == agent.id)
+
     ok(api.get("/api/v1/me", headers=auth("alpha.agent1")))
-    db_session.refresh(agent)
-    first = agent.last_login_at
+    first = db_session.scalar(last_login)
     ok(api.get("/api/v1/me", headers=auth("alpha.agent1")))
-    db_session.refresh(agent)
 
     assert first is not None
-    assert agent.last_login_at == first  # not rewritten on every request
+    assert db_session.scalar(last_login) == first  # not rewritten on every request

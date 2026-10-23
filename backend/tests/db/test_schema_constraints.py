@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
+from app.core.db import bind_tenant
 from app.modules.accounts.models import Account
 from app.modules.contacts.models import Contact
 from app.modules.identity.models import Tenant, User
@@ -30,6 +31,8 @@ def make_tenant(session: Session, slug: str) -> Tenant:
 
 
 def make_user(session: Session, tenant: Tenant, email: str = "staff@example.test") -> User:
+    # users is RLS-protected: insert with the tenant context a real request would have.
+    bind_tenant(session, tenant.id)
     user = User(
         tenant_id=tenant.id,
         idp_issuer=TEST_ISSUER,

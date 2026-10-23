@@ -61,13 +61,13 @@ class World:
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     tenants: dict[str, uuid.UUID] = {}
     for slug in ("alpha", "beta"):
         tenant = Tenant(slug=f"{slug}-billing", name=f"{slug.title()} Billing Test")
-        db_session.add(tenant)
-        db_session.flush()
+        committed_world.add(tenant)
+        committed_world.flush()
         tenants[slug] = tenant.id
     w.users = {}
     for name, (slug, role) in PEOPLE.items():
@@ -80,9 +80,9 @@ def world(db_session: Session) -> World:
             user_type="customer" if role == "customer" else "staff",
             roles=[role],
         )
-        db_session.add(user)
+        committed_world.add(user)
         w.users[name] = user
-    db_session.flush()
+    committed_world.flush()
     w.accounts = {}
     for key, slug, owner in [
         ("A1", "alpha", "alpha.agent1"),
@@ -92,8 +92,8 @@ def world(db_session: Session) -> World:
         account = Account(
             tenant_id=tenants[slug], name=f"Billing Account {key}", owner_id=w.users[owner].id
         )
-        db_session.add(account)
-        db_session.flush()
+        committed_world.add(account)
+        committed_world.flush()
         w.accounts[key] = account.id
     for customer, key in [
         ("alpha.customer1", "A1"),
@@ -101,10 +101,10 @@ def world(db_session: Session) -> World:
         ("beta.customer", "B1"),
     ]:
         u = w.users[customer]
-        db_session.add(
+        committed_world.add(
             PortalAccessGrant(tenant_id=u.tenant_id, user_id=u.id, account_id=w.accounts[key])
         )
-    db_session.flush()
+    committed_world.commit()
     return w
 
 

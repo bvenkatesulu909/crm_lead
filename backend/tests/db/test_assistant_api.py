@@ -104,13 +104,13 @@ class World:
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     tenants: dict[str, uuid.UUID] = {}
     for slug in ("alpha", "beta"):
         tenant = Tenant(slug=f"{slug}-assistant", name=f"{slug.title()} Assistant Test")
-        db_session.add(tenant)
-        db_session.flush()
+        committed_world.add(tenant)
+        committed_world.flush()
         tenants[slug] = tenant.id
     w.users = {}
     for name, (slug, role) in PEOPLE.items():
@@ -123,14 +123,14 @@ def world(db_session: Session) -> World:
             user_type="customer" if role == "customer" else "staff",
             roles=[role],
         )
-        db_session.add(user)
+        committed_world.add(user)
         w.users[name] = user
-    db_session.flush()
+    committed_world.flush()
     w.accounts = {}
     for key, slug in [("A1", "alpha"), ("A2", "alpha"), ("B1", "beta")]:
         account = Account(tenant_id=tenants[slug], name=f"Secretive {key} GmbH")
-        db_session.add(account)
-        db_session.flush()
+        committed_world.add(account)
+        committed_world.flush()
         w.accounts[key] = account.id
     for customer, key in [
         ("alpha.customer1", "A1"),
@@ -138,10 +138,10 @@ def world(db_session: Session) -> World:
         ("beta.customer", "B1"),
     ]:  # noqa: E501
         u = w.users[customer]
-        db_session.add(
+        committed_world.add(
             PortalAccessGrant(tenant_id=u.tenant_id, user_id=u.id, account_id=w.accounts[key])
         )  # noqa: E501
-    db_session.flush()
+    committed_world.commit()
     return w
 
 
@@ -593,16 +593,16 @@ def test_audit_and_messages_are_insert_only(app_engine, statement) -> None:
 
 
 def test_colleague_on_the_same_account_cannot_confirm_my_handover(
-    api, auth, data, model, db_session
+    api, auth, data, model, db_session, committed_world
 ) -> None:  # noqa: E501
     """Two contacts of the same company: each one's prepared tickets stay their own."""
     customer2 = data.users["alpha.customer2"]
-    db_session.add(
+    committed_world.add(
         PortalAccessGrant(
             tenant_id=customer2.tenant_id, user_id=customer2.id, account_id=data.accounts["A1"]
         )
     )  # noqa: E501
-    db_session.flush()
+    committed_world.commit()
     model.script(
         call(
             "propose_support_ticket",

@@ -55,13 +55,13 @@ class World:
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     tenants: dict[str, uuid.UUID] = {}
     for slug in ("alpha", "beta"):
         new_tenant = Tenant(slug=f"{slug}-rel", name=f"{slug.title()} Relationship Test")
-        db_session.add(new_tenant)
-        db_session.flush()
+        committed_world.add(new_tenant)
+        committed_world.flush()
         tenants[slug] = new_tenant.id
     w.users = {}
     for name, (slug, role) in PEOPLE.items():
@@ -74,9 +74,9 @@ def world(db_session: Session) -> World:
             user_type="customer" if role == "customer" else "staff",
             roles=[role],
         )
-        db_session.add(user)
+        committed_world.add(user)
         w.users[name] = user
-    db_session.flush()
+    committed_world.flush()
     w.ids = {}
     a1_fields = {
         "website": "https://www.example-one.test",
@@ -103,15 +103,15 @@ def world(db_session: Session) -> World:
             owner_id=user.id,
             **extra,
         )
-        db_session.add(account)
-        db_session.flush()
+        committed_world.add(account)
+        committed_world.flush()
         w.ids[key] = account.id
     for customer in ("alpha.customer", "alpha.customer2"):
         u = w.users[customer]
-        db_session.add(
+        committed_world.add(
             PortalAccessGrant(tenant_id=u.tenant_id, user_id=u.id, account_id=w.ids["A1"])
         )
-    db_session.flush()
+    committed_world.commit()
     return w
 
 

@@ -43,12 +43,12 @@ Headers = Callable[[str], dict[str, str]]
 
 
 @pytest.fixture
-def people(db_session: Session) -> dict[str, User]:
+def people(committed_world: Session) -> dict[str, User]:
     tenants: dict[str, uuid.UUID] = {}
     for slug in ("alpha", "beta"):
         tenant = Tenant(slug=f"{slug}-leads", name=f"{slug} leads test")
-        db_session.add(tenant)
-        db_session.flush()
+        committed_world.add(tenant)
+        committed_world.flush()
         tenants[slug] = tenant.id
     users: dict[str, User] = {}
     for name, (tenant_slug, user_type, role) in PEOPLE.items():
@@ -62,9 +62,9 @@ def people(db_session: Session) -> dict[str, User]:
             roles=[role],
             is_active=name != "alpha.inactive",
         )
-        db_session.add(user)
+        committed_world.add(user)
         users[name] = user
-    db_session.flush()
+    committed_world.commit()
     return users
 
 

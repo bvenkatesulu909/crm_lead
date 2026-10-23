@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.db import bind_tenant
 from app.modules.accounts.models import Account
 from app.modules.identity.models import PortalAccessGrant, Tenant, User
 from tests.db.test_schema_constraints import make_account, make_tenant, violated_constraint
@@ -12,6 +13,8 @@ ISSUER = "http://localhost:8080/realms/crm"
 
 
 def make_person(session: Session, tenant: Tenant, subject: str, user_type: str) -> User:
+    # users is RLS-protected: insert with the tenant context a real request would have.
+    bind_tenant(session, tenant.id)
     user = User(
         tenant_id=tenant.id,
         idp_issuer=ISSUER,

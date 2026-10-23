@@ -12,7 +12,7 @@ from tests.db.test_tickets_api import (  # noqa: F401
 
 
 def test_support_can_read_and_manage_another_support_agents_ticket(
-    api, auth, world, db_session
+    api, auth, world, committed_world
 ):
     support2 = User(
         tenant_id=world.users["alpha.support"].tenant_id,
@@ -23,8 +23,8 @@ def test_support_can_read_and_manage_another_support_agents_ticket(
         user_type="staff",
         roles=["support_agent"],
     )
-    db_session.add(support2)
-    db_session.flush()
+    committed_world.add(support2)
+    committed_world.commit()
 
     ticket = portal_ticket(api, auth, "alpha.customer1", world.accounts["A1"])
     assigned = api.post(

@@ -1,6 +1,7 @@
 """Tenant-level, role-level and record-level authorization, tested through the real API.
 
-World used by every test (all invented data, rolled back after each test):
+World used by every test (all invented data; committed through the owner role and truncated
+after each test, so the restricted app role running the API can see it):
 
     tenant ALPHA                                 tenant BETA
       admin    (tenant_admin)                      admin    (tenant_admin)
@@ -52,12 +53,12 @@ ROLES = {
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     for slug in ("alpha", "beta"):
         tenant = Tenant(slug=f"{slug}-test", name=f"{slug.title()} Test Tenant")
-        db_session.add(tenant)
-        db_session.flush()
+        committed_world.add(tenant)
+        committed_world.flush()
         w.tenants[slug] = tenant.id
 
     for name, role in ROLES.items():
@@ -70,8 +71,8 @@ def world(db_session: Session) -> World:
             display_name=name,
             user_type="customer" if role == "customer" else "staff",
         )
-        db_session.add(user)
-        db_session.flush()
+        committed_world.add(user)
+        committed_world.flush()
         w.users[name] = user
 
     for key, tenant_slug, owner in [
@@ -85,8 +86,8 @@ def world(db_session: Session) -> World:
             account_number=f"INT-{key}",
             owner_id=w.users[owner].id,
         )
-        db_session.add(account)
-        db_session.flush()
+        committed_world.add(account)
+        committed_world.flush()
         w.accounts[key] = account.id
 
     for customer, account_key in [
@@ -95,12 +96,12 @@ def world(db_session: Session) -> World:
         ("beta.customer", "B1"),
     ]:
         user = w.users[customer]
-        db_session.add(
+        committed_world.add(
             PortalAccessGrant(
                 tenant_id=user.tenant_id, user_id=user.id, account_id=w.accounts[account_key]
             )
         )
-    db_session.flush()
+    committed_world.commit()
     return w
 
 
@@ -172,16 +173,16 @@ def test_valid_token_for_unregistered_identity_is_forbidden(api, token_factory, 
     assert response.status_code == 403
 
 
-def test_disabled_user_is_forbidden(api, as_user, world, db_session) -> None:
+def test_disabled_user_is_forbidden(api, as_user, world, committed_world) -> None:
     world.users["alpha.agent1"].is_active = False
-    db_session.flush()
+    committed_world.commit()
 
     assert api.get("/api/v1/me", headers=as_user("alpha.agent1")).status_code == 403
 
 
-def test_users_of_suspended_tenant_are_forbidden(api, as_user, world, db_session) -> None:
-    db_session.get(Tenant, world.tenants["alpha"]).status = "suspended"
-    db_session.flush()
+def test_users_of_suspended_tenant_are_forbidden(api, as_user, world, committed_world) -> None:
+    committed_world.get(Tenant, world.tenants["alpha"]).status = "suspended"
+    committed_world.commit()
 
     assert api.get("/api/v1/accounts", headers=as_user("alpha.admin")).status_code == 403
 
@@ -344,20 +345,22 @@ def test_portal_response_hides_internal_fields(api, as_user, world) -> None:
     assert str(world.users["alpha.agent1"].id) not in response.text  # owner
 
 
-def test_removing_a_grant_removes_access_immediately(api, as_user, world, db_session) -> None:
-    grant = db_session.query(PortalAccessGrant).filter_by(account_id=world.accounts["A1"]).one()
-    db_session.delete(grant)
-    db_session.flush()
+def test_removing_a_grant_removes_access_immediately(api, as_user, world, committed_world) -> None:
+    grant = (
+        committed_world.query(PortalAccessGrant).filter_by(account_id=world.accounts["A1"]).one()
+    )
+    committed_world.delete(grant)
+    committed_world.commit()
 
     response = api.get("/api/v1/portal/accounts", headers=as_user("alpha.customer1"))
     assert response.json() == []
 
 
-def test_soft_deleted_account_is_invisible(api, as_user, world, db_session) -> None:
+def test_soft_deleted_account_is_invisible(api, as_user, world, committed_world) -> None:
     from datetime import UTC, datetime
 
-    db_session.get(Account, world.accounts["A1"]).deleted_at = datetime.now(UTC)
-    db_session.flush()
+    committed_world.get(Account, world.accounts["A1"]).deleted_at = datetime.now(UTC)
+    committed_world.commit()
 
     response = api.get(f"/api/v1/accounts/{world.accounts['A1']}", headers=as_user("alpha.admin"))
     assert response.status_code == 404

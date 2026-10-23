@@ -54,13 +54,13 @@ class World:
 
 
 @pytest.fixture
-def world(db_session: Session) -> World:
+def world(committed_world: Session) -> World:
     w = World()
     tenants: dict[str, uuid.UUID] = {}
     for slug in ("alpha", "beta"):
         tenant = Tenant(slug=f"{slug}-orders", name=f"{slug.title()} Orders Test")
-        db_session.add(tenant)
-        db_session.flush()
+        committed_world.add(tenant)
+        committed_world.flush()
         tenants[slug] = tenant.id
     w.users = {}
     for name, (slug, role) in PEOPLE.items():
@@ -73,9 +73,9 @@ def world(db_session: Session) -> World:
             user_type="customer" if role == "customer" else "staff",
             roles=[role],
         )
-        db_session.add(user)
+        committed_world.add(user)
         w.users[name] = user
-    db_session.flush()
+    committed_world.flush()
     w.accounts = {}
     for key, slug, owner in [
         ("A1", "alpha", "alpha.agent1"),
@@ -85,8 +85,8 @@ def world(db_session: Session) -> World:
         account = Account(
             tenant_id=tenants[slug], name=f"Orders Account {key}", owner_id=w.users[owner].id
         )
-        db_session.add(account)
-        db_session.flush()
+        committed_world.add(account)
+        committed_world.flush()
         w.accounts[key] = account.id
     for customer, key in [
         ("alpha.customer1", "A1"),
@@ -94,10 +94,10 @@ def world(db_session: Session) -> World:
         ("beta.customer", "B1"),
     ]:
         u = w.users[customer]
-        db_session.add(
+        committed_world.add(
             PortalAccessGrant(tenant_id=u.tenant_id, user_id=u.id, account_id=w.accounts[key])
         )
-    db_session.flush()
+    committed_world.commit()
     return w
 
 
@@ -257,8 +257,7 @@ def test_support_can_read_but_not_change_orders(api, auth, world) -> None:
 
     body = {"account_id": str(world.accounts["A1"]), "lines": LINES}
     assert (
-        api.get(f"/api/v1/orders/{order['id']}", headers=auth("alpha.support")).status_code
-        == 200
+        api.get(f"/api/v1/orders/{order['id']}", headers=auth("alpha.support")).status_code == 200
     )
     assert api.post("/api/v1/orders", json=body, headers=auth("alpha.support")).status_code == 403
     assert move(api, auth, "alpha.support", order, "confirmed").status_code == 403

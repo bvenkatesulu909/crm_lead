@@ -6,11 +6,11 @@ from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import Connection, Engine, create_engine, select, text
+from sqlalchemy import Connection, Engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import NullPool
 
 from app.core.config import Settings
+from app.core.db import bind_tenant
 from app.core.mail import MailRejectedError
 from app.core.outbox import (
     RETRY_DELAYS,
@@ -49,6 +49,8 @@ def add_job(
     factory: sessionmaker[Session], tenant: Tenant, kind: str = "test.ping", **changes: object
 ) -> uuid.UUID:
     with factory() as session, session.begin():
+        # Producers always enqueue inside a tenant-bound request or job (outbox_jobs has RLS).
+        bind_tenant(session, tenant.id)
         job = enqueue(
             session,
             tenant_id=tenant.id,
@@ -62,8 +64,9 @@ def add_job(
         return job.id
 
 
-def load(factory: sessionmaker[Session], job_id: uuid.UUID) -> OutboxJob:
+def load(factory: sessionmaker[Session], job_id: uuid.UUID, tenant: Tenant) -> OutboxJob:
     with factory() as session:
+        bind_tenant(session, tenant.id)
         job = session.get(OutboxJob, job_id)
         assert job is not None
         return job
@@ -78,9 +81,11 @@ def run(
 def test_a_job_exists_only_if_the_change_is_committed(factory, tenant) -> None:
     with factory() as session:
         session.begin()
+        bind_tenant(session, tenant.id)
         enqueue(session, tenant_id=tenant.id, kind="test.ping", payload={})
         session.rollback()
     with factory() as session:
+        bind_tenant(session, tenant.id)
         assert (
             session.scalars(select(OutboxJob).where(OutboxJob.tenant_id == tenant.id)).all() == []
         )
@@ -106,7 +111,7 @@ def test_handler_work_and_done_are_saved_together(factory, tenant, db_session) -
 
     assert run(factory, {"test.ping": handler}).id == job_id  # type: ignore[union-attr]
     assert [(j.tenant_id, j.payload, j.attempt) for j in seen] == [(tenant.id, {"n": 1}, 1)]
-    job = load(factory, job_id)
+    job = load(factory, job_id, tenant)
     assert (job.status, job.attempts, job.finished_at, job.last_error) == ("done", 1, NOW, None)
     assert db_session.scalar(select(Tenant).where(Tenant.slug == f"made-{job_id.hex[:10]}"))
     assert run(factory, {"test.ping": handler}) is None  # nothing left
@@ -122,7 +127,7 @@ def test_a_failed_job_is_rolled_back_and_retried_later(factory, tenant, db_sessi
         raise RuntimeError("customer@example.test is unreachable")  # personal data in text
 
     run(factory, {"test.ping": handler})
-    job = load(factory, job_id)
+    job = load(factory, job_id, tenant)
     assert (job.status, job.attempts) == ("pending", 1)
     assert job.run_after == NOW + RETRY_DELAYS[0]
     assert job.last_error == "RuntimeError"  # the message is NOT stored
@@ -142,7 +147,7 @@ def test_too_many_attempts_make_a_job_dead(factory, tenant) -> None:
         raise TimeoutError
 
     run(factory, {"test.ping": handler})
-    job = load(factory, job_id)
+    job = load(factory, job_id, tenant)
     assert (job.status, job.attempts, job.finished_at) == ("dead", 3, NOW)
 
 
@@ -160,14 +165,14 @@ def test_permanent_errors_stop_at_once(factory, tenant, error, expected) -> None
         raise error
 
     run(factory, {"test.ping": handler}, permanent_errors=(MailRejectedError,))
-    job = load(factory, job_id)
+    job = load(factory, job_id, tenant)
     assert (job.status, job.attempts, job.last_error) == ("dead", 1, expected)
 
 
 def test_unknown_kinds_are_dead_not_retried_forever(factory, tenant) -> None:
     job_id = add_job(factory, tenant, kind="test.unknown")
     run(factory, {})
-    assert load(factory, job_id).status == "dead"
+    assert load(factory, job_id, tenant).status == "dead"
 
 
 def test_future_and_finished_jobs_are_left_alone(factory, tenant) -> None:
@@ -182,7 +187,7 @@ def test_a_job_of_a_crashed_worker_is_taken_again(factory, tenant) -> None:
     stale = add_job(factory, tenant, status="running", locked_at=NOW - STALE_AFTER - timedelta(1))
     ran = run(factory, {"test.ping": lambda s, j: None})
     assert ran is not None and ran.id == stale
-    assert load(factory, fresh).status == "running"  # still owned by a live worker
+    assert load(factory, fresh, tenant).status == "running"  # still owned by a live worker
 
 
 def test_the_worker_runs_every_due_job_in_order(factory, tenant) -> None:
@@ -203,9 +208,10 @@ def test_the_worker_runs_every_due_job_in_order(factory, tenant) -> None:
 
 
 @pytest.fixture
-def committed_jobs(app_engine: Engine, migrated_database: str) -> Iterator[list[uuid.UUID]]:
+def committed_jobs(owner_engine: Engine) -> Iterator[tuple[uuid.UUID, list[uuid.UUID]]]:
+    # Setup as crm_owner (BYPASSRLS); the workers below still run as the restricted app role.
     tenant_id = uuid.uuid4()
-    with Session(app_engine) as session:
+    with Session(owner_engine) as session:
         session.add(Tenant(id=tenant_id, slug=f"outbox-race-{tenant_id.hex[:8]}", name="Race"))
         session.flush()
         jobs = [
@@ -215,18 +221,17 @@ def committed_jobs(app_engine: Engine, migrated_database: str) -> Iterator[list[
         session.commit()
         ids = [job.id for job in jobs]
     try:
-        yield ids
+        yield tenant_id, ids
     finally:
-        owner = create_engine(migrated_database, poolclass=NullPool)
-        with owner.begin() as connection:
+        with owner_engine.begin() as connection:
             connection.execute(
                 text("DELETE FROM outbox_jobs WHERE tenant_id = :t"), {"t": tenant_id}
             )
             connection.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": tenant_id})
-        owner.dispose()
 
 
 def test_two_workers_never_take_the_same_job(app_engine: Engine, committed_jobs) -> None:
+    tenant_id, job_ids = committed_jobs
     factory = sessionmaker(bind=app_engine, expire_on_commit=False)
     holding = threading.Event()
     release = threading.Event()
@@ -235,9 +240,10 @@ def test_two_workers_never_take_the_same_job(app_engine: Engine, committed_jobs)
     def slow_worker() -> None:
         # Holds the row lock on one job, like a worker in the middle of claiming it.
         with factory() as session, session.begin():
+            bind_tenant(session, tenant_id)
             row = session.scalars(
                 select(OutboxJob)
-                .where(OutboxJob.id.in_(committed_jobs))
+                .where(OutboxJob.id.in_(job_ids))
                 .order_by(OutboxJob.id)
                 .limit(1)
                 .with_for_update(skip_locked=True)
@@ -252,7 +258,7 @@ def test_two_workers_never_take_the_same_job(app_engine: Engine, committed_jobs)
         assert holding.wait(10)
         claimed = _claim(factory, NOW + timedelta(seconds=1))  # the second worker
         assert claimed is not None
-        assert claimed.id in committed_jobs and claimed.id != taken[0]
+        assert claimed.id in job_ids and claimed.id != taken[0]
     finally:
         release.set()
         thread.join()

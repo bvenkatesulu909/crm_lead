@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { DialogField } from "@/components/action-dialog";
+import { AccountPicker, type AccountOption } from "@/components/account-picker";
 import { CATEGORY_LABELS, PRIORITY_LABELS } from "@/components/tickets";
 import { ErrorAlert, buttonClass } from "@/components/ui";
 import { TICKET_CATEGORIES, TICKET_PRIORITIES } from "@/lib/api-types";
@@ -17,6 +18,8 @@ export function TicketForm({
   initialState,
   accounts,
   defaultAccountId,
+  searchAccounts = false,
+  defaultAccount,
   withPriority = false,
   cancelHref,
   submitLabel = "Submit ticket",
@@ -25,6 +28,10 @@ export function TicketForm({
   initialState: FormState;
   accounts: { id: string; name: string }[];
   defaultAccountId?: string;
+  /** Staff: search accounts by name as they type instead of choosing from a fixed list. */
+  searchAccounts?: boolean;
+  /** With searchAccounts: the account to show as chosen when the form opens. */
+  defaultAccount?: AccountOption | null;
   withPriority?: boolean;
   cancelHref: string;
   submitLabel?: string;
@@ -43,7 +50,12 @@ export function TicketForm({
         </div>
       )}
       <DialogField id="ticket-account" label="Account" error={errors.account_id}>
-        {(props) => (
+        {(props) => searchAccounts ? (
+          <AccountPicker
+            {...props}
+            defaultAccount={values.account_id && values.account_label ? { id: values.account_id, name: values.account_label } : defaultAccount}
+          />
+        ) : (
           <select name="account_id" defaultValue={values.account_id ?? defaultAccountId ?? (accounts.length === 1 ? accounts[0].id : "")} {...props}>
             <option value="" disabled>Choose an account…</option>
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}

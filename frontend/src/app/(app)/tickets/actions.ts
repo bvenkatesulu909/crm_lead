@@ -31,15 +31,18 @@ export async function createTicket(
   previous: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const values = {
+  const fields = {
     account_id: text(formData, "account_id"),
     priority: text(formData, "priority"),
     category: text(formData, "category") || "question",
     subject: text(formData, "subject"),
     description: text(formData, "description"),
   };
+  // account_label is only the name of the chosen account, kept so the form can show it
+  // again after an error; it is never sent to the API.
+  const values = { ...fields, account_label: text(formData, "account_label") };
   const attempt = previous.attempt + 1;
-  const parsed = staffTicketSchema.safeParse(values);
+  const parsed = staffTicketSchema.safeParse(fields);
   if (!parsed.success)
     return {
       attempt,

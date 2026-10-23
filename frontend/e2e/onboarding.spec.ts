@@ -145,7 +145,7 @@ test("a sales agent invites a customer contact for their own account only", asyn
   await dialog.getByLabel("First name").fill("Jo");
   await dialog.getByLabel("Last name").fill("Contact");
   await dialog.getByRole("button", { name: "Send invitation" }).click();
-  await expect(agent.getByRole("status")).toContainText("The invitation was sent");
+  await expect(agent.getByRole("status")).toContainText("The invitation was sent", { timeout: 20_000 }); // creating the Keycloak user and queuing the e-mail can take longer than 5 s
   await expect(agent.getByText(`${email} · invited, not signed in yet`)).toBeVisible();
 
   const password = testPassword();

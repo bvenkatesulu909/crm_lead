@@ -234,7 +234,7 @@ describe("ModuleGrid", () => {
       screen.getByRole("heading", { name: "CRM modules" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("16 of 20 available · more are added phase by phase"),
+      screen.getByText("17 of 20 available · more are added phase by phase"),
     ).toBeInTheDocument();
     const links = screen.getAllByRole("link");
     expect(links).toHaveLength(1);

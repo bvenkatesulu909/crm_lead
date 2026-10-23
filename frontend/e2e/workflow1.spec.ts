@@ -47,6 +47,8 @@ test("a sales agent creates a lead and finds it in the list", async ({
     "Invoices",
     "Support",
     "Products",
+    "Knowledge",
+    "AI Assistant",
     "Reports",
   ]);
 
@@ -58,7 +60,7 @@ test("a sales agent creates a lead and finds it in the list", async ({
 
   // Module overview: only working modules are links.
   const modules = page.getByRole("region", { name: "CRM modules" });
-  await expect(modules.getByRole("listitem")).toHaveCount(19);
+  await expect(modules.getByRole("listitem")).toHaveCount(20);
   await expect(modules.getByRole("link")).toHaveText([
     /Lead Management/,
     /Customer Management/,
@@ -73,8 +75,10 @@ test("a sales agent creates a lead and finds it in the list", async ({
     /Documents/,
     /Workflow & Notifications/,
     /Reports/,
+    /AI Assistant/,
+    /Knowledge Base/,
   ]);
-  await expect(modules.getByText("AI Assistant")).toBeVisible();
+  await expect(modules.getByText("AI Assistant").first()).toBeVisible();
 
   // Form validation before anything reaches the server.
   await page.getByRole("link", { name: "New lead" }).click();
@@ -148,6 +152,7 @@ test("roles without lead access don't see it - and the backend refuses direct UR
     "Invoices",
     "Support",
     "Products",
+    "AI Assistant",
     "Reports",
   ]);
   await expect(page.getByRole("link", { name: "New lead" })).toHaveCount(0);
@@ -164,6 +169,7 @@ test("roles without lead access don't see it - and the backend refuses direct UR
     /Documents/,
     /Workflow & Notifications/,
     /Reports/,
+    /AI Assistant/,
   ]);
   await expect(
     modules.getByText("Not included in your role").first(),

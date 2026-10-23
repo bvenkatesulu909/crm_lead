@@ -256,6 +256,10 @@ def test_support_can_read_but_not_change_orders(api, auth, world) -> None:
     order = new_order(api, auth, "alpha.admin", world.accounts["A1"])
 
     body = {"account_id": str(world.accounts["A1"]), "lines": LINES}
+    assert (
+        api.get(f"/api/v1/orders/{order['id']}", headers=auth("alpha.support")).status_code
+        == 200
+    )
     assert api.post("/api/v1/orders", json=body, headers=auth("alpha.support")).status_code == 403
     assert move(api, auth, "alpha.support", order, "confirmed").status_code == 403
 

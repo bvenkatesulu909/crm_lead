@@ -119,7 +119,13 @@ def activity_brief(
     return activity.subject, "/tasks"
 
 
-def publish_due_reminders(session: Session, now: datetime, *, limit: int = 200) -> int:
+def publish_due_reminders(
+    session: Session,
+    now: datetime,
+    *,
+    tenant_id: uuid.UUID | None = None,
+    limit: int = 200,
+) -> int:
     """Worker scheduler: an "activity.reminder_due" event for every open task whose reminder
     time has come, once per reminder (``reminder_sent_at``). Runs without a user, across
     tenants; each event belongs to its task's tenant."""
@@ -130,6 +136,7 @@ def publish_due_reminders(session: Session, now: datetime, *, limit: int = 200) 
             Activity.reminder_at.is_not(None),
             Activity.reminder_at <= now,
             Activity.reminder_sent_at.is_(None),
+            *([Activity.tenant_id == tenant_id] if tenant_id is not None else []),
         )
         .order_by(Activity.reminder_at)
         .limit(limit)

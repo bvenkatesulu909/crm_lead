@@ -18,11 +18,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import FrameType
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.ai.embeddings import build_embedder
 from app.core.config import Settings, get_settings
-from app.core.db import create_db_engine, create_session_factory
+from app.core.db import bind_tenant, create_db_engine, create_session_factory
 from app.core.events import EventHandler, dispatcher
 from app.core.heartbeat import record_heartbeat
 from app.core.logging import configure_logging
@@ -30,6 +31,7 @@ from app.core.mail import Mailer, MailRejectedError, build_mailer
 from app.core.outbox import DeadJobHandler, JobHandler, run_next_job
 from app.core.storage import FileStore, build_file_store
 from app.modules.activities import api as activities_api
+from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
 from app.modules.notifications import api as notifications_api
 from app.modules.quotes import api as quotes_api
@@ -92,12 +94,21 @@ def run_schedules(
     """Time-based work (ADR 0006): task reminders whose time has come and, when asked,
     workflow rules with a schedule trigger (the loop asks about once a minute)."""
     now = datetime.now(UTC)
-    with session_factory() as session, session.begin():
-        count = activities_api.publish_due_reminders(session, now)
-    if include_workflows:
-        limit = settings.workflow_actions_per_hour if settings else 500
+    with session_factory() as session:
+        tenant_ids = list(session.scalars(select(Tenant.id).where(Tenant.status == "active")).all())
+    count = 0
+    limit = settings.workflow_actions_per_hour if settings else 500
+    for tenant_id in tenant_ids:
+        # Each tenant's scheduled work runs in its own transaction with app.tenant_id set.
         with session_factory() as session, session.begin():
-            count += workflows_api.run_schedules(session, now, hourly_limit=limit)
+            bind_tenant(session, tenant_id)
+            count += activities_api.publish_due_reminders(session, now, tenant_id=tenant_id)
+        if include_workflows:
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += workflows_api.run_schedules(
+                    session, now, hourly_limit=limit, tenant_id=tenant_id
+                )
     return count
 
 

@@ -12,7 +12,7 @@ Rules:
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal, UserType
@@ -45,11 +45,21 @@ def forbidden(detail: str = "You do not have permission to perform this action."
 
 def resolve_principal(session: Session, token: VerifiedToken) -> Principal:
     token_roles = parse_roles(token.roles)
-    user = session.scalars(
-        select(User).where(User.idp_issuer == token.issuer, User.idp_subject == token.subject)
-    ).one_or_none()
+    # crm_app cannot read users before app.tenant_id exists. This SECURITY DEFINER function is
+    # the single narrow exception: it returns only id, tenant_id and is_active for the exact
+    # (issuer, subject) pair from the verified token.
+    lookup = (
+        session.execute(
+            text(
+                "SELECT user_id, tenant_id, is_active FROM identity_lookup_user(:issuer, :subject)"
+            ),
+            {"issuer": token.issuer, "subject": token.subject},
+        )
+        .mappings()
+        .one_or_none()
+    )
 
-    if user is None:
+    if lookup is None:
         platform_roles = token_roles & PLATFORM_ROLES
         if not platform_roles:
             # Signed up (or invited elsewhere) but no CRM user yet: no data access at all.
@@ -64,17 +74,21 @@ def resolve_principal(session: Session, token: VerifiedToken) -> Principal:
             permissions=permissions_for(platform_roles),
         )
 
-    if not user.is_active:
+    if not lookup["is_active"]:
         raise AccountDisabledError(
             "Your CRM account has been deactivated. Please contact your administrator."
         )
-    tenant = session.get(Tenant, user.tenant_id)
-    if tenant is None or tenant.status != "active":
-        raise forbidden("Your organisation's CRM access is suspended.")
 
     # From here on every query runs under RLS with this tenant (ADR 0009). The value comes from
     # the CRM user row, which was found through the verified token - never from the client.
-    bind_tenant(session, user.tenant_id)
+    bind_tenant(session, lookup["tenant_id"])
+    user = session.get(User, lookup["user_id"])
+    if user is None:
+        raise forbidden("Your CRM account could not be loaded.")
+
+    tenant = session.get(Tenant, user.tenant_id)
+    if tenant is None or tenant.status != "active":
+        raise forbidden("Your organisation's CRM access is suspended.")
     user_type: UserType
     if user.user_type == "customer":
         roles, user_type = token_roles & CUSTOMER_ROLES, "customer"

@@ -32,7 +32,6 @@ from sqlalchemy import (
     Integer,
     String,
     func,
-    or_,
     select,
     text,
     update,
@@ -177,25 +176,29 @@ def _safe_error(exc: BaseException) -> str:
 
 
 def _claim(session_factory: sessionmaker[Session], now: datetime) -> Job | None:
+    # The claim must find any due job before its tenant is known. This one SECURITY DEFINER
+    # function does the FOR UPDATE SKIP LOCKED claim atomically and returns only that job.
     with session_factory() as session, session.begin():
-        row = session.scalars(
-            select(OutboxJob)
-            .where(
-                or_(
-                    (OutboxJob.status == "pending") & (OutboxJob.run_after <= now),
-                    (OutboxJob.status == "running") & (OutboxJob.locked_at < now - STALE_AFTER),
-                )
+        row = (
+            session.execute(
+                text(
+                    "SELECT job_id, tenant_id, kind, payload, attempts "
+                    "FROM outbox_claim(:now, :stale_before)"
+                ),
+                {"now": now, "stale_before": now - STALE_AFTER},
             )
-            .order_by(OutboxJob.run_after)
-            .limit(1)
-            .with_for_update(skip_locked=True)
-        ).first()
+            .mappings()
+            .one_or_none()
+        )
         if row is None:
             return None
-        row.status = "running"
-        row.attempts += 1
-        row.locked_at = now
-        return Job(row.id, row.tenant_id, row.kind, dict(row.payload), row.attempts)
+        return Job(
+            row["job_id"],
+            row["tenant_id"],
+            row["kind"],
+            dict(row["payload"]),
+            row["attempts"],
+        )
 
 
 def run_next_job(

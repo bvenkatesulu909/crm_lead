@@ -92,7 +92,7 @@ Findings from the code audit (all verified against the tree at migration 0019):
   against missing filters and coding mistakes, which is exactly the failure mode this project has
   had none of so far but cannot rule out.
 
-## Implementation status (2026-10-22, staged)
+## Implementation status (2026-10-23, staged)
 
 - **Owner bootstrap (2026-10-21):** `crm_owner` has `BYPASSRLS` **for migrations/test setup only**
   (`infrastructure/postgres/init/04-owner-bypassrls.sh`); `crm_app` remains non-superuser and
@@ -111,6 +111,18 @@ Findings from the code audit (all verified against the tree at migration 0019):
   `crm_app`; no policy was weakened. Verified: full backend suite 1123 passed, 4 skipped;
   `test_rls_leads.py` 2 passed; `rls_audit` shows `leads` protected and 0 lead rows without
   tenant context.
+- **Identity lookup + users RLS (2026-10-23):** Migration **0030** adds the narrow
+  `identity_lookup_user(issuer, subject)` `SECURITY DEFINER` function owned by `crm_owner`
+  (fixed `search_path`, returns only id/tenant_id/is_active, EXECUTE only for `crm_app`), and
+  FORCE RLS on `users` with a tenant-isolation policy. `resolve_principal()` calls the
+  function, checks active status, binds the tenant and only then loads the full User row.
+  Verified: `test_rls_identity.py` 3 passed; dev RLS/force flags true, policy
+  `users_tenant_isolation`, app EXECUTE true, PUBLIC EXECUTE false.
+- **Worker claim + schedulers (2026-10-23):** Migration **0032** adds
+  `outbox_claim(now, stale_before)` (SECURITY DEFINER, `FOR UPDATE SKIP LOCKED`, returns only
+  the claimed job) and FORCE RLS on `outbox_jobs`. The worker binds `job.tenant_id` before the
+  handler. Reminder/workflow schedulers iterate active tenants and bind each tenant before
+  running. Verified: `test_rls_outbox.py` 2 passed.
 - **Done:** `crm_current_tenant()` (fail-closed when unset); `bind_tenant`
   (`app/core/db.py`) sets `app.tenant_id` from the verified Principal and an `after_begin`
   listener re-applies it after every commit/rollback; identity resolution binds it; the worker
@@ -119,8 +131,8 @@ Findings from the code audit (all verified against the tree at migration 0019):
 - **Verified:** raw app-role queries return 0 rows without the setting, only the bound tenant's
   rows with it, and 0 for another tenant; policy/force flags checked by a test; demo seeding and
   the knowledge tests work under RLS.
-- **Next:** the worker's dedicated BYPASSRLS role (cross-tenant job claim), the identity/sign-up
-  `SECURITY DEFINER` exceptions, and policies for the remaining tenant tables, domain by domain
+- **Next:** the test/seed owner-bootstrap migration and policies for the remaining tenant
+  tables, domain by domain
   (per the plan above).
 
 ## Open questions for the owner

@@ -19,7 +19,7 @@ from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -506,27 +506,38 @@ def _token_identity(token: VerifiedToken) -> tuple[str | None, bool, str]:
 
 def onboarding_status(session: Session, token: VerifiedToken) -> OnboardingStatus:
     email, verified, _ = _token_identity(token)
-    user = session.scalars(
-        select(User).where(User.idp_issuer == token.issuer, User.idp_subject == token.subject)
-    ).one_or_none()
+    # Both lookups happen before any tenant is known. The functions are the narrow, read-only
+    # exceptions from ADR 0009; neither can list rows.
+    user = (
+        session.execute(
+            text(
+                "SELECT user_id, tenant_id, is_active FROM identity_lookup_user(:issuer, :subject)"
+            ),
+            {"issuer": token.issuer, "subject": token.subject},
+        )
+        .mappings()
+        .one_or_none()
+    )
     if user is not None:
-        state = "member" if user.is_active else "disabled"
+        state = "member" if user["is_active"] else "disabled"
         return OnboardingStatus(state=state, email=email, email_verified=verified)
-    latest = session.scalars(
-        select(AccessRequest)
-        .where(AccessRequest.idp_issuer == token.issuer, AccessRequest.idp_subject == token.subject)
-        .order_by(AccessRequest.created_at.desc())
-        .limit(1)
-    ).one_or_none()
-    if latest is not None and latest.status == "pending":
-        tenant = session.get(Tenant, latest.tenant_id)
+    latest = (
+        session.execute(
+            text("SELECT status, tenant_id FROM access_request_latest(:issuer, :subject)"),
+            {"issuer": token.issuer, "subject": token.subject},
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if latest is not None and latest["status"] == "pending":
+        tenant = session.get(Tenant, latest["tenant_id"])
         return OnboardingStatus(
             state="pending",
             email=email,
             email_verified=verified,
             organisation_name=tenant.name if tenant else None,
         )
-    if latest is not None and latest.status == "rejected":
+    if latest is not None and latest["status"] == "rejected":
         return OnboardingStatus(state="rejected", email=email, email_verified=verified)
     return OnboardingStatus(state="none", email=email, email_verified=verified)
 
@@ -550,24 +561,29 @@ def submit_access_request(session: Session, token: VerifiedToken, code: str) -> 
     )
     if (attempts or 0) >= MAX_CODE_ATTEMPTS_PER_HOUR:
         raise TooManyAttemptsError("Too many wrong codes. Please try again in an hour.")
-    tenant = session.scalars(
-        select(Tenant).where(Tenant.signup_code == code, Tenant.status == "active")
-    ).one_or_none()
-    if tenant is None:
+    submitted = (
+        session.execute(
+            text(
+                "SELECT request_id, tenant_id FROM access_request_submit("
+                ":issuer, :subject, :email, :display_name, :code)"
+            ),
+            {
+                "issuer": token.issuer,
+                "subject": token.subject,
+                "email": email,
+                "display_name": name[:200],
+                "code": code,
+            },
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if submitted is None:
         session.add(SignupCodeAttempt(idp_issuer=token.issuer, idp_subject=token.subject))
         session.flush()
         raise InvalidSignupCodeError(
             "This code is not valid. Please check it with your organisation."
         )
-    session.add(
-        AccessRequest(
-            tenant_id=tenant.id,
-            idp_issuer=token.issuer,
-            idp_subject=token.subject,
-            email=email,
-            display_name=name[:200],
-        )
-    )
     session.flush()
     return onboarding_status(session, token)
 

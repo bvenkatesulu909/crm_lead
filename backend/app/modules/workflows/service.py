@@ -438,14 +438,21 @@ def on_event(session: Session, event: Event, *, hourly_limit: int) -> None:
         )
 
 
-def run_schedules(session: Session, now: datetime, *, hourly_limit: int) -> int:
-    """Schedule triggers for all tenants (the worker calls this about once a minute)."""
+def run_schedules(
+    session: Session,
+    now: datetime,
+    *,
+    hourly_limit: int,
+    tenant_id: uuid.UUID | None = None,
+) -> int:
+    """Schedule triggers for one tenant (or all, for an explicit admin/test call)."""
     count = 0
-    rules_due = session.scalars(
-        select(WorkflowRule).where(
-            WorkflowRule.is_active.is_(True), WorkflowRule.trigger.like("schedule.%")
-        )
-    ).all()
+    statement = select(WorkflowRule).where(
+        WorkflowRule.is_active.is_(True), WorkflowRule.trigger.like("schedule.%")
+    )
+    if tenant_id is not None:
+        statement = statement.where(WorkflowRule.tenant_id == tenant_id)
+    rules_due = session.scalars(statement).all()
     for rule in rules_due:
         days = rule.days or 0
         if rule.trigger == "schedule.quote_expiring":

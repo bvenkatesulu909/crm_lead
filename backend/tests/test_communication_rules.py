@@ -84,6 +84,38 @@ def test_failures_become_safe_codes(error: str, code: str) -> None:
     assert rules.failure_code(error) == code
 
 
+@pytest.mark.parametrize(
+    "text, problems",
+    [
+        ("Hello {{recipient.first_name}}", []),
+        ("{{ sender.name }} and {{organisation.name}}", []),  # spaces inside are fine
+        ("No placeholders at all", []),
+        ("{{recipient.salary}}", ["{{recipient.salary}}"]),
+        ("{{a}} {{b}} {{a}}", ["{{a}}", "{{b}}"]),  # each problem once, in order
+        ("{{}}", ["{{}}"]),
+        ("Hi {{recipient.first_name", ["'{{' without '}}'"]),
+        ("Hi }}", ["'}}' without '{{'"]),
+        ("{{{recipient.first_name}}}", []),  # single braces around a placeholder are text
+    ],
+)
+def test_placeholder_problems(text: str, problems: list[str]) -> None:
+    assert rules.placeholder_problems(text) == problems
+
+
+def test_render_fills_known_values_once_and_reports_empty_ones() -> None:
+    text, missing = rules.render(
+        "{{recipient.first_name}} / {{sender.name}} / {{recipient.company}}",
+        {"recipient.first_name": "{{sender.name}}", "sender.name": "Bo", "recipient.company": None},
+    )
+    assert text == "{{sender.name}} / Bo / "  # a value is never expanded again
+    assert missing == ["recipient.company"]
+
+
+def test_render_keeps_a_subject_on_one_line() -> None:
+    text, _ = rules.render("Hi {{sender.name}}", {"sender.name": "A\r\nBcc: x"}, single_line=True)
+    assert text == "Hi A Bcc: x"
+
+
 def test_automation_cannot_send_e_mails_yet() -> None:
     # Workflow rules get e-mail actions only through a later, reviewed step.
     assert AUTOMATION_PERMISSIONS & ALL_FOUR == set()

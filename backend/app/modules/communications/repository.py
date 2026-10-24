@@ -1,6 +1,7 @@
 """Queries for templates and messages, always inside one tenant."""
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import func, select
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
 from app.modules.communications.models import EmailMessage, EmailTemplate
-from app.modules.communications.policies import readable_messages
+from app.modules.communications.policies import readable_messages, readable_templates
 
 
 def get_readable_message(
@@ -58,3 +59,31 @@ def active_template_exists(session: Session, tenant_id: uuid.UUID, template_id: 
         )
         is not None
     )
+
+
+def get_readable_template(
+    session: Session, principal: Principal, template_id: uuid.UUID
+) -> EmailTemplate | None:
+    return session.scalars(
+        select(EmailTemplate).where(EmailTemplate.id == template_id, readable_templates(principal))
+    ).one_or_none()
+
+
+def list_templates(
+    session: Session, principal: Principal, *, include_inactive: bool
+) -> Sequence[EmailTemplate]:
+    statement = select(EmailTemplate).where(readable_templates(principal))
+    if not include_inactive:
+        statement = statement.where(EmailTemplate.is_active.is_(True))
+    return session.scalars(statement.order_by(EmailTemplate.name, EmailTemplate.id)).all()
+
+
+def template_name_taken(
+    session: Session, tenant_id: uuid.UUID, name: str, except_id: uuid.UUID | None
+) -> bool:
+    statement = select(EmailTemplate.id).where(
+        EmailTemplate.tenant_id == tenant_id, EmailTemplate.name == name
+    )
+    if except_id is not None:
+        statement = statement.where(EmailTemplate.id != except_id)
+    return session.scalar(statement) is not None

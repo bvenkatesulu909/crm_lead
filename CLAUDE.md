@@ -208,7 +208,13 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     `communication.email` worker job (Reply-To = sender, safe to run twice, consent re-checked),
     failure → `communication.email_failed` event → notification; e-mail entry on the timeline;
     audit `email.queued`. Tests (run 2026-10-24): backend 1326 passed (+4 opt-in skipped);
-    ruff, mypy, import-linter clean. CC3-CC6 not started.
+    ruff, mypy, import-linter clean.
+  - CC3 (2026-10-24): templates at `/api/v1/communications/templates` (list, get, create,
+    PATCH incl. deactivate/reactivate with version check, preview for a lead/contact or sample
+    values) and `/placeholders`; 6 fixed placeholders filled in one pass (no engine, no
+    re-expansion, no line breaks in subjects); unknown/broken placeholders → 422
+    `unknown_placeholder`; agents see active templates only. Tests (run 2026-10-24): backend
+    1369 passed (+4 opt-in skipped); ruff, mypy, import-linter clean. CC4-CC6 not started.
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
   (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
   features that need them and need an ADR.

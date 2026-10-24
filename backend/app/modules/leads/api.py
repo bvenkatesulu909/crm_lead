@@ -84,6 +84,7 @@ def lead_recipient(session: Session, principal: Principal, lead_id: uuid.UUID) -
         first_name=lead.first_name,
         full_name=" ".join(p for p in (lead.first_name, lead.last_name) if p),
         email=lead.email,
+        company=lead.company_name,
         account_id=None,
         consent_withdrawn=False,
     )

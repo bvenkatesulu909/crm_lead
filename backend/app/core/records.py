@@ -34,5 +34,6 @@ class Recipient:
     first_name: str | None
     full_name: str
     email: str | None
+    company: str | None  # a lead's company; for a contact, the name of ``account_id``
     account_id: uuid.UUID | None  # a contact's account; None for a lead
     consent_withdrawn: bool  # the contact said "no more e-mail"; leads have no consent field

@@ -1,4 +1,4 @@
-"""Communication Center: sending one-to-one e-mails (ADR 0012, step CC2).
+"""Communication Center: one-to-one e-mails (step CC2) and templates (step CC3), ADR 0012.
 
     request ──► checks ──► message "queued" + outbox job + timeline entry + audit  (one commit)
     worker  ──► mailer ──► "sent"  |  retries used up / refused ──► "failed" + event → notification
@@ -8,11 +8,14 @@ transaction (app/core/outbox.py).
 """
 
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
-from app.core.audit import record_audit
+from app.core.audit import diff, record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
@@ -23,8 +26,15 @@ from app.core.records import Recipient
 from app.modules.accounts import api as accounts_api
 from app.modules.activities import api as activities_api
 from app.modules.communications import repository, rules
-from app.modules.communications.models import EmailMessage
-from app.modules.communications.schemas import EmailSend
+from app.modules.communications.models import EmailMessage, EmailTemplate
+from app.modules.communications.schemas import (
+    EmailSend,
+    PlaceholderRead,
+    TemplateCreate,
+    TemplatePreview,
+    TemplatePreviewRequest,
+    TemplateUpdate,
+)
 from app.modules.contacts import api as contacts_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
@@ -60,6 +70,28 @@ class MessageNotFoundError(NotFoundError):
 
     def __init__(self) -> None:
         super().__init__("E-mail not found.")
+
+
+class TemplateNameTakenError(ConflictError):
+    code = "template_name_taken"
+
+    def __init__(self) -> None:
+        super().__init__("Another template already has this name.")
+
+
+class PlaceholderError(DomainError):
+    status_code = 422
+    code = "unknown_placeholder"
+
+    def __init__(self, problems: list[str]) -> None:
+        super().__init__("Unknown or broken placeholders: " + ", ".join(problems) + ".")
+
+
+class VersionConflictError(ConflictError):
+    code = "version_conflict"
+
+    def __init__(self) -> None:
+        super().__init__("The template was changed by someone else. Reload it.")
 
 
 class RelatedMismatchError(DomainError):
@@ -103,12 +135,18 @@ def _sender(principal: Principal) -> tuple[uuid.UUID, uuid.UUID]:
     return principal.tenant_id, principal.user_id
 
 
-def _recipient(session: Session, principal: Principal, data: EmailSend) -> Recipient:
+def _recipient(
+    session: Session,
+    principal: Principal,
+    lead_id: uuid.UUID | None,
+    contact_id: uuid.UUID | None,
+) -> Recipient:
+    """The lead or contact, loaded under ITS module's read rules (not visible: 404)."""
     found = None
-    if data.lead_id is not None:
-        found = leads_api.lead_recipient(session, principal, data.lead_id)
-    elif data.contact_id is not None:
-        found = contacts_api.contact_recipient(session, principal, data.contact_id)
+    if lead_id is not None:
+        found = leads_api.lead_recipient(session, principal, lead_id)
+    elif contact_id is not None:
+        found = contacts_api.contact_recipient(session, principal, contact_id)
     if found is None:
         raise RecipientNotFoundError()
     return found
@@ -138,7 +176,7 @@ def send_email(
 ) -> EmailMessage:
     """Queue an e-mail to a lead or contact the sender may read; the worker sends it."""
     tenant_id, user_id = _sender(principal)
-    recipient = _recipient(session, principal, data)
+    recipient = _recipient(session, principal, data.lead_id, data.contact_id)
     _check_related(session, principal, data, recipient)
     if data.template_id is not None and not repository.active_template_exists(
         session, tenant_id, data.template_id
@@ -206,6 +244,166 @@ def message_brief(
         return None
     link = f"/leads/{message.lead_id}" if message.lead_id else f"/contacts/{message.contact_id}"
     return message.subject, link
+
+
+# --- templates (step CC3) ------------------------------------------------------------------
+
+
+def _template_manager(principal: Principal) -> tuple[uuid.UUID, uuid.UUID]:
+    if (
+        principal.tenant_id is None
+        or principal.user_id is None
+        or principal.user_type != "staff"
+        or not principal.has_permission(Permission.COMMUNICATION_TEMPLATE_MANAGE)
+    ):
+        raise ForbiddenError("You may not manage e-mail templates.")
+    return principal.tenant_id, principal.user_id
+
+
+def _check_placeholders(*texts: str) -> None:
+    problems: list[str] = []
+    for text in texts:
+        problems += rules.placeholder_problems(text)
+    if problems:
+        raise PlaceholderError(list(dict.fromkeys(problems)))
+
+
+def _flush_template(session: Session) -> None:
+    try:
+        session.flush()
+    except StaleDataError as exc:
+        raise VersionConflictError() from exc
+    except IntegrityError as exc:  # two managers saving the same name at the same moment
+        raise TemplateNameTakenError() from exc
+
+
+def placeholders() -> list[PlaceholderRead]:
+    return [PlaceholderRead(name=n, description=d) for n, d in rules.PLACEHOLDERS.items()]
+
+
+def list_templates(
+    session: Session, principal: Principal, *, include_inactive: bool
+) -> Sequence[EmailTemplate]:
+    """Active templates; managers may ask for deactivated ones too (others never see them)."""
+    return repository.list_templates(session, principal, include_inactive=include_inactive)
+
+
+def get_template(session: Session, principal: Principal, template_id: uuid.UUID) -> EmailTemplate:
+    template = repository.get_readable_template(session, principal, template_id)
+    if template is None:
+        raise TemplateNotFoundError()
+    return template
+
+
+def create_template(session: Session, principal: Principal, data: TemplateCreate) -> EmailTemplate:
+    tenant_id, user_id = _template_manager(principal)
+    _check_placeholders(data.subject, data.body)
+    if repository.template_name_taken(session, tenant_id, data.name, None):
+        raise TemplateNameTakenError()
+    template = EmailTemplate(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name=data.name,
+        subject=data.subject,
+        body=data.body,
+        created_by_user_id=user_id,
+        updated_by_user_id=user_id,
+    )
+    session.add(template)
+    _flush_template(session)
+    record_audit(
+        session,
+        principal,
+        action="template.created",
+        entity_type="email_template",
+        entity_id=template.id,
+        changes={"name": template.name},
+    )
+    session.refresh(template)
+    return template
+
+
+def update_template(
+    session: Session, principal: Principal, template_id: uuid.UUID, data: TemplateUpdate
+) -> EmailTemplate:
+    """Rename, rewrite, deactivate or reactivate a template (optimistic locking by version)."""
+    tenant_id, user_id = _template_manager(principal)
+    template = get_template(session, principal, template_id)
+    if template.version != data.version:
+        raise VersionConflictError()
+    changes = data.changes()
+    _check_placeholders(
+        str(changes.get("subject", template.subject)), str(changes.get("body", template.body))
+    )
+    name = changes.get("name")
+    if isinstance(name, str) and repository.template_name_taken(
+        session, tenant_id, name, template.id
+    ):
+        raise TemplateNameTakenError()
+    before = {"name": template.name, "is_active": template.is_active}
+    texts_before = {"subject": template.subject, "body": template.body}
+    for field, value in changes.items():
+        setattr(template, field, value)
+    template.updated_by_user_id = user_id
+    # Name and status as old/new; for the texts only THAT they changed (they can be long).
+    changed: dict[str, object] = dict(
+        diff(before, {"name": template.name, "is_active": template.is_active})
+    )
+    for field, old in texts_before.items():
+        if getattr(template, field) != old:
+            changed[field] = {"changed": True}
+    if changed:
+        record_audit(
+            session,
+            principal,
+            action="template.updated",
+            entity_type="email_template",
+            entity_id=template.id,
+            changes=changed,
+        )
+    _flush_template(session)
+    session.refresh(template)
+    return template
+
+
+def _organisation_name(session: Session, principal: Principal) -> str | None:
+    if principal.tenant_name:
+        return principal.tenant_name
+    return identity_api.tenant_name(session, principal.tenant_id) if principal.tenant_id else None
+
+
+def preview_template(
+    session: Session,
+    principal: Principal,
+    template_id: uuid.UUID,
+    data: TemplatePreviewRequest,
+) -> TemplatePreview:
+    """The template filled in for one lead or contact the user may read (or sample values)."""
+    template = get_template(session, principal, template_id)
+    values: dict[str, str | None] = {
+        "sender.name": principal.display_name,
+        "sender.email": principal.email,
+        "organisation.name": _organisation_name(session, principal),
+    }
+    if data.lead_id is None and data.contact_id is None:
+        values |= rules.SAMPLE_RECIPIENT
+    else:
+        recipient = _recipient(session, principal, data.lead_id, data.contact_id)
+        company = recipient.company
+        if company is None and recipient.account_id is not None and principal.tenant_id:
+            company = accounts_api.account_name(session, principal.tenant_id, recipient.account_id)
+        values |= {
+            "recipient.first_name": recipient.first_name,
+            "recipient.full_name": recipient.full_name,
+            "recipient.company": company,
+        }
+    subject, missing_in_subject = rules.render(template.subject, values, single_line=True)
+    body, missing_in_body = rules.render(template.body, values)
+    return TemplatePreview(
+        subject=subject,
+        body=body,
+        missing=list(dict.fromkeys(missing_in_subject + missing_in_body)),
+    )
 
 
 # --- worker ---------------------------------------------------------------------------------

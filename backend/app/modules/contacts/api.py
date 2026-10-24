@@ -151,6 +151,7 @@ def contact_recipient(
         first_name=contact.first_name,
         full_name=" ".join(p for p in (contact.first_name, contact.last_name) if p),
         email=contact.email,
+        company=None,  # the account's name comes from the accounts module
         account_id=contact.account_id,
         consent_withdrawn=contact.email_consent == "withdrawn",
     )

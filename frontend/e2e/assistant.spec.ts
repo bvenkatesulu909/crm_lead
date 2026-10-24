@@ -6,6 +6,9 @@ import { USERS, login, requireCredentials } from "./helpers";
  * Phase 20a: the customer assistant. Without CRM_ANTHROPIC_API_KEY in backend/.env the portal
  * must say honestly that it isn't available (and offer a ticket). With a key, a real Claude
  * conversation runs: an order question, and a hand-over that only the customer can confirm.
+ *
+ * The LIVE test calls the real Claude API, which costs money and fails without credit, so it
+ * only runs on request:  set E2E_LIVE_ASSISTANT=1  (and have a funded key in backend/.env).
  */
 test.beforeEach(() => requireCredentials());
 
@@ -44,6 +47,10 @@ test("staff never reach the customer assistant", async ({ page }) => {
 test("LIVE: the assistant answers from the customer's data and hands over only after confirmation", async ({
   page,
 }) => {
+  test.skip(
+    process.env.E2E_LIVE_ASSISTANT !== "1",
+    "Opt-in: set E2E_LIVE_ASSISTANT=1 (needs a funded Anthropic account in backend/.env).",
+  );
   test.setTimeout(180_000);
   await login(page, USERS.customer, "/portal/assistant");
   test.skip(

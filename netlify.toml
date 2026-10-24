@@ -13,6 +13,13 @@
   # no index.html, so Netlify answers "Page not found" for every address - see docs/deployment.md.
   publish = ".next"
 
+# The Next.js adapter, named explicitly. On 24 Oct 2026 the deploy log showed "0 new function(s)"
+# and 414 plain files uploaded from frontend/.next: Netlify did NOT run its automatic adapter
+# (it was not listed in the log), so every address answered "Page not found". Naming it here
+# makes Netlify install and run it on every build. See docs/deployment.md.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 [build.environment]
   # Next.js 16 needs Node 20.9 or newer; 22 is a long-term-support release.
   NODE_VERSION = "22"

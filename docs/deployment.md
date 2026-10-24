@@ -104,6 +104,14 @@ Check, in this order:
    `NETLIFY_NEXT_PLUGIN_SKIP` is not set to `true`.
 6. After changing any setting: Deploys → **Trigger deploy** → **Clear cache and deploy site**.
 
+**What the logs showed on 24 October 2026 (both sites, same repository):** the deploy log read
+`/opt/build/repo/netlify.toml` (so base `frontend` and publish `frontend/.next` *were* applied; the
+"UI base directory hides the file" theory is ruled out), Node 22 and Next.js 16.4.2 built fine, but
+the log never mentions the Next.js adapter and the deploy step says `0 new function(s) to upload`
+with 414 plain files from `frontend/.next`. Zero functions means the adapter did not run, so the
+404 is exactly what Netlify serves for a static folder without `index.html`. The fix is the
+fallback below: the adapter is now named in `netlify.toml`.
+
 If the Functions count stays 0, the fallback - only with that evidence - is to pin the adapter:
 `cd frontend` then `npm install -D @netlify/plugin-nextjs`, add
 

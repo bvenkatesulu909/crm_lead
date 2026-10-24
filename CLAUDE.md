@@ -214,7 +214,14 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     values) and `/placeholders`; 6 fixed placeholders filled in one pass (no engine, no
     re-expansion, no line breaks in subjects); unknown/broken placeholders → 422
     `unknown_placeholder`; agents see active templates only. Tests (run 2026-10-24): backend
-    1369 passed (+4 opt-in skipped); ruff, mypy, import-linter clean. CC4-CC6 not started.
+    1369 passed (+4 opt-in skipped); ruff, mypy, import-linter clean.
+  - CC4 (2026-10-24): `GET /communications/history` (one lead/contact/account/deal under that
+    record's read rules; an account includes its contacts and deals), `GET /communications/emails`
+    (read:all / read:own, filters in SQL), `POST /communications/emails/received` (log a received
+    e-mail; no sending, no consent or limit check); migration 0039 adds `email_messages.seq` for a
+    reliable newest-first order. Tests (run 2026-10-24): CC4 + CC2 tests 49 passed, migrations
+    and OpenAPI contract tests passed; ruff, mypy, import-linter clean. Full backend suite was
+    still running at commit time. CC5-CC6 not started.
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
   (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
   features that need them and need an ADR.

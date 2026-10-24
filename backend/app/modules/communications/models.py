@@ -16,9 +16,11 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     ForeignKeyConstraint,
+    Identity,
     Index,
     String,
     Text,
@@ -112,6 +114,8 @@ class EmailMessage(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Base):
             "created_at",
         ),
         Index("ix_email_messages_tenant_id_created_at", "tenant_id", "created_at"),
+        # Lists and histories are newest first by seq (migration 0039).
+        Index("ix_email_messages_tenant_id_seq", "tenant_id", "seq"),
     )
 
     direction: Mapped[str] = mapped_column(String(20))
@@ -130,3 +134,5 @@ class EmailMessage(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Base):
     # A short machine code when sending failed (e.g. "recipient_refused"), never the server's
     # full answer, which may contain personal data.
     error_code: Mapped[str | None] = mapped_column(String(60))
+    # A database-assigned order: two e-mails stored in the same instant still sort reliably.
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))

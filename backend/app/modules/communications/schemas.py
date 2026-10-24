@@ -7,7 +7,7 @@ refused, so ``{"to": "someone@else"}`` is a 422, not an ignored field.
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
@@ -26,9 +26,11 @@ class _Input(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class EmailSend(_Input):
-    lead_id: uuid.UUID | None = Field(default=None, description="Write to this lead, or…")
-    contact_id: uuid.UUID | None = Field(default=None, description="…to this contact.")
+class _MessageInput(_Input):
+    """Who the e-mail is with (one lead or one contact), where it is filed, and its text."""
+
+    lead_id: uuid.UUID | None = Field(default=None, description="The lead, or…")
+    contact_id: uuid.UUID | None = Field(default=None, description="…the contact.")
     account_id: uuid.UUID | None = Field(
         default=None, description="File it under the contact's account (contacts only)."
     )
@@ -37,12 +39,9 @@ class EmailSend(_Input):
     )
     subject: Subject
     body: Body
-    template_id: uuid.UUID | None = Field(
-        default=None, description="The template the text started from, if any."
-    )
 
     @model_validator(mode="after")
-    def _check(self) -> "EmailSend":
+    def _check(self) -> Self:
         if (self.lead_id is None) == (self.contact_id is None):
             raise ValueError("write to exactly one lead or one contact")
         if self.account_id is not None and self.opportunity_id is not None:
@@ -54,12 +53,27 @@ class EmailSend(_Input):
         return self
 
 
+class EmailSend(_MessageInput):
+    template_id: uuid.UUID | None = Field(
+        default=None, description="The template the text started from, if any."
+    )
+
+
+class EmailLogReceived(_MessageInput):
+    """An e-mail the lead or contact sent us, typed or pasted in by staff (nothing is sent).
+    Inbound mail arrives automatically only with Phase 19 (Integrations)."""
+
+
+Direction = Literal["outbound", "inbound_logged"]
+MessageStatus = Literal["queued", "sent", "failed", "logged"]
+
+
 class EmailMessageRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    direction: Literal["outbound", "inbound_logged"]
-    status: Literal["queued", "sent", "failed", "logged"]
+    direction: Direction
+    status: MessageStatus
     lead_id: uuid.UUID | None
     contact_id: uuid.UUID | None
     account_id: uuid.UUID | None
@@ -72,6 +86,13 @@ class EmailMessageRead(BaseModel):
     sent_at: datetime | None
     error_code: str | None
     created_at: datetime
+
+
+class EmailPage(BaseModel):
+    items: list[EmailMessageRead]
+    total: int
+    limit: int
+    offset: int
 
 
 # --- templates (step CC3) -------------------------------------------------------------------

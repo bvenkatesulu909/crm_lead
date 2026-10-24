@@ -11,6 +11,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import ColumnElement, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
@@ -28,6 +29,7 @@ from app.modules.activities import api as activities_api
 from app.modules.communications import repository, rules
 from app.modules.communications.models import EmailMessage, EmailTemplate
 from app.modules.communications.schemas import (
+    EmailLogReceived,
     EmailSend,
     PlaceholderRead,
     TemplateCreate,
@@ -153,7 +155,10 @@ def _recipient(
 
 
 def _check_related(
-    session: Session, principal: Principal, data: EmailSend, recipient: Recipient
+    session: Session,
+    principal: Principal,
+    data: EmailSend | EmailLogReceived,
+    recipient: Recipient,
 ) -> None:
     """The account or deal must be visible to the sender AND be the contact's own."""
     if data.account_id is not None:
@@ -404,6 +409,137 @@ def preview_template(
         body=body,
         missing=list(dict.fromkeys(missing_in_subject + missing_in_body)),
     )
+
+
+# --- history, list and logged e-mails (step CC4) ---------------------------------------------
+
+
+class OneRecordError(DomainError):
+    status_code = 422
+    code = "one_record_required"
+
+    def __init__(self) -> None:
+        super().__init__("Ask for the history of exactly one lead, contact, account or deal.")
+
+
+class RecordNotFoundError(NotFoundError):
+    code = "record_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("Record not found.")
+
+
+_COMMUNICATION_PERMISSIONS = (
+    Permission.COMMUNICATION_SEND,
+    Permission.COMMUNICATION_READ_ALL,
+    Permission.COMMUNICATION_READ_OWN,
+)
+
+
+def list_messages(
+    session: Session, principal: Principal, filters: repository.MessageFilters
+) -> tuple[Sequence[EmailMessage], int]:
+    """The Communication Center: every e-mail (read:all) or the user's own (read:own)."""
+    return repository.search_messages(session, principal, filters)
+
+
+def record_history(
+    session: Session,
+    principal: Principal,
+    *,
+    lead_id: uuid.UUID | None = None,
+    contact_id: uuid.UUID | None = None,
+    account_id: uuid.UUID | None = None,
+    opportunity_id: uuid.UUID | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[Sequence[EmailMessage], int]:
+    """All e-mails of ONE record, for anyone who may read that record (its module decides).
+
+    An account's history also holds the e-mails to its contacts and those filed under its deals.
+    """
+    if (
+        principal.tenant_id is None
+        or principal.user_type != "staff"
+        or not any(principal.has_permission(p) for p in _COMMUNICATION_PERMISSIONS)
+    ):
+        raise ForbiddenError("You may not read e-mails.")
+    tenant_id = principal.tenant_id
+    if sum(x is not None for x in (lead_id, contact_id, account_id, opportunity_id)) != 1:
+        raise OneRecordError()
+    belongs: ColumnElement[bool]
+    if lead_id is not None:
+        if not leads_api.is_readable_lead(session, principal, lead_id):
+            raise RecordNotFoundError()
+        belongs = EmailMessage.lead_id == lead_id
+    elif contact_id is not None:
+        if not contacts_api.is_readable_contact(session, principal, contact_id):
+            raise RecordNotFoundError()
+        belongs = EmailMessage.contact_id == contact_id
+    elif opportunity_id is not None:
+        if not sales_api.is_readable_opportunity(session, principal, opportunity_id):
+            raise RecordNotFoundError()
+        belongs = EmailMessage.opportunity_id == opportunity_id
+    elif account_id is not None:
+        if not accounts_api.is_readable_account(session, principal, account_id):
+            raise RecordNotFoundError()
+        contacts = contacts_api.contact_ids_by_account(session, tenant_id, [account_id])
+        deals = sales_api.opportunity_ids_by_account(session, tenant_id, [account_id])
+        belongs = or_(
+            EmailMessage.account_id == account_id,
+            EmailMessage.contact_id.in_(contacts[account_id]),
+            EmailMessage.opportunity_id.in_(deals[account_id]),
+        )
+    else:  # unreachable: exactly one record was given (checked above)
+        raise OneRecordError()
+    return repository.record_history(session, tenant_id, belongs, limit=limit, offset=offset)
+
+
+def log_received(session: Session, principal: Principal, data: EmailLogReceived) -> EmailMessage:
+    """Store an e-mail the lead or contact sent us (pasted in by staff). Nothing is sent, so
+    neither consent nor the sending limit apply; the record's read rules do."""
+    tenant_id, user_id = _sender(principal)
+    recipient = _recipient(session, principal, data.lead_id, data.contact_id)
+    _check_related(session, principal, data, recipient)
+    address = recipient.email
+    if address is None or not rules.looks_like_address(address):
+        raise NoEmailAddressError()
+    message = EmailMessage(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        direction="inbound_logged",
+        status="logged",
+        lead_id=data.lead_id,
+        contact_id=data.contact_id,
+        account_id=data.account_id,
+        opportunity_id=data.opportunity_id,
+        to_address=address,
+        subject=data.subject,
+        body=data.body,
+        sent_by_user_id=user_id,
+    )
+    session.add(message)
+    session.flush()
+    activities_api.log_email(
+        session,
+        principal,
+        subject=data.subject,
+        lead_id=data.lead_id,
+        contact_id=data.contact_id,
+        received=True,
+    )
+    record_audit(
+        session,
+        principal,
+        action="email.logged",
+        entity_type="email_message",
+        entity_id=message.id,
+        changes={
+            "recipient_type": "lead" if data.lead_id else "contact",
+            "recipient_id": str(data.lead_id or data.contact_id),
+        },
+    )
+    return message
 
 
 # --- worker ---------------------------------------------------------------------------------

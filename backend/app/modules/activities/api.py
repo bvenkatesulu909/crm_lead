@@ -224,6 +224,7 @@ def log_email(
     subject: str,
     lead_id: uuid.UUID | None,
     contact_id: uuid.UUID | None,
+    received: bool = False,
 ) -> uuid.UUID:
     """A "done" e-mail entry on the lead's or contact's timeline (Communication Center).
 
@@ -233,7 +234,7 @@ def log_email(
         principal,
         ActivityCreate(
             kind="email",
-            subject=f"E-mail: {subject}"[:200],
+            subject=f"{'E-mail received' if received else 'E-mail'}: {subject}"[:200],
             status="done",
             lead_id=lead_id,
             contact_id=contact_id if lead_id is None else None,

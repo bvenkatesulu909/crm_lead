@@ -2,12 +2,14 @@
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.search import escape_like
 from app.modules.communications.models import EmailMessage, EmailTemplate
 from app.modules.communications.policies import readable_messages, readable_templates
 
@@ -87,3 +89,54 @@ def template_name_taken(
     if except_id is not None:
         statement = statement.where(EmailTemplate.id != except_id)
     return session.scalar(statement) is not None
+
+
+@dataclass(frozen=True)
+class MessageFilters:
+    q: str | None = None
+    status: str | None = None
+    direction: str | None = None
+    sent_by_user_id: uuid.UUID | None = None
+    limit: int = 50
+    offset: int = 0
+
+
+def _page(
+    session: Session, statement: Select[EmailMessage], limit: int, offset: int
+) -> tuple[Sequence[EmailMessage], int]:
+    total = session.scalar(select(func.count()).select_from(statement.subquery())) or 0
+    items = session.scalars(
+        statement.order_by(EmailMessage.seq.desc()).limit(limit).offset(offset)
+    ).all()
+    return items, total
+
+
+def search_messages(
+    session: Session, principal: Principal, filters: MessageFilters
+) -> tuple[Sequence[EmailMessage], int]:
+    """The Communication Center list: the policy and every filter are part of the SQL query."""
+    statement = select(EmailMessage).where(readable_messages(principal))
+    if filters.q:
+        statement = statement.where(
+            EmailMessage.subject.ilike(f"%{escape_like(filters.q)}%", escape="\\")
+        )
+    if filters.status:
+        statement = statement.where(EmailMessage.status == filters.status)
+    if filters.direction:
+        statement = statement.where(EmailMessage.direction == filters.direction)
+    if filters.sent_by_user_id:
+        statement = statement.where(EmailMessage.sent_by_user_id == filters.sent_by_user_id)
+    return _page(session, statement, filters.limit, filters.offset)
+
+
+def record_history(
+    session: Session,
+    tenant_id: uuid.UUID,
+    belongs_to_record: ColumnElement[bool],
+    *,
+    limit: int,
+    offset: int,
+) -> tuple[Sequence[EmailMessage], int]:
+    """Every e-mail of one record. The caller has already checked the record may be read."""
+    statement = select(EmailMessage).where(EmailMessage.tenant_id == tenant_id, belongs_to_record)
+    return _page(session, statement, limit, offset)

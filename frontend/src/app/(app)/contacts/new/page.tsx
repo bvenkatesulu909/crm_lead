@@ -5,7 +5,7 @@ import { Card, Forbidden, PageHeader } from "@/components/ui";
 import { initialFormState } from "@/lib/form-state";
 import { canManageContacts, canWriteContacts } from "@/lib/permissions";
 import { getMe } from "@/lib/server/api";
-import { accountOptions, salesOwnerOptions } from "@/lib/server/options";
+import { accountOption, salesOwnerOptions } from "@/lib/server/options";
 
 import { createContact } from "../actions";
 
@@ -21,8 +21,8 @@ export default async function NewContactPage({
   // Friendly early answer; the API would refuse anyway.
   if (!canWriteContacts(me)) return <Forbidden />;
   const manager = canManageContacts(me);
-  const [accounts, owners] = await Promise.all([
-    accountOptions(),
+  const [defaultAccount, owners] = await Promise.all([
+    accountOption(account),
     manager ? salesOwnerOptions() : Promise.resolve(undefined),
   ]);
   const fromAccount =
@@ -38,8 +38,7 @@ export default async function NewContactPage({
         <ContactForm
           action={createContact}
           initialState={initialFormState}
-          accounts={accounts}
-          defaultAccountId={fromAccount}
+          defaultAccount={defaultAccount}
           owners={owners}
           cancelHref={fromAccount ? `/accounts/${fromAccount}` : "/contacts"}
           submitLabel="Create contact"

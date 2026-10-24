@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { DialogField } from "@/components/action-dialog";
-import { AccountPicker } from "@/components/account-picker";
+import { AccountPicker, pickedAccount } from "@/components/account-picker";
 import { ErrorAlert, buttonClass, cx } from "@/components/ui";
 import type { Price, PriceBook, Quote } from "@/lib/api-types";
 import { formatAmounts } from "@/lib/dashboard";
@@ -127,7 +127,7 @@ export function QuoteForm({
             {(p) => searchAccounts ? (
               <AccountPicker
                 {...p}
-                defaultAccount={v.account_id && v.account_label ? { id: v.account_id, name: v.account_label } : defaultAccount}
+                defaultAccount={pickedAccount(v, "account_id", "account_label", defaultAccount)}
                 onChange={(account) => setAccountId(account?.id ?? "")}
               />
             ) : (

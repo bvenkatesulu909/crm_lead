@@ -4,6 +4,23 @@ import { useEffect, useId, useRef, useState } from "react";
 
 export type AccountOption = { id: string; name: string };
 
+/**
+ * The account a picker should show when a form opens. After a failed submit, what the user had
+ * chosen wins - including an empty choice - so a cleared field is not silently filled with the
+ * default again. Before any submit, the default (e.g. the account the page was opened from).
+ */
+export function pickedAccount(
+  values: Record<string, string | undefined>,
+  idKey: string,
+  labelKey: string,
+  fallback?: AccountOption | null,
+): AccountOption | null {
+  const id = values[idKey];
+  if (id === undefined) return fallback ?? null;
+  const name = values[labelKey];
+  return id && name ? { id, name } : null;
+}
+
 type Status = "idle" | "loading" | "error";
 
 /**
@@ -19,6 +36,8 @@ export function AccountPicker({
   id,
   name = "account_id",
   labelName = "account_label",
+  placeholder = "Type to search accounts…",
+  excludeId,
   defaultAccount,
   onChange,
   ...inputProps
@@ -26,6 +45,9 @@ export function AccountPicker({
   id: string;
   name?: string;
   labelName?: string;
+  placeholder?: string;
+  /** Leave this account out of the matches (e.g. an account cannot be its own parent). */
+  excludeId?: string;
   defaultAccount?: AccountOption | null;
   onChange?: (account: AccountOption | null) => void;
   "aria-invalid"?: boolean;
@@ -51,7 +73,7 @@ export function AccountPicker({
       setStatus("loading");
       try {
         const response = await fetch(
-          `/accounts/search?q=${encodeURIComponent(query)}`,
+          `/accounts/search?q=${encodeURIComponent(query)}${excludeId ? `&exclude=${excludeId}` : ""}`,
           {
             signal: controller.signal,
             headers: { accept: "application/json" },
@@ -72,7 +94,7 @@ export function AccountPicker({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [open, query]);
+  }, [open, query, excludeId]);
 
   function choose(option: AccountOption) {
     setSelected(option);
@@ -129,7 +151,7 @@ export function AccountPicker({
         type="text"
         role="combobox"
         autoComplete="off"
-        placeholder="Type to search accounts…"
+        placeholder={placeholder}
         aria-expanded={open}
         aria-controls={listId}
         aria-autocomplete="list"

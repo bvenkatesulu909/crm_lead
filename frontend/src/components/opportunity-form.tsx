@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { DialogField } from "@/components/action-dialog";
-import { AccountPicker } from "@/components/account-picker";
+import { AccountPicker, pickedAccount } from "@/components/account-picker";
 import { ErrorAlert, buttonClass } from "@/components/ui";
 import { OPEN_STAGES, type Opportunity } from "@/lib/api-types";
 import type { FormState } from "@/lib/form-state";
@@ -88,7 +88,7 @@ export function OpportunityForm({
             {(p) => searchAccounts ? (
               <AccountPicker
                 {...p}
-                defaultAccount={state.values.account_id && state.values.account_label ? { id: state.values.account_id, name: state.values.account_label } : defaultAccount}
+                defaultAccount={pickedAccount(state.values, "account_id", "account_label", defaultAccount)}
                 onChange={(account) => setAccountId(account?.id ?? "")}
               />
             ) : (

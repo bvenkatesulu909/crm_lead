@@ -179,7 +179,7 @@ test("an approved quote is e-mailed to its contact with the PDF attached", async
 
   // A contact with an e-mail address at the agent's customer.
   const agent = await signedIn(browser, USERS.agent1, "/contacts/new");
-  await agent.getByLabel(/^Account/).selectOption({ label: "Example Customer One Ltd" }); // the contact form still has a plain dropdown
+  await chooseAccount(agent, "Account (optional)", "Example Customer One Ltd");
   await agent.getByLabel(/First name/).fill("Ada");
   await agent.getByLabel(/Last name/).fill(lastName);
   await agent.getByLabel(/^E-mail/).fill(address);

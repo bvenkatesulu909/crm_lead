@@ -224,7 +224,7 @@ describe("LeadActionBar", () => {
       <LeadActionBar
         lead={summary}
         assignees={[]}
-        accounts={[]}
+        hasAccounts={false}
         actions={actions}
         can={{ ...none, edit: true, qualify: true, disqualify: true }}
       />,
@@ -247,7 +247,7 @@ describe("LeadActionBar", () => {
     render(
       <LeadActionBar
         lead={summary}
-        accounts={[]}
+        hasAccounts={false}
         actions={actions}
         assignees={[
           { id: "a", display_name: "Avery", assignable: true, support: false },
@@ -270,7 +270,7 @@ describe("LeadActionBar", () => {
       <LeadActionBar
         lead={summary}
         assignees={[]}
-        accounts={[]}
+        hasAccounts={false}
         actions={actions}
         can={{ ...none, convert: true }}
       />,
@@ -290,7 +290,7 @@ describe("LeadActionBar", () => {
       <LeadActionBar
         lead={summary}
         assignees={[]}
-        accounts={[]}
+        hasAccounts={false}
         actions={actions}
         can={none}
       />,

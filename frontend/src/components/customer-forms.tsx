@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import { DialogField } from "@/components/action-dialog";
+import { AccountPicker, pickedAccount } from "@/components/account-picker";
 import { DuplicateNotice } from "@/components/duplicate-notice";
 import { ErrorAlert, buttonClass } from "@/components/ui";
 import {
@@ -81,8 +82,7 @@ export function AccountForm({
   action,
   initialState,
   account,
-  defaultParentId,
-  parents,
+  defaultParent,
   owners,
   cancelHref,
   submitLabel,
@@ -90,8 +90,8 @@ export function AccountForm({
   action: Action;
   initialState: FormState;
   account?: Account;
-  defaultParentId?: string;
-  parents: Option[];
+  /** The parent to show as chosen when the form opens (create: from ?parent=, edit: the saved one). */
+  defaultParent?: Option | null;
   owners?: Option[];
   cancelHref: string;
   submitLabel: string;
@@ -101,7 +101,6 @@ export function AccountForm({
   // After a failed attempt show what the user typed; otherwise the saved values.
   const v = (field: keyof Account & string): string => {
     if (state.values[field] !== undefined) return state.values[field];
-    if (field === "parent_account_id" && !account) return defaultParentId ?? "";
     const saved = account?.[field];
     return saved === null || saved === undefined ? "" : String(saved);
   };
@@ -188,10 +187,14 @@ export function AccountForm({
         <DialogField id="account-parent" label="Parent account" optional error={e.parent_account_id}
           hint="The group or head office this account belongs to.">
           {(p) => (
-            <select name="parent_account_id" defaultValue={v("parent_account_id")} {...p}>
-              <option value="">None</option>
-              {parents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            <AccountPicker
+              {...p}
+              name="parent_account_id"
+              labelName="parent_account_label"
+              placeholder="None - type to search for a parent account"
+              excludeId={account?.id}
+              defaultAccount={pickedAccount(state.values, "parent_account_id", "parent_account_label", defaultParent)}
+            />
           )}
         </DialogField>
         {owners && (
@@ -216,8 +219,7 @@ export function ContactForm({
   action,
   initialState,
   contact,
-  defaultAccountId,
-  accounts,
+  defaultAccount,
   owners,
   cancelHref,
   submitLabel,
@@ -225,8 +227,8 @@ export function ContactForm({
   action: Action;
   initialState: FormState;
   contact?: Contact;
-  defaultAccountId?: string;
-  accounts: Option[];
+  /** The account to show as chosen when the form opens (create: from ?account=, edit: the saved one). */
+  defaultAccount?: Option | null;
   owners?: Option[];
   cancelHref: string;
   submitLabel: string;
@@ -235,7 +237,6 @@ export function ContactForm({
   const e = state.fieldErrors;
   const v = (field: keyof Contact & string): string => {
     if (state.values[field] !== undefined) return state.values[field];
-    if (field === "account_id" && !contact) return defaultAccountId ?? "";
     const saved = contact?.[field];
     return saved === null || saved === undefined ? "" : String(saved);
   };
@@ -268,10 +269,11 @@ export function ContactForm({
         <legend className="mb-3 text-sm font-semibold text-slate-900">Account</legend>
         <DialogField id="contact-account" label="Account" optional error={e.account_id}>
           {(p) => (
-            <select name="account_id" defaultValue={v("account_id")} {...p}>
-              <option value="">No account</option>
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            <AccountPicker
+              {...p}
+              placeholder="No account - type to search"
+              defaultAccount={pickedAccount(state.values, "account_id", "account_label", defaultAccount)}
+            />
           )}
         </DialogField>
         {owners && (

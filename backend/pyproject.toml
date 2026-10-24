@@ -60,6 +60,7 @@ modules = [
     "app.modules.assistant",
     "app.modules.catalog",
     "app.modules.contacts",
+    "app.modules.contracts",
     "app.modules.dashboard",
     "app.modules.documents",
     "app.modules.identity",

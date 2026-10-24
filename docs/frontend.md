@@ -69,6 +69,8 @@ Browser ──cookie (encrypted, httpOnly)──► Next.js server ──Bearer 
 | `/products/price-books/[id]` | Price book | Entries used to price quotes |
 | `/quotes`, `/quotes/new`, `/quotes/[id]`, `/quotes/[id]/edit` | Quotes | Lines, discounts (approval above the tenant limit - four eyes), revisions, status, send by e-mail with the PDF |
 | `/quotes/settings` | Quote settings | The organisation's approval limit (tenant admins) |
+| `/contracts`, `/contracts/new`, `/contracts/[id]`, `/contracts/[id]/edit` | Contracts | List with search, status and "ending within 30/60/90 days" filters; create a draft; details with the renewal date, history and notes; activate, renew and terminate (managers); an active contract only allows editing its title, renewal settings and terms. A "Contracts" card on the account page. See `docs/contracts.md` |
+| `/accounts/search` (route handler) | Account search | Type-to-search account field (new ticket, new contract): the browser asks this route, the route asks the API |
 | `/print/quotes/[id]`, `/quotes/[id]/pdf` | Printable quote / PDF | Print view; stored PDF download through a route handler (no token in the browser) |
 | `/orders`, `/orders/new`, `/orders/[id]`, `/orders/[id]/edit` | Orders (staff) | See [orders.md](orders.md) |
 | `/invoices`, `/invoices/[id]` | Invoices, payments, credit notes (staff) | See [invoices.md](invoices.md) |

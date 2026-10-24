@@ -22,6 +22,7 @@ export type ModuleIcon =
   | "activities"
   | "catalog"
   | "quotes"
+  | "contracts"
   | "orders"
   | "invoices"
   | "support"
@@ -71,6 +72,7 @@ export const CRM_MODULES: CrmModule[] = [
   { key: "activities", name: "Activities", description: "Tasks, follow-ups, call and meeting logs, calendar, reminders", status: "available", phase: 9, href: "/tasks", permissions: ["activity:read:all", "activity:read:own"] },
   { key: "catalog", name: "Product Catalog", description: "Products, services and price books", status: "available", phase: 11, href: "/products", permissions: ["catalog:read"] },
   { key: "quotes", name: "Quotations", description: "Create quotations, approvals and revisions", status: "available", phase: 11, href: "/quotes", permissions: ["quote:read:all", "quote:read:own"] },
+  { key: "contracts", name: "Contracts & Renewals", description: "Contracts, end dates, renewal reminders and history", status: "available", phase: 11, href: "/contracts", permissions: ["contract:read:all", "contract:read:own"] },
   { key: "orders", name: "Orders", description: "Confirmed orders and status tracking", status: "available", phase: 12, href: "/orders", permissions: ["order:read:all", "order:read:own_accounts"] },
   { key: "invoices", name: "Invoices", description: "Invoice generation and payment tracking", status: "available", phase: 13, href: "/invoices", permissions: ["invoice:read:all", "invoice:read:own_accounts"] },
   { key: "support", name: "Customer Support", description: "Support tickets, assignments and SLA", status: "available", phase: 14, href: "/tickets", permissions: ["ticket:read:all", "ticket:read:own_accounts"] },

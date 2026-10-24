@@ -155,9 +155,9 @@ test("staff can open a ticket for a customer after a phone call", async ({
   const subject = uniqueName("E2ePhone");
   await login(page, USERS.support, "/tickets/new");
 
-  await page
-    .getByLabel("Account")
-    .selectOption({ label: "Example Customer Two Ltd" });
+  // The account field is a type-to-search picker, so it works however many accounts exist.
+  await page.getByRole("combobox", { name: "Account" }).fill("Example Customer Two");
+  await page.getByRole("option", { name: "Example Customer Two Ltd" }).click();
   await page.getByLabel("Priority").selectOption("urgent");
   await page.getByLabel("Subject").fill(subject);
   await page.getByLabel("Description").fill("Customer called: site is down.");

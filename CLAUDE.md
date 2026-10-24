@@ -192,6 +192,12 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   go-live wait for the owner's accounts, domain and secrets. The Netlify "Page not found" (404)
   is being resolved: `netlify.toml` now sets `publish = ".next"`; the next check is the
   **Deploy summary Functions count** (steps in `docs/deployment.md`).
+- **Contracts and renewals (C1-C4)** - built 2026-10-23 on branch `feat/contracts`, not merged. See `docs/contracts.md`.
+  - Migration 0037 (3 tables, forced RLS, insert-only history), API at `/api/v1/contracts`, worker expiry
+    sweep + auto-renew draft + one renewal reminder per renewal date, notifications to owner and creator,
+    screens (list, detail, form, account card, menu entry, module tile), account-search route handler.
+  - Tests (run 2026-10-23): backend contracts 64 + 7 worker tests (full suite below); Vitest 247; Playwright
+    `contracts.spec.ts` 3 passed.
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
-  (Phase 19), staff AI assistant (Phase 20b/20c), contracts and renewals. Teams come before the
+  (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
   features that need them and need an ADR.

@@ -30,6 +30,7 @@ __all__ = [
     "expiring_quote_ids",
     "quote_people",
     "quote_brief",
+    "quote_account_id",
     "customer_quotes",
     "customer_quote",
     "EMAIL_JOB",
@@ -97,6 +98,14 @@ def quote_brief(
     if quote is None:
         return None
     return f"{service.number_label(quote)}: {quote.title}", quote.owner_id, quote.created_by_user_id
+
+
+def quote_account_id(
+    session: Session, principal: Principal, quote_id: uuid.UUID
+) -> tuple[bool, uuid.UUID | None]:
+    """(visible?, account of the quote). Quotes the user may not see give (False, None)."""
+    quote = repository.get_readable(session, principal, quote_id)
+    return (False, None) if quote is None else (True, quote.account_id)
 
 
 def quote_people(session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID) -> set[uuid.UUID]:

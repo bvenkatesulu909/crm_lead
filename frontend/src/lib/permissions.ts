@@ -81,6 +81,13 @@ export const canWriteQuotes = (me: Pick<Me, "permissions">) =>
   hasAny(me, "quote:write:all", "quote:write:own");
 export const canApproveQuotes = (me: Pick<Me, "permissions">) =>
   hasAny(me, "quote:approve");
+export const canReadContracts = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "contract:read:all", "contract:read:own");
+export const canWriteContracts = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "contract:write:all", "contract:write:own");
+/** Activate, terminate and renew (managers and administrators). */
+export const canManageContracts = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "contract:manage");
 export const canManageQuoteSettings = (me: Pick<Me, "permissions">) =>
   hasAny(me, "quote:settings:manage");
 
@@ -125,6 +132,7 @@ export type NavItem = {
     | "contacts"
     | "pipeline"
     | "quotes"
+    | "contracts"
     | "products"
     | "tasks"
     | "orders"
@@ -159,6 +167,8 @@ export function navigationFor(
     items.push({ href: "/opportunities", label: "Pipeline", icon: "pipeline" });
   if (canReadQuotes(me))
     items.push({ href: "/quotes", label: "Quotes", icon: "quotes" });
+  if (canReadContracts(me))
+    items.push({ href: "/contracts", label: "Contracts", icon: "contracts" });
   if (canReadActivities(me))
     items.push({ href: "/tasks", label: "Tasks", icon: "tasks" });
   if (canReadOrders(me))
@@ -252,6 +262,11 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "quote:write:own": "Create and change your own quotes",
   "quote:approve": "Approve quotes with large discounts",
   "quote:settings:manage": "Set the discount that needs approval",
+  "contract:read:all": "View all contracts",
+  "contract:read:own": "View your own contracts",
+  "contract:write:all": "Create and change all contracts",
+  "contract:write:own": "Create and change your own contracts",
+  "contract:manage": "Activate, terminate and renew contracts",
   "document:read": "View documents of customers and deals you can see",
   "document:write": "Upload documents",
   "document:delete": "Delete documents",

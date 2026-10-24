@@ -102,3 +102,16 @@ the same probe showed 187 accounts from 2 tenants and 60 tickets.
 - Run the Playwright suite against this branch's API and web app (the development database is
   already at 0036).
 - Teams (manager hierarchies) - record-level, not RLS.
+
+## Update 2026-10-24: 50 of 50
+
+Migration 0037 (contracts and renewals) added three tables with `tenant_id`: `contracts`,
+`contract_events` and `contract_number_counters`. Each got ENABLE + FORCE RLS and the tenant
+policy in the same migration, as the guard test requires. Re-run against the development
+database at 0037: tenant tables 50, protected 50, unprotected none, no tenant table readable
+without a tenant context; `crm_app` BYPASSRLS false, `crm_owner` BYPASSRLS true (migrations and
+test setup only). The 47s above are the figures at migration 0036, kept as the record of that
+date.
+
+GitHub's CI needed the same owner bypass as Docker (`04-owner-bypassrls.sh`); the missing CI
+step made nearly every database test fail there until PR #3 added it.

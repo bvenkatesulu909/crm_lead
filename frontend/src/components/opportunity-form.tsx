@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { DialogField } from "@/components/action-dialog";
+import { AccountPicker, pickedAccount } from "@/components/account-picker";
 import { ErrorAlert, buttonClass } from "@/components/ui";
 import { OPEN_STAGES, type Opportunity } from "@/lib/api-types";
 import type { FormState } from "@/lib/form-state";
 import { STAGE_LABELS } from "@/lib/pipeline";
+import { useAccountLinks } from "@/lib/use-account-links";
 
 type Option = { id: string; name: string };
 type ContactOption = Option & { accountId: string | null };
@@ -24,6 +26,8 @@ export function OpportunityForm({
   accounts,
   contacts,
   owners,
+  searchAccounts = false,
+  defaultAccount,
   cancelHref,
   submitLabel,
 }: {
@@ -34,6 +38,10 @@ export function OpportunityForm({
   accounts: Option[];
   contacts: ContactOption[];
   owners?: Option[];
+  /** Create: search accounts by name as the user types instead of choosing from a fixed list. */
+  searchAccounts?: boolean;
+  /** With searchAccounts: the account to show as chosen when the form opens. */
+  defaultAccount?: Option | null;
   cancelHref: string;
   submitLabel: string;
 }) {
@@ -47,7 +55,12 @@ export function OpportunityForm({
   const [accountId, setAccountId] = useState(
     v("account_id", defaultAccountId ?? ""),
   );
-  const people = contacts.filter((c) => c.accountId === accountId);
+  // With the account search, the chosen account's contacts come from the server.
+  const links = useAccountLinks(accountId, searchAccounts);
+  const people = [
+    ...contacts.filter((c) => c.accountId === accountId),
+    ...links.contacts.filter((l) => !contacts.some((c) => c.id === l.id)),
+  ];
   const count = Object.keys(e).length;
 
   return (
@@ -72,7 +85,13 @@ export function OpportunityForm({
           </div>
         ) : (
           <DialogField id="opp-account" label="Account" error={e.account_id}>
-            {(p) => (
+            {(p) => searchAccounts ? (
+              <AccountPicker
+                {...p}
+                defaultAccount={pickedAccount(state.values, "account_id", "account_label", defaultAccount)}
+                onChange={(account) => setAccountId(account?.id ?? "")}
+              />
+            ) : (
               <select name="account_id" value={accountId} onChange={(ev) => setAccountId(ev.target.value)} {...p}>
                 <option value="">Choose an account…</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -83,7 +102,7 @@ export function OpportunityForm({
         <DialogField id="opp-contact" label="Primary contact" optional error={e.primary_contact_id}
           hint={accountId ? undefined : "Choose the account first."}>
           {(p) => (
-            <select name="primary_contact_id" key={accountId} defaultValue={v("primary_contact_id")} disabled={!accountId} {...p}>
+            <select name="primary_contact_id" key={`${accountId}-${people.length}`} defaultValue={v("primary_contact_id")} disabled={!accountId} {...p}>
               <option value="">None</option>
               {people.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>

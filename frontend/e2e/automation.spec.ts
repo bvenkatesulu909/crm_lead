@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-import { USERS, login, requireCredentials, uniqueName } from "./helpers";
+import { USERS, login, requireCredentials, uniqueName, chooseAccount } from "./helpers";
 
 /**
  * Phase 17b (ADR 0006): a tenant admin builds a rule in the UI; the worker runs it when an agent
@@ -26,7 +26,7 @@ function runWorkerOnce() {
 async function submitQuote(page: Page, title: string, discount: string) {
   await page.goto("/quotes/new");
   await page.getByLabel("Title").fill(title);
-  await page.getByLabel("Account").selectOption({ label: "Example Customer One Ltd" });
+  await chooseAccount(page, "Account", "Example Customer One Ltd");
   await page.getByRole("button", { name: "Add line" }).click();
   await page.getByLabel("Line 1 product").selectOption({ label: "WID-100 – Demo widget" });
   await page.getByLabel("Line 1 discount").fill(discount);

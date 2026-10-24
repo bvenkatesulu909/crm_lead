@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ActionDialog, DialogField } from "@/components/action-dialog";
+import { AccountPicker } from "@/components/account-picker";
 import { buttonClass } from "@/components/ui";
 import type { DirectoryUser } from "@/lib/api-types";
 import { type DialogState, initialDialogState } from "@/lib/dialog-state";
@@ -30,13 +31,14 @@ export function LeadActionBar({
   lead,
   can,
   assignees,
-  accounts,
+  hasAccounts,
   actions,
 }: {
   lead: LeadSummary;
   can: LeadActions;
   assignees: DirectoryUser[];
-  accounts: { id: string; name: string }[];
+  /** Whether this user can link a lead to an existing account (the picker searches them). */
+  hasAccounts: boolean;
   actions: {
     assign: BoundAction;
     markContacted: BoundAction;
@@ -189,7 +191,7 @@ export function LeadActionBar({
       {can.convert && (
         <ConvertDialog
           lead={lead}
-          accounts={accounts}
+          hasAccounts={hasAccounts}
           action={actions.convert}
         />
       )}
@@ -199,11 +201,11 @@ export function LeadActionBar({
 
 function ConvertDialog({
   lead,
-  accounts,
+  hasAccounts,
   action,
 }: {
   lead: LeadSummary;
-  accounts: { id: string; name: string }[];
+  hasAccounts: boolean;
   action: BoundAction;
 }) {
   const [mode, setMode] = useState<"new" | "existing">("new");
@@ -237,8 +239,8 @@ function ConvertDialog({
               </label>
               <label className="flex items-center gap-2">
                 <input type="radio" name="account_mode" value="existing" checked={mode === "existing"}
-                  onChange={() => setMode("existing")} disabled={accounts.length === 0} />
-                Link to an existing account{accounts.length === 0 && " (none available to you)"}
+                  onChange={() => setMode("existing")} disabled={!hasAccounts} />
+                Link to an existing account{!hasAccounts && " (none available to you)"}
               </label>
             </div>
           </fieldset>
@@ -250,10 +252,7 @@ function ConvertDialog({
           ) : (
             <DialogField id="convert-account" label="Existing account" error={errors.existing_account_id}>
               {(props) => (
-                <select name="existing_account_id" defaultValue="" {...props}>
-                  <option value="" disabled>Choose an account…</option>
-                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
+                <AccountPicker {...props} name="existing_account_id" labelName="existing_account_label" />
               )}
             </DialogField>
           )}

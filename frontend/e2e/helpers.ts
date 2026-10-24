@@ -41,6 +41,15 @@ export async function signOut(page: Page) {
   await expect(page).toHaveURL(/\/login\?signed_out=1/);
 }
 
+/**
+ * Chooses an account in the type-to-search account picker: type part of the name, click the
+ * match. Works however many accounts exist (a plain dropdown only lists the first 200).
+ */
+export async function chooseAccount(page: Page, field: string, name: string) {
+  await page.getByRole("combobox", { name: field, exact: true }).fill(name);
+  await page.getByRole("option", { name }).click();
+}
+
 /** A unique, clearly fictional name so test data never looks like a real customer. */
 export function uniqueName(prefix: string) {
   return `${prefix}${Date.now().toString(36).toUpperCase()}`;

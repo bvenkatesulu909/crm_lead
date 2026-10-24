@@ -4,6 +4,23 @@ import { useEffect, useId, useRef, useState } from "react";
 
 export type AccountOption = { id: string; name: string };
 
+/**
+ * The account a picker should show when a form opens. After a failed submit, what the user had
+ * chosen wins - including an empty choice - so a cleared field is not silently filled with the
+ * default again. Before any submit, the default (e.g. the account the page was opened from).
+ */
+export function pickedAccount(
+  values: Record<string, string | undefined>,
+  idKey: string,
+  labelKey: string,
+  fallback?: AccountOption | null,
+): AccountOption | null {
+  const id = values[idKey];
+  if (id === undefined) return fallback ?? null;
+  const name = values[labelKey];
+  return id && name ? { id, name } : null;
+}
+
 type Status = "idle" | "loading" | "error";
 
 /**
@@ -13,14 +30,26 @@ type Status = "idle" | "loading" | "error";
  * It posts two fields with the form: `account_id` (what the server uses) and `account_label`
  * (only the name, so the field can show the chosen account again after a validation error).
  * The server still checks that the user may use that account, whatever the browser sends.
+ * `onChange` tells a form that depends on the account (contacts, deals) when it changes.
  */
 export function AccountPicker({
   id,
+  name = "account_id",
+  labelName = "account_label",
+  placeholder = "Type to search accounts…",
+  excludeId,
   defaultAccount,
+  onChange,
   ...inputProps
 }: {
   id: string;
+  name?: string;
+  labelName?: string;
+  placeholder?: string;
+  /** Leave this account out of the matches (e.g. an account cannot be its own parent). */
+  excludeId?: string;
   defaultAccount?: AccountOption | null;
+  onChange?: (account: AccountOption | null) => void;
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
   className?: string;
@@ -44,7 +73,7 @@ export function AccountPicker({
       setStatus("loading");
       try {
         const response = await fetch(
-          `/accounts/search?q=${encodeURIComponent(query)}`,
+          `/accounts/search?q=${encodeURIComponent(query)}${excludeId ? `&exclude=${excludeId}` : ""}`,
           {
             signal: controller.signal,
             headers: { accept: "application/json" },
@@ -65,12 +94,13 @@ export function AccountPicker({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [open, query]);
+  }, [open, query, excludeId]);
 
   function choose(option: AccountOption) {
     setSelected(option);
     setQuery(option.name);
     setOpen(false);
+    onChange?.(option);
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -113,15 +143,15 @@ export function AccountPicker({
         if (!wrapper.current?.contains(event.relatedTarget)) setOpen(false);
       }}
     >
-      <input type="hidden" name="account_id" value={selected?.id ?? ""} />
-      <input type="hidden" name="account_label" value={selected?.name ?? ""} />
+      <input type="hidden" name={name} value={selected?.id ?? ""} />
+      <input type="hidden" name={labelName} value={selected?.name ?? ""} />
       <input
         {...inputProps}
         id={id}
         type="text"
         role="combobox"
         autoComplete="off"
-        placeholder="Type to search accounts…"
+        placeholder={placeholder}
         aria-expanded={open}
         aria-controls={listId}
         aria-autocomplete="list"
@@ -132,6 +162,7 @@ export function AccountPicker({
         onChange={(event) => {
           setQuery(event.target.value);
           setSelected(null); // typing again means "not chosen yet"
+          onChange?.(null);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}

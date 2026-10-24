@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { DialogField } from "@/components/action-dialog";
-import { AccountPicker, type AccountOption } from "@/components/account-picker";
+import { AccountPicker, pickedAccount, type AccountOption } from "@/components/account-picker";
 import { CATEGORY_LABELS, PRIORITY_LABELS } from "@/components/tickets";
 import { ErrorAlert, buttonClass } from "@/components/ui";
 import { TICKET_CATEGORIES, TICKET_PRIORITIES } from "@/lib/api-types";
@@ -53,7 +53,7 @@ export function TicketForm({
         {(props) => searchAccounts ? (
           <AccountPicker
             {...props}
-            defaultAccount={values.account_id && values.account_label ? { id: values.account_id, name: values.account_label } : defaultAccount}
+            defaultAccount={pickedAccount(values, "account_id", "account_label", defaultAccount)}
           />
         ) : (
           <select name="account_id" defaultValue={values.account_id ?? defaultAccountId ?? (accounts.length === 1 ? accounts[0].id : "")} {...props}>

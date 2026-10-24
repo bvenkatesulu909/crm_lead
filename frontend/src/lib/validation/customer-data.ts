@@ -116,6 +116,8 @@ export const ACCOUNT_FIELDS = [
   "account_type",
   "preferred_language",
   "parent_account_id",
+  // Display only: the parent's name, so the form can show it again after an error.
+  "parent_account_label",
   "owner_id",
 ] as const;
 
@@ -156,6 +158,8 @@ export const CONTACT_FIELDS = [
   "job_title",
   "department",
   "account_id",
+  // Display only: the account's name, so the form can show it again after an error.
+  "account_label",
   "is_primary",
   "preferred_channel",
   "email_consent",

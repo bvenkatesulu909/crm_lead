@@ -9,7 +9,7 @@ import type { Account } from "@/lib/api-types";
 import { initialFormState } from "@/lib/form-state";
 import { canManageAccounts, canWriteAccounts } from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
-import { accountOptions, salesOwnerOptions } from "@/lib/server/options";
+import { accountOption, salesOwnerOptions } from "@/lib/server/options";
 
 import { updateAccount } from "../../actions";
 
@@ -35,8 +35,8 @@ export default async function EditAccountPage({
   if (!canManageAccounts(me) && account.owner_id !== me.user_id)
     return <Forbidden message="You may view this account but not change it." />;
   const manager = canManageAccounts(me);
-  const [parents, owners] = await Promise.all([
-    accountOptions(account.id),
+  const [parent, owners] = await Promise.all([
+    accountOption(account.parent_account_id ?? undefined),
     manager ? salesOwnerOptions() : Promise.resolve(undefined),
   ]);
 
@@ -56,7 +56,7 @@ export default async function EditAccountPage({
           action={updateAccount.bind(null, account.id, account.version)}
           initialState={initialFormState}
           account={account}
-          parents={parents}
+          defaultParent={parent}
           owners={owners}
           cancelHref={`/accounts/${account.id}`}
           submitLabel="Save changes"

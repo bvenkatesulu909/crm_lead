@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-import { USERS, login, requireCredentials, uniqueName } from "./helpers";
+import { USERS, login, requireCredentials, uniqueName, chooseAccount } from "./helpers";
 
 /**
  * Phase 12: orders, end to end between the staff CRM and the customer portal.
@@ -32,9 +32,7 @@ test("an order goes from a sales draft to delivery, visible to the customer", as
 
   // 1. The sales agent creates a draft (validation first) for their own customer.
   const agent = await newPage(browser, USERS.agent1, "/orders/new");
-  await agent
-    .getByLabel("Customer account")
-    .selectOption({ label: "Example Customer One Ltd" });
+  await chooseAccount(agent, "Customer account", "Example Customer One Ltd");
   await agent.getByRole("button", { name: "Save draft" }).click();
   await expect(agent.getByText("Describe what is ordered.")).toBeVisible();
 
@@ -115,9 +113,7 @@ test("cancelling asks for a reason that the customer then sees", async ({
 }) => {
   test.setTimeout(90_000);
   const manager = await newPage(browser, USERS.manager, "/orders/new");
-  await manager
-    .getByLabel("Customer account")
-    .selectOption({ label: "Example Customer One Ltd" });
+  await chooseAccount(manager, "Customer account", "Example Customer One Ltd");
   const line = manager.getByRole("group", { name: "Line 1" });
   await line.getByLabel("Description").fill("Spare part");
   await line.getByLabel(/Unit price/).fill("5");

@@ -92,16 +92,16 @@ export default async function LeadPage({
   const score = await apiFetch<LeadScore>(`/leads/${id}/score`).catch(
     () => null,
   );
-  const [activities, assignments, people, accounts, convertedAccount] =
+  const [activities, assignments, people, hasAccounts, convertedAccount] =
     await Promise.all([
       apiFetch<Activity[]>(`/leads/${id}/activities`),
       apiFetch<Assignment[]>(`/leads/${id}/assignments`),
       apiFetch<DirectoryUser[]>("/users"),
       can.convert && hasAny(me, "account:read:all", "account:read:own")
-        ? apiFetch<AccountPage>("/accounts?limit=200").then(
-            (page) => page.items,
+        ? apiFetch<AccountPage>("/accounts?limit=1").then(
+            (page) => page.total > 0,
           )
-        : Promise.resolve([] as Account[]),
+        : Promise.resolve(false),
       lead.converted_account_id
         ? apiFetch<Account>(`/accounts/${lead.converted_account_id}`).catch(
             () => null,
@@ -169,7 +169,7 @@ export default async function LeadPage({
           }}
           can={can}
           assignees={people.filter((p) => p.assignable)}
-          accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
+          hasAccounts={hasAccounts}
           actions={{
             assign: assignLead.bind(null, lead.id),
             markContacted: markContacted.bind(null, lead.id),

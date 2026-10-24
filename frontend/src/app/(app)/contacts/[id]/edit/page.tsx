@@ -10,7 +10,7 @@ import { contactName } from "@/lib/customer-data";
 import { initialFormState } from "@/lib/form-state";
 import { canManageContacts, canWriteContacts } from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
-import { accountOptions, salesOwnerOptions } from "@/lib/server/options";
+import { accountOption, salesOwnerOptions } from "@/lib/server/options";
 
 import { updateContact } from "../../actions";
 
@@ -33,13 +33,14 @@ export default async function EditContactPage({
     throw error;
   }
   const manager = canManageContacts(me);
-  const [accounts, owners] = await Promise.all([
-    accountOptions(),
+  const [savedAccount, owners] = await Promise.all([
+    accountOption(contact.account_id ?? undefined),
     manager ? salesOwnerOptions() : Promise.resolve(undefined),
   ]);
-  // Keep the current account selectable even if it isn't in this user's account list.
-  if (contact.account_id && !accounts.some((a) => a.id === contact.account_id))
-    accounts.unshift({ id: contact.account_id, name: "Current account" });
+  // Show the current account even if this user may not read it (the API decides on save).
+  const defaultAccount =
+    savedAccount ??
+    (contact.account_id ? { id: contact.account_id, name: "Current account" } : null);
 
   return (
     <>
@@ -57,7 +58,7 @@ export default async function EditContactPage({
           action={updateContact.bind(null, contact.id, contact.version)}
           initialState={initialFormState}
           contact={contact}
-          accounts={accounts}
+          defaultAccount={defaultAccount}
           owners={owners}
           cancelHref={`/contacts/${contact.id}`}
           submitLabel="Save changes"

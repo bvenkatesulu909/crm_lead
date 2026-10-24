@@ -5,13 +5,11 @@ import { Card, Forbidden, PageHeader } from "@/components/ui";
 import { initialFormState } from "@/lib/form-state";
 import { canManageAccounts, canWriteAccounts } from "@/lib/permissions";
 import { getMe } from "@/lib/server/api";
-import { accountOptions, salesOwnerOptions } from "@/lib/server/options";
+import { accountOption, salesOwnerOptions } from "@/lib/server/options";
 
 import { createAccount } from "../actions";
 
 export const metadata: Metadata = { title: "New account" };
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function NewAccountPage({
   searchParams,
@@ -21,8 +19,8 @@ export default async function NewAccountPage({
   // Friendly early answer; the API would refuse anyway.
   if (!canWriteAccounts(me)) return <Forbidden />;
   const manager = canManageAccounts(me);
-  const [parents, owners] = await Promise.all([
-    accountOptions(),
+  const [defaultParent, owners] = await Promise.all([
+    accountOption(parent),
     manager ? salesOwnerOptions() : Promise.resolve(undefined),
   ]);
 
@@ -40,10 +38,7 @@ export default async function NewAccountPage({
         <AccountForm
           action={createAccount}
           initialState={initialFormState}
-          parents={parents}
-          defaultParentId={
-            typeof parent === "string" && UUID.test(parent) ? parent : undefined
-          }
+          defaultParent={defaultParent}
           owners={owners}
           cancelHref="/accounts"
           submitLabel="Create account"

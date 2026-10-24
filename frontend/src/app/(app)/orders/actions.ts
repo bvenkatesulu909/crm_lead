@@ -122,12 +122,17 @@ export async function createOrder(
 ): Promise<FormState> {
   const attempt = previous.attempt + 1;
   const accountId = text(formData, "account_id");
+  // The name of the chosen account only lets the form show it again after an error.
+  const accountLabel = text(formData, "account_label");
   const parsed = parseOrderForm(formData);
   if (!UUID.test(accountId)) {
     const fieldErrors = parsed.ok ? {} : parsed.fieldErrors;
     return {
       attempt,
-      values: parsed.ok ? { account_id: accountId } : parsed.values,
+      values: {
+        ...(parsed.ok ? { account_id: accountId } : parsed.values),
+        account_label: accountLabel,
+      },
       fieldErrors: {
         ...fieldErrors,
         account_id: "Choose the customer account.",
@@ -138,7 +143,7 @@ export async function createOrder(
   if (!parsed.ok)
     return {
       attempt,
-      values: parsed.values,
+      values: { ...parsed.values, account_label: accountLabel },
       fieldErrors: parsed.fieldErrors,
       error: null,
     };
@@ -149,7 +154,11 @@ export async function createOrder(
       body: JSON.stringify({ account_id: accountId, ...parsed.body }),
     });
   } catch (error) {
-    return failedForm(attempt, { account_id: accountId }, error);
+    return failedForm(
+      attempt,
+      { account_id: accountId, account_label: accountLabel },
+      error,
+    );
   }
   redirect(`/orders/${order.id}?done=created`);
 }

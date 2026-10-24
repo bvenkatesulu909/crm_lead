@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { DialogField } from "@/components/action-dialog";
+import { AccountPicker, pickedAccount } from "@/components/account-picker";
 import { ErrorAlert, buttonClass, cx } from "@/components/ui";
 import type { Price, PriceBook, Quote } from "@/lib/api-types";
 import { formatAmounts } from "@/lib/dashboard";
 import type { FormState } from "@/lib/form-state";
 import { previewTotals } from "@/lib/quotes";
+import { useAccountLinks } from "@/lib/use-account-links";
 
 type Option = { id: string; name: string; accountId?: string | null };
 type Line = { product_id: string; quantity: string; discount_percent: string };
@@ -30,6 +32,8 @@ export function QuoteForm({
   opportunities,
   contacts,
   defaults,
+  searchAccounts = false,
+  defaultAccount,
   cancelHref,
   submitLabel,
   approvalLimit,
@@ -44,6 +48,10 @@ export function QuoteForm({
   opportunities: Option[];
   contacts: Option[];
   defaults: { accountId?: string; opportunityId?: string; validUntil: string };
+  /** Create: search accounts by name as the user types instead of choosing from a fixed list. */
+  searchAccounts?: boolean;
+  /** With searchAccounts: the account to show as chosen when the form opens. */
+  defaultAccount?: { id: string; name: string } | null;
   cancelHref: string;
   submitLabel: string;
   /** The organisation's limit: line discounts above it need a manager's approval. */
@@ -55,6 +63,14 @@ export function QuoteForm({
   const [accountId, setAccountId] = useState(
     v.account_id ?? quote?.account_id ?? defaults.accountId ?? "",
   );
+  // With the account search, the chosen account's contacts and open deals come from the server.
+  const links = useAccountLinks(accountId, searchAccounts);
+  const forAccount = (own: Option[], fetched: Option[]) => [
+    ...own.filter((o) => o.accountId === accountId),
+    ...fetched.filter((f) => !own.some((o) => o.id === f.id)),
+  ];
+  const dealChoices = forAccount(opportunities, links.opportunities);
+  const contactChoices = forAccount(contacts, links.contacts);
   const defaultBook = books.find((b) => b.is_default) ?? books[0];
   const [bookId, setBookId] = useState(
     v.price_book_id ?? quote?.price_book_id ?? defaultBook?.id ?? "",
@@ -108,7 +124,13 @@ export function QuoteForm({
           </div>
         ) : (
           <DialogField id="quote-account" label="Account" error={e.account_id}>
-            {(p) => (
+            {(p) => searchAccounts ? (
+              <AccountPicker
+                {...p}
+                defaultAccount={pickedAccount(v, "account_id", "account_label", defaultAccount)}
+                onChange={(account) => setAccountId(account?.id ?? "")}
+              />
+            ) : (
               <select name="account_id" value={accountId} onChange={(ev) => setAccountId(ev.target.value)} {...p}>
                 <option value="">Choose an account…</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -125,17 +147,17 @@ export function QuoteForm({
         </DialogField>
         <DialogField id="quote-deal" label="Deal" optional error={e.opportunity_id}>
           {(p) => (
-            <select name="opportunity_id" key={accountId} defaultValue={v.opportunity_id ?? quote?.opportunity_id ?? defaults.opportunityId ?? ""} {...p}>
+            <select name="opportunity_id" key={`${accountId}-${dealChoices.length}`} defaultValue={v.opportunity_id ?? quote?.opportunity_id ?? defaults.opportunityId ?? ""} {...p}>
               <option value="">None</option>
-              {opportunities.filter((o) => o.accountId === accountId).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              {dealChoices.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
           )}
         </DialogField>
         <DialogField id="quote-contact" label="For (contact)" optional error={e.contact_id}>
           {(p) => (
-            <select name="contact_id" key={accountId} defaultValue={v.contact_id ?? quote?.contact_id ?? ""} {...p}>
+            <select name="contact_id" key={`${accountId}-${contactChoices.length}`} defaultValue={v.contact_id ?? quote?.contact_id ?? ""} {...p}>
               <option value="">None</option>
-              {contacts.filter((c) => c.accountId === accountId).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {contactChoices.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
         </DialogField>

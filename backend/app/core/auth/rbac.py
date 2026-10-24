@@ -117,6 +117,14 @@ class Permission(StrEnum):
     # Customer portal: see quotes sent to their company and accept or decline them.
     PORTAL_QUOTE_READ = "portal:quote:read"
     PORTAL_QUOTE_RESPOND = "portal:quote:respond"
+
+    # Contracts and renewals. "own" = contracts the user owns or on accounts the user owns.
+    # "manage" = activate, terminate and renew (managers and tenant admins).
+    CONTRACT_READ_ALL = "contract:read:all"
+    CONTRACT_READ_OWN = "contract:read:own"
+    CONTRACT_WRITE_ALL = "contract:write:all"
+    CONTRACT_WRITE_OWN = "contract:write:own"
+    CONTRACT_MANAGE = "contract:manage"
     # Documents on accounts and deals (Phase 10). Access to a document also needs access to
     # the record it belongs to.
     DOCUMENT_READ = "document:read"
@@ -150,6 +158,7 @@ _SALES_ALL = frozenset(
         _P.ACTIVITY_READ_ALL, _P.ACTIVITY_WRITE_ALL, _P.ACTIVITY_ASSIGN,
         _P.CATALOG_READ, _P.CATALOG_MANAGE,
         _P.QUOTE_READ_ALL, _P.QUOTE_WRITE_ALL, _P.QUOTE_APPROVE,
+        _P.CONTRACT_READ_ALL, _P.CONTRACT_WRITE_ALL, _P.CONTRACT_MANAGE,
         _P.DOCUMENT_READ, _P.DOCUMENT_WRITE, _P.DOCUMENT_DELETE,
     }
 )  # fmt: skip
@@ -191,6 +200,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.CATALOG_READ,
             _P.QUOTE_READ_OWN,
             _P.QUOTE_WRITE_OWN,
+            _P.CONTRACT_READ_OWN,
+            _P.CONTRACT_WRITE_OWN,
             _P.DOCUMENT_READ,
             _P.DOCUMENT_WRITE,
             _P.DASHBOARD_SALES_OWN,

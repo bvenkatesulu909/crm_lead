@@ -88,6 +88,9 @@ API (permission `workflow:manage`): `GET /workflows/catalogue`, `GET/POST /workf
 | `ticket.assigned` | support (assign) | `ticket_id`, `assignee_id`, `actor_id` |
 | `ticket.customer_replied` | support (customer comment) | `ticket_id` |
 | `order.status_changed` | orders | `order_id`, `status`, `previous`, `actor_id` (no subscriber yet - for rules in 17b) |
+| `contract.activated` / `contract.terminated` | contracts (a manager activates or ends a contract) | `contract_id`, `actor_id` |
+| `contract.renewal_due` | contracts (the worker, once per renewal date: end date minus the notice days) | `contract_id` - notifies the owner and creator, by e-mail by default |
+| `contract.expired` | contracts (the worker, when an active contract's end date has passed) | `contract_id` - notifies the owner and creator |
 
 Rules: names must be in `EVENT_NAMES`; no personal data in payloads; subscribers must be safe
 to run twice; events caused by automation carry a `depth` (rules stop at 3, step 17b).

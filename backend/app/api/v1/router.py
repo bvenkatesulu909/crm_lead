@@ -9,6 +9,7 @@ from app.modules.assistant.router import router as assistant_router
 from app.modules.assistant.staff_router import router as staff_assistant_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.contacts.router import router as contacts_router
+from app.modules.contracts.router import router as contracts_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.documents.router import portal_router as portal_documents_router
 from app.modules.documents.router import router as documents_router
@@ -50,6 +51,7 @@ api_router.include_router(activities_router)
 api_router.include_router(catalog_router)
 api_router.include_router(quotes_router)
 api_router.include_router(portal_quotes_router)
+api_router.include_router(contracts_router)
 api_router.include_router(documents_router)
 api_router.include_router(portal_documents_router)
 api_router.include_router(notifications_router)

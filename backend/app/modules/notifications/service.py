@@ -25,6 +25,7 @@ from app.core.events import Event, uuid_of
 from app.core.mail import Mail, Mailer
 from app.core.outbox import PermanentJobError, enqueue
 from app.modules.activities import api as activities_api
+from app.modules.contracts import api as contracts_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 from app.modules.notifications.models import Notification, NotificationPreference
@@ -51,11 +52,13 @@ TYPES: dict[str, str] = {
     "quote.declined": "A customer declined your quote",
     "ticket.assigned": "A ticket was assigned to you",
     "ticket.customer_replied": "A customer replied on your ticket",
+    "contract.renewal_due": "A contract of yours is coming up for renewal",
+    "contract.expired": "A contract of yours has expired",
     "workflow.message": "A message from an automation rule",
 }
 RULE_MESSAGE = "workflow.message"
 EMAIL_BY_DEFAULT = frozenset(
-    {"activity.reminder_due", "quote.approval_requested", "quote.accepted"}
+    {"activity.reminder_due", "quote.approval_requested", "quote.accepted", "contract.renewal_due"}
 )
 
 
@@ -121,6 +124,15 @@ def _quote(prefix: str) -> Describe:
     return describe
 
 
+def _contract(prefix: str) -> Describe:
+    def describe(session: Session, me: Principal, event: Event) -> Draft | None:
+        contract_id = uuid_of(event, "contract_id")
+        brief = contracts_api.contract_brief(session, me, contract_id)
+        return Draft(f"{prefix}: {brief[0]}", f"/contracts/{contract_id}") if brief else None
+
+    return describe
+
+
 def _ticket(prefix: str) -> Describe:
     def describe(session: Session, me: Principal, event: Event) -> Draft | None:
         ticket_id = uuid_of(event, "ticket_id")
@@ -133,6 +145,11 @@ def _ticket(prefix: str) -> Describe:
 def _quote_people(session: Session, event: Event) -> set[uuid.UUID]:
     """Owner and creator of the quote (each is still checked: may they see it?)."""
     return quotes_api.quote_people(session, event.tenant_id, uuid_of(event, "quote_id"))
+
+
+def _contract_people(session: Session, event: Event) -> set[uuid.UUID]:
+    """Owner and creator of the contract (each is still checked: may they see it?)."""
+    return contracts_api.contract_people(session, event.tenant_id, uuid_of(event, "contract_id"))
 
 
 def _approvers(session: Session, event: Event) -> set[uuid.UUID]:
@@ -170,6 +187,8 @@ RULES: dict[str, tuple[Recipients, Describe]] = {
     "quote.declined": (_quote_people, _quote("Customer declined")),
     "ticket.assigned": (_assignee, _ticket("Ticket assigned to you")),
     "ticket.customer_replied": (_ticket_assignee, _ticket("Customer replied")),
+    "contract.renewal_due": (_contract_people, _contract("Renewal due")),
+    "contract.expired": (_contract_people, _contract("Contract expired")),
 }
 
 

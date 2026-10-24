@@ -1261,3 +1261,83 @@ export type KnowledgeAnswerResponse = {
   grounded: boolean;
   citations: number[];
 };
+
+// --- Contracts and renewals (docs/contracts.md) ----------------------------------------------
+
+export const CONTRACT_STATUSES = [
+  "draft",
+  "active",
+  "expired",
+  "terminated",
+  "renewed",
+] as const;
+export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
+
+export const BILLING_FREQUENCIES = [
+  "one_time",
+  "monthly",
+  "quarterly",
+  "annually",
+] as const;
+export type BillingFrequency = (typeof BILLING_FREQUENCIES)[number];
+
+export type ContractSummary = {
+  id: string;
+  number: number;
+  label: string;
+  title: string;
+  status: ContractStatus;
+  account_id: string;
+  account_name: string | null;
+  contact_id: string | null;
+  owner_id: string;
+  owner_name: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  /** From this day the owner is reminded that the contract is about to end. */
+  renewal_date: string | null;
+  /** Negative once the end date has passed. */
+  days_to_end: number | null;
+  auto_renew: boolean;
+  renewal_notice_days: number;
+  renewal_term_months: number | null;
+  currency: string;
+  total_value: string;
+  billing_frequency: BillingFrequency;
+  renewed_from_id: string | null;
+  created_at: string;
+  updated_at: string;
+  version: number;
+};
+
+export type Contract = ContractSummary & {
+  opportunity_id: string | null;
+  quote_id: string | null;
+  terms: string | null;
+  terminated_at: string | null;
+  termination_reason: string | null;
+  renewal_reminded_at: string | null;
+  /** The renewal that follows this contract, if one exists. */
+  renewed_to_id: string | null;
+};
+
+export type ContractPage = {
+  items: ContractSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type ContractEvent = {
+  event_type:
+    | "created"
+    | "status_changed"
+    | "note"
+    | "renewal_reminder"
+    | "expired";
+  from_status: ContractStatus | null;
+  to_status: ContractStatus | null;
+  note: string | null;
+  created_at: string;
+  actor_name: string | null;
+};

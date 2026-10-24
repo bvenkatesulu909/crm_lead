@@ -42,6 +42,7 @@ test("a sales agent creates a lead and finds it in the list", async ({
     "Contacts",
     "Pipeline",
     "Quotes",
+    "Contracts",
     "Tasks",
     "Orders",
     "Invoices",
@@ -60,7 +61,7 @@ test("a sales agent creates a lead and finds it in the list", async ({
 
   // Module overview: only working modules are links.
   const modules = page.getByRole("region", { name: "CRM modules" });
-  await expect(modules.getByRole("listitem")).toHaveCount(20);
+  await expect(modules.getByRole("listitem")).toHaveCount(21);
   await expect(modules.getByRole("link")).toHaveText([
     /Lead Management/,
     /Customer Management/,
@@ -69,6 +70,7 @@ test("a sales agent creates a lead and finds it in the list", async ({
     /Activities/,
     /Product Catalog/,
     /Quotations/,
+    /Contracts & Renewals/,
     /Orders/,
     /Invoices/,
     /Customer Support/,

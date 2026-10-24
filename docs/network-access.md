@@ -33,14 +33,14 @@ Allow the two ports, **only from your own network** (`localsubnet`):
 
 ```
 netsh advfirewall firewall add rule name="crm-lead web 3000" dir=in action=allow protocol=TCP localport=3000 remoteip=localsubnet profile=any
-netsh advfirewall firewall add rule name="crm-lead login 8080" dir=in action=allow protocol=TCP localport=8080 remoteip=localsubnet profile=any
+netsh advfirewall firewall add rule name="crm-lead login 9080" dir=in action=allow protocol=TCP localport=9080 remoteip=localsubnet profile=any
 ```
 
 Remove them again with:
 
 ```
 netsh advfirewall firewall delete rule name="crm-lead web 3000"
-netsh advfirewall firewall delete rule name="crm-lead login 8080"
+netsh advfirewall firewall delete rule name="crm-lead login 9080"
 ```
 
 (`profile=any` is used because Windows often marks home Wi-Fi as "Public".) The API (port 8000),

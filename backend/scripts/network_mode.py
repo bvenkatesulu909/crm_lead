@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[2]
 INFRA = ROOT / "infrastructure" / ".env"
 BACKEND = ROOT / "backend" / ".env"
 FRONTEND = ROOT / "frontend" / ".env.local"
-LOCAL_KEYCLOAK = "http://localhost:8080"
+LOCAL_KEYCLOAK = "http://localhost:9080"
 BACKUP_SUFFIX = ".network-backup"
 CLIENT_ID = "crm-web"
 
@@ -150,7 +150,7 @@ def turn_on(host: str) -> None:
     address = ipaddress.ip_address(host)
     if not address.is_private:
         sys.exit("Use this computer's PRIVATE address (192.168.x.x, 10.x.x.x or 172.16-31.x.x).")
-    web, keycloak = f"http://{host}:3000", f"http://{host}:8080"
+    web, keycloak = f"http://{host}:3000", f"http://{host}:9080"
     print(f"1/4 Telling Keycloak that the web app may also live at {web} ...")
     edit_client_addresses(LOCAL_KEYCLOAK, web, add=True)
     print("2/4 Backing up and updating the settings files ...")
@@ -175,7 +175,7 @@ def turn_on(host: str) -> None:
     print(f"      {web}\n")
     print("Start the web app with:  cd frontend && npm run dev:network")
     print(
-        "Other devices need the Windows firewall open for ports 3000 and 8080 (see docs/network-access.md)."
+        "Other devices need the Windows firewall open for ports 3000 and 9080 (see docs/network-access.md)."
     )
 
 

@@ -24,7 +24,7 @@ def build_openapi() -> dict[str, Any]:
     settings = Settings(
         _env_file=None,
         database_url="postgresql+psycopg://unused@127.0.0.1:1/unused",
-        oidc_issuer="http://localhost:8080/realms/crm",
+        oidc_issuer="http://localhost:9080/realms/crm",
     )
     verifier = TokenVerifier(
         issuer=settings.oidc_issuer,

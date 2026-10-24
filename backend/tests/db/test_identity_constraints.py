@@ -9,7 +9,7 @@ from app.modules.accounts.models import Account
 from app.modules.identity.models import PortalAccessGrant, Tenant, User
 from tests.db.test_schema_constraints import make_account, make_tenant, violated_constraint
 
-ISSUER = "http://localhost:8080/realms/crm"
+ISSUER = "http://localhost:9080/realms/crm"
 
 
 def make_person(session: Session, tenant: Tenant, subject: str, user_type: str) -> User:

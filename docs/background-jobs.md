@@ -7,7 +7,7 @@ reminders, notifications and workflows) are built on. Nothing visible in the CRM
 
 | Piece | What it is | Where |
 |---|---|---|
-| File store | **SeaweedFS**, an open-source store with the same "S3" API as Amazon S3 and MinIO. Keeps files (PDFs, later uploads) outside the database | Docker container `files`, `127.0.0.1:8333` |
+| File store | **SeaweedFS**, an open-source store with the same "S3" API as Amazon S3 and MinIO. Keeps files (PDFs, later uploads) outside the database | Docker container `files`, `127.0.0.1:9333` |
 | Mail catcher | **Mailpit** catches every e-mail; nothing reaches real inboxes | inbox http://localhost:8025, SMTP `127.0.0.1:2525` |
 | Worker | A second Python process that runs background jobs | `python -m app.worker` (own CMD window) |
 

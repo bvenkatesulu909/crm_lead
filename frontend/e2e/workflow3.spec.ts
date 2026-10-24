@@ -163,7 +163,7 @@ test("the employee profile shows identity, organisation, role and abilities", as
   await expect(account).not.toContainText("Assign leads to colleagues"); // managers only
   await expect(
     page.getByRole("link", { name: /Manage sign-in settings/ }),
-  ).toHaveAttribute("href", "http://localhost:8080/realms/crm/account/");
+  ).toHaveAttribute("href", "http://localhost:9080/realms/crm/account/");
 
   await page
     .getByRole("main")

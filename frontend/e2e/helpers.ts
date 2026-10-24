@@ -24,7 +24,7 @@ export async function login(page: Page, username: string, target = "/") {
   await page.goto(target);
   await expect(page).toHaveURL(/\/login/);
   await page.getByRole("link", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/localhost:8080\/realms\/crm\//);
+  await expect(page).toHaveURL(/localhost:9080\/realms\/crm\//);
   await page.locator("#username").fill(username);
   await page.locator("#password").fill(process.env.E2E_USER_PASSWORD ?? "");
   await page.locator("#kc-login").click();

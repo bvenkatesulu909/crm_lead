@@ -71,9 +71,9 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?set KEYCLOAK_ADMIN_USER in infrastructure/.env}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in infrastructure/.env}
       # Fixed public URL, so the token issuer never changes by accident. Normally
-      # http://localhost:8080; "network mode" (backend/scripts/network_mode.py) sets it to this
+      # http://localhost:9080; "network mode" (backend/scripts/network_mode.py) sets it to this
       # computer's address so phones and laptops on the same network can sign in.
-      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:9080}
       KC_HTTP_PORT: "8080"
       KC_HEALTH_ENABLED: "true"
       # Substituted into realm-crm.json placeholders like ${CRM_WEB_CLIENT_SECRET}.
@@ -82,7 +82,7 @@ services:
       CRM_USER_ADMIN_CLIENT_SECRET: ${CRM_USER_ADMIN_CLIENT_SECRET:?set CRM_USER_ADMIN_CLIENT_SECRET in infrastructure/.env}
     ports:
       # 127.0.0.1 = only this computer; network mode uses 0.0.0.0 (all network cards).
-      - "${KEYCLOAK_BIND:-127.0.0.1}:${KEYCLOAK_PORT:-8080}:8080"
+      - "${KEYCLOAK_BIND:-127.0.0.1}:${KEYCLOAK_PORT:-9080}:8080"
     volumes:
       - ./keycloak/realm-crm.json:/opt/keycloak/data/import/realm-crm.json:ro
     healthcheck:
@@ -131,7 +131,7 @@ services:
         exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json
         -volume.max=0 -master.volumeSizeLimitMB=256
     ports:
-      - "127.0.0.1:${FILES_S3_PORT:-8333}:8333"
+      - "127.0.0.1:${FILES_S3_PORT:-9333}:8333"
     volumes:
       - files_data:/data
 

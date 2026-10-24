@@ -38,7 +38,7 @@ real login (see §7).
 | Setting | Value | Why |
 |---|---|---|
 | Realm | `crm` | All CRM users, roles and clients. |
-| Issuer | `http://localhost:8080/realms/crm` | Fixed via `KC_HOSTNAME`; the API accepts tokens only from this issuer. |
+| Issuer | `http://localhost:9080/realms/crm` | Fixed via `KC_HOSTNAME`; the API accepts tokens only from this issuer. |
 | Client `crm-web` | confidential, **Standard flow only** | Implicit, password (direct access), device and CIBA grants are **disabled**. |
 | PKCE | `S256` **required** | Requests without PKCE, or with the weak `plain` method, are refused. |
 | Redirect URI | exactly `http://localhost:3000/api/auth/callback/keycloak` | No wildcards: codes can't be sent elsewhere. |
@@ -224,7 +224,7 @@ All names and addresses are invented. IDs are fixed so `scripts/seed_dev_data.py
 | `beta.admin` | tenant_admin | Beta Demo | all Beta accounts |
 | `beta.customer` | customer | Beta Demo | portal: Example Customer Three |
 
-The Keycloak admin console (`http://localhost:8080/admin`) uses `KEYCLOAK_ADMIN_USER` /
+The Keycloak admin console (`http://localhost:9080/admin`) uses `KEYCLOAK_ADMIN_USER` /
 `KEYCLOAK_ADMIN_PASSWORD` from the same `.env` file.
 
 ## 8. Development setup (Windows CMD)
@@ -245,7 +245,7 @@ python -m scripts.seed_dev_data
 uvicorn app.main:create_app --factory --reload
 ```
 
-`backend\.env` needs `CRM_OIDC_ISSUER=http://localhost:8080/realms/crm` (see `.env.example`).
+`backend\.env` needs `CRM_OIDC_ISSUER=http://localhost:9080/realms/crm` (see `.env.example`).
 For the Keycloak integration tests it also needs `CRM_TEST_KEYCLOAK_WEB_CLIENT_SECRET` and
 `CRM_TEST_KEYCLOAK_USER_PASSWORD` (the same values as in `infrastructure\.env`); without them
 those tests are skipped.

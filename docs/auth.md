@@ -158,6 +158,10 @@ narrow exceptions (login, sign-up, worker claim, metrics counts) is in `docs/rls
 | `invoice:manage` (create from order, issue, discard, credit notes) |  | ✔ | ✔ |  |  |  |
 | `payment:record` (record and reverse payments) |  | ✔ | ✔ |  |  |  |
 | `notification:read` |  | ✔ | ✔ | ✔ | ✔ |  |
+| `communication:send` (e-mail leads/contacts they may read; ADR 0012) |  | ✔ | ✔ | ✔ | ✔ |  |
+| `communication:read:all` (every e-mail in the Communication Center) |  | ✔ | ✔ |  |  |  |
+| `communication:read:own` (only e-mails they sent or logged) |  |  |  | ✔ | ✔ |  |
+| `communication:template:manage` (e-mail templates) |  | ✔ | ✔ |  |  |  |
 | `workflow:manage` (automation rules) |  | ✔ |  |  |  |  |
 | `knowledge:read` (knowledge base; RAG R1) |  | ✔ | ✔ | ✔ | ✔ |  |
 | `knowledge:manage` (upload/delete knowledge documents) |  | ✔ |  |  |  |  |

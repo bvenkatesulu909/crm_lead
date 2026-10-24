@@ -12,6 +12,7 @@ from app.modules.accounts import models as accounts_models
 from app.modules.activities import models as activities_models
 from app.modules.assistant import models as assistant_models
 from app.modules.catalog import models as catalog_models
+from app.modules.communications import models as communications_models
 from app.modules.contacts import models as contacts_models
 from app.modules.contracts import models as contracts_models
 from app.modules.documents import models as documents_models
@@ -34,6 +35,7 @@ __all__ = [
     "audit_models",
     "heartbeat_models",
     "catalog_models",
+    "communications_models",
     "contacts_models",
     "contracts_models",
     "documents_models",

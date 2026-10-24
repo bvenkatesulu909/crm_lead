@@ -69,6 +69,13 @@ jobs:
         # crm and crm_test databases. Keeping it identical means CI tests the real setup.
         run: sh infrastructure/postgres/init/01-create-roles-and-databases.sh
 
+      - name: Let the owner role bypass row-level security (test setup only)
+        # Docker runs 04-owner-bypassrls.sh on first start; CI has to run it too. The database
+        # tests build their data as crm_owner (ADR 0009), which must bypass RLS. crm_app, the
+        # role the API uses, never gets it. Without this step nearly every database test failed
+        # in CI with "new row violates row-level security policy".
+        run: sh infrastructure/postgres/init/04-owner-bypassrls.sh
+
       - name: Enable pgvector in the test database
         # The service container is not the local Docker image, so its init scripts do not run.
         # A fresh CI database has no indexes yet, so the extension can be created now.

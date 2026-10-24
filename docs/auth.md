@@ -266,3 +266,26 @@ those tests are skipped.
 - Teams/hierarchies for sales managers (today an `all` scope means the whole tenant).
 - Production Keycloak: `start` mode with HTTPS, real SMTP, real secrets management (prepared in
   ADR 0007: `infrastructure/keycloak/Dockerfile.production` + `realm-crm-production.json`).
+
+## Changing the Keycloak address (issuer) of an existing database
+
+The CRM recognises a person by the pair **(issuer, subject)** from the token (ADR 0002). The
+issuer is Keycloak's public address, e.g. `http://localhost:9080/realms/crm`. If you change that
+address (a different host or port) while the database already has users, every existing person
+looks like a stranger and the CRM answers "Your account is waiting for approval".
+
+Fix it by moving the saved issuer in the same step as the setting (development database shown;
+run as the database superuser, in one transaction):
+
+```sql
+begin;
+update users               set idp_issuer = 'NEW-ISSUER' where idp_issuer = 'OLD-ISSUER';
+update access_requests     set idp_issuer = 'NEW-ISSUER' where idp_issuer = 'OLD-ISSUER';
+update signup_code_attempts set idp_issuer = 'NEW-ISSUER' where idp_issuer = 'OLD-ISSUER';
+commit;
+```
+
+The automation user of each organisation uses `urn:crm-lead:automation` and is left alone. The
+development ports moved from 8080 to 9080 on 2026-10-24 (Windows can reserve TCP 8068-8467); the
+update above was applied to the development database then.
+

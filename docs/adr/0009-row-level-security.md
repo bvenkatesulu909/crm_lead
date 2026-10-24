@@ -96,7 +96,7 @@ Findings from the code audit (all verified against the tree at migration 0019):
 - **Owner bootstrap (2026-10-21):** `crm_owner` has `BYPASSRLS` **for migrations/test setup only**
   (`infrastructure/postgres/init/04-owner-bypassrls.sh`); `crm_app` remains non-superuser and
   non-BYPASSRLS. Test fixtures must create data with an owner session while API/RLS tests use
-  `crm_app`; that fixture split is the remaining prerequisite before 0029.
+  `crm_app`; that fixture split was done in step 4 (2026-10-23) and was the prerequisite for 0029.
 - **Leads + test bootstrap (2026-10-22):** `bind_user()` stores `app.user_id` and
   `app.lead_scope`; the `after_begin` listener re-applies tenant, user and scope after every
   commit/rollback. `identity.service.resolve_principal()` binds scope `all` for
@@ -145,8 +145,9 @@ Findings from the code audit (all verified against the tree at migration 0019):
   `/metrics` queue gauges had silently become 0 under RLS (aggregates per status only, EXECUTE
   only for `crm_app`). Guard test `test_rls_tenant_tables.py` fails any future table with a
   `tenant_id` column but no FORCE RLS + tenant policy. Verified: full backend suite 1150
-  passed, 4 skipped; ruff, mypy, lint-imports clean; `rls_audit` 47/47 protected. Playwright not
-  yet run against this branch.
+  passed, 4 skipped; ruff, mypy, lint-imports clean; `rls_audit` 47/47 protected. The full Playwright suite was run on the merged
+  code on 2026-10-24 (73-74 of 77 passed; the rest were the opt-in live assistant test and
+  timing flakes that pass alone).
 - **Decision 4 in practice:** no `crm_worker` BYPASSRLS role. The worker claims through
   `outbox_claim()` and then binds each job's tenant, so it is as restricted as the API.
 - **Development database:** upgraded to 0036 on 2026-10-23; `rls_audit` shows 47/47 protected

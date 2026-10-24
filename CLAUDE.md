@@ -173,17 +173,15 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   - New generated `docs/inventory.md` and `backend/scripts/report_inventory.py` (command in the
     table above): current API, database, route and test counts; the database part is skipped
     when PostgreSQL is unreachable.
-- **PostgreSQL Row-Level Security (ADR 0009)** — done 2026-10-23 on branch `rls-leads-policy` (PR #1, not merged). See `docs/rls-audit.md`.
-  - ENABLE + FORCE RLS and a tenant policy on all 47 tables with `tenant_id` (migrations 0022, 0029-0035); `leads` also checks the owner scope; narrow SECURITY DEFINER functions for login, sign-up, the worker claim and the metrics counts (0030-0032, 0036). The worker stays on `crm_app`.
+- **PostgreSQL Row-Level Security (ADR 0009)** — done 2026-10-23 and **merged into `main`** (PR #1, then the steps that followed it). See `docs/rls-audit.md`.
+  - ENABLE + FORCE RLS and a tenant policy on every table with `tenant_id`: 47 at migration 0036, **50** since the contract tables of 0037 (migrations 0022, 0029-0037); `leads` also checks the owner scope; narrow SECURITY DEFINER functions for login, sign-up, the worker claim and the metrics counts (0030-0032, 0036). The worker stays on `crm_app`.
   - Test bootstrap: worlds are built as `crm_owner` (`committed_world`) and committed; API calls and assertions run as `crm_app`. Guard test `test_rls_tenant_tables.py` fails any new tenant table without RLS.
   - Fixed on the way: `POST /platform/tenants` returned 500 under users RLS; `/metrics` queue gauges were always 0.
-  - Tests (run 2026-10-23): backend 1150 passed (+4 opt-in skipped), ruff/mypy/import-linter clean. Dev database upgraded to 0036 (`rls_audit`: 47/47 protected, 0 rows without tenant). **Playwright not run yet** - needs this branch's API/web running on :8000/:3000.
+  - Tests (run 2026-10-23): backend 1150 passed (+4 opt-in skipped), ruff/mypy/import-linter clean. Re-checked 2026-10-24 on the development database at 0037: `rls_audit` 50/50 protected, 0 tenant tables readable without a tenant context, `crm_app` without bypass. Full Playwright run on the merged code (2026-10-24): 73-74 of 77 passed; the failures were the live assistant test (now opt-in) and timing flakes that pass when run alone.
 - **Pending:**
   - Assistant live check against real Claude. Blocked by Anthropic billing ("credit balance too
     low"); test with `python -m scripts.check_anthropic`.
   - Teams (rest of Phase C; RLS, the outbox, worker and reminder e-mails are done).
-  - RLS: a Playwright run against the `rls-leads-policy` branch (dev database already at 0036),
-    then owner review of PR #1.
   - Modules not started: marketing (Phase 16), Communication Center, integrations (Phase 19),
     staff AI assistant (Phase 20b/20c: knowledge base, voice).
   - Full end-to-end suite re-run after the latest fixes (last recorded 2026-10-19: backend 987,
@@ -192,7 +190,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   go-live wait for the owner's accounts, domain and secrets. The Netlify "Page not found" (404)
   is being resolved: `netlify.toml` now sets `publish = ".next"`; the next check is the
   **Deploy summary Functions count** (steps in `docs/deployment.md`).
-- **Contracts and renewals (C1-C4)** - built 2026-10-23 on branch `feat/contracts`, not merged. See `docs/contracts.md`.
+- **Contracts and renewals (C1-C4)** - built 2026-10-23 and **merged into `main`** (PR #4). See `docs/contracts.md`.
   - Migration 0037 (3 tables, forced RLS, insert-only history), API at `/api/v1/contracts`, worker expiry
     sweep + auto-renew draft + one renewal reminder per renewal date, notifications to owner and creator,
     screens (list, detail, form, account card, menu entry, module tile), account-search route handler.

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.errors import ForbiddenError
+from app.core.records import Recipient
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
 from app.modules.contacts import repository
 from app.modules.contacts.models import Contact
@@ -21,6 +22,8 @@ __all__ = [
     "contact_ids_by_account",
     "contact_email",
     "contact_name",
+    "contact_recipient",
+    "email_consent_withdrawn",
     "create_contact",
     "is_readable_contact",
     "mine_contact_ids",
@@ -135,6 +138,35 @@ def transfer_account_contacts(
         )
     session.flush()
     return [c.id for c in contacts]
+
+
+def contact_recipient(
+    session: Session, principal: Principal, contact_id: uuid.UUID
+) -> Recipient | None:
+    """Who to write to (Communication Center), if this principal may see the contact."""
+    contact = repository.get_readable(session, principal, contact_id)
+    if contact is None:
+        return None
+    return Recipient(
+        first_name=contact.first_name,
+        full_name=" ".join(p for p in (contact.first_name, contact.last_name) if p),
+        email=contact.email,
+        account_id=contact.account_id,
+        consent_withdrawn=contact.email_consent == "withdrawn",
+    )
+
+
+def email_consent_withdrawn(session: Session, tenant_id: uuid.UUID, contact_id: uuid.UUID) -> bool:
+    """True if the contact has withdrawn e-mail consent (or no longer exists), checked by the
+    worker just before sending. No record policy: the e-mail was authorized when it was queued."""
+    consent = session.scalar(
+        select(Contact.email_consent).where(
+            Contact.tenant_id == tenant_id,
+            Contact.id == contact_id,
+            Contact.deleted_at.is_(None),
+        )
+    )
+    return consent is None or consent == "withdrawn"
 
 
 def contact_name(session: Session, tenant_id: uuid.UUID, contact_id: uuid.UUID) -> str | None:

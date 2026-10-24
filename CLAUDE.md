@@ -201,7 +201,14 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   - CC1 (2026-10-24): `communications` module with `email_templates` + `email_messages`
     (migration 0038, forced RLS, messages can't be deleted), 4 `communication:*` permissions.
     Tests (run 2026-10-24): backend 1284 passed (+4 opt-in skipped); ruff, mypy, import-linter
-    clean. CC2-CC6 not started. Master plan for the PDF work: `docs/master-plan.md`.
+    clean. Master plan for the PDF work: `docs/master-plan.md`.
+  - CC2 (2026-10-24): `POST /api/v1/communications/emails` (lead or contact, address from the
+    record, related account/deal must be the contact's, withdrawn consent refused, 200 per
+    person per hour via `CRM_COMMUNICATION_EMAILS_PER_HOUR`), `GET /emails/{id}`,
+    `communication.email` worker job (Reply-To = sender, safe to run twice, consent re-checked),
+    failure → `communication.email_failed` event → notification; e-mail entry on the timeline;
+    audit `email.queued`. Tests (run 2026-10-24): backend 1326 passed (+4 opt-in skipped);
+    ruff, mypy, import-linter clean. CC3-CC6 not started.
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
   (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
   features that need them and need an ADR.

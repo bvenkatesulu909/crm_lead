@@ -22,3 +22,17 @@ class RecordFacts:
     lead_id: uuid.UUID | None
     # Values rules may test: text codes (status, priority, …) or numbers (totals, discounts).
     values: Mapping[str, str | Decimal]
+
+
+@dataclass(frozen=True)
+class Recipient:
+    """A person the Communication Center may write to (ADR 0012): a lead or a contact.
+
+    Filled in by the leads or contacts module, only for a principal who may read the record, so
+    the address always comes from the record and never from the client."""
+
+    first_name: str | None
+    full_name: str
+    email: str | None
+    account_id: uuid.UUID | None  # a contact's account; None for a lead
+    consent_withdrawn: bool  # the contact said "no more e-mail"; leads have no consent field

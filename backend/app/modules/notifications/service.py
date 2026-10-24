@@ -25,6 +25,7 @@ from app.core.events import Event, uuid_of
 from app.core.mail import Mail, Mailer
 from app.core.outbox import PermanentJobError, enqueue
 from app.modules.activities import api as activities_api
+from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
@@ -54,6 +55,7 @@ TYPES: dict[str, str] = {
     "ticket.customer_replied": "A customer replied on your ticket",
     "contract.renewal_due": "A contract of yours is coming up for renewal",
     "contract.expired": "A contract of yours has expired",
+    "communication.email_failed": "An e-mail you wrote could not be delivered",
     "workflow.message": "A message from an automation rule",
 }
 RULE_MESSAGE = "workflow.message"
@@ -133,6 +135,11 @@ def _contract(prefix: str) -> Describe:
     return describe
 
 
+def _email(session: Session, me: Principal, event: Event) -> Draft | None:
+    brief = communications_api.message_brief(session, me, uuid_of(event, "message_id"))
+    return Draft(f"E-mail not delivered: {brief[0]}", brief[1]) if brief else None
+
+
 def _ticket(prefix: str) -> Describe:
     def describe(session: Session, me: Principal, event: Event) -> Draft | None:
         ticket_id = uuid_of(event, "ticket_id")
@@ -170,6 +177,11 @@ def _assignee(session: Session, event: Event) -> set[uuid.UUID]:
     return {person} if person else set()
 
 
+def _sender(session: Session, event: Event) -> set[uuid.UUID]:
+    person = _optional_uuid(event, "sender_id")
+    return {person} if person else set()
+
+
 def _ticket_assignee(session: Session, event: Event) -> set[uuid.UUID]:
     person = support_api.ticket_assignee(session, event.tenant_id, uuid_of(event, "ticket_id"))
     return {person} if person else set()
@@ -189,6 +201,7 @@ RULES: dict[str, tuple[Recipients, Describe]] = {
     "ticket.customer_replied": (_ticket_assignee, _ticket("Customer replied")),
     "contract.renewal_due": (_contract_people, _contract("Renewal due")),
     "contract.expired": (_contract_people, _contract("Contract expired")),
+    "communication.email_failed": (_sender, _email),
 }
 
 

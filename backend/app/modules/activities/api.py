@@ -21,6 +21,7 @@ __all__ = [
     "export_table",
     "overdue_tasks",
     "create_task",
+    "log_email",
     "activity_facts",
     "ACTIVITY_PRIORITIES",
     "publish_due_reminders",
@@ -211,6 +212,31 @@ def create_task(
             assignee_id=assignee_id,
             lead_id=lead_id,
             account_id=account_id if lead_id is None else None,
+        ),
+    )
+    return activity.id
+
+
+def log_email(
+    session: Session,
+    principal: Principal,
+    *,
+    subject: str,
+    lead_id: uuid.UUID | None,
+    contact_id: uuid.UUID | None,
+) -> uuid.UUID:
+    """A "done" e-mail entry on the lead's or contact's timeline (Communication Center).
+
+    Only the subject is copied; the text itself stays with the message (ADR 0012)."""
+    activity = service.create_activity(
+        session,
+        principal,
+        ActivityCreate(
+            kind="email",
+            subject=f"E-mail: {subject}"[:200],
+            status="done",
+            lead_id=lead_id,
+            contact_id=contact_id if lead_id is None else None,
         ),
     )
     return activity.id

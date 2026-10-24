@@ -91,6 +91,7 @@ API (permission `workflow:manage`): `GET /workflows/catalogue`, `GET/POST /workf
 | `contract.activated` / `contract.terminated` | contracts (a manager activates or ends a contract) | `contract_id`, `actor_id` |
 | `contract.renewal_due` | contracts (the worker, once per renewal date: end date minus the notice days) | `contract_id` - notifies the owner and creator, by e-mail by default |
 | `contract.expired` | contracts (the worker, when an active contract's end date has passed) | `contract_id` - notifies the owner and creator |
+| `communication.email_failed` | communications (the worker, when an e-mail finally could not be sent; ADR 0012) | `message_id`, `sender_id` - notifies the sender in the CRM |
 
 Rules: names must be in `EVENT_NAMES`; no personal data in payloads; subscribers must be safe
 to run twice; events caused by automation carry a `depth` (rules stop at 3, step 17b).

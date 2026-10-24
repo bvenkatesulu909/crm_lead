@@ -193,7 +193,7 @@ audit log; outbox table + worker skeleton; admin UI to list users, assign roles 
 - Internal fields (notes, margins, internal comments) never appear in portal responses (tested).
 - Playwright: two portal users from different accounts cannot see each other's data.
 
-## Phase CC — Communication Center (Module 18)  *(ADR 0012, accepted by the owner 2026-10-24; CC0 and CC1 done 2026-10-24, CC2–CC6 not started)*
+## Phase CC — Communication Center (Module 18)  *(ADR 0012, accepted by the owner 2026-10-24; CC0–CC2 done 2026-10-24, CC3–CC6 not started)*
 
 One-to-one e-mail from the CRM: a composer, templates and each record's conversation history.
 Built before Marketing (Phase 16), which will reuse its templates. Receiving replies

@@ -38,7 +38,7 @@ real login (see §7).
 | Setting | Value | Why |
 |---|---|---|
 | Realm | `crm` | All CRM users, roles and clients. |
-| Issuer | `http://localhost:8080/realms/crm` | Fixed via `KC_HOSTNAME`; the API accepts tokens only from this issuer. |
+| Issuer | `http://localhost:9080/realms/crm` | Fixed via `KC_HOSTNAME`; the API accepts tokens only from this issuer. |
 | Client `crm-web` | confidential, **Standard flow only** | Implicit, password (direct access), device and CIBA grants are **disabled**. |
 | PKCE | `S256` **required** | Requests without PKCE, or with the weak `plain` method, are refused. |
 | Redirect URI | exactly `http://localhost:3000/api/auth/callback/keycloak` | No wildcards: codes can't be sent elsewhere. |
@@ -224,7 +224,7 @@ All names and addresses are invented. IDs are fixed so `scripts/seed_dev_data.py
 | `beta.admin` | tenant_admin | Beta Demo | all Beta accounts |
 | `beta.customer` | customer | Beta Demo | portal: Example Customer Three |
 
-The Keycloak admin console (`http://localhost:8080/admin`) uses `KEYCLOAK_ADMIN_USER` /
+The Keycloak admin console (`http://localhost:9080/admin`) uses `KEYCLOAK_ADMIN_USER` /
 `KEYCLOAK_ADMIN_PASSWORD` from the same `.env` file.
 
 ## 8. Development setup (Windows CMD)
@@ -245,7 +245,7 @@ python -m scripts.seed_dev_data
 uvicorn app.main:create_app --factory --reload
 ```
 
-`backend\.env` needs `CRM_OIDC_ISSUER=http://localhost:8080/realms/crm` (see `.env.example`).
+`backend\.env` needs `CRM_OIDC_ISSUER=http://localhost:9080/realms/crm` (see `.env.example`).
 For the Keycloak integration tests it also needs `CRM_TEST_KEYCLOAK_WEB_CLIENT_SECRET` and
 `CRM_TEST_KEYCLOAK_USER_PASSWORD` (the same values as in `infrastructure\.env`); without them
 those tests are skipped.
@@ -266,3 +266,26 @@ those tests are skipped.
 - Teams/hierarchies for sales managers (today an `all` scope means the whole tenant).
 - Production Keycloak: `start` mode with HTTPS, real SMTP, real secrets management (prepared in
   ADR 0007: `infrastructure/keycloak/Dockerfile.production` + `realm-crm-production.json`).
+
+## Changing the Keycloak address (issuer) of an existing database
+
+The CRM recognises a person by the pair **(issuer, subject)** from the token (ADR 0002). The
+issuer is Keycloak's public address, e.g. `http://localhost:9080/realms/crm`. If you change that
+address (a different host or port) while the database already has users, every existing person
+looks like a stranger and the CRM answers "Your account is waiting for approval".
+
+Fix it by moving the saved issuer in the same step as the setting (development database shown;
+run as the database superuser, in one transaction):
+
+```sql
+begin;
+update users               set idp_issuer = 'NEW-ISSUER' where idp_issuer = 'OLD-ISSUER';
+update access_requests     set idp_issuer = 'NEW-ISSUER' where idp_issuer = 'OLD-ISSUER';
+update signup_code_attempts set idp_issuer = 'NEW-ISSUER' where idp_issuer = 'OLD-ISSUER';
+commit;
+```
+
+The automation user of each organisation uses `urn:crm-lead:automation` and is left alone. The
+development ports moved from 8080 to 9080 on 2026-10-24 (Windows can reserve TCP 8068-8467); the
+update above was applied to the development database then.
+

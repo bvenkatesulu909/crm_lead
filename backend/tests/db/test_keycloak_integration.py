@@ -35,7 +35,7 @@ from tests.auth_helpers import bearer, tamper_payload
 from tests.conftest import UNREACHABLE_DATABASE_URL
 from tests.db.conftest import BACKEND_DIR, session_factory_for
 
-ISSUER = "http://localhost:8080/realms/crm"
+ISSUER = "http://localhost:9080/realms/crm"
 OIDC = f"{ISSUER}/protocol/openid-connect"
 CLIENT_ID = "crm-web"
 REDIRECT_URI = "http://localhost:3000/api/auth/callback/keycloak"
@@ -59,7 +59,7 @@ def kc() -> KeycloakTestSettings:
     try:
         httpx.get(f"{ISSUER}/.well-known/openid-configuration", timeout=3).raise_for_status()
     except httpx.HTTPError:
-        pytest.skip("Keycloak is not running on localhost:8080")
+        pytest.skip("Keycloak is not running on localhost:9080")
     return settings
 
 

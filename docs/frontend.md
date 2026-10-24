@@ -162,7 +162,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 (the backend must run on port 8000 and Keycloak on 8080).
+Open http://localhost:3000 (the backend must run on port 8000 and Keycloak on 9080).
 
 ```bat
 npm run lint

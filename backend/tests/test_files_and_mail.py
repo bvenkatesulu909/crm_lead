@@ -90,7 +90,7 @@ def test_s3_store_maps_connection_failures_to_503() -> None:
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("files_s3_endpoint", "http://127.0.0.1:8333"),  # host:port only
+        ("files_s3_endpoint", "http://127.0.0.1:9333"),  # host:port only
         ("files_s3_bucket", "Bad_Bucket"),
         ("files_max_bytes", 10),
     ],

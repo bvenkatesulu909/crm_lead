@@ -109,3 +109,12 @@ screenshots - a key that was shown anywhere must be revoked and replaced.
 
 Knowledge base / RAG (20b), voice (20c), streaming answers, a staff-side assistant,
 conversation retention rules, and a monthly cost limit.
+
+## Running the live checks on purpose
+
+Two checks call the real Claude API. They cost money and need a funded Anthropic account, so
+they are **opt-in** and are skipped in normal runs:
+
+- backend evaluations: `set CRM_RUN_LIVE_EVALS=1` then `pytest tests/db/test_assistant_api.py -k live`;
+- the Playwright conversation: `set E2E_LIVE_ASSISTANT=1` then
+  `cd frontend && npx playwright test e2e/assistant.spec.ts` (the key stays in `backend\.env`).

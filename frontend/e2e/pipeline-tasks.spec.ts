@@ -19,7 +19,9 @@ async function newAccount(page: Page, name: string) {
   await page.goto("/accounts/new");
   await page.getByLabel("Name").fill(name);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("The account was created.")).toBeVisible();
+  await expect(page.getByText("The account was created.")).toBeVisible({
+    timeout: 20_000,
+  });
   return page.url().split("/accounts/")[1].split("?")[0];
 }
 
@@ -33,7 +35,10 @@ async function newDeal(
   await page.getByLabel("Name").fill(name);
   if (amount) await page.getByLabel(/Estimated value/).fill(amount);
   await page.getByRole("button", { name: "Create opportunity" }).click();
-  await expect(page.getByText("The opportunity was created.")).toBeVisible();
+  // The new page renders after the redirect; the first render can take a few seconds.
+  await expect(page.getByText("The opportunity was created.")).toBeVisible({
+    timeout: 20_000,
+  });
   return page.url().split("/opportunities/")[1].split("?")[0];
 }
 

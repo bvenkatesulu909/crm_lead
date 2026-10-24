@@ -20,7 +20,7 @@ from app.modules.identity.models import Tenant, User
 from app.modules.leads.models import Lead
 from tests.db.conftest import setup_lead_context
 
-TEST_ISSUER = "http://localhost:8080/realms/crm"
+TEST_ISSUER = "http://localhost:9080/realms/crm"
 
 
 def make_tenant(session: Session, slug: str) -> Tenant:

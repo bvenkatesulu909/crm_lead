@@ -11,7 +11,7 @@ from tests.conftest import UNREACHABLE_DATABASE_URL
 def _database_url_env(monkeypatch: pytest.MonkeyPatch) -> None:
     # The database URL is required; provide one so each test checks only what it names.
     monkeypatch.setenv("CRM_DATABASE_URL", UNREACHABLE_DATABASE_URL)
-    monkeypatch.setenv("CRM_OIDC_ISSUER", "http://localhost:8080/realms/crm")
+    monkeypatch.setenv("CRM_OIDC_ISSUER", "http://localhost:9080/realms/crm")
     monkeypatch.delenv("CRM_MIGRATION_DATABASE_URL", raising=False)
 
 
@@ -99,7 +99,7 @@ def test_oidc_issuer_is_required(monkeypatch: pytest.MonkeyPatch) -> None:
         Settings(_env_file=None)
 
 
-@pytest.mark.parametrize("bad_issuer", ["localhost:8080/realms/crm", "http://kc/realms/crm/"])
+@pytest.mark.parametrize("bad_issuer", ["localhost:9080/realms/crm", "http://kc/realms/crm/"])
 def test_malformed_oidc_issuer_is_rejected(bad_issuer: str) -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, oidc_issuer=bad_issuer)
@@ -114,7 +114,7 @@ def test_jwks_url_defaults_to_keycloak_path() -> None:
     settings = Settings(_env_file=None)
 
     assert settings.resolved_jwks_url == (
-        "http://localhost:8080/realms/crm/protocol/openid-connect/certs"
+        "http://localhost:9080/realms/crm/protocol/openid-connect/certs"
     )
 
 
@@ -126,7 +126,7 @@ def test_anthropic_workspace_id_is_validated_and_sent() -> None:
     base: dict[str, Any] = {
         "_env_file": None,
         "database_url": "postgresql+psycopg://u:p@127.0.0.1:1/db",
-        "oidc_issuer": "http://localhost:8080/realms/crm",
+        "oidc_issuer": "http://localhost:9080/realms/crm",
         "anthropic_api_key": "sk-ant-usr-test",
     }
     with pytest.raises(ValidationError):

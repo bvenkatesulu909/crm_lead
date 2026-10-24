@@ -111,7 +111,7 @@ portal, reports, workflow automation, documents, AI chatbot and voice, integrati
  Next.js website  (frontend/, port 3000)
     │  server-side calls with the user's access token
     ▼
- FastAPI backend  (backend/, port 8000)  ──checks token──►  Keycloak (port 8080)
+ FastAPI backend  (backend/, port 8000)  ──checks token──►  Keycloak (port 9080)
     │  every query filtered by tenant + role + record rules
     ▼
  PostgreSQL (port 5432)   constraints · triggers · insert-only tables
@@ -506,7 +506,7 @@ npm run dev</pre>
   <tr><td>Customer portal</td><td>http://localhost:3000/portal</td></tr>
   <tr><td>Local e-mail inbox (Mailpit)</td><td>http://localhost:8025</td></tr>
   <tr><td>API health / API documentation</td><td>http://127.0.0.1:8000/api/v1/health · http://127.0.0.1:8000/docs</td></tr>
-  <tr><td>Keycloak admin console</td><td>http://localhost:8080/admin (login in <code>infrastructure\.env</code>)</td></tr>
+  <tr><td>Keycloak admin console</td><td>http://localhost:9080/admin (login in <code>infrastructure\.env</code>)</td></tr>
 </table>
 <h4>AI assistant key (optional)</h4>
 <pre>cd /d E:\crm-lead\backend

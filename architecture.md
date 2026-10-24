@@ -103,7 +103,7 @@ could be extracted into its own service without rewriting it.
 | 4 | `leads` – Leads | leads, lead sources, lead conversion |
 | 5 | `sales` – Opportunities | pipelines, stages, opportunities, forecasts |
 | 6 | `activities` – Activities & Tasks | tasks, calls, meetings, notes, reminders |
-| 7 | `marketing` – Marketing | campaigns, segments, email templates, consent |
+| 7 | `marketing` – Marketing | campaigns, segments, consent (e-mail templates come from `communications`, ADR 0012) |
 | 8 | `catalog` – Products & Quotations | products, price books, quotes, quote lines |
 | 9 | `orders` – Orders | orders, order lines, fulfilment status |
 | 10 | `billing` – Invoices & Payments | invoices, payments, credit notes |
@@ -114,6 +114,7 @@ could be extracted into its own service without rewriting it.
 | 15 | `documents` – Document Management | document metadata, versions, links to records; files in the S3 file store |
 | 16 | `assistant` – AI Chatbot & Voice | conversations, tool definitions, provider adapters |
 | 17 | `integrations` – External Integrations | connectors, webhooks (in/out), sync state |
+| 18 | `communications` – Communication Center | one-to-one e-mail (sent and logged), e-mail templates, conversation history (ADR 0012) |
 
 Shared, non-business code lives in `app/core` (config, DB session, auth, tenancy, authorization,
 audit log, events, errors, pagination).

@@ -23,3 +23,4 @@ Rules:
 | [0009](0009-row-level-security.md) | PostgreSQL Row-Level Security as defence in depth | Accepted (staged) |
 | [0010](0010-knowledge-search-pgvector-embeddings.md) | Knowledge search: pgvector image, embedding model and index | Accepted |
 | [0011](0011-chunking-and-hybrid-search.md) | Chunking and hybrid search: starting settings | Accepted |
+| [0012](0012-communication-center.md) | Communication Center: one-to-one e-mail, templates, conversation history | Accepted |

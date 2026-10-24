@@ -193,10 +193,47 @@ audit log; outbox table + worker skeleton; admin UI to list users, assign roles 
 - Internal fields (notes, margins, internal comments) never appear in portal responses (tested).
 - Playwright: two portal users from different accounts cannot see each other's data.
 
+## Phase CC — Communication Center (Module 18)  *(ADR 0012, accepted by the owner 2026-10-24; CC0 done 2026-10-24, CC1–CC6 not started)*
+
+One-to-one e-mail from the CRM: a composer, templates and each record's conversation history.
+Built before Marketing (Phase 16), which will reuse its templates. Receiving replies
+automatically waits for Phase 19 (Integrations); until then received e-mails are logged by hand.
+
+**Steps (each stops for review)**
+- **CC0** — ADR 0012 and this phase description (documents only).
+- **CC1** — `communications` module skeleton; tables `email_templates` and `email_messages`
+  (migration 0038, ENABLE + FORCE RLS + tenant policy); permissions `communication:send`,
+  `communication:read:all`, `communication:read:own`, `communication:template:manage`.
+- **CC2** — Sending: `POST /api/v1/communications/emails` → `communication.email` outbox job →
+  worker sends (queued → sent / failed, retries when the mail server is down); recipient is a
+  lead or contact loaded through its module's `api.py`, address taken from the record;
+  Reply-To is the sender; timeline entry of kind `email`; audit; withdrawn consent refused;
+  200 e-mails per user per hour; `communication.email_failed` event → notification.
+- **CC3** — Templates: create, edit, deactivate, preview; placeholders from a fixed list, unknown
+  ones refused; plain text only.
+- **CC4** — Conversation history per lead, contact, account and deal; "log a received e-mail".
+- **CC5** — Screens: "Send e-mail" dialog on lead, contact, account and deal pages; Templates
+  page; Communication Center page (filters); module tile "Available"; Vitest tests.
+- **CC6** — Playwright journey that finds the e-mail in Mailpit; `docs/communications.md`;
+  CLAUDE.md status; full test run (backend, Vitest, E2E, production build).
+
+**Acceptance criteria**
+- Staff can e-mail only leads and contacts they may read; another tenant's or another agent's
+  record ID → 404 (tested). The client never supplies the address.
+- E-mails are sent only by the worker; a mail server outage is retried and visible as a status.
+- A contact with withdrawn consent can't be e-mailed (tested).
+- Templates can't run code; unknown placeholders are refused (tested).
+- The Communication Center list is filtered in SQL (`read:all` vs `read:own`); a record's history
+  follows that record's read rules.
+- E-mail bodies never appear in logs or event payloads.
+- Definition of Done checklist complete.
+
 ## Phase 16 — Marketing Management (Module 7)
 
 **Acceptance criteria**
-- Campaigns, segments (saved filters), email templates, sends via worker to Mailpit, consent/unsubscribe tracking.
+- Campaigns, segments (saved filters), sends via worker to Mailpit, consent/unsubscribe tracking.
+- E-mail templates come from the Communication Center (`communications/api.py`, ADR 0012), not a
+  second template system; bulk sending requires `email_consent = granted`.
 - Unsubscribed contacts are never emailed (tested).
 - Definition of Done checklist complete.
 

@@ -196,6 +196,8 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     screens (list, detail, form, account card, menu entry, module tile), account-search route handler.
   - Tests (run 2026-10-23): backend contracts 64 + 7 worker tests (full suite below); Vitest 247; Playwright
     `contracts.spec.ts` 3 passed.
+- **Communication Center (Phase CC, ADR 0012)** - started 2026-10-24. CC0 (ADR + phase plan in
+  `implementation-plan.md`) done on branch `feat/communications`; CC1-CC6 not started.
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
   (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
   features that need them and need an ADR.

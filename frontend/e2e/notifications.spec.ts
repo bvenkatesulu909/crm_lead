@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { expect, test, type Browser } from "@playwright/test";
 
-import { USERS, login, requireCredentials, uniqueName } from "./helpers";
+import { USERS, login, requireCredentials, uniqueName, chooseAccount } from "./helpers";
 import { latestMessageTo } from "./mailpit";
 
 /**
@@ -33,7 +33,7 @@ test("a quote waiting for approval notifies the manager in the CRM and by e-mail
   // The agent submits a quote with a big discount.
   const agent = await signedIn(browser, USERS.agent1, "/quotes/new");
   await agent.getByLabel("Title").fill(title);
-  await agent.getByLabel("Account").selectOption({ label: "Example Customer One Ltd" });
+  await chooseAccount(agent, "Account", "Example Customer One Ltd");
   await agent.getByRole("button", { name: "Add line" }).click();
   await agent.getByLabel("Line 1 product").selectOption({ label: "WID-100 – Demo widget" });
   await agent.getByLabel("Line 1 discount").fill("40");

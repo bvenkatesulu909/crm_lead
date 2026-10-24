@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { DialogField } from "@/components/action-dialog";
+import { AccountPicker } from "@/components/account-picker";
 import { formatMoney } from "@/components/orders";
 import { ErrorAlert, buttonClass } from "@/components/ui";
 import type { FormState } from "@/lib/form-state";
@@ -59,6 +60,8 @@ export function OrderForm({
   accounts,
   fixedAccountName,
   defaultAccountId,
+  searchAccounts = false,
+  defaultAccount,
   defaults,
   version,
   cancelHref,
@@ -70,6 +73,10 @@ export function OrderForm({
   accounts?: { id: string; name: string }[];
   fixedAccountName?: string;
   defaultAccountId?: string;
+  /** Create: search accounts by name as the user types instead of choosing from a fixed list. */
+  searchAccounts?: boolean;
+  /** With searchAccounts: the account to show as chosen when the form opens. */
+  defaultAccount?: { id: string; name: string } | null;
   defaults: OrderFormDefaults;
   version?: number;
   cancelHref: string;
@@ -109,7 +116,12 @@ export function OrderForm({
       <div className="grid gap-5 sm:grid-cols-2">
         {accounts ? (
           <DialogField id="order-account" label="Customer account" error={errors.account_id}>
-            {(props) => (
+            {(props) => searchAccounts ? (
+              <AccountPicker
+                {...props}
+                defaultAccount={values.account_id && values.account_label ? { id: values.account_id, name: values.account_label } : defaultAccount}
+              />
+            ) : (
               <select name="account_id" defaultValue={values.account_id ?? defaultAccountId ?? (accounts.length === 1 ? accounts[0].id : "")} {...props}>
                 <option value="" disabled>Choose an account…</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}

@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-import { USERS, login, requireCredentials, uniqueName } from "./helpers";
+import { USERS, login, requireCredentials, uniqueName, chooseAccount } from "./helpers";
 import { latestMessageTo } from "./mailpit";
 
 /**
@@ -71,7 +71,7 @@ test("a discounted quote is approved, sent, accepted by the customer and becomes
   // 2. The agent quotes it with 15 % off: the preview flags the approval, the server prices it.
   const agent = await signedIn(browser, USERS.agent1, "/quotes/new");
   await agent.getByLabel("Title").fill(title);
-  await agent.getByLabel("Account").selectOption({ label: "Example Customer One Ltd" });
+  await chooseAccount(agent, "Account", "Example Customer One Ltd");
   await agent.getByRole("button", { name: "Add line" }).click();
   await agent.getByLabel("Line 1 product").selectOption({ label: `${sku} – ${productName}` });
   await agent.getByLabel("Line 1 quantity").fill("2");
@@ -179,7 +179,7 @@ test("an approved quote is e-mailed to its contact with the PDF attached", async
 
   // A contact with an e-mail address at the agent's customer.
   const agent = await signedIn(browser, USERS.agent1, "/contacts/new");
-  await agent.getByLabel(/^Account/).selectOption({ label: "Example Customer One Ltd" });
+  await agent.getByLabel(/^Account/).selectOption({ label: "Example Customer One Ltd" }); // the contact form still has a plain dropdown
   await agent.getByLabel(/First name/).fill("Ada");
   await agent.getByLabel(/Last name/).fill(lastName);
   await agent.getByLabel(/^E-mail/).fill(address);
@@ -189,7 +189,7 @@ test("an approved quote is e-mailed to its contact with the PDF attached", async
   // A quote for that contact, without a big discount: approved straight away.
   await agent.goto("/quotes/new");
   await agent.getByLabel("Title").fill(title);
-  await agent.getByLabel("Account").selectOption({ label: "Example Customer One Ltd" });
+  await chooseAccount(agent, "Account", "Example Customer One Ltd");
   await agent.getByLabel(/For \(contact\)/).selectOption({ label: `Ada ${lastName}` });
   await agent.getByRole("button", { name: "Add line" }).click();
   await agent.getByLabel("Line 1 product").selectOption({ label: "WID-100 – Demo widget" });
@@ -249,7 +249,7 @@ test("an admin changes the discount that needs approval", async ({ browser }) =>
     // A 15 % discount no longer needs approval - in the preview and on the server.
     await agent.goto("/quotes/new");
     await agent.getByLabel("Title").fill(uniqueName("E2E limit quote "));
-    await agent.getByLabel("Account").selectOption({ label: "Example Customer One Ltd" });
+    await chooseAccount(agent, "Account", "Example Customer One Ltd");
     await agent.getByRole("button", { name: "Add line" }).click();
     await agent.getByLabel("Line 1 product").selectOption({ label: "WID-100 – Demo widget" });
     await agent.getByLabel("Line 1 discount").fill("15");

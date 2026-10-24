@@ -10,7 +10,7 @@ import {
 } from "@/lib/permissions";
 import { getMe } from "@/lib/server/api";
 import {
-  accountOptions,
+  accountOption,
   contactOptions,
   salesOwnerOptions,
 } from "@/lib/server/options";
@@ -27,8 +27,8 @@ export default async function NewOpportunityPage({
   const { account } = await searchParams;
   const me = await getMe();
   if (!canWriteOpportunities(me)) return <Forbidden />;
-  const [accounts, contacts, owners] = await Promise.all([
-    accountOptions(),
+  const [defaultAccount, contacts, owners] = await Promise.all([
+    accountOption(account),
     canReadContacts(me)
       ? contactOptions().catch(() => [])
       : Promise.resolve([]),
@@ -49,7 +49,9 @@ export default async function NewOpportunityPage({
         <OpportunityForm
           action={createOpportunity}
           initialState={initialFormState}
-          accounts={accounts}
+          accounts={[]}
+          searchAccounts
+          defaultAccount={defaultAccount}
           contacts={contacts}
           owners={owners}
           defaultAccountId={fromAccount}

@@ -61,9 +61,11 @@ export async function createOpportunity(
   previous: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const values = readForm(formData, OPPORTUNITY_FIELDS);
+  const fields = readForm(formData, OPPORTUNITY_FIELDS);
+  // The name of the chosen account only lets the form show it again after an error.
+  const values = { ...fields, account_label: text(formData, "account_label") };
   const attempt = previous.attempt + 1;
-  const parsed = opportunitySchema.safeParse(values);
+  const parsed = opportunitySchema.safeParse(fields);
   if (!parsed.success)
     return {
       attempt,

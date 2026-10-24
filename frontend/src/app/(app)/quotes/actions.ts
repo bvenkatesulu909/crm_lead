@@ -35,16 +35,22 @@ const FIELDS = [
 ] as const;
 
 function read(formData: FormData) {
-  const values = Object.fromEntries(
+  const fields = Object.fromEntries(
     FIELDS.map((f) => [f, String(formData.get(f) ?? "")]),
   ) as Record<(typeof FIELDS)[number], string>;
   let lines: unknown = [];
   try {
-    lines = JSON.parse(values.lines_json || "[]");
+    lines = JSON.parse(fields.lines_json || "[]");
   } catch {
     lines = null;
   }
-  return { values, input: { ...values, lines } };
+  // account_label is only the name of the chosen account, so the form can show it again after
+  // an error. It is returned with the values but never validated or sent to the API.
+  const values = {
+    ...fields,
+    account_label: String(formData.get("account_label") ?? ""),
+  };
+  return { values, input: { ...fields, lines } };
 }
 
 export async function createQuote(

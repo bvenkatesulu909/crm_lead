@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-import { USERS, login, requireCredentials } from "./helpers";
+import { USERS, login, requireCredentials, chooseAccount } from "./helpers";
 
 /**
  * Phase 13: invoices, credit notes and payments, end to end between the staff CRM and the
@@ -20,7 +20,7 @@ const invoiceActions = (page: Page) =>
 /** Manager: a confirmed order for 3 x 19.99 @ 19 % = 71.36. Returns the order URL. */
 async function confirmedOrder(page: Page) {
   await page.goto("/orders/new");
-  await page.getByLabel("Customer account").selectOption({ label: "Example Customer One Ltd" });
+  await chooseAccount(page, "Customer account", "Example Customer One Ltd");
   const line = page.getByRole("group", { name: "Line 1" });
   await line.getByLabel("Description").fill("Widget");
   await line.getByLabel("Quantity").fill("3");

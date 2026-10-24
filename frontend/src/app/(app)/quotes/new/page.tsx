@@ -8,7 +8,7 @@ import { defaultValidUntil } from "@/lib/quotes";
 import { canReadContacts, canWriteQuotes } from "@/lib/permissions";
 import { getMe } from "@/lib/server/api";
 import {
-  accountOptions,
+  accountOption,
   approvalLimitOption,
   contactOptions,
   dealOptions,
@@ -33,7 +33,7 @@ export default async function NewQuotePage({
   let data;
   try {
     data = await Promise.all([
-      accountOptions(),
+      accountOption(account),
       priceBookOptions(),
       dealOptions().catch(() => []),
       canReadContacts(me)
@@ -48,7 +48,7 @@ export default async function NewQuotePage({
       />
     );
   }
-  const [accounts, { books, prices }, deals, contacts] = data;
+  const [defaultAccount, { books, prices }, deals, contacts] = data;
   const id = (v: string | string[] | undefined) =>
     typeof v === "string" && UUID.test(v) ? v : undefined;
   const validUntil = defaultValidUntil();
@@ -70,7 +70,9 @@ export default async function NewQuotePage({
           <QuoteForm
             action={createQuote}
             initialState={initialFormState}
-            accounts={accounts}
+            accounts={[]}
+            searchAccounts
+            defaultAccount={defaultAccount}
             books={books}
             prices={prices}
             opportunities={deals}

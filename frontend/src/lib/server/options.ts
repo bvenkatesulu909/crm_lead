@@ -1,6 +1,7 @@
 import "server-only";
 
 import type {
+  Account,
   AccountPage,
   ContactPage,
   DirectoryUser,
@@ -23,6 +24,25 @@ export async function accountOptions(
   return page.items
     .filter((a) => a.id !== exceptId)
     .map((a) => ({ id: a.id, name: a.name }));
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * One account as a choice, for forms opened from an account page (?account=<id>) where the
+ * account picker should start with that account. The API decides whether this user may see
+ * it; if not (or the id is not an id), the form simply starts without a chosen account.
+ */
+export async function accountOption(
+  id: string | string[] | undefined,
+): Promise<{ id: string; name: string } | null> {
+  if (typeof id !== "string" || !UUID.test(id)) return null;
+  try {
+    const account = await apiFetch<Account>(`/accounts/${id}`);
+    return { id: account.id, name: account.name };
+  } catch {
+    return null;
+  }
 }
 
 export async function salesOwnerOptions(): Promise<

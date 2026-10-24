@@ -13,14 +13,21 @@ type Status = "idle" | "loading" | "error";
  * It posts two fields with the form: `account_id` (what the server uses) and `account_label`
  * (only the name, so the field can show the chosen account again after a validation error).
  * The server still checks that the user may use that account, whatever the browser sends.
+ * `onChange` tells a form that depends on the account (contacts, deals) when it changes.
  */
 export function AccountPicker({
   id,
+  name = "account_id",
+  labelName = "account_label",
   defaultAccount,
+  onChange,
   ...inputProps
 }: {
   id: string;
+  name?: string;
+  labelName?: string;
   defaultAccount?: AccountOption | null;
+  onChange?: (account: AccountOption | null) => void;
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
   className?: string;
@@ -71,6 +78,7 @@ export function AccountPicker({
     setSelected(option);
     setQuery(option.name);
     setOpen(false);
+    onChange?.(option);
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -113,8 +121,8 @@ export function AccountPicker({
         if (!wrapper.current?.contains(event.relatedTarget)) setOpen(false);
       }}
     >
-      <input type="hidden" name="account_id" value={selected?.id ?? ""} />
-      <input type="hidden" name="account_label" value={selected?.name ?? ""} />
+      <input type="hidden" name={name} value={selected?.id ?? ""} />
+      <input type="hidden" name={labelName} value={selected?.name ?? ""} />
       <input
         {...inputProps}
         id={id}
@@ -132,6 +140,7 @@ export function AccountPicker({
         onChange={(event) => {
           setQuery(event.target.value);
           setSelected(null); // typing again means "not chosen yet"
+          onChange?.(null);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}

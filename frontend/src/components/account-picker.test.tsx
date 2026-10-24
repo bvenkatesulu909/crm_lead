@@ -119,3 +119,47 @@ describe("AccountPicker", () => {
     expect(submitted()).toEqual({ id: BETA.id, label: "Beta GmbH" });
   });
 });
+
+describe("AccountPicker in other forms", () => {
+  it("posts under the field names it is given", async () => {
+    mockSearch([ACME]);
+    render(
+      <form aria-label="order form">
+        <label htmlFor="acc">Customer account</label>
+        <AccountPicker id="acc" name="company_id" labelName="company_name" />
+      </form>,
+    );
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByRole("combobox", { name: "Customer account" }),
+      "ac",
+    );
+    await user.click(await screen.findByRole("option", { name: "Acme Ltd" }));
+
+    const data = new FormData(screen.getByRole("form") as HTMLFormElement);
+    expect(data.get("company_id")).toBe(ACME.id);
+    expect(data.get("company_name")).toBe("Acme Ltd");
+    expect(data.get("account_id")).toBeNull(); // not under the default name
+  });
+
+  it("tells the form when an account is chosen and when the choice is cleared", async () => {
+    mockSearch([ACME, BETA]);
+    const onChange = vi.fn();
+    render(
+      <form>
+        <label htmlFor="acc">Account</label>
+        <AccountPicker id="acc" onChange={onChange} />
+      </form>,
+    );
+    const user = userEvent.setup();
+    const box = screen.getByRole("combobox", { name: "Account" });
+
+    await user.type(box, "b");
+    onChange.mockClear(); // typing clears any earlier choice; look only at what follows
+    await user.click(await screen.findByRole("option", { name: "Beta GmbH" }));
+    expect(onChange).toHaveBeenLastCalledWith(BETA);
+
+    await user.type(box, "x"); // editing the text again means "not chosen yet"
+    expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+});

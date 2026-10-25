@@ -1,6 +1,6 @@
 # ADR 0014 — Approval queue for AI-proposed actions (BP-05)
 
-- **Status:** Proposed (2026-10-25)
+- **Status:** Accepted (2026-10-25)
 - **Date:** 2026-10-25
 - **Deciders:** Project owner
 - **Covers:** blueprint BP-05 ("AI proposes, a person approves"), first object of AI Track A1 after
@@ -73,8 +73,8 @@ table (ADR 0009) and `identity_api.bind_reader` for background reads.
 
 5. **Approving and rejecting.**
    - New permission `agent_action:approve` for **sales managers and tenant admins**;
-     `agent_action:read` for every staff role that uses the assistant (own proposals only),
-     approvers see all of the tenant's.
+     `agent_action:propose` for every staff role that uses the assistant (their AI may propose;
+     they see their own proposals). Approvers see all of the tenant's.
    - **No self-approval, for anyone:** the requester can never approve their own proposal,
      admins included (stricter than quote approval, because the text came from a model).
    - Approve runs in **one transaction**: lock the row (`SELECT … FOR UPDATE`), check it is

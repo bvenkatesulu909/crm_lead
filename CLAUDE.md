@@ -295,8 +295,19 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     **BP-01 complete**: approved by the owner and **merged into `main` (PR #17,
     2026-10-25)** after both GitHub CI runs passed.
 - **Approval queue for AI actions (BP-05, Phase AP, ADR 0014)** - started 2026-10-25 on branch
-  `feat/agent-approvals`. AP0: ADR 0014 (proposed) + phase plan; waiting for the owner's review
-  before any code.
+  `feat/agent-approvals`. AP0: ADR 0014 (accepted 2026-10-25) + phase plan.
+  - AP1 (2026-10-25): `approvals` module - `agent_actions` (migration 0042, forced RLS, DELETE
+    revoked, database check against self-decision), permissions `agent_action:propose` (all
+    staff roles) / `agent_action:approve` (sales managers, tenant admins), catalogue
+    `lead.set_status` / `lead.assign` / `activity.create_task` (lead, account or contact),
+    service propose / approve / reject: payload validated (nothing extra), record must be
+    visible to the requester (else 404), no self-approval (admins too), row lock + version +
+    expiry check, the action runs through the owning module's api.py as the approver in a
+    savepoint (refused -> "failed", nothing changed), audit `agent_action.*`;
+    `leads_api.assign_lead`, contact tasks in `activities_api.create_task`. No endpoints yet
+    (AP2). Dev database at 0042, `rls_audit` 55/55 protected. Tests (run 2026-10-25): backend
+    1511 passed (+4 opt-in skipped), 30 new in `test_approvals.py`; ruff, mypy, import-linter
+    clean.
 - **Next planned, in order:** BP-05 (in progress), BP-10, BP-11 (rest of AI Track A1), then
   BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need

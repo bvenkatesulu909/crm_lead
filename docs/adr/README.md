@@ -25,4 +25,4 @@ Rules:
 | [0011](0011-chunking-and-hybrid-search.md) | Chunking and hybrid search: starting settings | Accepted |
 | [0012](0012-communication-center.md) | Communication Center: one-to-one e-mail, templates, conversation history | Accepted |
 | [0013](0013-public-chat-save-lead.md) | Public website chat that saves real-estate leads (BP-01) | Accepted |
-| [0014](0014-agent-action-approvals.md) | Approval queue for AI-proposed actions (BP-05) | Proposed |
+| [0014](0014-agent-action-approvals.md) | Approval queue for AI-proposed actions (BP-05) | Accepted |

@@ -267,7 +267,7 @@ protection (server-only key, one tenant per website, limits, guardrails, plain-t
 - Going live is not part of this phase (ADR 0007, owner's "go live").
 - Definition of Done checklist complete.
 
-## Phase AP — Approval queue for AI-proposed actions (BP-05, Module 21)  *(ADR 0014 proposed 2026-10-25; AP0 written, waiting for review)*
+## Phase AP — Approval queue for AI-proposed actions (BP-05, Module 21)  *(ADR 0014 accepted 2026-10-25; AP0–AP1 done, AP2–AP5 not started)*
 
 The AI may **suggest** changes to real records (lead status, assignment, follow-up task); a
 sales manager or tenant admin approves or rejects; an approved change runs through the owning
@@ -277,7 +277,7 @@ First object of the rest of AI Track A1 (then BP-10 evaluation harness, BP-11 MC
 **Steps (each stops for review)**
 - **AP0** — ADR 0014 and this phase description (documents only).
 - **AP1** — `approvals` module: `agent_actions` (migration 0042, forced RLS), permissions
-  `agent_action:read` / `agent_action:approve`, catalogue `lead.set_status`, `lead.assign`,
+  `agent_action:propose` / `agent_action:approve`, catalogue `lead.set_status`, `lead.assign`,
   `activity.create_task`, propose / approve / reject with row lock, version check, no
   self-approval, failure rollback to a savepoint, audit; `leads_api.assign_lead`.
 - **AP2** — API endpoints; events `agent_action.proposed` / `agent_action.decided` →

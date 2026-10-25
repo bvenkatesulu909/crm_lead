@@ -42,8 +42,6 @@ Corrections to the PDF that apply everywhere:
 |---|---|---|---|
 | O1 | **CRM-101 / T0.1:** open the affected agent's Role mapping in Keycloak; remove `sales_manager` / `tenant_admin` if present; sign out and in; send the 2 screenshots (role mapping, Leads list as that agent) | Open | Closing CRM-101 |
 | O2 | **CRM-103 / T1.2:** protect `main` on GitHub (Settings → Branches: require a PR and passing CI) | Open (GitHub says "Branch not protected") | Next PR |
-| O3 | **B.2:** rotate the ElevenLabs key that appeared in logs; put the new one only in `backend\.env` | Not confirmed | Any voice work (BP-07+) |
-| O4 | **T2.1:** create a DeepSeek API key; set it only on the API host (never Netlify, never git) | Open | BP-01 live test |
 | O5 | **T2.2:** choose a host for the API (ADR 0007) so Netlify can reach it | Open | Live demo |
 | O6 | Keep Docker Desktop + `docker compose up -d` running for database tests (T0.2, T3.1) | Done today | Every object |
 | O7 | Career work: resume v1, LinkedIn/Naukri text, 10 applications and 5 referral messages a day, job tracker, interview stories, 33 target employers (referral steps F.1–F.7) | Owner's own | — |

@@ -27,4 +27,4 @@ Rules:
 | [0013](0013-public-chat-save-lead.md) | Public website chat that saves real-estate leads (BP-01) | Accepted |
 | [0014](0014-agent-action-approvals.md) | Approval queue for AI-proposed actions (BP-05) | Accepted |
 | [0015](0015-crm-mcp-server-standard.md) | A standard CRM MCP server for IDEs and workplace agents (BP-11) | Accepted |
-| [0016](0016-agent-registry-budgets-kill-switch.md) | Agent registry, monthly token budgets and a kill switch (BP-14) | Proposed |
+| [0016](0016-agent-registry-budgets-kill-switch.md) | Agent registry, monthly token budgets and a kill switch (BP-14) | Accepted |

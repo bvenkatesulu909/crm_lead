@@ -1,6 +1,6 @@
 # ADR 0016 — Agent registry, monthly budgets and a kill switch (BP-14)
 
-- **Status:** Proposed (2026-10-26) — waits for the owner's review; no code until approved
+- **Status:** Accepted (2026-10-26, with the recommended answers: tokens, on by default with a cap of 2,000,000 per agent and organisation per month, tenant admins change / sales managers read, `CRM_AI_DISABLED` kept, public-chat sentence as drafted)
 - **Date:** 2026-10-26
 - **Deciders:** Project owner
 - **Depends on:** ADR 0002 (tenant from the verified identity), ADR 0003 (AI assistant

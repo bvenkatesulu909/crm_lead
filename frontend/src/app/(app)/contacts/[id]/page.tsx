@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ActivityPanel } from "@/components/activity-panel";
+import { EmailCard } from "@/components/email-card";
 import { Card, Forbidden, SuccessAlert } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
 import type {
@@ -30,6 +31,8 @@ export const metadata: Metadata = { title: "Contact" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const DONE: Record<string, string> = {
+  "email-sent": "The e-mail is on its way. Its status is shown under E-mails.",
+  "email-logged": "The received e-mail was saved in the history.",
   created: "The contact was created.",
   updated: "Your changes were saved.",
   planned: "The task was added.",
@@ -161,6 +164,12 @@ export default async function ContactPage({
             me={me}
             people={people}
             ownsRecord={contact.owner_id === me.user_id || account?.owner_id === me.user_id}
+          />
+          <EmailCard
+            me={me}
+            record={{ type: "contact", id: contact.id }}
+            person={{ email: contact.email, email_consent: contact.email_consent }}
+            personLabel={contactName(contact)}
           />
         </div>
         <Card>

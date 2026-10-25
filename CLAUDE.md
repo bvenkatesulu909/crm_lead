@@ -220,8 +220,15 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     (read:all / read:own, filters in SQL), `POST /communications/emails/received` (log a received
     e-mail; no sending, no consent or limit check); migration 0039 adds `email_messages.seq` for a
     reliable newest-first order. Tests (run 2026-10-24): backend 1391 passed (+4 opt-in
-    skipped); ruff, mypy, import-linter clean. Branch pushed to GitHub (no PR yet).
-    CC5-CC6 not started.
+    skipped); ruff, mypy, import-linter clean. Branch pushed to GitHub (draft PR #13).
+  - CC5 (2026-10-25): screens - "Send e-mail" / "Log a received e-mail" dialog (template
+    preview fills subject and text, text stays editable, kept on server errors; contacts
+    without address or consent can't be chosen), E-mails card on lead, contact, account and
+    deal pages, Communication Center page (`/communications`, filters, paging), Templates pages
+    for managers (list, new, edit, deactivate/reactivate, placeholder list), "E-mail" menu
+    entry, module tile "Available". Tests (run 2026-10-25): Vitest 295 passed (30 new); lint,
+    typecheck and production build clean. NOT yet checked in a browser (Docker Desktop was
+    stopped). CC6 not started.
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
   (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
   features that need them and need an ADR.

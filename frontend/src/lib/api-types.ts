@@ -1341,3 +1341,59 @@ export type ContractEvent = {
   created_at: string;
   actor_name: string | null;
 };
+
+// --- Communication Center (ADR 0012) -------------------------------------------------------
+
+export const EMAIL_STATUSES = ["queued", "sent", "failed", "logged"] as const;
+export type EmailStatus = (typeof EMAIL_STATUSES)[number];
+export const EMAIL_DIRECTIONS = ["outbound", "inbound_logged"] as const;
+export type EmailDirection = (typeof EMAIL_DIRECTIONS)[number];
+
+/** One e-mail to (or, logged by hand, from) one lead or contact. */
+export type EmailMessage = {
+  id: string;
+  direction: EmailDirection;
+  status: EmailStatus;
+  lead_id: string | null;
+  contact_id: string | null;
+  account_id: string | null;
+  opportunity_id: string | null;
+  to_address: string;
+  subject: string;
+  body: string;
+  template_id: string | null;
+  sent_by_user_id: string;
+  sent_at: string | null;
+  /** A safe code when sending failed, e.g. "recipient_refused". */
+  error_code: string | null;
+  created_at: string;
+};
+
+export type EmailPage = {
+  items: EmailMessage[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type EmailTemplate = {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  is_active: boolean;
+  version: number;
+  created_by_user_id: string | null;
+  updated_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TemplatePreview = {
+  subject: string;
+  body: string;
+  /** Placeholders that had no value and were left empty. */
+  missing: string[];
+};
+
+export type Placeholder = { name: string; description: string };

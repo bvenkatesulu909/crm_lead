@@ -91,6 +91,23 @@ export const canManageContracts = (me: Pick<Me, "permissions">) =>
 export const canManageQuoteSettings = (me: Pick<Me, "permissions">) =>
   hasAny(me, "quote:settings:manage");
 
+/** Communication Center (ADR 0012). Sending also needs read access to the lead or contact. */
+export const canSendEmails = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "communication:send");
+/** The Communication Center list: everyone's e-mails (read:all) or one's own (read:own). */
+export const canReadEmailCenter = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "communication:read:all", "communication:read:own");
+/** A record's e-mail history: anyone with any communication permission (the record decides). */
+export const canReadEmailHistory = (me: Pick<Me, "permissions">) =>
+  hasAny(
+    me,
+    "communication:send",
+    "communication:read:all",
+    "communication:read:own",
+  );
+export const canManageEmailTemplates = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "communication:template:manage");
+
 export const canReadActivities = (me: Pick<Me, "permissions">) =>
   hasAny(me, "activity:read:all", "activity:read:own");
 export const canWriteActivities = (me: Pick<Me, "permissions">) =>
@@ -133,6 +150,7 @@ export type NavItem = {
     | "pipeline"
     | "quotes"
     | "contracts"
+    | "communication"
     | "products"
     | "tasks"
     | "orders"
@@ -171,6 +189,12 @@ export function navigationFor(
     items.push({ href: "/contracts", label: "Contracts", icon: "contracts" });
   if (canReadActivities(me))
     items.push({ href: "/tasks", label: "Tasks", icon: "tasks" });
+  if (canReadEmailCenter(me))
+    items.push({
+      href: "/communications",
+      label: "E-mail",
+      icon: "communication",
+    });
   if (canReadOrders(me))
     items.push({ href: "/orders", label: "Orders", icon: "orders" });
   if (canReadInvoices(me))
@@ -272,6 +296,10 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "document:delete": "Delete documents",
   "portal:document:read": "See documents shared with your company",
   "notification:read": "Receive notifications",
+  "communication:send": "E-mail leads and contacts you may see",
+  "communication:read:all": "See every e-mail in the Communication Center",
+  "communication:read:own": "See the e-mails you sent or logged",
+  "communication:template:manage": "Create and change e-mail templates",
   "workflow:manage": "Create automation rules",
   "portal:quote:read": "View your company's quotes in the portal",
   "portal:quote:respond": "Accept or decline quotes in the portal",

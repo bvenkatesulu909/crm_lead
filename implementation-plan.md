@@ -324,6 +324,25 @@ model) and, on demand, with a real model (tests the model's behaviour). Design n
 - No secrets, no real data, no paid call in CI; real-model results are a report, never a gate.
 - Definition of Done checklist complete.
 
+## Phase AG — Agent registry, budgets and kill switch (BP-14)  *(ADR 0016 proposed 2026-10-26; AG0 done)*
+
+A list of the CRM's AI agents with an owner, allowed tools, a monthly token budget per
+organisation and an on/off switch, enforced by one governed-model wrapper at the four places that
+call a language model. Design: `docs/adr/0016-agent-registry-budgets-kill-switch.md`.
+
+**Steps (each stops for review)**
+- **AG0** - ADR 0016 and this description (documents only).
+- **AG1** - module `agents`: catalogue, `agent_settings` + `agent_usage` (forced RLS, migration
+  0043), services, permissions `agent:read` / `agent:manage`; tests first.
+- **AG2** - governed model on the four call sites; evaluation cases in the BP-10 harness.
+- **AG3** - API `/api/v1/agents`, audit, 80 % notification, switch events.
+- **AG4** - admin page, Playwright, docs, full runs, pull request.
+
+**Acceptance criteria**
+- An agent that is off or over budget never reaches the model (proven with a model that fails if called).
+- A tenant admin can switch, cap and narrow an agent; other organisations are unaffected; changes are audited.
+- Definition of Done checklist complete.
+
 ## Phase 16 — Marketing Management (Module 7)
 
 **Acceptance criteria**

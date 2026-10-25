@@ -487,6 +487,10 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     new tests were shown to fail when the changes are undone; ruff and mypy strict clean.
     **BP-11 steps MCP0-MCP4 complete**; MCP5 (propose tools) and MCP6 (hosted endpoint) need
     separate approval.
+- **Agent registry, budgets and kill switch (BP-14, Phase AG, ADR 0016)** - started 2026-10-26 on
+  branch `feat/agent-registry`. AG0: ADR 0016 (proposed) + phase plan, documents only; five
+  questions for the owner (token budget, default on with a cap, public-chat "off" sentence, who
+  switches, platform switch `CRM_AI_DISABLED`). No code yet.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

@@ -25,6 +25,7 @@ from app.core.auth.tokens import (
     VerifiedToken,
 )
 from app.core.db import get_db_session
+from app.core.request_context import set_client_id
 from app.modules.identity.service import forbidden, resolve_principal
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,8 @@ def get_verified_token(
     except AuthServiceUnavailableError as exc:
         logger.warning("cannot reach identity provider to verify token")
         raise HTTPException(status_code=503, detail="Authentication service unavailable.") from exc
+    # Only after verification: an unverified token could claim to be any application.
+    set_client_id(token.claims.get("azp"))
     return token
 
 

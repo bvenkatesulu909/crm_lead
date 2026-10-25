@@ -81,6 +81,10 @@ Alembic (`backend/`) · PostgreSQL · Keycloak (OIDC) · SeaweedFS (S3 files) ·
 | Create migration | `alembic revision --autogenerate -m "message"` | Phase 2b |
 | Export API contract (after endpoint/schema changes) | `python -m scripts.export_openapi` (in `backend`, venv active) | Phase 7 |
 | Regenerate the project inventory (`docs/inventory.md`) | `python -m scripts.report_inventory` (in `backend`, venv active) | 2026-10-20 |
+| Add new Keycloak clients from realm-crm.json to the running Keycloak (non-destructive) | `python -m scripts.keycloak_add_clients` (in `backend`, venv active) | ADR 0015 |
+| Install the CRM MCP server (once) | `cd mcp-server && uv sync` | ADR 0015 |
+| MCP server tests (unit / + live) | `cd mcp-server && uv run pytest -m "not live"` / `uv run pytest` | ADR 0015 |
+| Connect Claude Code to the CRM (read-only) | `claude mcp add crm-lead -- E:\crm-lead\mcp-server\.venv\Scripts\crm-mcp.exe` | ADR 0015 |
 | Seed local test data (fictional) | `python -m scripts.seed_dev_data` (in `backend`, venv active) | Phase 4 |
 | Seed fictional knowledge documents (RAG R1.6) | `python -m scripts.seed_knowledge_demo` (in `backend`, venv active) | RAG R1 |
 | Keycloak admin console | http://localhost:9080/admin (credentials in `infrastructure\.env`) | Phase 4 |
@@ -443,6 +447,46 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     and that file re-run alone: passed; the whole suite was not re-run after that one-line fix.
     ruff, mypy, import-linter clean. CLI on dev data: 4 suites, all cases passed, twice the same
     scorecard. The one paid DeepSeek pass was run 2026-10-26 with the owner's yes (about $0.04): baseline `backend/evals/baseline/deepseek.json` - 15 of 26 live cases passed, 0 forbidden-tool violations, 0 false "done" claims, tool precision/recall 46 %, argument accuracy 41 %; most failures are missing phrases or a tool not called (see docs/agent-evals.md).
+- **CRM MCP server standard (BP-11, ADR 0015)** - owner approved ADR 0015 on 2026-10-26 (all five
+  clients, no hosted endpoint now, old worktree left alone). MCP0: ADR 0015 (+ the old, unmerged
+  ADR 0010 text kept as `docs/adr/0015a-original-crm-mcp-decision.md`). MCP1 (2026-10-26): the
+  existing read-only server was found uncommitted in another worktree and is now on branch
+  `feat/mcp-standard`: `mcp-server/` (8 read-only tools, PKCE sign-in, `uv.lock`), Keycloak
+  client `crm-mcp` (not in the production realm), `scripts/keycloak_add_clients.py`, API access
+  log `client_id` from the verified token's `azp`, new CI job `mcp-server`. Fixed on the way: the
+  server's default Keycloak address was still port 8080 (Keycloak moved to 9080). Tests (run
+  2026-10-26): mcp-server 44 unit + 7 live (real Keycloak + API) passed, ruff and mypy strict
+  clean; backend realm/client-id tests 16 passed, ruff, mypy, import-linter clean. The full
+  backend suite was not re-run (only a script, two small API edits and tests changed). MCP2-MCP4
+  not started; the connector in `~/.claude.json` still points at the old worktree until the
+  owner confirms.
+  - MCP2 (2026-10-26, branch `feat/mcp-contract`): `docs/mcp-tools.md` (generated tool table + rules
+    + version rule), committed `mcp-server/contract/catalogue.json`, `crm_mcp/catalogue.py` with
+    `python -m crm_mcp.catalogue [--write]`. Tests fail when the live tools, the snapshot or the
+    page differ, when a tool is not read-only / badly named / without endpoints / page size above
+    50, and `--write` refuses a change whose version bump is too small (breaking = new major,
+    before 1.0 new minor). Tests (run 2026-10-26): mcp-server 88 passed (37 new, 7 live included),
+    ruff and mypy strict clean. MCP3-MCP4 not started.
+  - MCP3 (2026-10-26, branch `feat/mcp-clients`): `tests/test_stdio_handshake.py` starts the real
+    program over stdio and checks the handshake, the documented read-only tools, no resources or
+    prompts, and a clear start-up error on a bad address (stdout stays empty); `docs/mcp-clients.md`
+    with set-up for Claude Code, Claude Desktop, Cursor, VS Code and JetBrains (only Claude Code
+    was actually used; the others follow each product's documented format and are marked not
+    tested). MCP Inspector 2.12.0 (CLI mode) listed the same 8 tools. Tests (run 2026-10-26):
+    mcp-server 92 passed (4 new, 7 live included), ruff and mypy strict clean. Finding, not
+    fixed: a tool call with an invalid ID still opens the sign-in first (input is checked after
+    sign-in). MCP4 not started.
+  - MCP4 (2026-10-26, branch `feat/mcp-hardening`): hardening review. Input checked before sign-in
+    (a bad ID no longer opens the browser); free text cut at 2,000 characters with a marker;
+    at most 60 API calls per minute from the server (`CRM_MCP_MAX_CALLS_PER_MINUTE`); HTTP 429,
+    non-JSON answers, unreachable Keycloak and unexpected errors become short safe messages
+    (nothing internal, no token); prompt-injection tests (three attack texts stay under `data`,
+    envelope fixed, no tool can write). Forged `azp`: already covered by the backend tests
+    (`test_request_client_id.py`: a rejected token cannot choose its name, odd names logged as
+    `invalid`). Tests (run 2026-10-26): mcp-server 116 passed (24 new, 7 live included); the
+    new tests were shown to fail when the changes are undone; ruff and mypy strict clean.
+    **BP-11 steps MCP0-MCP4 complete**; MCP5 (propose tools) and MCP6 (hosted endpoint) need
+    separate approval.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

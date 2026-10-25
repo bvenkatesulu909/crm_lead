@@ -133,6 +133,39 @@ jobs:
           path: ${{ runner.temp }}/agent-evals/scorecard.json
           if-no-files-found: ignore
 
+  mcp-server:
+    # The CRM MCP server for IDEs and agents (ADR 0015). Unit tests use a fake Keycloak and API;
+    # the live tests need the local stack and are skipped here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: mcp-server
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the dependencies (exact versions from uv.lock)
+        run: |
+          python -m pip install uv
+          uv sync --frozen
+
+      - name: Lint (ruff)
+        run: uv run ruff check . && uv run ruff format --check .
+
+      - name: Type check (mypy, strict)
+        run: uv run mypy src tests
+
+      - name: Tests (pytest, no live services)
+        run: uv run pytest -m "not live"
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 15

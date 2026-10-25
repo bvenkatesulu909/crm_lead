@@ -49,6 +49,7 @@ real login (see §7).
 | Brute-force protection | on (temporary lockout after 10 failures) | Slows password guessing. |
 | Password policy | ≥ 12 characters, not the username | |
 | Registration | **on**, e-mail verification required (ADR 0004) | Anyone may create a *login*, but gets no CRM access until a Tenant Admin approves (see [onboarding.md](onboarding.md)). |
+| Client `crm-mcp` | **public**, Standard flow + PKCE S256, redirect `http://127.0.0.1:8765/callback` only, password grant off, `fullScopeAllowed=false` + staff roles only | The local read-only MCP server signs users in with it (ADR 0015 (originally 0010), `mcp-server/README.md`). Not in the production realm. |
 | Client `crm-user-admin` | confidential, service account only, all login flows off | The backend uses it to create/manage users of realm `crm`. Its service account has only `manage-users`, `view-users`, `query-users` (verified: 403 for realm settings and other realms). |
 | SMTP | `mailpit:1025` | All e-mails (invitations, verification, reset) go to Mailpit: http://localhost:8025 |
 | Admin-sent links | valid 72 hours | Set-your-password links in invitations. |
@@ -72,7 +73,10 @@ docker compose up -d keycloak
 **Changing the realm file later:** because the realm already exists, edits to
 `realm-crm.json` are not applied automatically. For local development the simplest way is to
 recreate the `keycloak` database (this deletes all Keycloak logins, including invited and
-signed-up people; the test users are re-imported) - ask first, it is destructive.
+signed-up people; the test users are re-imported) - ask first, it is destructive. **New clients**
+(without a `${...}` secret) can be added without that: `python -m scripts.keycloak_add_clients`
+(in `backend`, venv active) creates clients that are in the file but missing in Keycloak and never
+changes existing ones.
 
 ## 3. Token validation in the API (`backend/app/core/auth/tokens.py`)
 
@@ -87,6 +91,9 @@ generic message (the reason is logged on the server, the token never is):
 | `aud` contains `CRM_OIDC_AUDIENCE` (`crm-api`) | tokens issued for other applications |
 | `exp` in the future, `nbf`/`iat` not in the future (±30 s) | expired / replayed / pre-dated tokens |
 | `sub` present, `typ` = `Bearer` | ID tokens used as access tokens |
+
+After verification the token's `azp` (the application that asked for it: `crm-web`, `crm-mcp`)
+is added to the request's access-log line as `client_id` (ADR 0015 (originally 0010)).
 
 Keycloak's public keys are fetched from the JWKS URL and cached; an unknown key ID triggers a
 refetch (key rotation). If Keycloak can't be reached, the API answers `503`, not `200`.

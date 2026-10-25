@@ -182,7 +182,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   - Assistant live check against real Claude. Blocked by Anthropic billing ("credit balance too
     low"); test with `python -m scripts.check_anthropic`.
   - Teams (rest of Phase C; RLS, the outbox, worker and reminder e-mails are done).
-  - Modules not started: marketing (Phase 16), Communication Center, integrations (Phase 19),
+  - Modules not started: marketing (Phase 16), integrations (Phase 19),
     staff AI assistant (Phase 20b/20c: knowledge base, voice).
   - Full end-to-end suite re-run after the latest fixes (last recorded 2026-10-19: backend 987,
     Vitest 205, Playwright 67 with known failures - live assistant, one slow test).
@@ -232,7 +232,16 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     (unknown placeholder refused, text kept), edit, deactivate/reactivate, contact card
     without address (blocked message), Send dialog with template preview, e-mail delivered to
     Mailpit with Reply-To the sender, status Sending -> Sent, log received e-mail (empty form
-    refused), account page contact list - all worked, no console errors. CC6 not started.
+    refused), account page contact list - all worked, no console errors.
+  - CC6 (2026-10-25): Playwright `e2e/communications.spec.ts` (template -> send -> real Mailpit
+    e-mail with Reply-To the sender -> log the reply -> Communication Center; who may not see
+    what), `docs/communications.md`, refreshed `docs/inventory.md` (203 API operations). The
+    e-mail dialog now builds its form on first open (no hidden duplicate "Subject" fields on
+    record pages). Menu/tile lists in `workflow1.spec.ts` include the new entry.
+    Full run (2026-10-25): backend 1391 passed (+4 opt-in skipped); ruff, mypy, import-linter
+    clean; Vitest 295 passed; Playwright 77 passed, 2 skipped (live assistant, slow refresh),
+    0 failed; lint, typecheck and production build clean. **Communication Center complete**,
+    waiting for owner review and the merge of draft PR #13.
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
   (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
   features that need them and need an ADR.

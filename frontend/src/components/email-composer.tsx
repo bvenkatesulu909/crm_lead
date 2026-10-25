@@ -52,6 +52,9 @@ export function EmailComposer({
   const [state, formAction, pending] = useActionState(action, initialDialogState);
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  // The form is built when the dialog is first opened (and then kept, so typed text survives
+  // a server error): a record page then has no hidden extra "Subject" or "Text" fields.
+  const [opened, setOpened] = useState(false);
   const [contactId, setContactId] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [subject, setSubject] = useState("");
@@ -103,11 +106,11 @@ export function EmailComposer({
 
   return (
     <>
-      <button type="button" className={buttonClass(sending ? "primary" : "secondary")} onClick={() => dialog.current?.showModal()}>
+      <button type="button" className={buttonClass(sending ? "primary" : "secondary")} onClick={() => { setOpened(true); dialog.current?.showModal(); }}>
         {sending ? "Send e-mail" : "Log a received e-mail"}
       </button>
       <dialog ref={dialog} aria-labelledby={titleId} className="m-auto w-[calc(100%-2rem)] max-w-2xl rounded-xl p-0 shadow-xl backdrop:bg-slate-900/50">
-        <form action={formAction} noValidate className="space-y-5 p-6">
+        {opened && <form action={formAction} noValidate className="space-y-5 p-6">
           <div>
             <h2 id={titleId} className="text-lg font-semibold text-slate-900">
               {sending ? "Send an e-mail" : "Log a received e-mail"}
@@ -172,7 +175,7 @@ export function EmailComposer({
               {pending ? "Working…" : sending ? "Send" : "Save"}
             </button>
           </div>
-        </form>
+        </form>}
       </dialog>
     </>
   ); // prettier-ignore

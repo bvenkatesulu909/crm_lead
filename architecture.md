@@ -115,6 +115,7 @@ could be extracted into its own service without rewriting it.
 | 16 | `assistant` – AI Chatbot & Voice | conversations, tool definitions, provider adapters |
 | 17 | `integrations` – External Integrations | connectors, webhooks (in/out), sync state |
 | 18 | `communications` – Communication Center | one-to-one e-mail (sent and logged), e-mail templates, conversation history (ADR 0012) |
+| 19 | `contracts` – Contracts & Renewals | contracts, insert-only contract history, contract numbers, renewal reminders (docs/contracts.md) |
 
 Shared, non-business code lives in `app/core` (config, DB session, auth, tenancy, authorization,
 audit log, events, errors, pagination).

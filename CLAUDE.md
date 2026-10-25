@@ -396,6 +396,15 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     50, and `--write` refuses a change whose version bump is too small (breaking = new major,
     before 1.0 new minor). Tests (run 2026-10-26): mcp-server 88 passed (37 new, 7 live included),
     ruff and mypy strict clean. MCP3-MCP4 not started.
+  - MCP3 (2026-10-26, branch `feat/mcp-clients`): `tests/test_stdio_handshake.py` starts the real
+    program over stdio and checks the handshake, the documented read-only tools, no resources or
+    prompts, and a clear start-up error on a bad address (stdout stays empty); `docs/mcp-clients.md`
+    with set-up for Claude Code, Claude Desktop, Cursor, VS Code and JetBrains (only Claude Code
+    was actually used; the others follow each product's documented format and are marked not
+    tested). MCP Inspector 2.12.0 (CLI mode) listed the same 8 tools. Tests (run 2026-10-26):
+    mcp-server 92 passed (4 new, 7 live included), ruff and mypy strict clean. Finding, not
+    fixed: a tool call with an invalid ID still opens the sign-in first (input is checked after
+    sign-in). MCP4 not started.
 - **Next planned, in order:** BP-04 leftovers (built, PR waiting), then BP-10, BP-11 (rest of AI Track A1), then
   BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need

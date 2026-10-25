@@ -1,6 +1,6 @@
 # Agent evaluation harness (BP-10) - design note and step plan
 
-- **Status:** Accepted (2026-10-25). Steps EV0-EV4 done; EV5 not started.
+- **Status:** Accepted (2026-10-25). Steps EV0-EV5 done (the paid DeepSeek pass waits for the owner's yes).
 - **Size:** medium (EV1-EV5). A short design note, not an ADR: nothing here sends data anywhere
   new, changes security rules or adds a table.
 - **Master plan:** `docs/master-plan.md` (AI Track A1, BP-10).
@@ -157,7 +157,6 @@ CI needs no new secrets and no new job: the cases run inside the existing `pytes
   tool slipping into the customer's tools, broken account access, a second lead in one
   conversation). Each agent must keep at least 8 cases, one of them stopped by the guardrails
   (`tests/test_agent_evals_dataset.py`).
-- Not yet: cited-answer cases (EV4), command-line runner, scorecard file and real-model runs (EV5).
 
 ## 6d. What exists after EV4 (cited answers, no paid key)
 
@@ -194,11 +193,67 @@ CI needs no new secrets and no new job: the cases run inside the existing `pytes
 
 ### Findings while writing the cases (not fixed here: BP-10 only measures)
 
-1. **The card-number guardrail refuses some lead ids.** A question that contains a lead's id is
+1. **The card-number guardrail refuses some record ids.** A question that contains an id is
    stopped as "card numbers" when the id has a long run of digits (about 1 in 600 random ids; an id
-   such as 00000000-0000-4000-8000-000000000000 always). Needs its own small fix with a test first.
+   such as 00000000-0000-4000-8000-000000000000 always - and so do the seeded demo users,
+   a1000000-0000-4000-8000-00000000000N). Needs its own small fix with a test first.
 2. **A support agent asking about "leads" gets a bare 403** ("You may not read leads.") from the
    API before the assistant answers; a friendlier answer would be better. Low priority.
+
+## 6e. What exists after EV5 (command line, scorecard, baseline, CI summary)
+
+- **Command line** (Windows CMD, in `backend` with the venv active):
+
+  ```
+  python -m scripts.eval_agents --provider fake
+  python -m scripts.eval_agents --provider deepseek --estimate
+  set CRM_RUN_LIVE_EVALS=1
+  python -m scripts.eval_agents --provider deepseek --out evals\baseline\deepseek.json
+  python -m scripts.eval_agents --render evals\baseline\deepseek.json
+  ```
+
+  Options: `--suite staff_assistant|portal_assistant|public_chat|cited_answers` (repeatable),
+  `--only <text in the case id>`, `--out` (scorecard JSON), `--summary` (Markdown table),
+  `--baseline <scorecard>`, `--render <scorecard>` (prints the table, runs nothing),
+  `--tenant` / `--other-tenant` (default `alpha-demo` / `beta-demo`), `--price-in` / `--price-out`.
+- **Where it plays:** the development database, as the demo people found BY ROLE (two sales agents,
+  a manager, a support agent, an admin, a customer with an account; a second organisation for the
+  isolation cases). Everything happens in ONE transaction that is rolled back at the end, and each
+  case in its own savepoint: the development data is read, never changed. The records a case
+  mentions (`{{lead.own}}` ...) are created inside that transaction. The pytest files use the same
+  code (`agent_evals/world.py`, `play.py`, `suite.py`) on the test world.
+- **Exit codes:** `fake` - 0 when every case passed, no forbidden tool, no false "done" claim;
+  1 otherwise. A real model - 0 (a report), except 1 when `--baseline` is given and something
+  got worse. 2 - could not run (no key, missing people, nothing selected, unreadable file).
+  Selecting zero cases is never a pass.
+- **Real model = lenient scoring.** The scripted run demands the exact call sequence. A real model
+  may read a record the script did not; its run is scored with the expected calls found IN ORDER
+  among all calls, extras allowed (they lower tool precision instead) and no call limit. Cases
+  marked `live: false` (they force a bad call on purpose) are not played. A model error fails
+  that case; the run goes on.
+- **Money guard:** a paid provider needs `CRM_RUN_LIVE_EVALS=1` (the same switch as the existing
+  paid answer evaluation) - without it the command refuses. `--estimate` is free and needs no
+  key: it plays the live cases once with the script, measures what would be sent to a model in
+  each call, doubles it (a real model reads more and writes longer answers) and multiplies by the
+  price per million tokens. The default prices are published list prices and may be out of date:
+  override with `--price-in` / `--price-out`.
+- **Baseline comparison** (`agent_evals/report.py`): a case that passed in the baseline and fails
+  now is a regression; so are more forbidden-tool violations, more false "done" claims, and tool
+  precision / recall / argument accuracy falling by more than 5 points. Improvements, new and
+  removed cases and "the cases changed since the baseline" are listed but never fail the run.
+- **CI:** the full scripted run is part of `pytest` (`tests/db/test_agent_evals_cli.py` plays all
+  cases through the same command-line code path). It writes `scorecard.json` and `summary.md`
+  into `AGENT_EVAL_OUT_DIR`; the workflow copies the table into the job summary (also when a test
+  failed) and uploads the scorecard as an artifact. No key, no network, no cost.
+- **Deterministic:** the same cases and code give the same scorecard text (no clock, stable order).
+- **Fixed on the way:** random lead ids that the card-number guardrail refuses made a case fail
+  now and then (finding 1 below), and the seeded demo users have ids it refuses every time
+  (`a1000000-0000-4000-8000-000000000004`). The world now creates the records a question mentions
+  with a clean id, and a stand-in colleague with a clean id (inside the rolled-back transaction)
+  when a seeded one would be refused. The guardrail itself is unchanged: BP-10 only measures.
+- **Honest limits:** the cited-answer stand-in embedder measures word overlap, not meaning. A real
+  model run scores behaviour (tools, arguments, claims), not the quality of the wording. One paid
+  pass is a snapshot: real models vary a little from run to run, hence the 5-point tolerance.
 
 ## 7. What stays out (on purpose)
 

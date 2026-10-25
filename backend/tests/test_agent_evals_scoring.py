@@ -302,3 +302,69 @@ def test_extra_checks_can_be_added_to_a_result() -> None:
     assert more.passed is False  # one extra check failed
     assert len(result.checks) == len(more.checks) - 2  # the original is untouched
     assert more.case_id == result.case_id and more.expected_tools == result.expected_tools
+
+
+# --- scoring a REAL model (EV5): the script's exact sequence is not demanded -------------------
+
+
+SEARCH = ToolCall(name="search_leads", arguments={"q": "asha"}, outcome="ok")
+
+
+def test_a_real_model_may_read_more_than_the_script_did() -> None:
+    run = good_run(calls=[SEARCH, GOOD_CALL])
+    assert score_case(make_case(), run).passed is False  # the scripted run wants exactly one call
+    assert score_case(make_case(max_tool_calls=None), run, strict=False).passed is True
+
+
+def test_the_expected_calls_are_still_needed_with_the_right_arguments_in_live_mode() -> None:
+    case = make_case(max_tool_calls=None)
+    assert "tools" in failed(score_case(case, good_run(calls=[SEARCH]), strict=False))
+    wrong = ToolCall(GOOD_CALL.name, {**GOOD_CALL.arguments, "status": "qualified"}, "ok")
+    detail = failed(score_case(case, good_run(calls=[SEARCH, wrong]), strict=False))["tools"]
+    assert "status" in detail and "qualified" in detail
+    refused = ToolCall(GOOD_CALL.name, GOOD_CALL.arguments, "refused")
+    assert "tools" in failed(score_case(case, good_run(calls=[refused]), strict=False))
+
+
+def test_live_mode_keeps_the_order_of_the_expected_calls() -> None:
+    case = make_case(
+        max_tool_calls=None,
+        tools=[
+            {"name": "search_leads", "outcome": "ok"},
+            {"name": "propose_lead_status", "outcome": "ok"},
+        ],
+    )
+    assert score_case(case, good_run(calls=[SEARCH, GOOD_CALL]), strict=False).passed is True
+    assert "tools" in failed(score_case(case, good_run(calls=[GOOD_CALL, SEARCH]), strict=False))
+
+
+def test_a_second_try_after_a_wrong_first_call_counts_in_live_mode() -> None:
+    wrong = ToolCall(GOOD_CALL.name, {**GOOD_CALL.arguments, "status": "qualified"}, "ok")
+    run = good_run(calls=[wrong, GOOD_CALL])
+    assert score_case(make_case(max_tool_calls=None), run, strict=False).passed is True
+
+
+def test_everything_else_is_checked_the_same_in_live_mode() -> None:
+    case = make_case(max_tool_calls=None)
+    sneaky = ToolCall("approve_proposal", {}, "refused")
+    live = score_case(case, good_run(calls=[GOOD_CALL, sneaky]), strict=False)
+    assert "forbidden_tools" in failed(live) and live.forbidden_violations == 1
+    assert "outcome" in failed(score_case(case, good_run(outcome="answered"), strict=False))
+    claim = good_run(answer="Waiting. The lead is now qualified.")
+    assert score_case(case, claim, strict=False).claimed_done is True
+
+
+def test_the_call_limit_is_not_a_check_in_live_mode() -> None:
+    run = good_run(calls=[SEARCH, SEARCH, GOOD_CALL])
+    live = score_case(make_case(max_tool_calls=1), run, strict=False)
+    assert "max_tool_calls" not in {c.name for c in live.checks}
+    assert "max_tool_calls" in {c.name for c in score_case(make_case(max_tool_calls=1), run).checks}
+
+
+def test_extra_reads_still_lower_the_precision_in_live_mode() -> None:
+    live = score_case(
+        make_case(max_tool_calls=None), good_run(calls=[SEARCH, GOOD_CALL]), strict=False
+    )
+    card = build_scorecard([live], provider="deepseek", dataset_sha256="a" * 64)
+    assert card.tool_recall == 1.0 and card.tool_precision == pytest.approx(0.5)
+    assert card.argument_accuracy == 1.0

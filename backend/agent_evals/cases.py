@@ -166,10 +166,10 @@ class Case(BaseModel):
                         f"script: '{call.name}' is not a tool of {self.agent}; if the CRM "
                         "should refuse it, list it in expect.tools with outcome 'refused'"
                     )
-        for call in self.expect.tools:
-            if call.name not in real and call.outcome != "refused":
+        for wanted_call in self.expect.tools:
+            if wanted_call.name not in real and wanted_call.outcome != "refused":
                 raise ValueError(
-                    f"expect.tools: '{call.name}' is not a tool of {self.agent}; only a "
+                    f"expect.tools: '{wanted_call.name}' is not a tool of {self.agent}; only a "
                     "call that must be refused may name a tool that doesn't exist"
                 )
         for text in _strings(self.model_dump(by_alias=True)):

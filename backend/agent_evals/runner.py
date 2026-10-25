@@ -83,12 +83,9 @@ class RecordingModel:
 
     def __init__(self, inner: ChatModel) -> None:
         self._inner = inner
+        self.available = bool(getattr(inner, "available", True))
         self._records: list[_Record] = []
         self._pending: dict[str, _Record] = {}
-
-    @property
-    def available(self) -> bool:
-        return bool(getattr(self._inner, "available", True))
 
     def reply(
         self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
@@ -153,14 +150,16 @@ def run_staff_case(
     *,
     expiry_days: int = 7,
     pending_limit: int = 20,
+    model: ChatModel | None = None,
 ) -> StaffRun:
     """Play a staff-assistant case as ``principal``. The case must already have its
-    placeholders replaced. The session stays uncommitted: the caller decides what to keep."""
+    placeholders replaced. The session stays uncommitted: the caller decides what to keep.
+    ``model`` is a real model; without one the case's script plays."""
     if case.agent != "staff_assistant":
         raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the staff assistant")
     if len(case.messages) != 1:
         raise RunnerError(f"case '{case.id}': the staff assistant answers one question at a time")
-    recorder = RecordingModel(ScriptedModel(case.script))
+    recorder = RecordingModel(model if model is not None else ScriptedModel(case.script))
     budget = staff_tools.ProposalBudget(expiry_days=expiry_days, pending_limit=pending_limit)
     try:
         answer, _ticket, _links, proposals = staff_service.answer(
@@ -191,12 +190,13 @@ def run_portal_case(
     *,
     messages_per_hour: int = 1000,
     max_tool_rounds: int = 6,
+    model: ChatModel | None = None,
 ) -> PortalRun:
     """Play a portal-assistant case as the customer ``principal``. Several messages continue
     one conversation. Placeholders must already be replaced."""
     if case.agent != "portal_assistant":
         raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the portal_assistant")
-    recorder = RecordingModel(ScriptedModel(case.script))
+    recorder = RecordingModel(model if model is not None else ScriptedModel(case.script))
     conversation_id: uuid.UUID | None = None
     answer = ""
     pending = 0
@@ -240,13 +240,14 @@ def run_public_chat_case(
     case: Case,
     *,
     visitor_ip: str = "203.0.113.7",
+    model: ChatModel | None = None,
 ) -> PublicRun:
     """Play a public-chat case as an anonymous visitor: each message continues one conversation
     (the token is kept like the website does). ``settings`` must switch the chat on for the
     organisation of the test world."""
     if case.agent != "public_chat":
         raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the public_chat")
-    recorder = RecordingModel(ScriptedModel(case.script))
+    recorder = RecordingModel(model if model is not None else ScriptedModel(case.script))
     token: str | None = None
     answer = ""
     lead_saved = False

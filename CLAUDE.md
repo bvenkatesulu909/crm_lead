@@ -88,6 +88,7 @@ Alembic (`backend/`) · PostgreSQL · Keycloak (OIDC) · SeaweedFS (S3 files) ·
 | Run background worker (own CMD window) | `python -m app.worker` (in `backend`, venv active); `--once` runs due jobs and exits | ADR 0005 |
 | File store (SeaweedFS, S3 API) | `127.0.0.1:9333`, keys in `infrastructure\.env`; started by `docker compose up -d` | ADR 0005 |
 | Open the CRM to other devices on your network (see docs/network-access.md) | `python -m scripts.network_mode on <PC address>` / `off` / `status` (in `backend`, venv active), then `cd frontend && npm run dev:network` | Network mode |
+| Run the AI agent evaluation cases (BP-10) | `python -m scripts.eval_agents --provider fake` (in `backend`, venv active); `--estimate` shows the cost of a real-model run; real models need `set CRM_RUN_LIVE_EVALS=1` | BP-10 |
 | Install web dependencies | `cd frontend && npm install` | Phase 3 |
 | Run web | `cd frontend && npm run dev` (http://localhost:3000) | Phase 3 |
 | Web lint / types | `cd frontend && npm run lint && npm run typecheck` | Phase 3 |
@@ -427,6 +428,21 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     proves the gate can fail (missing citation check, threshold that lets everything through,
     internal documents reaching a customer, wrong document cited). Tests (run 2026-10-25): backend
     1766 passed (+4 opt-in skipped), 47 new; ruff, mypy, import-linter clean.
+  - EV5 (2026-10-26): command line `python -m scripts.eval_agents --provider fake|deepseek|anthropic`
+    (`--suite`, `--only`, `--out`, `--summary`, `--baseline`, `--render`, `--estimate`); plays in the
+    development database as people found by role, one rolled-back transaction, each case in its own
+    savepoint; scripted = every case, strict, exit 1 on any failure; real model = `live` cases,
+    lenient scoring (expected calls in order, extras allowed), a report unless `--baseline` shows a
+    regression; paid providers need `CRM_RUN_LIVE_EVALS=1`; `--estimate` is free (26 live cases,
+    about 80 calls, about $0.04 at published DeepSeek prices). The pytest files and the CLI share
+    `agent_evals/world.py`, `play.py`, `suite.py`; CI writes the scorecard into the job summary and
+    uploads it. Third finding: the card-number guardrail also refuses the seeded demo users' ids
+    (a1000000-0000-4000-8000-00000000000N); the world uses clean ids / stand-in colleagues. Tests
+    (run 2026-10-26): full backend 1816 passed, 4 opt-in skipped, 1 failed
+    (`test_requirements`: the new script imports `agent_evals`, which is not in the image) - fixed
+    and that file re-run alone: passed; the whole suite was not re-run after that one-line fix.
+    ruff, mypy, import-linter clean. CLI on dev data: 4 suites, all cases passed, twice the same
+    scorecard. The one paid DeepSeek pass has NOT been run (waits for the owner's yes).
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

@@ -56,7 +56,9 @@ def _imported_modules() -> set[str]:
                     modules |= {alias.name.split(".")[0] for alias in node.names}
                 elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
                     modules.add(node.module.split(".")[0])
-    return modules - set(sys.stdlib_module_names) - {"app", "scripts"}
+    # agent_evals is the development-only evaluation harness (BP-10): not in the Docker image,
+    # only scripts/eval_agents.py imports it.
+    return modules - set(sys.stdlib_module_names) - {"app", "scripts", "agent_evals"}
 
 
 def test_every_imported_library_is_in_the_runtime_requirements() -> None:

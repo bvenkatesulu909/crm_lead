@@ -109,7 +109,29 @@ jobs:
           # The app role is what the API uses; the owner role is what Alembic uses.
           CRM_TEST_DATABASE_URL: postgresql+psycopg://crm_app:ci-app-password@127.0.0.1:5432/crm_test
           CRM_TEST_MIGRATION_DATABASE_URL: postgresql+psycopg://crm_owner:ci-owner-password@127.0.0.1:5432/crm_test
+          # The agent evaluation test (BP-10) writes its scorecard here when this is set.
+          AGENT_EVAL_OUT_DIR: ${{ runner.temp }}/agent-evals
         run: pytest -q
+
+      - name: Agent evaluation scorecard (job summary)
+        # Runs even when a test failed: the table says which case broke and why.
+        if: always()
+        run: |
+          if [ -f "$AGENT_EVAL_OUT_DIR/summary.md" ]; then
+            cat "$AGENT_EVAL_OUT_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No agent evaluation summary was written." >> "$GITHUB_STEP_SUMMARY"
+          fi
+        env:
+          AGENT_EVAL_OUT_DIR: ${{ runner.temp }}/agent-evals
+
+      - name: Agent evaluation scorecard (file)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-eval-scorecard
+          path: ${{ runner.temp }}/agent-evals/scorecard.json
+          if-no-files-found: ignore
 
   frontend:
     runs-on: ubuntu-latest

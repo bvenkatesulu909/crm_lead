@@ -15,6 +15,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from agent_evals.rag_cases import CITE, RagCase
@@ -22,7 +23,7 @@ from agent_evals.scoring import CaseResult, Check
 from app.core.auth.principal import Principal
 from app.core.config import Settings
 from app.core.storage import MemoryFileStore, object_key
-from app.modules.assistant.llm import ModelReply
+from app.modules.assistant.llm import ChatModel, ModelReply
 from app.modules.knowledge import answers, service
 from app.modules.knowledge.answers import AnswerOutcome
 from app.modules.knowledge.evaluation import STOPWORDS, score_answer
@@ -126,8 +127,18 @@ def ingest_documents(
     tenant_id: uuid.UUID,
     documents: Sequence[tuple[str, str, str, str]],
 ) -> None:
-    """Index fictional documents: (title, file name, text, visibility) each, for one tenant."""
+    """Index fictional documents: (title, file name, text, visibility) each, for one tenant.
+
+    A document with the same text that is already there (the development database is seeded with
+    the same demo texts, indexed by a real embedder) is removed first, inside the caller's
+    transaction, so the stand-in vectors are the only ones the cases can find."""
     store = MemoryFileStore()
+    same_text = [hashlib.sha256(text.encode("utf-8")).hexdigest() for _, _, text, _ in documents]
+    session.execute(
+        delete(KnowledgeDocument).where(
+            KnowledgeDocument.tenant_id == tenant_id, KnowledgeDocument.sha256.in_(same_text)
+        )
+    )
     for title, file_name, text, visibility in documents:
         data = text.encode("utf-8")
         document_id = uuid.uuid4()
@@ -159,6 +170,22 @@ def ingest_documents(
 # --- running and scoring a case -------------------------------------------------------------
 
 
+class CountingModel:
+    """Counts how often the pipeline called the model (it must not, for an unanswerable
+    question)."""
+
+    def __init__(self, inner: ChatModel) -> None:
+        self._inner = inner
+        self.available = bool(getattr(inner, "available", True))
+        self.calls = 0
+
+    def reply(
+        self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
+    ) -> ModelReply:
+        self.calls += 1
+        return self._inner.reply(system=system, messages=messages, tools=tools)
+
+
 @dataclass(frozen=True)
 class RagRun:
     outcome: AnswerOutcome
@@ -173,19 +200,21 @@ def run_rag_case(
     embedder: HashingEmbedder,
     settings: Settings,
     account_ids: Sequence[uuid.UUID] | None = None,
+    model: ChatModel | None = None,
 ) -> RagRun:
-    model = ScriptedAnswerModel(case.answer)
+    """``model`` is a real model; without one the case's scripted answer is used."""
+    counted = CountingModel(model if model is not None else ScriptedAnswerModel(case.answer))
     outcome = answers.answer_question(
         session,
         principal,
         embedder,
-        model,
+        counted,
         question=case.question,
         settings=settings,
         reranker=None,
         account_ids=account_ids,
     )
-    return RagRun(outcome, model.calls)
+    return RagRun(outcome, counted.calls)
 
 
 def outcome_of(outcome: AnswerOutcome) -> str:

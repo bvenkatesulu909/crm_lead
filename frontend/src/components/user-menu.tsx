@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { logout } from "@/app/actions/auth";
-import { ROLE_LABELS } from "@/lib/permissions";
+import {
+  LEAD_ACCESS_LABELS,
+  ROLE_LABELS,
+  leadAccessOf,
+} from "@/lib/permissions";
 
 export function initials(name: string) {
   const parts = name
@@ -21,11 +25,14 @@ export function UserMenu({
   name,
   email,
   roles,
+  permissions,
   profileHref = "/profile",
 }: {
   name: string;
   email: string | null;
   roles: string[];
+  /** Shows which leads the person sees. Left out in the customer portal. */
+  permissions?: string[];
   /** null hides the profile link (e.g. in the customer portal). */
   profileHref?: string | null;
 }) {
@@ -55,6 +62,7 @@ export function UserMenu({
 
   const roleText =
     roles.map((r) => ROLE_LABELS[r] ?? r).join(", ") || "No CRM role";
+  const leadAccess = permissions ? leadAccessOf(permissions) : null;
 
   return (
     <div className="relative" ref={container}>
@@ -91,6 +99,24 @@ export function UserMenu({
               <p className="truncate text-xs text-slate-500">{email}</p>
             )}
             <p className="mt-1 text-xs text-slate-500">{roleText}</p>
+            {leadAccess && (
+              <p className="mt-2">
+                <span
+                  title={
+                    leadAccess === "own"
+                      ? "You see and work on the leads you own. Other leads are hidden from you by the database itself."
+                      : "You see every lead of your organisation."
+                  }
+                  className={
+                    leadAccess === "own"
+                      ? "inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200"
+                      : "inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200"
+                  }
+                >
+                  {LEAD_ACCESS_LABELS[leadAccess]}
+                </span>
+              </p>
+            )}
           </div>
           {profileHref && (
             <Link

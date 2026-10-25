@@ -205,6 +205,45 @@ describe("UserMenu", () => {
   });
 });
 
+describe("UserMenu lead-access badge (BP-04)", () => {
+  const open = async (permissions: string[] | undefined) => {
+    const user = userEvent.setup();
+    render(
+      <UserMenu
+        name="Avery Agent"
+        email="agent1@alpha.example.test"
+        roles={["sales_agent"]}
+        permissions={permissions}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+  };
+
+  it("tells an agent they see only their own leads", async () => {
+    await open(["lead:read:own", "lead:write:own"]);
+    expect(screen.getByText("Own leads only")).toBeInTheDocument();
+    expect(screen.queryByText("All leads in your organisation")).toBeNull();
+  });
+
+  it("tells a manager they see every lead of their organisation", async () => {
+    await open(["lead:read:all", "lead:write:all"]);
+    expect(
+      screen.getByText("All leads in your organisation"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Own leads only")).toBeNull();
+  });
+
+  it("shows nothing for roles without lead access, and without permissions given", async () => {
+    await open(["ticket:read:all"]);
+    expect(screen.queryByText(/leads/i)).toBeNull();
+  });
+
+  it("shows no badge when no permissions are passed (customer portal)", async () => {
+    await open(undefined);
+    expect(screen.queryByText(/leads/i)).toBeNull();
+  });
+});
+
 describe("ErrorAlert", () => {
   it("is announced and shows a reference for support", () => {
     render(

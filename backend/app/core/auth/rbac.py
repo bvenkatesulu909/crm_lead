@@ -133,6 +133,13 @@ class Permission(StrEnum):
     PORTAL_DOCUMENT_READ = "portal:document:read"
     # Everyone on the staff side reads their own notifications (ADR 0006).
     NOTIFICATION_READ = "notification:read"
+    # Communication Center (ADR 0012). Sending also needs read access to the recipient record.
+    # "own" lists only the e-mails the user sent or logged; a record's own history follows
+    # that record's read rules instead.
+    COMMUNICATION_SEND = "communication:send"
+    COMMUNICATION_READ_ALL = "communication:read:all"
+    COMMUNICATION_READ_OWN = "communication:read:own"
+    COMMUNICATION_TEMPLATE_MANAGE = "communication:template:manage"
 
     # Knowledge base (RAG R1): staff read documents; tenant admins upload/delete them.
     KNOWLEDGE_READ = "knowledge:read"
@@ -160,6 +167,7 @@ _SALES_ALL = frozenset(
         _P.QUOTE_READ_ALL, _P.QUOTE_WRITE_ALL, _P.QUOTE_APPROVE,
         _P.CONTRACT_READ_ALL, _P.CONTRACT_WRITE_ALL, _P.CONTRACT_MANAGE,
         _P.DOCUMENT_READ, _P.DOCUMENT_WRITE, _P.DOCUMENT_DELETE,
+        _P.COMMUNICATION_SEND, _P.COMMUNICATION_READ_ALL, _P.COMMUNICATION_TEMPLATE_MANAGE,
     }
 )  # fmt: skip
 
@@ -212,6 +220,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.PORTAL_USER_INVITE,
             _P.NOTIFICATION_READ,
             _P.KNOWLEDGE_READ,
+            _P.COMMUNICATION_SEND,
+            _P.COMMUNICATION_READ_OWN,
         }
     ),  # fmt: skip
     Role.SUPPORT_AGENT: frozenset(
@@ -227,6 +237,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.CATALOG_READ,
             _P.DOCUMENT_READ,
             _P.NOTIFICATION_READ,
+            _P.COMMUNICATION_SEND,
+            _P.COMMUNICATION_READ_OWN,
         }
     ),
     Role.CUSTOMER: frozenset(

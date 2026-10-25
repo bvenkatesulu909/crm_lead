@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ActivityPanel } from "@/components/activity-panel";
+import { EmailCard } from "@/components/email-card";
 import { DocumentsCard } from "@/components/documents-card";
 import { QuoteStatusBadge } from "@/components/quote-view";
 import { ButtonLink, Card, Forbidden, SuccessAlert, cx } from "@/components/ui";
@@ -38,6 +39,8 @@ export const metadata: Metadata = { title: "Opportunity" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const DONE: Record<string, string> = {
+  "email-sent": "The e-mail is on its way. Its status is shown under E-mails.",
+  "email-logged": "The received e-mail was saved in the history.",
   "document-uploaded": "The document was uploaded.",
   "document-deleted": "The document was deleted.",
   created: "The opportunity was created.",
@@ -205,6 +208,7 @@ export default async function OpportunityPage({
             </Card>
           )}
           <ActivityPanel link={{ type: "opportunity", id: opp.id }} me={me} people={people} ownsRecord={isOwner} />
+          <EmailCard me={me} record={{ type: "opportunity", id: opp.id }} accountId={opp.account_id} />
         </div>
         <Card>
           <h2 className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">Stage history</h2>

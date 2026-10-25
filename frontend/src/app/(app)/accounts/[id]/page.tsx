@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ActivityPanel } from "@/components/activity-panel";
+import { EmailCard } from "@/components/email-card";
 import { DocumentsCard } from "@/components/documents-card";
 import { PaymentStateBadge, invoiceNumber } from "@/components/invoices";
 import {
@@ -110,6 +111,8 @@ function section<T>(
 }
 
 const DONE: Record<string, string> = {
+  "email-sent": "The e-mail is on its way. Its status is shown under E-mails.",
+  "email-logged": "The received e-mail was saved in the history.",
   invited: "The invitation was sent. The customer sets a password and then sees this account.",
   revoked: "Portal access was removed for this account.",
   created: "The account was created.",
@@ -401,6 +404,8 @@ export default async function AccountPage({
           )}
 
           <ActivityPanel link={{ type: "account", id: a }} me={me} people={people} ownsRecord={isOwner} />
+
+          <EmailCard me={me} record={{ type: "account", id: a }} accountId={a} />
 
           <SectionCard title="Relationship timeline">
             {timeline.length === 0 ? (

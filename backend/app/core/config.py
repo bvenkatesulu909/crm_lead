@@ -145,6 +145,9 @@ class Settings(BaseSettings):
     smtp_starttls: bool = False
     smtp_timeout_seconds: float = Field(default=15, gt=0, le=120)
     mail_from: str = Field(default="CRM <no-reply@crm.localhost>", min_length=3, max_length=200)
+    # Communication Center (ADR 0012): e-mails one person may send per hour - a guard against
+    # mistakes, not a marketing tool.
+    communication_emails_per_hour: int = Field(default=200, ge=1, le=10_000)
 
     # Background worker (outbox jobs, ADR 0005).
     worker_poll_seconds: float = Field(default=2, gt=0, le=60)

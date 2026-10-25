@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.errors import ForbiddenError
-from app.core.records import RecordFacts
+from app.core.records import Recipient, RecordFacts
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
 from app.modules.leads import repository, service
 from app.modules.leads.metrics import (
@@ -39,6 +39,7 @@ __all__ = [
     "lead_facts",
     "LEAD_STATUSES",
     "lead_brief",
+    "lead_recipient",
     "FollowUp",
     "FollowUps",
     "LeadMetrics",
@@ -72,6 +73,21 @@ def lead_brief(session: Session, principal: Principal, lead_id: uuid.UUID) -> st
         return None
     name = " ".join(p for p in (lead.first_name, lead.last_name) if p)
     return f"{name} ({lead.company_name})" if lead.company_name else name
+
+
+def lead_recipient(session: Session, principal: Principal, lead_id: uuid.UUID) -> Recipient | None:
+    """Who to write to (Communication Center), if this principal may see the lead, else None."""
+    lead = repository.get_readable(session, principal, lead_id)
+    if lead is None:
+        return None
+    return Recipient(
+        first_name=lead.first_name,
+        full_name=" ".join(p for p in (lead.first_name, lead.last_name) if p),
+        email=lead.email,
+        company=lead.company_name,
+        account_id=None,
+        consent_withdrawn=False,
+    )
 
 
 def lead_facts(session: Session, principal: Principal, lead_id: uuid.UUID) -> RecordFacts | None:

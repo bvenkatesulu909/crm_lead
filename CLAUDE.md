@@ -182,7 +182,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   - Assistant live check against real Claude. Blocked by Anthropic billing ("credit balance too
     low"); test with `python -m scripts.check_anthropic`.
   - Teams (rest of Phase C; RLS, the outbox, worker and reminder e-mails are done).
-  - Modules not started: marketing (Phase 16), Communication Center, integrations (Phase 19),
+  - Modules not started: marketing (Phase 16), integrations (Phase 19),
     staff AI assistant (Phase 20b/20c: knowledge base, voice).
   - Full end-to-end suite re-run after the latest fixes (last recorded 2026-10-19: backend 987,
     Vitest 205, Playwright 67 with known failures - live assistant, one slow test).
@@ -196,6 +196,52 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     screens (list, detail, form, account card, menu entry, module tile), account-search route handler.
   - Tests (run 2026-10-23): backend contracts 64 + 7 worker tests (full suite below); Vitest 247; Playwright
     `contracts.spec.ts` 3 passed.
+- **Communication Center (Phase CC, ADR 0012)** - started 2026-10-24. CC0 (ADR + phase plan in
+  `implementation-plan.md`) done on branch `feat/communications`.
+  - CC1 (2026-10-24): `communications` module with `email_templates` + `email_messages`
+    (migration 0038, forced RLS, messages can't be deleted), 4 `communication:*` permissions.
+    Tests (run 2026-10-24): backend 1284 passed (+4 opt-in skipped); ruff, mypy, import-linter
+    clean. Master plan for the PDF work: `docs/master-plan.md`.
+  - CC2 (2026-10-24): `POST /api/v1/communications/emails` (lead or contact, address from the
+    record, related account/deal must be the contact's, withdrawn consent refused, 200 per
+    person per hour via `CRM_COMMUNICATION_EMAILS_PER_HOUR`), `GET /emails/{id}`,
+    `communication.email` worker job (Reply-To = sender, safe to run twice, consent re-checked),
+    failure → `communication.email_failed` event → notification; e-mail entry on the timeline;
+    audit `email.queued`. Tests (run 2026-10-24): backend 1326 passed (+4 opt-in skipped);
+    ruff, mypy, import-linter clean.
+  - CC3 (2026-10-24): templates at `/api/v1/communications/templates` (list, get, create,
+    PATCH incl. deactivate/reactivate with version check, preview for a lead/contact or sample
+    values) and `/placeholders`; 6 fixed placeholders filled in one pass (no engine, no
+    re-expansion, no line breaks in subjects); unknown/broken placeholders → 422
+    `unknown_placeholder`; agents see active templates only. Tests (run 2026-10-24): backend
+    1369 passed (+4 opt-in skipped); ruff, mypy, import-linter clean.
+  - CC4 (2026-10-24): `GET /communications/history` (one lead/contact/account/deal under that
+    record's read rules; an account includes its contacts and deals), `GET /communications/emails`
+    (read:all / read:own, filters in SQL), `POST /communications/emails/received` (log a received
+    e-mail; no sending, no consent or limit check); migration 0039 adds `email_messages.seq` for a
+    reliable newest-first order. Tests (run 2026-10-24): backend 1391 passed (+4 opt-in
+    skipped); ruff, mypy, import-linter clean. Branch pushed to GitHub (draft PR #13).
+  - CC5 (2026-10-25): screens - "Send e-mail" / "Log a received e-mail" dialog (template
+    preview fills subject and text, text stays editable, kept on server errors; contacts
+    without address or consent can't be chosen), E-mails card on lead, contact, account and
+    deal pages, Communication Center page (`/communications`, filters, paging), Templates pages
+    for managers (list, new, edit, deactivate/reactivate, placeholder list), "E-mail" menu
+    entry, module tile "Available". Tests (run 2026-10-25): Vitest 295 passed (30 new); lint,
+    typecheck and production build clean. Browser check (2026-10-25, as alpha.manager, dev
+    database at 0039): menu entry, Communication Center list + status filter, template create
+    (unknown placeholder refused, text kept), edit, deactivate/reactivate, contact card
+    without address (blocked message), Send dialog with template preview, e-mail delivered to
+    Mailpit with Reply-To the sender, status Sending -> Sent, log received e-mail (empty form
+    refused), account page contact list - all worked, no console errors.
+  - CC6 (2026-10-25): Playwright `e2e/communications.spec.ts` (template -> send -> real Mailpit
+    e-mail with Reply-To the sender -> log the reply -> Communication Center; who may not see
+    what), `docs/communications.md`, refreshed `docs/inventory.md` (203 API operations). The
+    e-mail dialog now builds its form on first open (no hidden duplicate "Subject" fields on
+    record pages). Menu/tile lists in `workflow1.spec.ts` include the new entry.
+    Full run (2026-10-25): backend 1391 passed (+4 opt-in skipped); ruff, mypy, import-linter
+    clean; Vitest 295 passed; Playwright 77 passed, 2 skipped (live assistant, slow refresh),
+    0 failed; lint, typecheck and production build clean. **Communication Center complete**,
+    waiting for owner review and the merge of draft PR #13.
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
   (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
   features that need them and need an ADR.

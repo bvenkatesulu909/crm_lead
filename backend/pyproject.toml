@@ -59,6 +59,7 @@ modules = [
     "app.modules.activities",
     "app.modules.assistant",
     "app.modules.catalog",
+    "app.modules.communications",
     "app.modules.contacts",
     "app.modules.contracts",
     "app.modules.dashboard",

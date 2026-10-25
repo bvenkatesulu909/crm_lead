@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ActivityPanel } from "@/components/activity-panel";
+import { EmailCard } from "@/components/email-card";
 import { LeadScoreCard } from "@/components/lead-score";
 import { Card, Forbidden, StatusBadge, SuccessAlert } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
@@ -41,6 +42,8 @@ export const metadata: Metadata = { title: "Lead" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const DONE: Record<string, string> = {
+  "email-sent": "The e-mail is on its way. Its status is shown under E-mails.",
+  "email-logged": "The received e-mail was saved in the history.",
   updated: "The lead was updated.",
   assigned: "The lead was assigned.",
   contacted: "The lead was marked as contacted.",
@@ -249,6 +252,7 @@ export default async function LeadPage({
             ownsRecord={lead.owner_id === me.user_id}
             planOnly
           />
+          <EmailCard me={me} record={{ type: "lead", id: lead.id }} person={{ email: lead.email }} personLabel={name} />
         </div>
 
         <div className="space-y-6">

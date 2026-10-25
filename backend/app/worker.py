@@ -31,6 +31,7 @@ from app.core.mail import Mailer, MailRejectedError, build_mailer
 from app.core.outbox import DeadJobHandler, JobHandler, run_next_job
 from app.core.storage import FileStore, build_file_store
 from app.modules.activities import api as activities_api
+from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
@@ -65,6 +66,7 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
         notifications_api.EMAIL_JOB: notifications_api.email_job_handler(
             services.mailer, services.settings.web_app_url
         ),
+        communications_api.EMAIL_JOB: communications_api.email_job_handler(services.mailer),
         # Domain events (ADR 0006): every "event.<name>" job goes to its subscribers.
         **dispatcher(
             merge_subscribers(
@@ -119,7 +121,10 @@ def run_schedules(
 
 def dead_job_handlers() -> dict[str, DeadJobHandler]:
     """What to do when a job gives up for good (e.g. note it in the record's history)."""
-    return {quotes_api.EMAIL_JOB: quotes_api.email_failed_handler()}
+    return {
+        quotes_api.EMAIL_JOB: quotes_api.email_failed_handler(),
+        communications_api.EMAIL_JOB: communications_api.email_failed_handler(),
+    }
 
 
 def run_due_jobs(

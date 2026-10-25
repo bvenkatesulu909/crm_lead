@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-10-21 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-10-25 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **183** operations over **146** paths and **208** schemas.
+- **203** operations over **161** paths and **228** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -17,9 +17,11 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | quotes | 17 |
 | leads | 13 |
 | catalogue | 11 |
+| communications | 11 |
 | user administration | 11 |
 | opportunities | 10 |
 | accounts | 9 |
+| contracts | 9 |
 | tickets | 9 |
 | activities | 8 |
 | invoices | 8 |
@@ -43,18 +45,18 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0028**
-- Tables in the current schema: **51**
-- Tables with Row-Level Security: **2** (2 policies)
+- Alembic revision: **0039**
+- Tables in the current schema: **56**
+- Tables with Row-Level Security: **52** (52 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **28**
-- Heads: `0028`
+- Migration files: **39**
+- Heads: `0039`
 
 ## Web app (`frontend/src/app`)
 
-- 68 pages and 8 route handlers.
+- 76 pages and 12 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -62,18 +64,30 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/accounts` | page |
 | `/accounts/[id]` | page |
 | `/accounts/[id]/edit` | page |
+| `/accounts/[id]/links` | route handler |
 | `/accounts/health` | page |
 | `/accounts/new` | page |
+| `/accounts/search` | route handler |
 | `/api/auth/callback/keycloak` | route handler |
 | `/api/auth/login` | route handler |
+| `/api/voice/speak` | route handler |
+| `/api/voice/transcribe` | route handler |
 | `/assistant` | page |
 | `/automation` | page |
 | `/automation/[id]` | page |
 | `/automation/new` | page |
+| `/communications` | page |
+| `/communications/templates` | page |
+| `/communications/templates/[id]` | page |
+| `/communications/templates/new` | page |
 | `/contacts` | page |
 | `/contacts/[id]` | page |
 | `/contacts/[id]/edit` | page |
 | `/contacts/new` | page |
+| `/contracts` | page |
+| `/contracts/[id]` | page |
+| `/contracts/[id]/edit` | page |
+| `/contracts/new` | page |
 | `/documents` | page |
 | `/documents/[id]/download` | route handler |
 | `/invoices` | page |
@@ -137,10 +151,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **68**
-- Frontend component test files: **14**
-- Playwright end-to-end specs: **20**
+- Backend test files: **89**
+- Frontend component test files: **20**
+- Playwright end-to-end specs: **23**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **45** (12 in `docs/adr/`)
+- Markdown documents under `docs/`: **48** (13 in `docs/adr/`)

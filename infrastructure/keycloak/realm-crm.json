@@ -127,6 +127,43 @@
         "oauth2.device.authorization.grant.enabled": "false",
         "oidc.ciba.grant.enabled": "false"
       }
+    },
+    {
+      "clientId": "crm-mcp",
+      "name": "crm-lead MCP server (local, read-only)",
+      "description": "Public client for the local MCP server (ADR 0015 (originally 0010)). Authorization Code + PKCE (S256) with a loopback redirect; staff roles only. Not shipped to production.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": false,
+      "redirectUris": [
+        "http://127.0.0.1:8765/callback"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      },
+      "fullScopeAllowed": false,
+      "protocolMappers": [
+        {
+          "name": "audience-crm-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "crm-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "scopeMappings": [
@@ -139,6 +176,15 @@
         "sales_agent",
         "support_agent",
         "customer"
+      ]
+    },
+    {
+      "client": "crm-mcp",
+      "roles": [
+        "tenant_admin",
+        "sales_manager",
+        "sales_agent",
+        "support_agent"
       ]
     }
   ],

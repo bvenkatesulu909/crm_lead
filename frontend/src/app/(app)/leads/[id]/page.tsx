@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ActivityPanel } from "@/components/activity-panel";
+import { ChatTranscriptCard } from "@/components/chat-transcript-card";
 import { EmailCard } from "@/components/email-card";
 import { LeadScoreCard } from "@/components/lead-score";
 import { Card, Forbidden, StatusBadge, SuccessAlert } from "@/components/ui";
@@ -15,6 +16,7 @@ import type {
   DirectoryUser,
   Lead,
   LeadScore,
+  PublicChatTranscript,
 } from "@/lib/api-types";
 import {
   PROPERTY_TYPE_LABELS,
@@ -97,6 +99,13 @@ export default async function LeadPage({
   const score = await apiFetch<LeadScore>(`/leads/${id}/score`).catch(
     () => null,
   );
+  // Only website leads can have a chat (ADR 0013); like the score, the page works without it.
+  const transcript =
+    lead.source === "web"
+      ? await apiFetch<PublicChatTranscript>(
+          `/public-chat/leads/${id}/transcript`,
+        ).catch(() => null)
+      : null;
   const [activities, assignments, people, hasAccounts, convertedAccount] =
     await Promise.all([
       apiFetch<Activity[]>(`/leads/${id}/activities`),
@@ -207,6 +216,8 @@ export default async function LeadPage({
               ))}
             </dl>
           </Card>
+
+          {transcript && <ChatTranscriptCard transcript={transcript} />}
 
           <Card>
             <h2 className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">

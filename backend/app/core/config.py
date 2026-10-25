@@ -102,6 +102,8 @@ class Settings(BaseSettings):
     public_chat_messages_per_session: int = Field(default=30, ge=1, le=500)
     # A ceiling on the model bill: visitor messages per organisation per day.
     public_chat_messages_per_day: int = Field(default=500, ge=1, le=1_000_000)
+    # Conversations that never became a lead are deleted after this many quiet days (privacy).
+    public_chat_retention_days: int = Field(default=30, ge=1, le=3650)
     # Server-side speech gateway (STT/TTS), OpenAI-compatible audio API. Disabled without a key.
     voice_enabled: bool = True
     voice_provider: Literal["openai", "elevenlabs", "local"] = "openai"

@@ -16,6 +16,7 @@ from app.core.auth.rbac import (
     parse_roles,
     permissions_for,
 )
+from app.core.db import bind_user
 from app.modules.identity.dependencies import get_principal, require_any_permission
 from app.modules.identity.models import PortalAccessGrant, Tenant, User
 
@@ -23,6 +24,7 @@ __all__ = [
     "staff_with_role",
     "AUTOMATION_ISSUER",
     "automation_principal",
+    "bind_reader",
     "get_principal",
     "granted_account_ids",
     "is_assignable_sales_user",
@@ -171,6 +173,19 @@ def staff_principal(session: Session, tenant_id: uuid.UUID, user_id: uuid.UUID) 
         display_name=row.display_name,
         email=row.email,
     )
+
+
+def bind_reader(session: Session, principal: Principal) -> None:
+    """Let background work read as ``principal``: apply its user and lead scope to the
+    transaction, as a request does (ADR 0009).
+
+    The worker binds only the tenant, and the leads policy hides every lead without a user and
+    scope. The module's own SQL filter (e.g. "agents see their own leads") still applies on top.
+    """
+    if principal.user_id is None:
+        return
+    scope = "all" if principal.has_permission(Permission.LEAD_READ_ALL) else "own"
+    bind_user(session, principal.user_id, scope)
 
 
 def staff_with_permission(

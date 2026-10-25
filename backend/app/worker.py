@@ -36,6 +36,7 @@ from app.modules.contracts import api as contracts_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
 from app.modules.notifications import api as notifications_api
+from app.modules.public_chat import api as public_chat_api
 from app.modules.quotes import api as quotes_api
 from app.modules.workflows import api as workflows_api
 
@@ -94,13 +95,14 @@ def run_schedules(
     *,
     include_workflows: bool = True,
 ) -> int:
-    """Time-based work (ADR 0006): task reminders whose time has come and, when asked,
-    workflow rules with a schedule trigger (the loop asks about once a minute)."""
+    """Time-based work (ADR 0006): task reminders whose time has come and, when asked (about
+    once a minute), contract dates, the website-chat clean-up and scheduled workflow rules."""
     now = datetime.now(UTC)
     with session_factory() as session:
         tenant_ids = list(session.scalars(select(Tenant.id).where(Tenant.status == "active")).all())
     count = 0
     limit = settings.workflow_actions_per_hour if settings else 500
+    retention = settings.public_chat_retention_days if settings else 30
     for tenant_id in tenant_ids:
         # Each tenant's scheduled work runs in its own transaction with app.tenant_id set.
         with session_factory() as session, session.begin():
@@ -111,6 +113,12 @@ def run_schedules(
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += contracts_api.run_schedules(session, now, tenant_id=tenant_id)
+            # Website chats that never became a lead: deleted after the retention (privacy).
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += public_chat_api.delete_stale_conversations(
+                    session, now, tenant_id=tenant_id, retention_days=retention
+                )
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += workflows_api.run_schedules(

@@ -5,7 +5,8 @@ the visitor's address and everything about the lead are server-side; the answer 
 CRM data - only the token, the reply text and whether the details were passed on.
 """
 
-from typing import Annotated
+from datetime import datetime
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
@@ -28,3 +29,20 @@ class PublicChatReply(BaseModel):
     token: str
     reply: str
     lead_saved: bool = Field(description="True once this conversation's details were saved.")
+
+
+class TranscriptMessage(BaseModel):
+    """One message of a website conversation, as staff see it on the lead page."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    role: Literal["visitor", "assistant"]
+    content: str
+    created_at: datetime
+
+
+class PublicChatTranscript(BaseModel):
+    """The website conversation that created a lead (empty if the lead came another way)."""
+
+    started_at: datetime | None
+    messages: list[TranscriptMessage]

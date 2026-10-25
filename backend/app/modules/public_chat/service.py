@@ -15,15 +15,22 @@ from typing import Any
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.core.auth.principal import Principal
 from app.core.config import Settings
-from app.core.db import bind_tenant, bind_user
+from app.core.db import bind_tenant
 from app.core.errors import DomainError, NotFoundError
+from app.core.events import publish
 from app.modules.assistant import api as assistant_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 from app.modules.public_chat import repository, rules
 from app.modules.public_chat.models import MESSAGE_MAX, PublicChatMessage, PublicChatSession
-from app.modules.public_chat.schemas import PublicChatReply, PublicChatRequest
+from app.modules.public_chat.schemas import (
+    PublicChatReply,
+    PublicChatRequest,
+    PublicChatTranscript,
+    TranscriptMessage,
+)
 
 
 class PublicChatNotFoundError(NotFoundError):
@@ -61,6 +68,14 @@ class BusyError(DomainError):
 
     def __init__(self) -> None:
         super().__init__("The chat is very busy today. Please try again tomorrow or call us.")
+
+
+class LeadNotFoundError(NotFoundError):
+    code = "lead_not_found"
+
+    def __init__(self) -> None:
+        # Same answer whether the lead doesn't exist, is another tenant's or isn't yours.
+        super().__init__("Lead not found.")
 
 
 def _now() -> datetime:
@@ -110,10 +125,9 @@ def _save_lead(
         problems = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
         return f"The details are not complete or not valid ({problems}). Ask the visitor.", True
     # The tenant's Automation identity creates the lead (unassigned, audited by the leads
-    # module). Leads' RLS needs the lead scope "all" for a lead without an owner.
+    # module). It reads all leads, so leads' RLS allows a lead without an owner.
     automation = identity_api.automation_principal(session, tenant_id)
-    if automation.user_id is not None:
-        bind_user(session, automation.user_id, "all")
+    identity_api.bind_reader(session, automation)
     first_name, last_name = rules.split_name(args.full_name)
     conversation.lead_id = leads_api.create_lead_from_website(
         session,
@@ -129,6 +143,13 @@ def _save_lead(
         notes=args.notes,
     )
     session.flush()
+    # Sales managers hear about it through the worker (notifications, ADR 0006): IDs only.
+    publish(
+        session,
+        tenant_id,
+        "public_chat.lead_captured",
+        {"lead_id": str(conversation.lead_id), "session_id": str(conversation.id)},
+    )
     return json.dumps({"saved": True}), False
 
 
@@ -223,3 +244,35 @@ def handle_message(
     conversation.updated_at = _now()
     session.flush()
     return PublicChatReply(token=token, reply=answer, lead_saved=conversation.lead_id is not None)
+
+
+# --- staff: the conversation on the lead page (step PC4) -------------------------------------
+
+
+def lead_transcript(
+    session: Session, principal: Principal, lead_id: uuid.UUID
+) -> PublicChatTranscript:
+    """The website conversation of a lead the principal may see (the leads module decides)."""
+    if principal.tenant_id is None or not leads_api.is_readable_lead(session, principal, lead_id):
+        raise LeadNotFoundError()
+    conversation = repository.session_of_lead(session, principal.tenant_id, lead_id)
+    if conversation is None:
+        return PublicChatTranscript(started_at=None, messages=[])
+    return PublicChatTranscript(
+        started_at=conversation.created_at,
+        messages=[
+            TranscriptMessage.model_validate(m)
+            for m in repository.all_messages(session, conversation)
+        ],
+    )
+
+
+# --- worker: privacy clean-up (step PC4) ------------------------------------------------------
+
+
+def delete_stale_conversations(
+    session: Session, now: datetime, *, tenant_id: uuid.UUID, retention_days: int
+) -> int:
+    """Conversations that never became a lead are kept ``retention_days`` after their last
+    message, then deleted (ADR 0013). Those that became a lead stay with the lead."""
+    return repository.delete_stale(session, tenant_id, now - timedelta(days=retention_days))

@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.modules.public_chat.models import PublicChatMessage, PublicChatSession
@@ -92,3 +92,48 @@ def recent_messages(
         .limit(limit)
     ).all()
     return list(reversed(newest))
+
+
+def session_of_lead(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID
+) -> PublicChatSession | None:
+    """The conversation that created this lead (each conversation saves at most one lead)."""
+    return session.scalars(
+        select(PublicChatSession)
+        .where(PublicChatSession.tenant_id == tenant_id, PublicChatSession.lead_id == lead_id)
+        .order_by(PublicChatSession.created_at)
+        .limit(1)
+    ).one_or_none()
+
+
+def all_messages(session: Session, conversation: PublicChatSession) -> Sequence[PublicChatMessage]:
+    """Every message, oldest first (a conversation is capped at 30 visitor messages)."""
+    return session.scalars(
+        select(PublicChatMessage)
+        .where(
+            PublicChatMessage.tenant_id == conversation.tenant_id,
+            PublicChatMessage.session_id == conversation.id,
+        )
+        .order_by(PublicChatMessage.seq)
+    ).all()
+
+
+def delete_stale(session: Session, tenant_id: uuid.UUID, before: datetime) -> int:
+    """Delete conversations without a lead that were quiet since ``before``, with their
+    messages. Returns how many conversations went."""
+    stale = select(PublicChatSession.id).where(
+        PublicChatSession.tenant_id == tenant_id,
+        PublicChatSession.lead_id.is_(None),
+        PublicChatSession.updated_at < before,
+    )
+    session.execute(
+        delete(PublicChatMessage).where(
+            PublicChatMessage.tenant_id == tenant_id, PublicChatMessage.session_id.in_(stale)
+        )
+    )
+    result = session.execute(
+        delete(PublicChatSession).where(
+            PublicChatSession.tenant_id == tenant_id, PublicChatSession.id.in_(stale)
+        )
+    )
+    return int(getattr(result, "rowcount", 0) or 0)

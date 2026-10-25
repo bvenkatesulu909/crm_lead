@@ -9,19 +9,33 @@ commit once.
 
 import hmac
 import ipaddress
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
+from app.core.auth.principal import Principal
+from app.core.auth.rbac import Permission
 from app.core.config import Settings
 from app.core.db import get_db_session
 from app.core.errors import problem_responses
+from app.modules.identity.api import require_any_permission
 from app.modules.public_chat import service
-from app.modules.public_chat.schemas import PublicChatReply, PublicChatRequest
+from app.modules.public_chat.schemas import (
+    PublicChatReply,
+    PublicChatRequest,
+    PublicChatTranscript,
+)
 
 router = APIRouter(prefix="/public", tags=["public chat"])
+# Staff side: signed-in users read a lead's website conversation (never visitors).
+staff_router = APIRouter(prefix="/public-chat", tags=["public chat"])
 Db = Annotated[Session, Depends(get_db_session)]
+LeadReader = Annotated[
+    Principal,
+    Depends(require_any_permission(Permission.LEAD_READ_ALL, Permission.LEAD_READ_OWN)),
+]
 
 
 def require_web_server(request: Request) -> Settings:
@@ -66,3 +80,12 @@ def public_chat(
     )
     session.commit()
     return reply
+
+
+@staff_router.get(
+    "/leads/{lead_id}/transcript",
+    summary="The website chat that created a lead you may see (empty if there was none)",
+    responses=problem_responses(404),
+)
+def lead_transcript(lead_id: uuid.UUID, principal: LeadReader, session: Db) -> PublicChatTranscript:
+    return service.lead_transcript(session, principal, lead_id)

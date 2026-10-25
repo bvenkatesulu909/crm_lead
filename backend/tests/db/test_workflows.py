@@ -31,7 +31,7 @@ from app.modules.workflows.models import WorkflowRule, WorkflowRun
 from app.worker import WorkerServices, job_handlers, run_due_jobs, run_schedules
 from tests.auth_helpers import TEST_ISSUER
 from tests.conftest import UNREACHABLE_DATABASE_URL
-from tests.db.conftest import session_factory_for, setup_lead_context
+from tests.db.conftest import forget_request_user, session_factory_for, setup_lead_context
 from tests.db.test_quotes_api import (  # noqa: F401 - fixtures used by name
     Headers,
     World,
@@ -63,6 +63,8 @@ def worker(db_connection: Connection) -> Any:
     handlers = job_handlers(WorkerServices(settings, MemoryFileStore(), MemoryMailer()))
 
     def run() -> int:
+        with factory() as fresh, fresh.begin():
+            forget_request_user(fresh)  # like a real worker transaction
         run_schedules(factory, settings)
         return run_due_jobs(factory, handlers, settings)
 

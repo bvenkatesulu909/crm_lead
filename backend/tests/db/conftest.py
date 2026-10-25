@@ -178,6 +178,18 @@ def committed_world(committed_owner_data: Session, clean_committed_data: None) -
     return committed_owner_data
 
 
+def forget_request_user(session: Session) -> None:
+    """Drop the user and lead scope earlier API calls left on the shared test transaction.
+
+    In production every worker job is its own transaction with only the tenant bound. Tests run
+    everything in one outer transaction, where a request's settings would otherwise still be
+    there when the worker runs - and hide bugs that only show up in the real worker.
+    """
+    session.execute(
+        text("select set_config('app.user_id', '', true), set_config('app.lead_scope', '', true)")
+    )
+
+
 def setup_lead_context(
     session: Session,
     tenant_id: uuid.UUID,

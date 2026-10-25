@@ -10520,6 +10520,36 @@
         "title": "PublicChatRequest",
         "type": "object"
       },
+      "PublicChatTranscript": {
+        "description": "The website conversation that created a lead (empty if the lead came another way).",
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "required": [
+          "started_at",
+          "messages"
+        ],
+        "title": "PublicChatTranscript",
+        "type": "object"
+      },
       "QuoteCreate": {
         "additionalProperties": false,
         "properties": {
@@ -13445,6 +13475,35 @@
           "actor_name"
         ],
         "title": "TimelineEntry",
+        "type": "object"
+      },
+      "TranscriptMessage": {
+        "description": "One message of a website conversation, as staff see it on the lead page.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "visitor",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content",
+          "created_at"
+        ],
+        "title": "TranscriptMessage",
         "type": "object"
       },
       "TranscriptionRead": {
@@ -28212,6 +28271,64 @@
         "summary": "Change or deactivate a product (managers)",
         "tags": [
           "catalogue"
+        ]
+      }
+    },
+    "/api/v1/public-chat/leads/{lead_id}/transcript": {
+      "get": {
+        "operationId": "lead_transcript_api_v1_public_chat_leads__lead_id__transcript_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicChatTranscript"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The website chat that created a lead you may see (empty if there was none)",
+        "tags": [
+          "public chat"
         ]
       }
     },

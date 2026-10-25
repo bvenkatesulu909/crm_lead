@@ -265,7 +265,20 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     honeypot, limits (per address, per conversation, per day), at most 2 tool rounds,
     providers deepseek | anthropic | fake (fake refused in production); `assistant/api.py`
     added. Dev database at 0041. Tests (run 2026-10-25): backend 1471 passed (+4 opt-in
-    skipped), 50 new; ruff, mypy, import-linter clean. PC4-PC6 not started.
+    skipped), 50 new; ruff, mypy, import-linter clean.
+  - PC4 (CRM-106a, 2026-10-25): event `public_chat.lead_captured` (lead + conversation ids)
+    → notification to every sales manager; `GET /api/v1/public-chat/leads/{id}/transcript`
+    (lead read permission + the lead's own read rules, else 404) and a "Website chat" card on
+    the lead page; worker deletes conversations without a lead after
+    `CRM_PUBLIC_CHAT_RETENTION_DAYS` (30) quiet days. Fixed on the way: the worker could not
+    see any lead (leads RLS needs a user + scope, the worker bound only the tenant), so
+    `lead.assigned` notifications and lead workflow rules silently did nothing - new
+    `identity_api.bind_reader`; worker tests now clear the request's settings first.
+    Tests (run 2026-10-25): public-chat 60 passed (10 new), notifications + workflows 32
+    passed; ruff, mypy, import-linter clean; Vitest 330 passed (3 new); lint, typecheck clean.
+    Full backend suite was still running at commit time. Playwright and production build not
+    re-run; the lead-page card was not checked in the browser (no website chat in the dev
+    database until PC5). PC5-PC6 not started.
 - **Next planned, in order:** BP-01 (public chat), then the master plan's AI tracks, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
   an ADR.

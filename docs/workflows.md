@@ -92,9 +92,16 @@ API (permission `workflow:manage`): `GET /workflows/catalogue`, `GET/POST /workf
 | `contract.renewal_due` | contracts (the worker, once per renewal date: end date minus the notice days) | `contract_id` - notifies the owner and creator, by e-mail by default |
 | `contract.expired` | contracts (the worker, when an active contract's end date has passed) | `contract_id` - notifies the owner and creator |
 | `communication.email_failed` | communications (the worker, when an e-mail finally could not be sent; ADR 0012) | `message_id`, `sender_id` - notifies the sender in the CRM |
+| `public_chat.lead_captured` | public_chat (a website visitor's details were saved as a lead; ADR 0013) | `lead_id`, `session_id` - notifies every sales manager (the lead is unassigned) |
 
 Rules: names must be in `EVENT_NAMES`; no personal data in payloads; subscribers must be safe
 to run twice; events caused by automation carry a `depth` (rules stop at 3, step 17b).
+
+The worker binds only the tenant. Before it reads a record for someone (notifications: each
+recipient; workflow rules: the Automation identity) it calls `identity_api.bind_reader`, which
+applies that person's user and lead scope like a request does - without it the leads policy
+(ADR 0009) hides every lead. Worker tests clear the request's settings first
+(`forget_request_user`), so they see what the real worker sees.
 
 ## API (all under `/api/v1`, permission `notification:read`, staff only)
 

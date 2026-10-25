@@ -865,6 +865,16 @@ export type LeadScore = {
   factors: { label: string; points: number }[];
 };
 
+/** GET /public-chat/leads/{id}/transcript - the website chat that created a lead (ADR 0013). */
+export type PublicChatTranscript = {
+  started_at: string | null;
+  messages: {
+    role: "visitor" | "assistant";
+    content: string;
+    created_at: string;
+  }[];
+};
+
 export type Dashboard = {
   view: DashboardView;
   available_views: DashboardView[];

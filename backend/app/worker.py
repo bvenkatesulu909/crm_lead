@@ -31,6 +31,7 @@ from app.core.mail import Mailer, MailRejectedError, build_mailer
 from app.core.outbox import DeadJobHandler, JobHandler, run_next_job
 from app.core.storage import FileStore, build_file_store
 from app.modules.activities import api as activities_api
+from app.modules.approvals import api as approvals_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.identity.models import Tenant
@@ -119,6 +120,10 @@ def run_schedules(
                 count += public_chat_api.delete_stale_conversations(
                     session, now, tenant_id=tenant_id, retention_days=retention
                 )
+            # AI proposals nobody decided on in time (ADR 0014): expired, requester told.
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += approvals_api.expire_due(session, now, tenant_id=tenant_id)
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += workflows_api.run_schedules(

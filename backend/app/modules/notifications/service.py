@@ -25,6 +25,7 @@ from app.core.events import Event, uuid_of
 from app.core.mail import Mail, Mailer
 from app.core.outbox import PermanentJobError, enqueue
 from app.modules.activities import api as activities_api
+from app.modules.approvals import api as approvals_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.identity import api as identity_api
@@ -57,6 +58,8 @@ TYPES: dict[str, str] = {
     "contract.expired": "A contract of yours has expired",
     "communication.email_failed": "An e-mail you wrote could not be delivered",
     "public_chat.lead_captured": "A visitor left their details in the website chat",
+    "agent_action.proposed": "An AI proposal is waiting for your approval",
+    "agent_action.decided": "A decision on an AI proposal you asked for",
     "workflow.message": "A message from an automation rule",
 }
 RULE_MESSAGE = "workflow.message"
@@ -114,6 +117,28 @@ def _website_lead(session: Session, me: Principal, event: Event) -> Draft | None
     lead_id = uuid_of(event, "lead_id")
     label = leads_api.lead_brief(session, me, lead_id)
     return Draft(f"New lead from the website chat: {label}", f"/leads/{lead_id}") if label else None
+
+
+def _proposal_waiting(session: Session, me: Principal, event: Event) -> Draft | None:
+    brief = approvals_api.action_brief(session, me, uuid_of(event, "action_id"))
+    if brief is None or brief[0] != "pending":
+        return None  # decided before the worker got to it: nothing to do any more
+    return Draft(f"AI proposal waiting for approval: {brief[1]}", brief[2])
+
+
+_DECISION_WORDS = {
+    "approved": "was approved",
+    "rejected": "was rejected",
+    "failed": "could not be carried out",
+    "expired": "expired",
+}
+
+
+def _proposal_decided(session: Session, me: Principal, event: Event) -> Draft | None:
+    brief = approvals_api.action_brief(session, me, uuid_of(event, "action_id"))
+    if brief is None or brief[0] not in _DECISION_WORDS:
+        return None
+    return Draft(f"Your AI proposal {_DECISION_WORDS[brief[0]]}: {brief[1]}", brief[2])
 
 
 def _activity(prefix: str) -> Describe:
@@ -199,6 +224,20 @@ def _sales_managers(session: Session, event: Event) -> set[uuid.UUID]:
     return set(identity_api.staff_with_role(session, event.tenant_id, Role.SALES_MANAGER))
 
 
+def _proposal_approvers(session: Session, event: Event) -> set[uuid.UUID]:
+    """Everyone who may decide; the requester is the actor and so left out by on_event."""
+    return set(
+        identity_api.staff_with_permission(
+            session, event.tenant_id, Permission.AGENT_ACTION_APPROVE
+        )
+    )
+
+
+def _proposal_requester(session: Session, event: Event) -> set[uuid.UUID]:
+    person = approvals_api.requester_of(session, event.tenant_id, uuid_of(event, "action_id"))
+    return {person} if person else set()
+
+
 Recipients = Callable[[Session, Event], set[uuid.UUID]]
 RULES: dict[str, tuple[Recipients, Describe]] = {
     "lead.assigned": (_assignee, _lead),
@@ -215,6 +254,8 @@ RULES: dict[str, tuple[Recipients, Describe]] = {
     "contract.expired": (_contract_people, _contract("Contract expired")),
     "communication.email_failed": (_sender, _email),
     "public_chat.lead_captured": (_sales_managers, _website_lead),
+    "agent_action.proposed": (_proposal_approvers, _proposal_waiting),
+    "agent_action.decided": (_proposal_requester, _proposal_decided),
 }
 
 

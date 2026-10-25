@@ -21,6 +21,7 @@ from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
+from app.core.events import publish
 from app.modules.accounts import api as accounts_api
 from app.modules.approvals import repository
 from app.modules.approvals.catalogue import KINDS, ActionKind, Proposal
@@ -30,6 +31,7 @@ from app.modules.leads import api as leads_api
 
 ENTITY = "agent_action"
 DEFAULT_EXPIRY_DAYS = 7
+DEFAULT_PENDING_LIMIT = 20
 
 
 class UnknownActionError(DomainError):
@@ -40,6 +42,14 @@ class UnknownActionError(DomainError):
 class InvalidActionError(DomainError):
     status_code = 422
     code = "invalid_agent_action"
+
+
+class LimitReachedError(DomainError):
+    status_code = 429
+    code = "agent_action_limit_reached"
+
+    def __init__(self) -> None:
+        super().__init__("Too many proposals are waiting for a decision. Please wait for them.")
 
 
 class NoteRequiredError(DomainError):
@@ -91,6 +101,13 @@ class ExpiredError(ConflictError):
 
     def __init__(self) -> None:
         super().__init__("This proposal has expired.")
+
+
+def _publish(session: Session, action: AgentAction, name: str, *, actor: uuid.UUID | None) -> None:
+    data = {"action_id": str(action.id)}
+    if actor is not None:
+        data["actor_id"] = str(actor)
+    publish(session, action.tenant_id, name, data)
 
 
 def _now() -> datetime:
@@ -180,6 +197,7 @@ def propose(
     agent: str,
     target_type: str | None = None,
     expires_in_days: int = DEFAULT_EXPIRY_DAYS,
+    pending_limit: int = DEFAULT_PENDING_LIMIT,
 ) -> AgentAction:
     """Store a pending proposal. Nothing in the CRM changes until someone else approves it."""
     tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_PROPOSE)
@@ -199,6 +217,8 @@ def propose(
     problem = action_kind.check(session, proposal, data)
     if problem:
         raise InvalidActionError(f"The proposal is not valid ({problem}).")
+    if repository.pending_count(session, tenant_id, user_id) >= pending_limit:
+        raise LimitReachedError()
 
     action = AgentAction(
         id=uuid.uuid4(),
@@ -216,6 +236,8 @@ def propose(
     session.add(action)
     session.flush()
     _audit(session, principal, action, "proposed")
+    # Approvers are told by the worker (notifications); the requester isn't (actor).
+    _publish(session, action, "agent_action.proposed", actor=user_id)
     return action
 
 
@@ -277,6 +299,8 @@ def _decide(
     action.decided_at = _now()
     action.decision_note = note
     session.flush()
+    # The requester is told by the worker; the decider isn't (actor).
+    _publish(session, action, "agent_action.decided", actor=user_id)
 
 
 def approve(
@@ -317,3 +341,73 @@ def reject(
     _decide(session, action, user_id, "rejected", why[:REASON_MAX])
     _audit(session, principal, action, "rejected")
     return action
+
+
+def list_actions(
+    session: Session,
+    principal: Principal,
+    *,
+    status: str | None,
+    mine: bool,
+    limit: int,
+    offset: int,
+) -> tuple[list[AgentAction], int]:
+    """Approvers: the organisation's proposals (or only their own with ``mine``); everyone
+    else: their own. Filtered in SQL, newest first."""
+    approver = principal.has_permission(Permission.AGENT_ACTION_APPROVE)
+    tenant_id, user_id = _staff(
+        principal, Permission.AGENT_ACTION_APPROVE if approver else Permission.AGENT_ACTION_PROPOSE
+    )
+    requester = user_id if mine or not approver else None
+    return repository.page(
+        session, tenant_id, status=status, requester=requester, limit=limit, offset=offset
+    )
+
+
+def target_link(action: AgentAction) -> str:
+    return f"/{action.target_type}s/{action.target_id}"
+
+
+def target_label(session: Session, principal: Principal, action: AgentAction) -> str | None:
+    """The record's name - only if this person may see the record (else None)."""
+    if not _visible(session, principal, action.target_type, action.target_id):
+        return None
+    if action.target_type == "lead":
+        return leads_api.lead_brief(session, principal, action.target_id)
+    if action.target_type == "account":
+        return accounts_api.account_name(session, action.tenant_id, action.target_id)
+    return contacts_api.contact_name(session, action.tenant_id, action.target_id)
+
+
+def action_brief(
+    session: Session, principal: Principal, action_id: uuid.UUID
+) -> tuple[str, str, str] | None:
+    """(status, description, link) of a proposal this person may read, else None - for
+    notifications."""
+    try:
+        action = get_action(session, principal, action_id)
+    except DomainError:
+        return None
+    return action.status, describe(action), f"/approvals/{action.id}"
+
+
+# --- worker: expiry (step AP2) --------------------------------------------------------------
+
+
+def expire_due(session: Session, now: datetime, *, tenant_id: uuid.UUID) -> int:
+    """Mark pending proposals whose time is up as expired and tell their requesters. Safe to
+    run twice: an expired proposal is no longer pending."""
+    expired = repository.due_for_expiry(session, tenant_id, now)
+    for action in expired:
+        action.status = "expired"
+        action.decided_at = now
+    session.flush()
+    for action in expired:
+        _publish(session, action, "agent_action.decided", actor=None)
+    return len(expired)
+
+
+def requester_of(session: Session, tenant_id: uuid.UUID, action_id: uuid.UUID) -> uuid.UUID | None:
+    """Who asked for the proposal (for notifications; they are still checked: may they read it?)."""
+    action = repository.get(session, tenant_id, action_id)
+    return action.requested_by_user_id if action else None

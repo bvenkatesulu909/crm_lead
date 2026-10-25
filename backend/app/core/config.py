@@ -161,6 +161,10 @@ class Settings(BaseSettings):
     # Communication Center (ADR 0012): e-mails one person may send per hour - a guard against
     # mistakes, not a marketing tool.
     communication_emails_per_hour: int = Field(default=200, ge=1, le=10_000)
+    # Approval queue for AI-proposed actions (ADR 0014): days until a pending proposal expires,
+    # and how many may wait per person (a looping model can't flood the queue).
+    agent_action_expiry_days: int = Field(default=7, ge=1, le=90)
+    agent_action_pending_per_user: int = Field(default=20, ge=1, le=1_000)
 
     # Background worker (outbox jobs, ADR 0005).
     worker_poll_seconds: float = Field(default=2, gt=0, le=60)

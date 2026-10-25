@@ -308,6 +308,17 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     (AP2). Dev database at 0042, `rls_audit` 55/55 protected. Tests (run 2026-10-25): backend
     1511 passed (+4 opt-in skipped), 30 new in `test_approvals.py`; ruff, mypy, import-linter
     clean.
+  - AP2 (2026-10-25): API `GET /api/v1/approvals/actions` (approvers: the organisation's, filter
+    `status` / `mine`; others: their own; paging; record name only if the reader may see it),
+    `GET /actions/{id}`, `POST /actions/{id}/approve` (version + note) and `/reject` (note
+    required); no endpoint creates proposals (only AI features, through the service). Events
+    `agent_action.proposed` -> notification to everyone who may approve except the requester,
+    `agent_action.decided` -> the requester (approved / rejected / could not be carried out /
+    expired); worker marks overdue proposals expired; at most `CRM_AGENT_ACTION_PENDING_PER_USER`
+    (20) waiting per person (429 `agent_action_limit_reached`), expiry
+    `CRM_AGENT_ACTION_EXPIRY_DAYS` (7). Tests (run 2026-10-25): backend 1523 passed (+4 opt-in
+    skipped), 12 new in `test_approvals_api.py`; ruff, mypy, import-linter clean; OpenAPI
+    exported.
 - **Next planned, in order:** BP-05 (in progress), BP-10, BP-11 (rest of AI Track A1), then
   BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need

@@ -152,3 +152,24 @@ Every error is `application/problem+json`:
 - Sales teams to narrow a manager's scope; a generic activities module (Phase 9) may absorb
   `lead_activities`.
 - Search uses `ILIKE`; for large data volumes add a `pg_trgm` index or full-text search.
+
+## Real-estate wishes (ADR 0013, step PC2, 2026-10-25)
+
+Four optional fields on every lead, for home buyers (migration 0040):
+
+| Field | Meaning | Rules (API and database) |
+|---|---|---|
+| `property_type` | `apartment`, `villa`, `plot` or `commercial` | other values refused |
+| `budget_min_inr`, `budget_max_inr` | budget in **whole rupees** (`BIGINT`, never a float) | ≥ 0, at most 1 lakh crore (typo guard), minimum ≤ maximum |
+| `location` | area or city they want, e.g. "Kokapet, Hyderabad" | ≤ 160 characters |
+
+- A change may send one side of the budget only; it is compared with the saved other side and
+  refused with `422 budget_out_of_order` if they'd be out of order. The database checks the same
+  rules (`ck_leads_property_type_allowed`, `ck_leads_budget_not_negative`,
+  `ck_leads_budget_in_order`).
+- The lead form has a "Property wishes" group. Budgets can be typed as `12000000`,
+  `1,20,00,000`, `1.2 Cr` or `80 L`; the web app turns them into whole rupees with digit
+  arithmetic (no rounding). The lead page shows them as "₹1.2 Cr – ₹1.5 Cr".
+- Changes are in the audit trail like every other lead field.
+- Tests: `backend/tests/db/test_lead_real_estate.py`, `frontend/src/lib/lead-real-estate.test.tsx`,
+  `frontend/e2e/lead-property.spec.ts`.

@@ -47,6 +47,10 @@ _DETAIL_FIELDS = (
     "phone",
     "job_title",
     "source",
+    "property_type",
+    "budget_min_inr",
+    "budget_max_inr",
+    "location",
 )
 
 
@@ -64,6 +68,14 @@ class LeadConvertedError(ConflictError):
 
 class VersionConflictError(ConflictError):
     code = "version_conflict"
+
+
+class BudgetOrderError(DomainError):
+    status_code = 422
+    code = "budget_out_of_order"
+
+    def __init__(self) -> None:
+        super().__init__("The minimum budget can't be above the maximum budget.")
 
 
 class InvalidAssigneeError(DomainError):
@@ -206,8 +218,14 @@ def update_lead(
         raise VersionConflictError(
             f"The lead was changed by someone else (now version {lead.version}). Reload it."
         )
+    changes_wanted = data.changes()
+    # A change may send one side of the budget only: compare it with the saved other side.
+    minimum = changes_wanted.get("budget_min_inr", lead.budget_min_inr)
+    maximum = changes_wanted.get("budget_max_inr", lead.budget_max_inr)
+    if isinstance(minimum, int) and isinstance(maximum, int) and minimum > maximum:
+        raise BudgetOrderError()
     before = _snapshot(lead)
-    for field, value in data.changes().items():
+    for field, value in changes_wanted.items():
         setattr(lead, field, value)
     changes = diff(before, _snapshot(lead))
     if changes:

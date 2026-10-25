@@ -228,7 +228,7 @@ automatically waits for Phase 19 (Integrations); until then received e-mails are
 - E-mail bodies never appear in logs or event payloads.
 - Definition of Done checklist complete.
 
-## Phase PC — Public website chat that saves real-estate leads (BP-01, Module 20)  *(ADR 0013 accepted 2026-10-25; PC0 and PC1 done, PC2–PC6 not started)*
+## Phase PC — Public website chat that saves real-estate leads (BP-01, Module 20)  *(ADR 0013 accepted 2026-10-25; PC0–PC2 done, PC3–PC6 not started)*
 
 A chat on the company's public website: a home buyer gives name, phone, property type, budget
 and location, and a lead is saved for the sales team. Tickets CRM-104, CRM-105, CRM-106a/b.

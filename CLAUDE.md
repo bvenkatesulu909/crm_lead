@@ -249,7 +249,15 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     functions, `tool_calls` -> `ToolUse`, results as `role: "tool"`, broken arguments -> `{}`);
     Anthropic unchanged; injectable HTTP function for tests. Tests (run 2026-10-25): backend
     1403 passed (+4 opt-in skipped), incl. 12 new in `test_deepseek_tools.py`; ruff, mypy,
-    import-linter clean. PC2-PC6 not started.
+    import-linter clean.
+  - PC2 (CRM-105, 2026-10-25): lead fields `property_type`, `budget_min_inr`, `budget_max_inr`
+    (BIGINT whole rupees, >= 0, <= 1 lakh crore, min <= max) and `location` (migration 0040 with
+    database checks; `422 budget_out_of_order` when a one-sided change breaks the order); lead
+    form "Property wishes" (accepts 12000000 / 1,20,00,000 / 1.2 Cr / 80 L), lead page shows
+    "₹1.2 Cr – ₹1.5 Cr"; docs/leads.md. Dev database at 0040. Tests (run 2026-10-25): backend
+    1421 passed (+4 opt-in skipped); Vitest 327 passed; Playwright 78 passed, 2 skipped, 0 failed
+    (new `lead-property.spec.ts`); ruff, mypy, import-linter, lint, typecheck, build clean.
+    PC3-PC6 not started.
 - **Next planned, in order:** BP-01 (public chat), then the master plan's AI tracks, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
   an ADR.

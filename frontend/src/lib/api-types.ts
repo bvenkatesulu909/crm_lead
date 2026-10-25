@@ -36,6 +36,10 @@ export const LEAD_SOURCES = [
 ] as const;
 export type LeadSource = (typeof LEAD_SOURCES)[number];
 
+/** Real-estate wishes on a lead (ADR 0013). Budgets are whole rupees. */
+export const PROPERTY_TYPES = ["apartment", "villa", "plot", "commercial"] as const;
+export type PropertyType = (typeof PROPERTY_TYPES)[number];
+
 export const LEAD_SORTS = {
   "-created_at": "Newest first",
   created_at: "Oldest first",
@@ -57,6 +61,10 @@ export type Lead = {
   job_title: string | null;
   status: LeadStatus;
   source: LeadSource | null;
+  property_type?: PropertyType | null;
+  budget_min_inr?: number | null;
+  budget_max_inr?: number | null;
+  location?: string | null;
   owner_id: string | null;
   converted_at: string | null;
   converted_account_id: string | null;

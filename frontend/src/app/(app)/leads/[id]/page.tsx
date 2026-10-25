@@ -17,7 +17,9 @@ import type {
   LeadScore,
 } from "@/lib/api-types";
 import {
+  PROPERTY_TYPE_LABELS,
   SOURCE_LABELS,
+  formatBudget,
   formatDate,
   formatDateTime,
   leadName,
@@ -126,6 +128,9 @@ export default async function LeadPage({
     ["E-mail", lead.email ?? "—"],
     ["Phone", lead.phone ?? "—"],
     ["Source", lead.source ? SOURCE_LABELS[lead.source] : "—"],
+    ["Property type", lead.property_type ? PROPERTY_TYPE_LABELS[lead.property_type] : "—"],
+    ["Budget", formatBudget(lead.budget_min_inr, lead.budget_max_inr)],
+    ["Location", lead.location ?? "—"],
     ["Owner", nameOf(lead.owner_id)],
     ["Created", formatDateTime(lead.created_at)],
     ["Last updated", formatDateTime(lead.updated_at)],

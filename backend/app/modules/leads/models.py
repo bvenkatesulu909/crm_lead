@@ -28,6 +28,8 @@ from app.core.models import (
 )
 
 LEAD_STATUSES = ("new", "contacted", "qualified", "unqualified", "converted")
+# Real-estate wishes (ADR 0013, step PC2). Budgets are whole rupees, so integers, never floats.
+PROPERTY_TYPES = ("apartment", "villa", "plot", "commercial")
 # Activities a user records by hand ...
 USER_ACTIVITY_KINDS = ("note", "call", "email", "meeting")
 # ... and ones the system writes automatically when something happens to the lead.
@@ -72,6 +74,19 @@ class Lead(
             "(converted_account_id IS NOT NULL AND converted_contact_id IS NOT NULL)",
             name="converted_has_records",
         ),
+        CheckConstraint(
+            f"property_type IS NULL OR property_type IN {PROPERTY_TYPES}",
+            name="property_type_allowed",
+        ),
+        CheckConstraint(
+            "(budget_min_inr IS NULL OR budget_min_inr >= 0) "
+            "AND (budget_max_inr IS NULL OR budget_max_inr >= 0)",
+            name="budget_not_negative",
+        ),
+        CheckConstraint(
+            "budget_min_inr IS NULL OR budget_max_inr IS NULL OR budget_min_inr <= budget_max_inr",
+            name="budget_in_order",
+        ),
         Index("ix_leads_tenant_id_status", "tenant_id", "status"),
         Index("ix_leads_tenant_id_owner_id", "tenant_id", "owner_id"),
         Index("ix_leads_tenant_id_lower_email", "tenant_id", func.lower(text("email"))),
@@ -91,6 +106,10 @@ class Lead(
     converted_account_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     converted_contact_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     converted_opportunity_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    property_type: Mapped[str | None] = mapped_column(String(20))
+    budget_min_inr: Mapped[int | None] = mapped_column(BigInteger)
+    budget_max_inr: Mapped[int | None] = mapped_column(BigInteger)
+    location: Mapped[str | None] = mapped_column(String(160))
 
 
 class LeadActivity(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):

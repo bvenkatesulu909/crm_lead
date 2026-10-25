@@ -5895,6 +5895,34 @@
           }
         ],
         "properties": {
+          "budget_max_inr": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whole rupees.",
+            "title": "Budget Max Inr"
+          },
+          "budget_min_inr": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whole rupees.",
+            "title": "Budget Min Inr"
+          },
           "company_name": {
             "anyOf": [
               {
@@ -5953,6 +5981,20 @@
             "title": "Last Name",
             "type": "string"
           },
+          "location": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Area or city they want.",
+            "title": "Location"
+          },
           "owner_id": {
             "anyOf": [
               {
@@ -5978,6 +6020,23 @@
               }
             ],
             "title": "Phone"
+          },
+          "property_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "apartment",
+                  "villa",
+                  "plot",
+                  "commercial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Property Type"
           },
           "source": {
             "anyOf": [
@@ -6147,6 +6206,28 @@
       },
       "LeadRead": {
         "properties": {
+          "budget_max_inr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max Inr"
+          },
+          "budget_min_inr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Min Inr"
+          },
           "company_name": {
             "anyOf": [
               {
@@ -6253,6 +6334,17 @@
             "title": "Last Name",
             "type": "string"
           },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
           "owner_id": {
             "anyOf": [
               {
@@ -6292,6 +6384,23 @@
             ],
             "description": "hot (70+), warm (40-69) or cold (<40).",
             "title": "Priority"
+          },
+          "property_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "apartment",
+                  "villa",
+                  "plot",
+                  "commercial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Property Type"
           },
           "score": {
             "anyOf": [
@@ -6433,6 +6542,32 @@
         "additionalProperties": false,
         "description": "Partial update. Send only the fields to change, plus the ``version`` you last read.",
         "properties": {
+          "budget_max_inr": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max Inr"
+          },
+          "budget_min_inr": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Min Inr"
+          },
           "company_name": {
             "anyOf": [
               {
@@ -6498,6 +6633,19 @@
             ],
             "title": "Last Name"
           },
+          "location": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
           "phone": {
             "anyOf": [
               {
@@ -6510,6 +6658,23 @@
               }
             ],
             "title": "Phone"
+          },
+          "property_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "apartment",
+                  "villa",
+                  "plot",
+                  "commercial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Property Type"
           },
           "source": {
             "anyOf": [

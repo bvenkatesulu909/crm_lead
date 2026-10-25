@@ -44,7 +44,14 @@ export default async function AuthenticatedLayout({
   }
 
   const name = me.display_name ?? me.email ?? "Signed-in user";
-  const userMenu = <UserMenu name={name} email={me.email} roles={me.roles} />;
+  const userMenu = (
+    <UserMenu
+      name={name}
+      email={me.email}
+      roles={me.roles}
+      permissions={me.permissions}
+    />
+  );
 
   // Customers have their own portal; the staff CRM is only for employees.
   if (me.user_type === "customer") redirect("/portal");

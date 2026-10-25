@@ -214,7 +214,11 @@ export function navigationFor(
   if (canReadKnowledge(me))
     items.push({ href: "/knowledge", label: "Knowledge", icon: "knowledge" });
   if (canReadTickets(me))
-    items.push({ href: "/assistant", label: "AI Assistant", icon: "assistant" });
+    items.push({
+      href: "/assistant",
+      label: "AI Assistant",
+      icon: "assistant",
+    });
   if (canReadApprovals(me))
     items.push({ href: "/approvals", label: "Approvals", icon: "approvals" });
   if (me.permissions.length > 0 && canUseReports(me))
@@ -229,6 +233,24 @@ export function navigationFor(
     });
   return items;
 }
+
+/**
+ * Which leads this user sees (BP-04), for the badge in the user menu: "all" = every lead of the
+ * organisation (managers, admins), "own" = only leads they own (agents), null = no lead access.
+ * Display only - the database decides (row-level security) - so a wrong badge can't leak a lead.
+ */
+export function leadAccessOf(
+  permissions: readonly string[],
+): "all" | "own" | null {
+  if (permissions.includes("lead:read:all")) return "all";
+  if (permissions.includes("lead:read:own")) return "own";
+  return null;
+}
+
+export const LEAD_ACCESS_LABELS = {
+  all: "All leads in your organisation",
+  own: "Own leads only",
+} as const;
 
 export const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
@@ -311,7 +333,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "communication:read:own": "See the e-mails you sent or logged",
   "communication:template:manage": "Create and change e-mail templates",
   "workflow:manage": "Create automation rules",
-  "agent_action:propose": "Let the AI assistant propose changes, and see your own proposals",
+  "agent_action:propose":
+    "Let the AI assistant propose changes, and see your own proposals",
   "agent_action:approve": "Approve or reject AI proposals made for colleagues",
   "portal:quote:read": "View your company's quotes in the portal",
   "portal:quote:respond": "Accept or decline quotes in the portal",

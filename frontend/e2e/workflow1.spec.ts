@@ -59,7 +59,9 @@ test("a sales agent creates a lead and finds it in the list", async ({
   const allModules = page.getByRole("navigation", { name: "All CRM modules" });
   await expect(allModules).toContainText("Marketing");
   await expect(allModules).toContainText("Administration");
-  await expect(allModules.getByLabel("Marketing: Planned · phase 16")).toBeVisible();
+  await expect(
+    allModules.getByLabel("Marketing: Planned · phase 16"),
+  ).toBeVisible();
 
   // Module overview: only working modules are links.
   const modules = page.getByRole("region", { name: "CRM modules" });
@@ -142,6 +144,47 @@ test("visibility of leads is decided by the backend: own, all, or other tenant",
     otherTenant.getByText("No leads match your search"),
   ).toBeVisible();
 });
+
+test("a colleague's lead can't be opened by its address, and the menu says what you see", async ({
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  const lastName = uniqueName("E2eHidden");
+  const signedIn = async (username: string, target = "/") => {
+    const page = await (await browser.newContext()).newPage();
+    await login(page, username, target);
+    return page;
+  };
+
+  // Agent 2 creates a lead; it belongs to agent 2.
+  const owner = await signedIn(USERS.agent2, "/leads/new");
+  await owner.getByLabel(/Last name/).fill(lastName);
+  await owner.getByRole("button", { name: "Create lead" }).click();
+  await owner.getByRole("link", { name: new RegExp(lastName) }).first().click();
+  await owner.waitForURL(/\/leads\/[0-9a-f-]{36}$/);
+  const address = new URL(owner.url()).pathname;
+
+  // Agent 1 types that address: the database hides the lead, so the page is "not found" - the
+  // same answer as for a lead that doesn't exist.
+  const colleague = await signedIn(USERS.agent1, address);
+  await expect(colleague.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expect(colleague.getByText(lastName)).toHaveCount(0);
+  const missing = await signedIn(USERS.agent1, "/leads/00000000-0000-4000-8000-000000000000");
+  await expect(missing.getByRole("heading", { name: "Page not found" })).toBeVisible();
+
+  // The user menu tells an agent they only see their own leads...
+  await colleague.goto("/");
+  await colleague.getByRole("button", { name: /account menu/i }).click();
+  await expect(colleague.getByText("Own leads only")).toBeVisible();
+  await expect(colleague.getByText("All leads in your organisation")).toHaveCount(0);
+
+  // ...and a manager that they see every lead of the organisation - including this one.
+  const manager = await signedIn(USERS.manager, address);
+  await expect(manager.getByRole("heading", { name: lastName })).toBeVisible();
+  await manager.getByRole("button", { name: /account menu/i }).click();
+  await expect(manager.getByText("All leads in your organisation")).toBeVisible();
+  await expect(manager.getByText("Own leads only")).toHaveCount(0);
+}); // prettier-ignore
 
 test("roles without lead access don't see it - and the backend refuses direct URLs", async ({
   page,

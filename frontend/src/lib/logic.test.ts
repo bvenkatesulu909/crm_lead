@@ -13,7 +13,11 @@ import {
 import { ApiError, toErrorInfo } from "@/lib/api-error";
 import type { Me } from "@/lib/api-types";
 import { modulesFor, sidebarModulesFor } from "@/lib/modules";
-import { PERMISSION_LABELS, navigationFor } from "@/lib/permissions";
+import {
+  PERMISSION_LABELS,
+  leadAccessOf,
+  navigationFor,
+} from "@/lib/permissions";
 import { validateLead } from "@/lib/validation/lead";
 
 const PERMISSIONS: Record<string, string[]> = {
@@ -356,5 +360,20 @@ describe("sidebar module list", () => {
   it("is empty for platform operators and customers", () => {
     expect(sidebarModulesFor(me("super_admin", "platform"), [])).toEqual([]);
     expect(sidebarModulesFor(me("customer", "customer"), [])).toEqual([]);
+  });
+});
+
+describe("leadAccessOf (BP-04 badge)", () => {
+  it("tells managers from agents from roles without lead access", () => {
+    expect(leadAccessOf(["lead:read:all", "lead:read:own"])).toBe("all");
+    expect(leadAccessOf(["lead:read:own"])).toBe("own");
+    expect(leadAccessOf(["ticket:read:all"])).toBeNull();
+    expect(leadAccessOf([])).toBeNull();
+  });
+
+  it("gives the right answer for the roles used in these tests", () => {
+    expect(leadAccessOf(PERMISSIONS.sales_agent)).toBe("own");
+    expect(leadAccessOf(PERMISSIONS.sales_manager)).toBe("all");
+    expect(leadAccessOf(PERMISSIONS.support_agent)).toBeNull();
   });
 });

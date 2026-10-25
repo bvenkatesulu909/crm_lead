@@ -228,7 +228,7 @@ automatically waits for Phase 19 (Integrations); until then received e-mails are
 - E-mail bodies never appear in logs or event payloads.
 - Definition of Done checklist complete.
 
-## Phase PC — Public website chat that saves real-estate leads (BP-01, Module 20)  *(ADR 0013 accepted 2026-10-25; PC0–PC6 done; PR open, not merged)*
+## Phase PC — Public website chat that saves real-estate leads (BP-01, Module 20)  *(ADR 0013 accepted 2026-10-25; PC0–PC6 done; merged into `main` as PR #17)*
 
 A chat on the company's public website: a home buyer gives name, phone, property type, budget
 and location, and a lead is saved for the sales team. Tickets CRM-104, CRM-105, CRM-106a/b.
@@ -266,6 +266,37 @@ protection (server-only key, one tenant per website, limits, guardrails, plain-t
 - Works without any paid key (fake provider); the fake provider can't start in production.
 - Going live is not part of this phase (ADR 0007, owner's "go live").
 - Definition of Done checklist complete.
+
+## Phase AP — Approval queue for AI-proposed actions (BP-05, Module 21)  *(ADR 0014 proposed 2026-10-25; AP0 written, waiting for review)*
+
+The AI may **suggest** changes to real records (lead status, assignment, follow-up task); a
+sales manager or tenant admin approves or rejects; an approved change runs through the owning
+module's `api.py` as the approver, in one locked transaction, with audit. No self-approval.
+First object of the rest of AI Track A1 (then BP-10 evaluation harness, BP-11 MCP server).
+
+**Steps (each stops for review)**
+- **AP0** — ADR 0014 and this phase description (documents only).
+- **AP1** — `approvals` module: `agent_actions` (migration 0042, forced RLS), permissions
+  `agent_action:read` / `agent_action:approve`, catalogue `lead.set_status`, `lead.assign`,
+  `activity.create_task`, propose / approve / reject with row lock, version check, no
+  self-approval, failure rollback to a savepoint, audit; `leads_api.assign_lead`.
+- **AP2** — API endpoints; events `agent_action.proposed` / `agent_action.decided` →
+  notifications; worker expiry after 7 days; at most 20 pending proposals per requester.
+- **AP3** — Staff assistant: tools passed to the model; `propose_lead_status`,
+  `propose_lead_assignment`, `propose_follow_up_task`; scripted fake-model tests.
+- **AP4** — Web: Approvals page (pending cards, history, my proposals), record links,
+  Automation card, the assistant shows the waiting proposal; Vitest.
+- **AP5** — Playwright journey, `docs/approvals.md`, refreshed inventory, full run, PR.
+
+**Acceptance criteria**
+- The model can only create **pending** proposals of catalogue kinds; nothing changes before a
+  person approves (tested).
+- The requester can never approve their own proposal, admins included (tested).
+- An approved action runs with the approver's rights and record rules; a target the approver
+  can't see is 404 and changes nothing (tested).
+- Double decisions (409), expiry, failure rollback, the pending limit, tenant isolation, role
+  denial and ID tampering are tested.
+- Works without any paid key (fake model in tests). Definition of Done checklist complete.
 
 ## Phase 16 — Marketing Management (Module 7)
 

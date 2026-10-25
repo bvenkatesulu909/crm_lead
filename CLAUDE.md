@@ -292,7 +292,12 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     3-conversations-per-address limit because every local run shared one address; fixed by
     giving each run its own test address, then the spec passed twice (2 + 2). The full
     Playwright suite was not re-run after that fix. Lint, typecheck, production build clean.
-    **BP-01 built**; PR open, waiting for the owner's review.
-- **Next planned, in order:** BP-01 review and merge, then BP-04 leftovers and the master plan's AI tracks, Marketing
+    **BP-01 complete**: approved by the owner and **merged into `main` (PR #17,
+    2026-10-25)** after both GitHub CI runs passed.
+- **Approval queue for AI actions (BP-05, Phase AP, ADR 0014)** - started 2026-10-25 on branch
+  `feat/agent-approvals`. AP0: ADR 0014 (proposed) + phase plan; waiting for the owner's review
+  before any code.
+- **Next planned, in order:** BP-05 (in progress), BP-10, BP-11 (rest of AI Track A1), then
+  BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
   an ADR.

@@ -35,6 +35,8 @@ text is data, not instructions (protection against "prompt injection" hidden in 
 
 The full contract (inputs, API calls, rules, version rule) is in [`docs/mcp-tools.md`](../docs/mcp-tools.md); a test keeps it identical to the running server.
 
+Set-up for Claude Code, Claude Desktop, Cursor, VS Code and JetBrains: [`docs/mcp-clients.md`](../docs/mcp-clients.md).
+
 ## Setup (once)
 
 Needs: the local stack running (`cd infrastructure && docker compose up -d`) and the API

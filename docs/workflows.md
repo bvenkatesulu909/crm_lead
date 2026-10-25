@@ -93,6 +93,8 @@ API (permission `workflow:manage`): `GET /workflows/catalogue`, `GET/POST /workf
 | `contract.expired` | contracts (the worker, when an active contract's end date has passed) | `contract_id` - notifies the owner and creator |
 | `communication.email_failed` | communications (the worker, when an e-mail finally could not be sent; ADR 0012) | `message_id`, `sender_id` - notifies the sender in the CRM |
 | `public_chat.lead_captured` | public_chat (a website visitor's details were saved as a lead; ADR 0013) | `lead_id`, `session_id` - notifies every sales manager (the lead is unassigned) |
+| `agent_action.proposed` | approvals (an AI feature proposed an action; ADR 0014) | `action_id`, `actor_id` (the requester) - notifies everyone who may approve, except the requester |
+| `agent_action.decided` | approvals (approved, rejected, failed, or expired by the worker) | `action_id`, `actor_id` (the decider; none for expiry) - notifies the requester |
 
 Rules: names must be in `EVENT_NAMES`; no personal data in payloads; subscribers must be safe
 to run twice; events caused by automation carry a `depth` (rules stop at 3, step 17b).

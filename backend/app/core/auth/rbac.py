@@ -153,6 +153,12 @@ class Permission(StrEnum):
     DASHBOARD_SALES_OWN = "dashboard:sales:own"
     DASHBOARD_EXECUTIVE = "dashboard:executive"
 
+    # Approval queue for AI-proposed actions (ADR 0014). "propose" = the user's AI assistant may
+    # suggest changes (and the user sees their own proposals); "approve" = decide on the
+    # proposals of others in the organisation (never one's own).
+    AGENT_ACTION_PROPOSE = "agent_action:propose"
+    AGENT_ACTION_APPROVE = "agent_action:approve"
+
 
 _P = Permission
 
@@ -168,6 +174,7 @@ _SALES_ALL = frozenset(
         _P.CONTRACT_READ_ALL, _P.CONTRACT_WRITE_ALL, _P.CONTRACT_MANAGE,
         _P.DOCUMENT_READ, _P.DOCUMENT_WRITE, _P.DOCUMENT_DELETE,
         _P.COMMUNICATION_SEND, _P.COMMUNICATION_READ_ALL, _P.COMMUNICATION_TEMPLATE_MANAGE,
+        _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE,
     }
 )  # fmt: skip
 
@@ -222,6 +229,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.KNOWLEDGE_READ,
             _P.COMMUNICATION_SEND,
             _P.COMMUNICATION_READ_OWN,
+            _P.AGENT_ACTION_PROPOSE,
         }
     ),  # fmt: skip
     Role.SUPPORT_AGENT: frozenset(
@@ -239,6 +247,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.NOTIFICATION_READ,
             _P.COMMUNICATION_SEND,
             _P.COMMUNICATION_READ_OWN,
+            _P.AGENT_ACTION_PROPOSE,
         }
     ),
     Role.CUSTOMER: frozenset(

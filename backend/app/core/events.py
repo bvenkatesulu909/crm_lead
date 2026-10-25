@@ -44,6 +44,8 @@ EVENT_NAMES = frozenset(
         "contract.expired",
         "communication.email_failed",
         "public_chat.lead_captured",
+        "agent_action.proposed",
+        "agent_action.decided",
     }
 )
 MAX_DEPTH = 3

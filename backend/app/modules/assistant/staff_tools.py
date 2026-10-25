@@ -1,16 +1,23 @@
-"""Staff assistant tools: typed, permission-checked, tenant-scoped, linked."""
+"""Staff assistant tools: typed, permission-checked, tenant-scoped, linked.
+
+Reading tools return records the employee may see. Proposing tools (ADR 0014) only create a
+PENDING proposal in the approval queue - nothing in the CRM changes until a different person
+approves it.
+"""
 
 import json
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.errors import DomainError, NotFoundError
 from app.modules.accounts import api as accounts_api
+from app.modules.approvals import api as approvals_api
 from app.modules.contacts import api as contacts_api
 from app.modules.leads import api as leads_api
 from app.modules.support import api as support_api
@@ -19,11 +26,24 @@ MAX_RESULT_CHARS = 4_000
 Outcome = Literal["ok", "not_found", "invalid", "error"]
 
 
+# At most this many proposals per question: a looping or steered model can't fill the queue.
+MAX_PROPOSALS_PER_ANSWER = 3
+
+
+@dataclass(frozen=True)
+class ProposalRef:
+    id: uuid.UUID
+    description: str
+    status: str
+    link: str
+
+
 @dataclass(frozen=True)
 class StaffToolResult:
     outcome: Outcome
     content: str
     link: str | None = None
+    proposal: ProposalRef | None = None
 
     @property
     def is_error(self) -> bool:
@@ -66,12 +86,53 @@ class SearchLeadsArgs(_Args):
     limit: int = Field(default=10, ge=1, le=50)
 
 
+Reason = Field(
+    min_length=1,
+    max_length=500,
+    description="Why you propose this, in one or two sentences, for the approving manager.",
+)
+
+
+class ProposeLeadStatusArgs(_Args):
+    lead_id: uuid.UUID = Field(description="The lead UUID (from search_leads).")
+    status: Literal["contacted", "qualified", "unqualified"]
+    reason: str = Reason
+
+
+class ProposeLeadAssignmentArgs(_Args):
+    lead_id: uuid.UUID = Field(description="The lead UUID (from search_leads).")
+    owner_id: uuid.UUID = Field(description="The sales person who should own the lead.")
+    reason: str = Reason
+
+
+class ProposeFollowUpTaskArgs(_Args):
+    record_type: Literal["lead", "account", "contact"]
+    record_id: uuid.UUID = Field(description="The UUID of that lead, account or contact.")
+    subject: str = Field(min_length=3, max_length=200)
+    due_in_days: int = Field(ge=0, le=60)
+    assignee_id: uuid.UUID | None = Field(
+        default=None, description="Who should do it; empty = the employee asking."
+    )
+    reason: str = Reason
+
+
+@dataclass
+class ProposalBudget:
+    """Settings and bookkeeping for one question: what was proposed, and how much more may be."""
+
+    expiry_days: int = 7
+    pending_limit: int = 20
+    made: list[ProposalRef] = field(default_factory=list)
+
+
 @dataclass(frozen=True)
 class StaffTool:
     name: str
     description: str
     args: type[_Args]
-    handler: Callable[[Session, Principal, _Args], StaffToolResult]
+    handler: Callable[[Session, Principal, _Args], StaffToolResult] | None = None
+    # Proposing tools: (kind, target type or None = from the arguments, target id field, payload)
+    proposes: Callable[[_Args], tuple[str, str, uuid.UUID, dict[str, Any]]] | None = None
 
     def definition(self) -> dict[str, Any]:
         return {
@@ -133,6 +194,81 @@ def _get_account(session: Session, principal: Principal, args: _Args) -> StaffTo
     return StaffToolResult("ok", _json({"name": name}), f"/accounts/{args.account_id}")
 
 
+def _status_proposal(args: _Args) -> tuple[str, str, uuid.UUID, dict[str, Any]]:
+    assert isinstance(args, ProposeLeadStatusArgs)  # noqa: S101 - registry guarantees it
+    return "lead.set_status", "lead", args.lead_id, {"status": args.status}
+
+
+def _assignment_proposal(args: _Args) -> tuple[str, str, uuid.UUID, dict[str, Any]]:
+    assert isinstance(args, ProposeLeadAssignmentArgs)  # noqa: S101 - registry guarantees it
+    return "lead.assign", "lead", args.lead_id, {"owner_id": str(args.owner_id)}
+
+
+def _task_proposal(args: _Args) -> tuple[str, str, uuid.UUID, dict[str, Any]]:
+    assert isinstance(args, ProposeFollowUpTaskArgs)  # noqa: S101 - registry guarantees it
+    payload: dict[str, Any] = {"subject": args.subject, "due_in_days": args.due_in_days}
+    if args.assignee_id is not None:
+        payload["assignee_id"] = str(args.assignee_id)
+    return "activity.create_task", args.record_type, args.record_id, payload
+
+
+def _propose(
+    session: Session,
+    principal: Principal,
+    tool: StaffTool,
+    args: _Args,
+    budget: ProposalBudget | None,
+) -> StaffToolResult:
+    if budget is None or tool.proposes is None:
+        return StaffToolResult("invalid", _json({"error": "Proposals are not available here."}))
+    if len(budget.made) >= MAX_PROPOSALS_PER_ANSWER:
+        return StaffToolResult(
+            "invalid",
+            _json({"error": f"At most {MAX_PROPOSALS_PER_ANSWER} proposals per question."}),
+        )
+    kind, target_type, target_id, payload = tool.proposes(args)
+    try:
+        # A savepoint: a refused proposal leaves nothing behind.
+        with session.begin_nested():
+            action = approvals_api.propose(
+                session,
+                principal,
+                kind=kind,
+                target_type=target_type,
+                target_id=target_id,
+                payload=payload,
+                reason=getattr(args, "reason", ""),
+                agent="staff_assistant",
+                expires_in_days=budget.expiry_days,
+                pending_limit=budget.pending_limit,
+            )
+    except NotFoundError:
+        return StaffToolResult("not_found", _json({"error": "Record not found."}))
+    except DomainError as exc:
+        return StaffToolResult("invalid", _json({"error": exc.detail}))
+    ref = ProposalRef(
+        id=action.id,
+        description=approvals_api.describe(action),
+        status=action.status,
+        link=f"/approvals/{action.id}",
+    )
+    budget.made.append(ref)
+    return StaffToolResult(
+        "ok",
+        _json(
+            {
+                "proposal_id": str(ref.id),
+                "status": ref.status,
+                "description": ref.description,
+                "note": "Waiting for approval by a manager. Nothing has changed yet - never say "
+                "it was done.",
+            }
+        ),
+        ref.link,
+        ref,
+    )
+
+
 TOOLS: dict[str, StaffTool] = {
     tool.name: tool
     for tool in (
@@ -167,6 +303,25 @@ TOOLS: dict[str, StaffTool] = {
             AccountArgs,
             _get_account,
         ),
+        StaffTool(
+            "propose_lead_status",
+            "PROPOSE changing a lead's status. Creates a proposal a manager must approve; "
+            "nothing changes until then. Only when the employee asks for it.",
+            ProposeLeadStatusArgs,
+            proposes=_status_proposal,
+        ),
+        StaffTool(
+            "propose_lead_assignment",
+            "PROPOSE giving a lead to another sales person. A manager must approve it.",
+            ProposeLeadAssignmentArgs,
+            proposes=_assignment_proposal,
+        ),
+        StaffTool(
+            "propose_follow_up_task",
+            "PROPOSE a follow-up task on a lead, account or contact. A manager must approve it.",
+            ProposeFollowUpTaskArgs,
+            proposes=_task_proposal,
+        ),
     )
 }
 
@@ -176,7 +331,11 @@ def definitions() -> list[dict[str, Any]]:
 
 
 def execute(
-    session: Session, principal: Principal, name: str, raw: dict[str, Any]
+    session: Session,
+    principal: Principal,
+    name: str,
+    raw: dict[str, Any],
+    budget: ProposalBudget | None = None,
 ) -> StaffToolResult:
     tool = TOOLS.get(name)
     if tool is None:
@@ -185,6 +344,10 @@ def execute(
         args = tool.args.model_validate(raw)
     except ValidationError:
         return StaffToolResult("invalid", _json({"error": "Invalid arguments."}))
+    if tool.proposes is not None:
+        return _propose(session, principal, tool, args, budget)
+    if tool.handler is None:
+        return StaffToolResult("invalid", _json({"error": "Unknown tool."}))
     try:
         return tool.handler(session, principal, args)
     except Exception:  # noqa: BLE001 - tool failures are data, never 500s to the chat

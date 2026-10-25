@@ -38,6 +38,7 @@ __all__ = [
     "EXPORT",
     "export_table",
     "set_lead_status",
+    "assign_lead",
     "lead_facts",
     "LEAD_STATUSES",
     "lead_brief",
@@ -158,6 +159,14 @@ def set_lead_status(
 ) -> None:
     """Change a lead's status with the leads module's own rules (transitions, audit)."""
     service.change_status(session, principal, lead_id, status, reason)
+
+
+def assign_lead(
+    session: Session, principal: Principal, lead_id: uuid.UUID, owner_id: uuid.UUID, reason: str
+) -> None:
+    """Give a lead to a sales person with the same rules as the Assign button (permission,
+    assignee check, history, audit, event)."""
+    service.assign_lead(session, principal, lead_id, owner_id, reason)
 
 
 # Report builder (Phase 18): the columns that may be exported - never internal notes - and the

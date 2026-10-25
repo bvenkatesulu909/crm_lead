@@ -292,7 +292,78 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     3-conversations-per-address limit because every local run shared one address; fixed by
     giving each run its own test address, then the spec passed twice (2 + 2). The full
     Playwright suite was not re-run after that fix. Lint, typecheck, production build clean.
-    **BP-01 built**; PR open, waiting for the owner's review.
-- **Next planned, in order:** BP-01 review and merge, then BP-04 leftovers and the master plan's AI tracks, Marketing
+    **BP-01 complete**: approved by the owner and **merged into `main` (PR #17,
+    2026-10-25)** after both GitHub CI runs passed.
+- **Approval queue for AI actions (BP-05, Phase AP, ADR 0014)** - started 2026-10-25 on branch
+  `feat/agent-approvals`. AP0: ADR 0014 (accepted 2026-10-25) + phase plan.
+  - AP1 (2026-10-25): `approvals` module - `agent_actions` (migration 0042, forced RLS, DELETE
+    revoked, database check against self-decision), permissions `agent_action:propose` (all
+    staff roles) / `agent_action:approve` (sales managers, tenant admins), catalogue
+    `lead.set_status` / `lead.assign` / `activity.create_task` (lead, account or contact),
+    service propose / approve / reject: payload validated (nothing extra), record must be
+    visible to the requester (else 404), no self-approval (admins too), row lock + version +
+    expiry check, the action runs through the owning module's api.py as the approver in a
+    savepoint (refused -> "failed", nothing changed), audit `agent_action.*`;
+    `leads_api.assign_lead`, contact tasks in `activities_api.create_task`. No endpoints yet
+    (AP2). Dev database at 0042, `rls_audit` 55/55 protected. Tests (run 2026-10-25): backend
+    1511 passed (+4 opt-in skipped), 30 new in `test_approvals.py`; ruff, mypy, import-linter
+    clean.
+  - AP2 (2026-10-25): API `GET /api/v1/approvals/actions` (approvers: the organisation's, filter
+    `status` / `mine`; others: their own; paging; record name only if the reader may see it),
+    `GET /actions/{id}`, `POST /actions/{id}/approve` (version + note) and `/reject` (note
+    required); no endpoint creates proposals (only AI features, through the service). Events
+    `agent_action.proposed` -> notification to everyone who may approve except the requester,
+    `agent_action.decided` -> the requester (approved / rejected / could not be carried out /
+    expired); worker marks overdue proposals expired; at most `CRM_AGENT_ACTION_PENDING_PER_USER`
+    (20) waiting per person (429 `agent_action_limit_reached`), expiry
+    `CRM_AGENT_ACTION_EXPIRY_DAYS` (7). Tests (run 2026-10-25): backend 1523 passed (+4 opt-in
+    skipped), 12 new in `test_approvals_api.py`; ruff, mypy, import-linter clean; OpenAPI
+    exported.
+  - AP3 (2026-10-25): the staff assistant (`POST /assistant/ask`) now passes its tools to the
+    model (before, it passed none) and has three proposing tools - `propose_lead_status`,
+    `propose_lead_assignment`, `propose_follow_up_task`. They only create a pending proposal
+    (savepoint; record must be visible to the asker, strict arguments, status never
+    "converted"); at most 3 proposals per question and the per-person pending limit apply; the
+    tool result tells the model nothing has changed. The answer has a new `proposals` list
+    (id, description, status, link `/approvals/{id}`), stored by one commit in the router.
+    Scripted model, no paid key. Tests (run 2026-10-25): backend 1534 passed (+4 opt-in
+    skipped), 11 new in `test_assistant_proposals.py`; ruff, mypy, import-linter clean;
+    docs/assistant.md.
+  - AP4 (2026-10-25): screens. Menu entry "Approvals" (everyone with `agent_action:propose` or
+    `:approve`) and module tile "AI Approvals". `/approvals`: tabs Waiting (approvers only) /
+    My proposals / History with a status filter and paging, one card per proposal (what, record
+    link, why, who asked, expiry, how it ended) with Details / Reject / Approve; `/approvals/{id}`
+    (notifications link here); Reject needs a note, Approve may have one, both confirm first and
+    show the API's reasons in plain words (already decided, changed, expired, own proposal, record
+    not visible). "AI proposals" card on the lead, account and contact pages (waiting ones for
+    that record; new `target_id` filter on the list API), a card with the number waiting on the
+    Automation page, and the assistant's answer lists what it proposed ("Nothing has changed
+    yet"). Everything the model or a person wrote is shown as plain text. Tests (run
+    2026-10-25): backend 1535 passed (+4 opt-in skipped), ruff, mypy, import-linter clean; Vitest 367 passed (20 new in `approvals.test.tsx` and
+    `assistant-proposals.test.tsx`; two module-count tests updated); lint, typecheck and
+    production build clean; Playwright `workflow1` + `notifications` 10 passed (menu and tile
+    lists updated); browser check with a demo proposal as manager, agent and admin worked.
+    A demo proposal ("Demo proposal (fictional)") is left waiting in the dev database.
+  - AP5 (2026-10-25): `CRM_AI_PROVIDER=fake` - a scripted staff assistant (`assistant/fake_llm.py`,
+    understands "mark lead <id> as contacted because ...", refused in production) so the queue
+    can be tried without a paid key; Playwright `e2e/approvals.spec.ts` (agent asks the
+    assistant -> a proposal waits and the lead is unchanged -> the asker can't approve and a
+    colleague can't see it -> a manager approves -> only then the lead changes -> notifications;
+    a rejection needs a reason and changes nothing; runs only with `E2E_FAKE_ASSISTANT=1` and the
+    fake provider); `docs/approvals.md`; refreshed `docs/inventory.md`.
+    **First real-model try (DeepSeek, 2026-10-25, by hand with a script, not an automated test):**
+    asked as an agent by lead id and by lead name, `deepseek-chat` called the proposing tool,
+    a pending proposal was stored, the lead stayed unchanged and the answer said nothing had
+    changed yet and a manager must approve. Two more demo proposals are waiting in the dev
+    database (fictional alpha-demo leads). Claude (Anthropic) not tried: account has no credit.
+    Full runs (2026-10-25): backend 1547 passed (+4 opt-in skipped), ruff, mypy, import-linter
+    clean; Vitest 367 passed; lint, typecheck, production build clean; Playwright 79 passed,
+    2 skipped, 3 failed in the full run - `communications` and `lead-property` timed out while
+    the backend test suite ran at the same time, `portal-knowledge` failed because the fake
+    provider was switched on for the run (that screen asks the assistant model); all three
+    passed when rerun alone with the real provider (4 tests). The whole suite was not rerun
+    in one piece after that. **BP-05 built**; PR open, waiting for the owner's review.
+- **Next planned, in order:** BP-05 review and merge, then BP-10, BP-11 (rest of AI Track A1), then
+  BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
   an ADR.

@@ -117,6 +117,7 @@ could be extracted into its own service without rewriting it.
 | 18 | `communications` – Communication Center | one-to-one e-mail (sent and logged), e-mail templates, conversation history (ADR 0012) |
 | 19 | `contracts` – Contracts & Renewals | contracts, insert-only contract history, contract numbers, renewal reminders (docs/contracts.md) |
 | 20 | `public_chat` – Public website chat (ADR 0013) | visitor conversations, the `save_lead` tool, abuse and cost limits |
+| 21 | `approvals` – Approval queue for AI-proposed actions (ADR 0014) | proposals from AI features, the action catalogue, approve / reject with no self-approval |
 
 Shared, non-business code lives in `app/core` (config, DB session, auth, tenancy, authorization,
 audit log, events, errors, pagination).

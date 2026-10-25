@@ -73,7 +73,8 @@ class Settings(BaseSettings):
     invite_link_lifespan_seconds: int = Field(default=72 * 3600, ge=3600, le=14 * 24 * 3600)
 
     # AI runtime: "anthropic" (default, existing behaviour) or "deepseek" (OpenAI-compatible).
-    ai_provider: Literal["anthropic", "deepseek"] = "anthropic"
+    # "fake" = a scripted model for tests and local demos (no key); refused in production.
+    ai_provider: Literal["anthropic", "deepseek", "fake"] = "anthropic"
     # AI assistant (ADR 0003). Without a key the assistant answers 503 and the portal hides it.
     # The key stays on the server; customers' questions and the tool results the assistant
     # reads are sent to the selected provider.
@@ -161,6 +162,10 @@ class Settings(BaseSettings):
     # Communication Center (ADR 0012): e-mails one person may send per hour - a guard against
     # mistakes, not a marketing tool.
     communication_emails_per_hour: int = Field(default=200, ge=1, le=10_000)
+    # Approval queue for AI-proposed actions (ADR 0014): days until a pending proposal expires,
+    # and how many may wait per person (a looping model can't flood the queue).
+    agent_action_expiry_days: int = Field(default=7, ge=1, le=90)
+    agent_action_pending_per_user: int = Field(default=20, ge=1, le=1_000)
 
     # Background worker (outbox jobs, ADR 0005).
     worker_poll_seconds: float = Field(default=2, gt=0, le=60)
@@ -208,6 +213,10 @@ class Settings(BaseSettings):
     def _public_chat_is_safe(self) -> "Settings":
         if self.environment == "production" and self.public_chat_provider == "fake":
             raise ValueError("The fake public chat provider can't be used in production.")
+        if self.environment == "production" and self.ai_provider == "fake":
+            raise ValueError(
+                "The fake assistant provider (ai_provider) can't be used in production."
+            )
         key = self.public_chat_server_key
         if key is not None and len(key.get_secret_value()) < 32:
             raise ValueError("public_chat_server_key must be at least 32 characters long.")

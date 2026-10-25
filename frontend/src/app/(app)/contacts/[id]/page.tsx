@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { ActivityPanel } from "@/components/activity-panel";
 import { EmailCard } from "@/components/email-card";
+import { RecordProposals } from "@/components/record-proposals";
 import { Card, Forbidden, SuccessAlert } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
 import type {
@@ -165,6 +166,7 @@ export default async function ContactPage({
             people={people}
             ownsRecord={contact.owner_id === me.user_id || account?.owner_id === me.user_id}
           />
+          <RecordProposals me={me} targetId={contact.id} />
           <EmailCard
             me={me}
             record={{ type: "contact", id: contact.id }}

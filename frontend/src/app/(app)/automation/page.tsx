@@ -11,6 +11,7 @@ import {
   cx,
 } from "@/components/ui";
 import type {
+  AgentActionPage,
   DirectoryUser,
   WorkflowCatalogue,
   WorkflowRule,
@@ -41,11 +42,13 @@ export default async function AutomationPage({
   const query = await searchParams;
   const me = await getMe();
   if (!canManageWorkflows(me)) return <Forbidden />;
-  const [rules, runs, catalogue, people] = await Promise.all([
+  const [rules, runs, catalogue, people, waiting] = await Promise.all([
     apiFetch<WorkflowRule[]>("/workflows/rules"),
     apiFetch<WorkflowRun[]>("/workflows/runs?limit=50"),
     apiFetch<WorkflowCatalogue>("/workflows/catalogue"),
     apiFetch<DirectoryUser[]>("/users").catch(() => []),
+    // Extra information: the page works without it.
+    apiFetch<AgentActionPage>("/approvals/actions?status=pending&limit=1").catch(() => null),
   ]);
   const names = Object.fromEntries(people.map((p) => [p.id, p.display_name]));
   const triggerLabel = (key: string, days: number | null) => {
@@ -61,6 +64,20 @@ export default async function AutomationPage({
       {done && <div className="mb-4"><SuccessAlert>{done}</SuccessAlert></div>}
       <PageHeader title="Automation" description="Rules that react to what happens in the CRM - they create tasks, notify people or change a field for you."
         actions={<ButtonLink href="/automation/new">New rule</ButtonLink>} />
+      {waiting && (
+        <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 px-5 py-4" aria-labelledby="proposals-heading">
+          <div>
+            <h2 id="proposals-heading" className="text-base font-semibold text-slate-900">AI proposals</h2>
+            <p className="text-sm text-slate-600">
+              {waiting.total === 0
+                ? "Nothing is waiting for a decision."
+                : `${waiting.total} ${waiting.total === 1 ? "change is" : "changes are"} waiting for a decision.`}{" "}
+              The AI assistant only proposes; a manager approves.
+            </p>
+          </div>
+          <ButtonLink href="/approvals" variant="secondary">Open approvals</ButtonLink>
+        </Card>
+      )}
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3" aria-labelledby="rules-heading">
           <h2 id="rules-heading" className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">Rules</h2>

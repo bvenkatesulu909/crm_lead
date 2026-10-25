@@ -34,6 +34,7 @@ export type ModuleIcon =
   | "reports"
   | "integrations"
   | "assistant"
+  | "approvals"
   | "knowledge"
   | "administration";
 
@@ -92,6 +93,7 @@ export const CRM_MODULES: CrmModule[] = [
     href: "/assistant",
     permissions: ["ticket:read:all", "ticket:read:own_accounts"],
   },
+  { key: "approvals", name: "AI Approvals", description: "AI proposals waiting for a manager's decision", status: "available", phase: 20, href: "/approvals", permissions: ["agent_action:propose", "agent_action:approve"] },
   { key: "knowledge", name: "Knowledge Base", description: "Company policies and manuals, indexed with citations", status: "available", phase: 20, href: "/knowledge", permissions: ["knowledge:read"] },
   { key: "administration", name: "Administration", description: "Users, roles, invitations and sign-up approvals", status: "available", phase: 5, href: "/users", permissions: ["tenant:user:read"] },
 ]; // prettier-ignore

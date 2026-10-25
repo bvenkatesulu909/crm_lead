@@ -2,7 +2,7 @@
 
 The user types their password on Keycloak's own login page in their browser; this program only
 receives a one-time code on http://127.0.0.1:<port>/callback and exchanges it (with the PKCE
-verifier) for tokens. Tokens are kept in memory only (ADR 0015 (originally 0010)): after a restart the user signs
+verifier) for tokens. Tokens are kept in memory only (ADR 0015): after a restart the user signs
 in again. They are never logged or shown.
 """
 

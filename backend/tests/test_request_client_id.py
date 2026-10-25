@@ -1,4 +1,4 @@
-"""The access log names the calling application from the VERIFIED token (ADR 0015 (originally 0010), decision 6)."""
+"""The access log names the calling application from the VERIFIED token (ADR 0015, decision 6)."""
 
 import logging
 from typing import Any

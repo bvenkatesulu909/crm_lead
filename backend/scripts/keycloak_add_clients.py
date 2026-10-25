@@ -1,6 +1,6 @@
 """Adds clients from realm-crm.json that the RUNNING local Keycloak does not have yet.
 
-    python -m scripts.keycloak_add_clients            add missing clients (e.g. crm-mcp, ADR 0015 (originally 0010))
+    python -m scripts.keycloak_add_clients            add missing clients (e.g. crm-mcp, ADR 0015)
     python -m scripts.keycloak_add_clients --dry-run  only list what would be added
 
 Why: Keycloak imports realm-crm.json only on its very first start. Recreating the keycloak

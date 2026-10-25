@@ -1,4 +1,4 @@
-"""The read-only tools (ADR 0015 (originally 0010), decision 3). Each one maps to existing GET endpoints.
+"""The read-only tools (ADR 0015, decision 3). Each one maps to existing GET endpoints.
 
 Results are wrapped with a notice that the content is CRM data, not instructions (decision 5),
 and trimmed to the fields a person would look at. Page sizes are capped at MAX_LIMIT.

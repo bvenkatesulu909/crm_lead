@@ -1,4 +1,4 @@
-"""The crm-mcp Keycloak client (ADR 0015 (originally 0010)): local, public, PKCE, staff roles only."""
+"""The crm-mcp Keycloak client (ADR 0015): local, public, PKCE, staff roles only."""
 
 import json
 from typing import Any

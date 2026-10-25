@@ -1,4 +1,4 @@
-# crm-mcp — read-only CRM access for Claude (ADR 0015 (originally 0010))
+# crm-mcp — read-only CRM access for Claude (ADR 0015)
 
 `crm-mcp` is a small program that lets **Claude Desktop** or **Claude Code** answer questions
 from your CRM data ("which of my deals close this month?", "summarise the Acme account").
@@ -15,7 +15,7 @@ It speaks **MCP** (Model Context Protocol), the standard way AI apps call tools.
 - After restarting Claude you sign in again (tokens are kept in memory only).
 - Every call shows up in the API log with `"client_id": "crm-mcp"`, so MCP use is traceable.
 - Answers are sent to Anthropic as part of the conversation. Use it only with **test data**
-  until the owner decides otherwise (ADR 0015 (originally 0010), open question 3).
+  until the owner decides otherwise (ADR 0015, open question 3).
 
 ## Tools
 

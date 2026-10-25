@@ -1,6 +1,6 @@
 """The only way this program reaches CRM data: GET requests to the CRM API as the signed-in user.
 
-All tenant, role and record-level checks happen in the API (ADR 0015 (originally 0010), decision 1). This client
+All tenant, role and record-level checks happen in the API (ADR 0015, decision 1). This client
 only turns HTTP answers into short, safe messages - it never echoes tokens or raw bodies.
 """
 

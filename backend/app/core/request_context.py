@@ -1,7 +1,7 @@
 """Per-request context: a request ID for tracing, an access log line, and a safe 500 fallback.
 
 The access log line also names the calling application (the token's ``azp``, e.g. ``crm-web`` or
-``crm-mcp``), so calls made through the MCP server can be told apart (ADR 0015 (originally 0010), decision 6).
+``crm-mcp``), so calls made through the MCP server can be told apart (ADR 0015, decision 6).
 
 Written as a plain ASGI middleware (not BaseHTTPMiddleware) so the request ID stays available
 to log calls everywhere in the request, including in exception handlers.

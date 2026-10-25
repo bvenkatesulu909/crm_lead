@@ -10,7 +10,7 @@ What changes compared with realm-crm.json (development):
 - Addresses and mail settings are ${PLACEHOLDERS} that Keycloak fills in from environment
   variables on the first start, so no real address or password is stored in this repository.
 - Self sign-up is off (administrators invite people, ADR 0004); the stronger password rule is on.
-- The ``crm-mcp`` client is removed: the MCP server is local only (ADR 0015 (originally 0010)).
+- The ``crm-mcp`` client is removed: the MCP server is local only (ADR 0015).
 """
 
 import argparse
@@ -46,7 +46,7 @@ def build(development: dict[str, Any]) -> dict[str, Any]:
         "user": "${SMTP_USER}",
         "password": "${SMTP_PASSWORD}",
     }
-    # A remote MCP endpoint would need its own ADR (ADR 0015 (originally 0010), decision 7).
+    # A remote MCP endpoint would need its own ADR (ADR 0015, decision 7).
     realm["clients"] = [c for c in realm.get("clients", []) if c.get("clientId") not in LOCAL_ONLY]
     realm["scopeMappings"] = [
         m for m in realm.get("scopeMappings", []) if m.get("client") not in LOCAL_ONLY

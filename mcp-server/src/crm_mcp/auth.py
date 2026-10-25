@@ -92,16 +92,19 @@ class LoginFlow:
         code = callback.get("code")
         if not code:
             raise AuthError("sign-in answer had no code")
-        response = http.post(
-            f"{self._settings.issuer}/protocol/openid-connect/token",
-            data={
-                "grant_type": "authorization_code",
-                "code": code,
-                "redirect_uri": self._settings.redirect_uri,
-                "client_id": self._settings.client_id,
-                "code_verifier": self.verifier,
-            },
-        )
+        try:
+            response = http.post(
+                f"{self._settings.issuer}/protocol/openid-connect/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": self._settings.redirect_uri,
+                    "client_id": self._settings.client_id,
+                    "code_verifier": self.verifier,
+                },
+            )
+        except httpx.HTTPError:
+            raise AuthError("Keycloak is not reachable; is the local stack running?") from None
         if response.status_code != 200:
             raise AuthError(f"Keycloak refused the sign-in (HTTP {response.status_code})")
         return TokenSet.from_response(response.json(), time.time() if now is None else now)
@@ -204,14 +207,17 @@ class Authenticator:
 
     def _refresh(self, now: float) -> bool:
         assert self._tokens is not None and self._tokens.refresh_token  # noqa: S101
-        response = self._http.post(
-            f"{self._settings.issuer}/protocol/openid-connect/token",
-            data={
-                "grant_type": "refresh_token",
-                "refresh_token": self._tokens.refresh_token,
-                "client_id": self._settings.client_id,
-            },
-        )
+        try:
+            response = self._http.post(
+                f"{self._settings.issuer}/protocol/openid-connect/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": self._tokens.refresh_token,
+                    "client_id": self._settings.client_id,
+                },
+            )
+        except httpx.HTTPError:
+            raise AuthError("Keycloak is not reachable; is the local stack running?") from None
         if response.status_code != 200:
             log.info("token refresh refused (HTTP %s); signing in again", response.status_code)
             self._tokens = None

@@ -91,6 +91,7 @@ Needs: the local stack running (`cd infrastructure && docker compose up -d`) and
 | `CRM_MCP_API_URL` | `http://localhost:8000/api/v1` | CRM API address |
 | `CRM_MCP_ISSUER` | `http://localhost:9080/realms/crm` | Keycloak realm |
 | `CRM_MCP_CLIENT_ID` | `crm-mcp` | Keycloak client |
+| `CRM_MCP_MAX_CALLS_PER_MINUTE` | `60` | Most CRM API calls in any minute (1-600) |
 | `CRM_MCP_REDIRECT_PORT` | `8765` | Local port for the sign-in answer (must match the Keycloak client) |
 
 Plain `http://` is accepted only for `localhost`; anything else must be `https://`.

@@ -39,6 +39,14 @@ Name, inputs and descriptions are generated from the server. The machine-readabl
   numbers).
 - **Errors** are short, safe sentences ("not found, or you are not allowed to see it"); never a
   token, a raw API body or a stack trace. A record the person may not see is "not found".
+- **Input is checked before sign-in:** a malformed record ID is refused without opening the
+  browser or calling anything.
+- **Text typed by people is bounded:** any single text field is cut at 2,000 characters with
+  a visible marker, and always sits under `data`, never in the envelope.
+- **A runaway agent is slowed down:** at most 60 calls to the CRM in any minute (setting
+  `CRM_MCP_MAX_CALLS_PER_MINUTE`, 1-600); the rest are refused locally and never reach the CRM.
+- **Unexpected failures** reach the client only as "something unexpected went wrong"; the log
+  (stderr) gets the kind of error, never the message, a token or record text.
 - **Who may use it:** CRM staff only. Portal customers and platform administrators are refused.
   The CRM API does every tenant, role and record-level check with the person's own token.
 

@@ -39,6 +39,10 @@ def _safe[**P](fn: Callable[P, dict[str, Any]]) -> Callable[P, dict[str, Any]]:
             return fn(*args, **kwargs)
         except (ApiError, AuthError) as error:
             raise ToolError(str(error)) from None
+        except Exception as error:  # noqa: BLE001 - nothing internal may reach the client
+            # Only the kind of error is logged (stderr): messages can contain record text.
+            logging.getLogger(__name__).error("unexpected %s in a tool", type(error).__name__)
+            raise ToolError("something unexpected went wrong; see the crm-mcp log") from None
 
     return wrapper
 

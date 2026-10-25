@@ -5,6 +5,9 @@ only turns HTTP answers into short, safe messages - it never echoes tokens or ra
 """
 
 import logging
+import time
+from collections import deque
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -20,10 +23,29 @@ class ApiError(Exception):
 
 
 class CrmApi:
-    def __init__(self, settings: Settings, auth: Authenticator, http: httpx.Client) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        auth: Authenticator,
+        http: httpx.Client,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._base = settings.api_url
         self._auth = auth
         self._http = http
+        self._clock = clock
+        self._max_per_minute = settings.max_calls_per_minute
+        self._recent: deque[float] = deque()
+
+    def _throttle(self) -> None:
+        """At most ``max_calls_per_minute`` calls in any 60 seconds; the rest are refused here,
+        so a looping agent never reaches the CRM."""
+        now = self._clock()
+        while self._recent and now - self._recent[0] >= 60:
+            self._recent.popleft()
+        if len(self._recent) >= self._max_per_minute:
+            raise ApiError("too many calls in the last minute; wait a minute and try again")
+        self._recent.append(now)
 
     def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         clean = {k: v for k, v in (params or {}).items() if v is not None}
@@ -35,6 +57,7 @@ class CrmApi:
         return self._result(response)
 
     def _send(self, path: str, params: dict[str, Any]) -> httpx.Response:
+        self._throttle()
         token = self._auth.access_token()
         try:
             return self._http.get(
@@ -49,7 +72,10 @@ class CrmApi:
     def _result(response: httpx.Response) -> Any:
         status = response.status_code
         if status == 200:
-            return response.json()
+            try:
+                return response.json()
+            except ValueError:
+                raise ApiError("the CRM API answered in an unexpected format") from None
         if status == 404:
             # The API answers 404 both for "does not exist" and "not yours" (no information leak).
             raise ApiError("not found, or you are not allowed to see it")
@@ -60,6 +86,8 @@ class CrmApi:
             raise ApiError("your role is not allowed to do this")
         if status == 401:
             raise ApiError("the CRM did not accept your sign-in")
+        if status == 429:
+            raise ApiError("the CRM is busy right now; wait a moment and try again")
         if status == 422:
             raise ApiError("the CRM rejected the input (check IDs, dates and filter values)")
         log.info("CRM API answered HTTP %s", status)

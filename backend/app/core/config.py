@@ -91,6 +91,19 @@ class Settings(BaseSettings):
     deepseek_api_key: SecretStr | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
+    # Public website chat (ADR 0013). Off unless BOTH the tenant slug and the server key are set.
+    # The key is shared only by the API and the Next.js server; browsers never see it.
+    public_chat_tenant_slug: str | None = None
+    public_chat_server_key: SecretStr | None = None
+    # "fake" answers without any model (tests and local demos) and is refused in production.
+    public_chat_provider: Literal["deepseek", "anthropic", "fake"] = "deepseek"
+    public_chat_messages_per_ip_hour: int = Field(default=20, ge=1, le=10_000)
+    public_chat_sessions_per_ip_hour: int = Field(default=3, ge=1, le=1_000)
+    public_chat_messages_per_session: int = Field(default=30, ge=1, le=500)
+    # A ceiling on the model bill: visitor messages per organisation per day.
+    public_chat_messages_per_day: int = Field(default=500, ge=1, le=1_000_000)
+    # Conversations that never became a lead are deleted after this many quiet days (privacy).
+    public_chat_retention_days: int = Field(default=30, ge=1, le=3650)
     # Server-side speech gateway (STT/TTS), OpenAI-compatible audio API. Disabled without a key.
     voice_enabled: bool = True
     voice_provider: Literal["openai", "elevenlabs", "local"] = "openai"
@@ -191,6 +204,19 @@ class Settings(BaseSettings):
             raise ValueError("In production the file store must use HTTPS (files_s3_secure).")
         return self
 
+    @model_validator(mode="after")
+    def _public_chat_is_safe(self) -> "Settings":
+        if self.environment == "production" and self.public_chat_provider == "fake":
+            raise ValueError("The fake public chat provider can't be used in production.")
+        key = self.public_chat_server_key
+        if key is not None and len(key.get_secret_value()) < 32:
+            raise ValueError("public_chat_server_key must be at least 32 characters long.")
+        return self
+
+    @property
+    def public_chat_enabled(self) -> bool:
+        return bool(self.public_chat_tenant_slug) and self.public_chat_server_key is not None
+
     @property
     def files_configured(self) -> bool:
         return self.files_s3_access_key is not None and self.files_s3_secret_key is not None
@@ -211,6 +237,8 @@ class Settings(BaseSettings):
     @field_validator(
         "anthropic_api_key",
         "deepseek_api_key",
+        "public_chat_tenant_slug",
+        "public_chat_server_key",
         "voice_api_key",
         "keycloak_admin_client_secret",
         "anthropic_workspace_id",

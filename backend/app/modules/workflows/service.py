@@ -371,6 +371,7 @@ def run_rule(
     if _already_ran(session, rule, run_key):
         return None
     automation = identity_api.automation_principal(session, rule.tenant_id)
+    identity_api.bind_reader(session, automation)  # the worker binds only the tenant
     facts = _facts(session, automation, record_type, record_id)
     if facts is None or not rules.matches(rule.conditions, facts.values):
         return None

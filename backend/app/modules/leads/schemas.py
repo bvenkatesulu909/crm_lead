@@ -28,6 +28,7 @@ LeadSort = Literal[
     "company_name", "-company_name", "-score", "score",
 ]  # fmt: skip
 LeadPriority = Literal["hot", "warm", "cold"]
+PropertyType = Literal["apartment", "villa", "plot", "commercial"]
 
 _EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]+$")
 _PHONE = re.compile(r"^[0-9+().\-\s]{3,50}$")
@@ -57,6 +58,9 @@ Text255 = Annotated[str, _trimmed(255)]
 Reason = Annotated[str, _trimmed(500)]
 Email = Annotated[str, _trimmed(320), AfterValidator(_email)]
 Phone = Annotated[str, _trimmed(50), AfterValidator(_phone)]
+Text160 = Annotated[str, _trimmed(160)]
+# Whole rupees. The upper limit (1 lakh crore) only catches typos such as extra zeros.
+BudgetInr = Annotated[int, Field(ge=0, le=1_000_000_000_000)]
 
 
 class _Input(BaseModel):
@@ -71,6 +75,10 @@ class LeadCreate(_Input):
     phone: Phone | None = None
     job_title: Text150 | None = None
     source: LeadSource | None = None
+    property_type: PropertyType | None = None
+    budget_min_inr: BudgetInr | None = Field(default=None, description="Whole rupees.")
+    budget_max_inr: BudgetInr | None = Field(default=None, description="Whole rupees.")
+    location: Text160 | None = Field(default=None, description="Area or city they want.")
     owner_id: uuid.UUID | None = Field(
         default=None,
         description="Sales employee who should own the lead. Requires `lead:assign` unless it is "
@@ -92,6 +100,16 @@ class LeadCreate(_Input):
         },
     )
 
+    @model_validator(mode="after")
+    def _budget_in_order(self) -> "LeadCreate":
+        budget_in_order(self.budget_min_inr, self.budget_max_inr)
+        return self
+
+
+def budget_in_order(minimum: int | None, maximum: int | None) -> None:
+    if minimum is not None and maximum is not None and minimum > maximum:
+        raise ValueError("the minimum budget can't be above the maximum budget")
+
 
 class LeadUpdate(_Input):
     """Partial update. Send only the fields to change, plus the ``version`` you last read."""
@@ -104,6 +122,10 @@ class LeadUpdate(_Input):
     phone: Phone | None = None
     job_title: Text150 | None = None
     source: LeadSource | None = None
+    property_type: PropertyType | None = None
+    budget_min_inr: BudgetInr | None = None
+    budget_max_inr: BudgetInr | None = None
+    location: Text160 | None = None
 
     @model_validator(mode="after")
     def _check(self) -> "LeadUpdate":
@@ -203,6 +225,10 @@ class LeadRead(_Output):
     job_title: str | None
     status: LeadStatus
     source: str | None
+    property_type: PropertyType | None = None
+    budget_min_inr: int | None = None
+    budget_max_inr: int | None = None
+    location: str | None = None
     owner_id: uuid.UUID | None
     converted_at: datetime | None
     converted_account_id: uuid.UUID | None

@@ -22,6 +22,7 @@ from app.modules.knowledge import models as knowledge_models
 from app.modules.leads import models as leads_models
 from app.modules.notifications import models as notifications_models
 from app.modules.orders import models as orders_models
+from app.modules.public_chat import models as public_chat_models
 from app.modules.quotes import models as quotes_models
 from app.modules.sales import models as sales_models
 from app.modules.support import models as support_models
@@ -46,6 +47,7 @@ __all__ = [
     "notifications_models",
     "orders_models",
     "outbox_models",
+    "public_chat_models",
     "quotes_models",
     "sales_models",
     "support_models",

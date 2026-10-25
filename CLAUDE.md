@@ -241,7 +241,58 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     Full run (2026-10-25): backend 1391 passed (+4 opt-in skipped); ruff, mypy, import-linter
     clean; Vitest 295 passed; Playwright 77 passed, 2 skipped (live assistant, slow refresh),
     0 failed; lint, typecheck and production build clean. **Communication Center complete**,
-    waiting for owner review and the merge of draft PR #13.
-- **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
-  (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
-  features that need them and need an ADR.
+    approved by the owner and **merged into `main` (PR #15, 2026-10-25)**.
+- **Public website chat (BP-01, Phase PC, ADR 0013)** - started 2026-10-25 on branch
+  `feat/public-chat-save-lead`. PC0: ADR 0013 accepted + phase plan. Order of all PDF work:
+  `docs/master-plan.md`.
+  - PC1 (CRM-104, 2026-10-25): `DeepSeekChatModel` supports tool calling (tools as OpenAI
+    functions, `tool_calls` -> `ToolUse`, results as `role: "tool"`, broken arguments -> `{}`);
+    Anthropic unchanged; injectable HTTP function for tests. Tests (run 2026-10-25): backend
+    1403 passed (+4 opt-in skipped), incl. 12 new in `test_deepseek_tools.py`; ruff, mypy,
+    import-linter clean.
+  - PC2 (CRM-105, 2026-10-25): lead fields `property_type`, `budget_min_inr`, `budget_max_inr`
+    (BIGINT whole rupees, >= 0, <= 1 lakh crore, min <= max) and `location` (migration 0040 with
+    database checks; `422 budget_out_of_order` when a one-sided change breaks the order); lead
+    form "Property wishes" (accepts 12000000 / 1,20,00,000 / 1.2 Cr / 80 L), lead page shows
+    "₹1.2 Cr – ₹1.5 Cr"; docs/leads.md. Dev database at 0040. Tests (run 2026-10-25): backend
+    1421 passed (+4 opt-in skipped); Vitest 327 passed; Playwright 78 passed, 2 skipped, 0 failed
+    (new `lead-property.spec.ts`); ruff, mypy, import-linter, lint, typecheck, build clean.
+  - PC3 (CRM-106a, 2026-10-25): `public_chat` module - `POST /api/v1/public/chat` (only with
+    the `X-Public-Chat-Key` server key, else 404; tenant from `CRM_PUBLIC_CHAT_TENANT_SLUG`),
+    tables `public_chat_sessions` + `public_chat_messages` (migration 0041, forced RLS; token
+    stored as SHA-256, visitor address as a keyed hash), one tool `save_lead` (lead created as
+    the Automation identity, unassigned, source web, one per conversation), guardrails +
+    honeypot, limits (per address, per conversation, per day), at most 2 tool rounds,
+    providers deepseek | anthropic | fake (fake refused in production); `assistant/api.py`
+    added. Dev database at 0041. Tests (run 2026-10-25): backend 1471 passed (+4 opt-in
+    skipped), 50 new; ruff, mypy, import-linter clean.
+  - PC4 (CRM-106a, 2026-10-25): event `public_chat.lead_captured` (lead + conversation ids)
+    → notification to every sales manager; `GET /api/v1/public-chat/leads/{id}/transcript`
+    (lead read permission + the lead's own read rules, else 404) and a "Website chat" card on
+    the lead page; worker deletes conversations without a lead after
+    `CRM_PUBLIC_CHAT_RETENTION_DAYS` (30) quiet days. Fixed on the way: the worker could not
+    see any lead (leads RLS needs a user + scope, the worker bound only the tenant), so
+    `lead.assigned` notifications and lead workflow rules silently did nothing - new
+    `identity_api.bind_reader`; worker tests now clear the request's settings first.
+    Tests (run 2026-10-25): public-chat 60 passed (10 new), notifications + workflows 32
+    passed; ruff, mypy, import-linter clean; Vitest 330 passed (3 new); lint, typecheck clean.
+    Full backend suite (finished after the commit): 1481 passed (+4 opt-in skipped).
+  - PC5 (CRM-106b, 2026-10-25): public page `/chat` (no sign-in, privacy notice, plain-text
+    answers, hidden honeypot field, works on a phone) and route handler `/api/public-chat`
+    (adds the server key and the visitor's address - Netlify's own header first - keeps the
+    token in the httpOnly `crm_chat` cookie, path `/api/public-chat`, 30 days; one retry when
+    the old conversation was cleaned up); `proxy.ts` lets both through; both are 404 without
+    `PUBLIC_CHAT_SERVER_KEY`. Browser check (phone size, fake model): conversation -> details
+    saved, token not readable by page JavaScript, nothing in localStorage.
+  - PC6 (2026-10-25): Playwright `e2e/public-chat.spec.ts` (visitor -> lead -> manager
+    notification -> transcript on the lead page; agent can't see it; honeypot refused),
+    `docs/public-chat.md`, refreshed `docs/inventory.md`. Full runs (2026-10-25): backend 1481
+    passed (+4 opt-in skipped; no backend code changed after that run); Vitest 347 passed;
+    Playwright 79 passed, 2 skipped, 1 failed - the new chat journey, refused by the
+    3-conversations-per-address limit because every local run shared one address; fixed by
+    giving each run its own test address, then the spec passed twice (2 + 2). The full
+    Playwright suite was not re-run after that fix. Lint, typecheck, production build clean.
+    **BP-01 built**; PR open, waiting for the owner's review.
+- **Next planned, in order:** BP-01 review and merge, then BP-04 leftovers and the master plan's AI tracks, Marketing
+  (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
+  an ADR.

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { LEAD_SOURCES } from "@/lib/api-types";
+import { LEAD_SOURCES, PROPERTY_TYPES } from "@/lib/api-types";
+import { parseRupees } from "@/lib/format";
 
 /**
  * Create-lead form rules - the same limits the backend enforces (backend/app/modules/leads/
@@ -13,6 +14,24 @@ const optionalText = (max: number, label: string) =>
     .trim()
     .max(max, `${label} can be at most ${max} characters.`)
     .transform((v) => (v === "" ? undefined : v))
+    .optional();
+
+const MAX_BUDGET = 1_000_000_000_000; // 1 lakh crore - the backend's typo guard
+
+/** A budget field: empty -> undefined; "1.2 Cr" or digits -> whole rupees. */
+const budget = (label: string) =>
+  z
+    .string()
+    .trim()
+    .transform((v, ctx) => {
+      if (v === "") return undefined;
+      const rupees = parseRupees(v);
+      if (rupees === null || rupees > MAX_BUDGET) {
+        ctx.addIssue({ code: "custom", message: `${label}: enter whole rupees, like 12000000, 1.2 Cr or 80 L.` });
+        return z.NEVER;
+      }
+      return rupees;
+    })
     .optional();
 
 export const leadCreateSchema = z.object({
@@ -36,7 +55,17 @@ export const leadCreateSchema = z.object({
     .union([z.enum(LEAD_SOURCES), z.literal("")])
     .transform((v) => (v === "" ? undefined : v))
     .optional(),
-});
+  property_type: z
+    .union([z.enum(PROPERTY_TYPES), z.literal("")])
+    .transform((v) => (v === "" ? undefined : v))
+    .optional(),
+  budget_min_inr: budget("Minimum budget"),
+  budget_max_inr: budget("Maximum budget"),
+  location: optionalText(160, "Location"),
+}).refine(
+  (d) => d.budget_min_inr === undefined || d.budget_max_inr === undefined || d.budget_min_inr <= d.budget_max_inr,
+  { path: ["budget_max_inr"], message: "The maximum budget can't be below the minimum budget." },
+);
 
 export type LeadCreateInput = z.infer<typeof leadCreateSchema>;
 export const LEAD_FIELDS = [
@@ -47,6 +76,10 @@ export const LEAD_FIELDS = [
   "phone",
   "job_title",
   "source",
+  "property_type",
+  "budget_min_inr",
+  "budget_max_inr",
+  "location",
 ] as const;
 export type LeadField = (typeof LEAD_FIELDS)[number];
 

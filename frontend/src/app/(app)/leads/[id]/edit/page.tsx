@@ -51,6 +51,10 @@ export default async function EditLeadPage({
     phone: lead.phone ?? "",
     job_title: lead.job_title ?? "",
     source: lead.source ?? "",
+    property_type: lead.property_type ?? "",
+    budget_min_inr: lead.budget_min_inr != null ? String(lead.budget_min_inr) : "",
+    budget_max_inr: lead.budget_max_inr != null ? String(lead.budget_max_inr) : "",
+    location: lead.location ?? "",
   };
 
   return (

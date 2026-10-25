@@ -62,8 +62,9 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except the login flow itself, the login page and static files.
+  // Everything except the login flow itself, the login page, the public website chat (page
+  // and its route, ADR 0013) and static files.
   matcher: [
-    "/((?!api/auth|login|_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|ico)$).*)",
+    "/((?!api/auth|api/public-chat|chat|login|_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|ico)$).*)",
   ],
 };

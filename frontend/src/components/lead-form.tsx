@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useActionState, useRef, useState, type FormEvent } from "react";
 
 import { ErrorAlert, buttonClass, cx } from "@/components/ui";
-import { LEAD_SOURCES } from "@/lib/api-types";
-import { SOURCE_LABELS } from "@/lib/format";
+import { LEAD_SOURCES, PROPERTY_TYPES } from "@/lib/api-types";
+import { PROPERTY_TYPE_LABELS, SOURCE_LABELS } from "@/lib/format";
 import {
   type FieldErrors,
   type LeadField,
@@ -101,6 +101,10 @@ const LABELS: Record<LeadField, string> = {
   phone: "Phone",
   job_title: "Job title",
   source: "Source",
+  property_type: "Property type",
+  budget_min_inr: "Minimum budget",
+  budget_max_inr: "Maximum budget",
+  location: "Location",
 };
 
 /**
@@ -256,6 +260,67 @@ export function LeadForm({
             </p>
           )}
         </div>
+      </fieldset>
+
+      <fieldset className="grid gap-5 sm:grid-cols-2">
+        <legend className="mb-3 text-sm font-semibold text-slate-900">
+          Property wishes
+        </legend>
+        <div>
+          <label
+            htmlFor="lead-property_type"
+            className="text-sm font-medium text-slate-700"
+          >
+            {LABELS.property_type}{" "}
+            <span className="font-normal text-slate-500">(optional)</span>
+          </label>
+          <select
+            id="lead-property_type"
+            name="property_type"
+            defaultValue={values.property_type ?? ""}
+            aria-invalid={Boolean(errors.property_type)}
+            aria-describedby={
+              errors.property_type ? "lead-property_type-error" : undefined
+            }
+            className={inputClass(Boolean(errors.property_type))}
+          >
+            <option value="">Not specified</option>
+            {PROPERTY_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {PROPERTY_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+          {errors.property_type && (
+            <p id="lead-property_type-error" className="mt-1 text-sm text-red-700">
+              {errors.property_type}
+            </p>
+          )}
+        </div>
+        <TextField
+          name="location"
+          label={LABELS.location}
+          autoComplete="off"
+          hint="Area or city, e.g. Kokapet, Hyderabad"
+          error={errors.location}
+          defaultValue={values.location}
+        />
+        <TextField
+          name="budget_min_inr"
+          label={LABELS.budget_min_inr}
+          autoComplete="off"
+          hint="Whole rupees, or 1.2 Cr / 80 L"
+          error={errors.budget_min_inr}
+          defaultValue={values.budget_min_inr}
+        />
+        <TextField
+          name="budget_max_inr"
+          label={LABELS.budget_max_inr}
+          autoComplete="off"
+          hint="Whole rupees, or 1.5 Cr / 95 L"
+          error={errors.budget_max_inr}
+          defaultValue={values.budget_max_inr}
+        />
       </fieldset>
 
       <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-5">

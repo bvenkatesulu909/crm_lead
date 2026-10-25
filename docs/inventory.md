@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **203** operations over **161** paths and **228** schemas.
+- **205** operations over **163** paths and **232** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -39,24 +39,25 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | health | 2 |
 | onboarding | 2 |
 | portal-knowledge | 2 |
+| public chat | 2 |
 | voice | 2 |
 | dashboard | 1 |
 | platform | 1 |
 
 ## Database (live)
 
-- Alembic revision: **0039**
-- Tables in the current schema: **56**
-- Tables with Row-Level Security: **52** (52 policies)
+- Alembic revision: **0041**
+- Tables in the current schema: **58**
+- Tables with Row-Level Security: **54** (54 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **39**
-- Heads: `0039`
+- Migration files: **41**
+- Heads: `0041`
 
 ## Web app (`frontend/src/app`)
 
-- 76 pages and 12 route handlers.
+- 77 pages and 13 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -70,12 +71,14 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/accounts/search` | route handler |
 | `/api/auth/callback/keycloak` | route handler |
 | `/api/auth/login` | route handler |
+| `/api/public-chat` | route handler |
 | `/api/voice/speak` | route handler |
 | `/api/voice/transcribe` | route handler |
 | `/assistant` | page |
 | `/automation` | page |
 | `/automation/[id]` | page |
 | `/automation/new` | page |
+| `/chat` | page |
 | `/communications` | page |
 | `/communications/templates` | page |
 | `/communications/templates/[id]` | page |
@@ -151,10 +154,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **89**
-- Frontend component test files: **20**
-- Playwright end-to-end specs: **23**
+- Backend test files: **94**
+- Frontend component test files: **23**
+- Playwright end-to-end specs: **25**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **48** (13 in `docs/adr/`)
+- Markdown documents under `docs/`: **50** (14 in `docs/adr/`)

@@ -56,6 +56,7 @@ TYPES: dict[str, str] = {
     "contract.renewal_due": "A contract of yours is coming up for renewal",
     "contract.expired": "A contract of yours has expired",
     "communication.email_failed": "An e-mail you wrote could not be delivered",
+    "public_chat.lead_captured": "A visitor left their details in the website chat",
     "workflow.message": "A message from an automation rule",
 }
 RULE_MESSAGE = "workflow.message"
@@ -107,6 +108,12 @@ def _lead(session: Session, me: Principal, event: Event) -> Draft | None:
     lead_id = uuid_of(event, "lead_id")
     label = leads_api.lead_brief(session, me, lead_id)
     return Draft(f"Lead assigned to you: {label}", f"/leads/{lead_id}") if label else None
+
+
+def _website_lead(session: Session, me: Principal, event: Event) -> Draft | None:
+    lead_id = uuid_of(event, "lead_id")
+    label = leads_api.lead_brief(session, me, lead_id)
+    return Draft(f"New lead from the website chat: {label}", f"/leads/{lead_id}") if label else None
 
 
 def _activity(prefix: str) -> Describe:
@@ -187,6 +194,11 @@ def _ticket_assignee(session: Session, event: Event) -> set[uuid.UUID]:
     return {person} if person else set()
 
 
+def _sales_managers(session: Session, event: Event) -> set[uuid.UUID]:
+    """Website leads arrive unassigned: the people who assign leads hear about them."""
+    return set(identity_api.staff_with_role(session, event.tenant_id, Role.SALES_MANAGER))
+
+
 Recipients = Callable[[Session, Event], set[uuid.UUID]]
 RULES: dict[str, tuple[Recipients, Describe]] = {
     "lead.assigned": (_assignee, _lead),
@@ -202,6 +214,7 @@ RULES: dict[str, tuple[Recipients, Describe]] = {
     "contract.renewal_due": (_contract_people, _contract("Renewal due")),
     "contract.expired": (_contract_people, _contract("Contract expired")),
     "communication.email_failed": (_sender, _email),
+    "public_chat.lead_captured": (_sales_managers, _website_lead),
 }
 
 
@@ -252,7 +265,10 @@ def notify_users(
     made = 0
     for user_id in sorted(user_ids):
         me = identity_api.staff_principal(session, tenant_id, user_id)
-        if me is None or not can_see(me):
+        if me is None:
+            continue
+        identity_api.bind_reader(session, me)  # read as that person (leads RLS)
+        if not can_see(me):
             continue
         made += _write(session, tenant_id, user_id, RULE_MESSAGE, Draft(title, link), key)
     return made
@@ -281,6 +297,7 @@ def on_event(session: Session, event: Event) -> int:
         me = identity_api.staff_principal(session, event.tenant_id, user_id)
         if me is None:
             continue  # left the company, or not staff
+        identity_api.bind_reader(session, me)  # read as that person (leads RLS)
         draft = describe(session, me, event)
         if draft is None:
             continue  # may not see the record: never told about it

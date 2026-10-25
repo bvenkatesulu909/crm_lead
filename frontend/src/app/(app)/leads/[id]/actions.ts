@@ -80,6 +80,10 @@ export async function updateLead(
     phone: data.phone ?? null,
     job_title: data.job_title ?? null,
     source: data.source ?? null,
+    property_type: data.property_type ?? null,
+    budget_min_inr: data.budget_min_inr ?? null,
+    budget_max_inr: data.budget_max_inr ?? null,
+    location: data.location ?? null,
   };
   try {
     await apiFetch<Lead>(path, { method: "PATCH", body: JSON.stringify(body) });

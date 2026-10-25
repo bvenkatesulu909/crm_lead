@@ -118,3 +118,19 @@ they are **opt-in** and are skipped in normal runs:
 - backend evaluations: `set CRM_RUN_LIVE_EVALS=1` then `pytest tests/db/test_assistant_api.py -k live`;
 - the Playwright conversation: `set E2E_LIVE_ASSISTANT=1` then
   `cd frontend && npx playwright test e2e/assistant.spec.ts` (the key stays in `backend\.env`).
+
+## Model providers (Claude or DeepSeek)
+
+The assistant code talks to one small interface, `ChatModel` (`backend/app/modules/assistant/llm.py`);
+`CRM_AI_PROVIDER` picks the model behind it:
+
+- `anthropic` (default): Claude through the Anthropic SDK (`CRM_ANTHROPIC_API_KEY`).
+- `deepseek`: DeepSeek's OpenAI-compatible API (`CRM_DEEPSEEK_API_KEY`, `CRM_DEEPSEEK_MODEL`).
+  Since 2026-10-25 (ADR 0013, step PC1) it supports **tool calling**: our tool definitions are
+  sent as OpenAI "function" tools, `tool_calls` come back as tool uses, and tool results go back
+  as `role: "tool"` messages (a failed tool is marked "Error: …"). Arguments that aren't a JSON
+  object reach the tool as `{}`, so the tool's own validation refuses them.
+
+Without a key for the chosen provider the assistant answers "temporarily unavailable" (503).
+Tests never call a real model: they use scripted fakes, and the DeepSeek translation is tested
+with a fake HTTP client (`backend/tests/test_deepseek_tools.py`).

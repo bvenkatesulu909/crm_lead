@@ -30,6 +30,8 @@ from app.modules.notifications.router import router as notifications_router
 from app.modules.orders.router import portal_router as portal_orders_router
 from app.modules.orders.router import router as orders_router
 from app.modules.portal.router import router as portal_router
+from app.modules.public_chat.router import router as public_chat_router
+from app.modules.public_chat.router import staff_router as public_chat_staff_router
 from app.modules.quotes.router import portal_router as portal_quotes_router
 from app.modules.quotes.router import router as quotes_router
 from app.modules.relationships.router import router as relationships_router
@@ -57,6 +59,8 @@ api_router.include_router(documents_router)
 api_router.include_router(portal_documents_router)
 api_router.include_router(notifications_router)
 api_router.include_router(communications_router)
+api_router.include_router(public_chat_router)
+api_router.include_router(public_chat_staff_router)
 api_router.include_router(workflows_router)
 api_router.include_router(reports_router)
 api_router.include_router(leads_router)

@@ -43,6 +43,7 @@ EVENT_NAMES = frozenset(
         "contract.renewal_due",
         "contract.expired",
         "communication.email_failed",
+        "public_chat.lead_captured",
     }
 )
 MAX_DEPTH = 3

@@ -29,6 +29,7 @@ from app.core.request_context import REQUEST_ID_HEADER, RequestContextMiddleware
 from app.core.storage import FileStore, build_file_store
 from app.modules.assistant.llm import ChatModel, build_chat_model
 from app.modules.knowledge.retrieval import Reranker, build_reranker
+from app.modules.public_chat.llm import build_public_chat_model
 from app.modules.voice.provider import SpeechProvider, build_speech_provider
 
 API_V1_PREFIX = "/api/v1"
@@ -42,6 +43,7 @@ def create_app(
     file_store: FileStore | None = None,
     embedder: Embedder | None = None,
     reranker: Reranker | None = None,
+    public_chat_model: ChatModel | None = None,
 ) -> FastAPI:
     """Build the FastAPI application.
 
@@ -80,6 +82,8 @@ def create_app(
     app.state.identity_admin = identity_admin or build_identity_admin(settings)
     # The AI assistant's model (Claude, or "not configured" without an API key).
     app.state.chat_model = chat_model or build_chat_model(settings)
+    # The public website chat's model (ADR 0013): DeepSeek, Claude or the test fake.
+    app.state.public_chat_model = public_chat_model or build_public_chat_model(settings)
     speech_provider: SpeechProvider | None = build_speech_provider(settings)
     app.state.speech_provider = speech_provider
     # S3 file store (ADR 0005); answers 503 if no keys are configured.

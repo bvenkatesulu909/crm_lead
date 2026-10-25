@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ActivityPanel } from "@/components/activity-panel";
+import { ChatTranscriptCard } from "@/components/chat-transcript-card";
 import { EmailCard } from "@/components/email-card";
 import { LeadScoreCard } from "@/components/lead-score";
 import { Card, Forbidden, StatusBadge, SuccessAlert } from "@/components/ui";
@@ -15,9 +16,12 @@ import type {
   DirectoryUser,
   Lead,
   LeadScore,
+  PublicChatTranscript,
 } from "@/lib/api-types";
 import {
+  PROPERTY_TYPE_LABELS,
   SOURCE_LABELS,
+  formatBudget,
   formatDate,
   formatDateTime,
   leadName,
@@ -95,6 +99,13 @@ export default async function LeadPage({
   const score = await apiFetch<LeadScore>(`/leads/${id}/score`).catch(
     () => null,
   );
+  // Only website leads can have a chat (ADR 0013); like the score, the page works without it.
+  const transcript =
+    lead.source === "web"
+      ? await apiFetch<PublicChatTranscript>(
+          `/public-chat/leads/${id}/transcript`,
+        ).catch(() => null)
+      : null;
   const [activities, assignments, people, hasAccounts, convertedAccount] =
     await Promise.all([
       apiFetch<Activity[]>(`/leads/${id}/activities`),
@@ -126,6 +137,9 @@ export default async function LeadPage({
     ["E-mail", lead.email ?? "—"],
     ["Phone", lead.phone ?? "—"],
     ["Source", lead.source ? SOURCE_LABELS[lead.source] : "—"],
+    ["Property type", lead.property_type ? PROPERTY_TYPE_LABELS[lead.property_type] : "—"],
+    ["Budget", formatBudget(lead.budget_min_inr, lead.budget_max_inr)],
+    ["Location", lead.location ?? "—"],
     ["Owner", nameOf(lead.owner_id)],
     ["Created", formatDateTime(lead.created_at)],
     ["Last updated", formatDateTime(lead.updated_at)],
@@ -202,6 +216,8 @@ export default async function LeadPage({
               ))}
             </dl>
           </Card>
+
+          {transcript && <ChatTranscriptCard transcript={transcript} />}
 
           <Card>
             <h2 className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">

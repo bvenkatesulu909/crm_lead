@@ -70,6 +70,7 @@ modules = [
     "app.modules.notifications",
     "app.modules.orders",
     "app.modules.portal",
+    "app.modules.public_chat",
     "app.modules.quotes",
     "app.modules.relationships",
     "app.modules.reports",

@@ -257,7 +257,15 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     "₹1.2 Cr – ₹1.5 Cr"; docs/leads.md. Dev database at 0040. Tests (run 2026-10-25): backend
     1421 passed (+4 opt-in skipped); Vitest 327 passed; Playwright 78 passed, 2 skipped, 0 failed
     (new `lead-property.spec.ts`); ruff, mypy, import-linter, lint, typecheck, build clean.
-    PC3-PC6 not started.
+  - PC3 (CRM-106a, 2026-10-25): `public_chat` module - `POST /api/v1/public/chat` (only with
+    the `X-Public-Chat-Key` server key, else 404; tenant from `CRM_PUBLIC_CHAT_TENANT_SLUG`),
+    tables `public_chat_sessions` + `public_chat_messages` (migration 0041, forced RLS; token
+    stored as SHA-256, visitor address as a keyed hash), one tool `save_lead` (lead created as
+    the Automation identity, unassigned, source web, one per conversation), guardrails +
+    honeypot, limits (per address, per conversation, per day), at most 2 tool rounds,
+    providers deepseek | anthropic | fake (fake refused in production); `assistant/api.py`
+    added. Dev database at 0041. Tests (run 2026-10-25): backend 1471 passed (+4 opt-in
+    skipped), 50 new; ruff, mypy, import-linter clean. PC4-PC6 not started.
 - **Next planned, in order:** BP-01 (public chat), then the master plan's AI tracks, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
   an ADR.

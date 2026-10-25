@@ -10461,6 +10461,65 @@
         "title": "ProductUpdate",
         "type": "object"
       },
+      "PublicChatReply": {
+        "properties": {
+          "lead_saved": {
+            "description": "True once this conversation's details were saved.",
+            "title": "Lead Saved",
+            "type": "boolean"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "reply",
+          "lead_saved"
+        ],
+        "title": "PublicChatReply",
+        "type": "object"
+      },
+      "PublicChatRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_-]{40,100}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The conversation token from the previous answer, if any.",
+            "title": "Token"
+          },
+          "website": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Website",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "PublicChatRequest",
+        "type": "object"
+      },
       "QuoteCreate": {
         "additionalProperties": false,
         "properties": {
@@ -28153,6 +28212,77 @@
         "summary": "Change or deactivate a product (managers)",
         "tags": [
           "catalogue"
+        ]
+      }
+    },
+    "/api/v1/public/chat": {
+      "post": {
+        "operationId": "public_chat_api_v1_public_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicChatReply"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "A visitor's message to the website chat (only for the CRM's web server)",
+        "tags": [
+          "public chat"
         ]
       }
     },

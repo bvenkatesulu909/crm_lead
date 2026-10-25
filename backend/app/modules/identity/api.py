@@ -35,6 +35,7 @@ __all__ = [
     "staff_principal",
     "staff_with_permission",
     "staff_member_exists",
+    "active_tenant_by_slug",
     "tenant_name",
 ]
 
@@ -109,6 +110,15 @@ def staff_member_exists(session: Session, tenant_id: uuid.UUID, user_id: uuid.UU
         )
     )
     return found is not None
+
+
+def active_tenant_by_slug(session: Session, slug: str) -> tuple[uuid.UUID, str] | None:
+    """(id, name) of an ACTIVE organisation, e.g. the one whose website hosts the public chat
+    (ADR 0013). The slug comes from server settings, never from a request."""
+    row = session.execute(
+        select(Tenant.id, Tenant.name).where(Tenant.slug == slug, Tenant.status == "active")
+    ).first()
+    return (row.id, row.name) if row else None
 
 
 def tenant_name(session: Session, tenant_id: uuid.UUID) -> str | None:

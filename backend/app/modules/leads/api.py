@@ -30,9 +30,11 @@ from app.modules.leads.metrics import (
 from app.modules.leads.models import LEAD_STATUSES, Lead
 from app.modules.leads.policies import readable_leads
 from app.modules.leads.repository import LeadFilters
+from app.modules.leads.schemas import ActivityCreate, LeadCreate
 
 __all__ = [
     "conversion_table",
+    "create_lead_from_website",
     "EXPORT",
     "export_table",
     "set_lead_status",
@@ -88,6 +90,50 @@ def lead_recipient(session: Session, principal: Principal, lead_id: uuid.UUID) -
         account_id=None,
         consent_withdrawn=False,
     )
+
+
+def create_lead_from_website(
+    session: Session,
+    principal: Principal,
+    *,
+    first_name: str | None,
+    last_name: str,
+    phone: str,
+    email: str | None,
+    property_type: str | None,
+    budget_min_inr: int | None,
+    budget_max_inr: int | None,
+    location: str | None,
+    notes: str | None,
+) -> uuid.UUID:
+    """A lead from the public website chat (ADR 0013), with this module's own rules and audit.
+
+    ``principal`` is the tenant's Automation identity, so the lead starts unassigned. A
+    timeline note says where it came from (and holds the visitor's own notes, if any)."""
+    lead = service.create_lead(
+        session,
+        principal,
+        LeadCreate.model_validate(
+            {
+                "first_name": first_name,
+                "last_name": last_name,
+                "phone": phone,
+                "email": email,
+                "source": "web",
+                "property_type": property_type,
+                "budget_min_inr": budget_min_inr,
+                "budget_max_inr": budget_max_inr,
+                "location": location,
+            }
+        ),
+    )
+    service.add_activity(
+        session,
+        principal,
+        lead.id,
+        ActivityCreate(kind="note", subject="Created from the website chat", body=notes),
+    )
+    return lead.id
 
 
 def lead_facts(session: Session, principal: Principal, lead_id: uuid.UUID) -> RecordFacts | None:

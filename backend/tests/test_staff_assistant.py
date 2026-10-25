@@ -44,7 +44,7 @@ def test_answer_uses_ticket_facts_and_returns_links(monkeypatch):
     monkeypatch.setattr(support_api, "ticket_facts_by_reference", lambda *a, **k: facts)
     model = FakeModel()
     principal = cast(Principal, SimpleNamespace(user_type="staff", tenant_id=facts.record_id))
-    text, ticket_id, links = staff_service.answer(
+    text, ticket_id, links, proposals = staff_service.answer(
         cast(Session, object()),
         principal,
         model,
@@ -55,6 +55,7 @@ def test_answer_uses_ticket_facts_and_returns_links(monkeypatch):
     assert ticket_id == facts.record_id
     assert facts.link in links
     assert model.calls == 1
+    assert proposals == []
 
 
 def test_injection_is_rejected_before_the_model(monkeypatch):

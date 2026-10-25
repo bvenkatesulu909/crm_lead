@@ -10671,6 +10671,36 @@
         "title": "ProductUpdate",
         "type": "object"
       },
+      "ProposalRead": {
+        "description": "A change the assistant proposed; it waits for a manager's approval (ADR 0014).",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "status",
+          "link"
+        ],
+        "title": "ProposalRead",
+        "type": "object"
+      },
       "PublicChatReply": {
         "properties": {
           "lead_saved": {
@@ -12520,6 +12550,14 @@
               "type": "string"
             },
             "title": "Links",
+            "type": "array"
+          },
+          "proposals": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProposalRead"
+            },
+            "title": "Proposals",
             "type": "array"
           },
           "ticket_id": {

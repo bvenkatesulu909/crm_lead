@@ -319,6 +319,16 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     `CRM_AGENT_ACTION_EXPIRY_DAYS` (7). Tests (run 2026-10-25): backend 1523 passed (+4 opt-in
     skipped), 12 new in `test_approvals_api.py`; ruff, mypy, import-linter clean; OpenAPI
     exported.
+  - AP3 (2026-10-25): the staff assistant (`POST /assistant/ask`) now passes its tools to the
+    model (before, it passed none) and has three proposing tools - `propose_lead_status`,
+    `propose_lead_assignment`, `propose_follow_up_task`. They only create a pending proposal
+    (savepoint; record must be visible to the asker, strict arguments, status never
+    "converted"); at most 3 proposals per question and the per-person pending limit apply; the
+    tool result tells the model nothing has changed. The answer has a new `proposals` list
+    (id, description, status, link `/approvals/{id}`), stored by one commit in the router.
+    Scripted model, no paid key. Tests (run 2026-10-25): backend 1534 passed (+4 opt-in
+    skipped), 11 new in `test_assistant_proposals.py`; ruff, mypy, import-linter clean;
+    docs/assistant.md.
 - **Next planned, in order:** BP-05 (in progress), BP-10, BP-11 (rest of AI Track A1), then
   BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need

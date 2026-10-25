@@ -134,3 +134,20 @@ The assistant code talks to one small interface, `ChatModel` (`backend/app/modul
 Without a key for the chosen provider the assistant answers "temporarily unavailable" (503).
 Tests never call a real model: they use scripted fakes, and the DeepSeek translation is tested
 with a fake HTTP client (`backend/tests/test_deepseek_tools.py`).
+
+## Staff assistant: proposing changes (ADR 0014, step AP3)
+
+The staff assistant (`POST /api/v1/assistant/ask`) now gets its tools. Besides the reading
+tools it has three **proposing** tools: `propose_lead_status`, `propose_lead_assignment` and
+`propose_follow_up_task`. They never change anything: each creates a **pending** proposal in
+the approval queue (`docs/approvals.md`, from AP5; API `/api/v1/approvals/actions`), and a
+different person (sales manager or tenant admin) approves or rejects it.
+
+- The record must be visible to the employee asking; otherwise the model gets "not found" and
+  nothing is stored. Arguments are strict (nothing extra, status never "converted").
+- At most **3 proposals per question**, and the per-person pending limit
+  (`CRM_AGENT_ACTION_PENDING_PER_USER`) applies.
+- The answer lists the proposals (`proposals`: id, description, status, link to
+  `/approvals/{id}`); the tool result tells the model "nothing has changed yet".
+- Tests: `tests/db/test_assistant_proposals.py` (scripted model, no paid key).
+

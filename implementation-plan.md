@@ -267,7 +267,7 @@ protection (server-only key, one tenant per website, limits, guardrails, plain-t
 - Going live is not part of this phase (ADR 0007, owner's "go live").
 - Definition of Done checklist complete.
 
-## Phase AP — Approval queue for AI-proposed actions (BP-05, Module 21)  *(ADR 0014 accepted 2026-10-25; AP0–AP2 done, AP3–AP5 not started)*
+## Phase AP — Approval queue for AI-proposed actions (BP-05, Module 21)  *(ADR 0014 accepted 2026-10-25; AP0–AP3 done, AP4–AP5 not started)*
 
 The AI may **suggest** changes to real records (lead status, assignment, follow-up task); a
 sales manager or tenant admin approves or rejects; an approved change runs through the owning

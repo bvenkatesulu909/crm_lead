@@ -364,7 +364,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     passed when rerun alone with the real provider (4 tests). The whole suite was not rerun
     in one piece after that. **BP-05 complete**: approved by the owner and **merged into `main`
     (PR #18, 2026-10-25)** after both GitHub CI runs passed.
-- **BP-04 leftovers (2026-10-25)** - branch `feat/bp04-role-badge`. The user menu shows a badge
+- **BP-04 leftovers (2026-10-25)** - done and **merged into `main` (PR #19)**. The user menu shows a badge
   "Own leads only" (agents) or "All leads in your organisation" (managers, admins), none for roles
   without lead access and in the customer portal (display only: the database decides). Playwright
   (`workflow1.spec.ts`): agent 2 creates a lead, agent 1 typing its address and a made-up lead
@@ -372,7 +372,10 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   (run 2026-10-25): Vitest 373 passed (6 new); lint, typecheck, production build clean; Playwright
   `workflow1` + `workflow2` + `workflow3` + `portal` 27 passed. Backend not touched. The whole
   Playwright suite was not rerun for this small change.
-- **Next planned, in order:** BP-04 leftovers (built, PR waiting), then BP-10, BP-11 (rest of AI Track A1), then
-  BP-04 leftovers and the AI tracks A2-A4, Marketing
-  (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
-  an ADR.
+- **Agent evaluation harness (BP-10, Phase EV)** - started 2026-10-25 on branch
+  `feat/agent-evals`. EV0: design note `docs/agent-evals.md` + phase plan (documents only), waiting
+  for the owner's review before any code.
+- **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
+  AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
+  an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features
+  that need them and need an ADR.

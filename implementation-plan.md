@@ -298,7 +298,7 @@ First object of the rest of AI Track A1 (then BP-10 evaluation harness, BP-11 MC
   denial and ID tampering are tested.
 - Works without any paid key (fake model in tests). Definition of Done checklist complete.
 
-## Phase EV — Agent evaluation harness (BP-10)  *(design note proposed 2026-10-25; EV0 written, waiting for review)*
+## Phase EV — Agent evaluation harness (BP-10)  *(design note accepted 2026-10-25; EV0-EV1 done, EV2-EV5 not started)*
 
 Fixed test conversations that measure what the CRM's AI agents DO - which tool they pick, with
 which arguments, which tools they must never touch - and a cited-answer set that runs without a

@@ -373,8 +373,19 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   `workflow1` + `workflow2` + `workflow3` + `portal` 27 passed. Backend not touched. The whole
   Playwright suite was not rerun for this small change.
 - **Agent evaluation harness (BP-10, Phase EV)** - started 2026-10-25 on branch
-  `feat/agent-evals`. EV0: design note `docs/agent-evals.md` + phase plan (documents only), waiting
-  for the owner's review before any code.
+  `feat/agent-evals`. EV0: design note `docs/agent-evals.md` + phase plan (documents only); owner
+  approved it 2026-10-25 with three decisions: no scorecard endpoint, one paid DeepSeek run at the
+  end, scripted-model cases are a hard CI gate (real-model results only a report).
+  - EV1 (2026-10-25): package `backend/agent_evals/` (outside `app`, not in the Docker image) with
+    argument matchers (equal, any, any_uuid, one_of, matches, contains, absent), the case format
+    and loader (`evals/agents/*.json`; unknown fields, typos in tool names, broken matchers,
+    duplicate ids and bad placeholders stop the load; a case may be marked `live: false` when it
+    forces a bad call on purpose), the dataset hash, scoring of a conversation (tool order and
+    arguments, forbidden tools, outcome, wanted and banned words, "claimed done" detector, call
+    limit) and a deterministic scorecard (totals, tool precision and recall, argument accuracy);
+    4 starter staff-assistant cases. Nothing plays a conversation yet (EV2). Tests (run
+    2026-10-25): backend 1642 passed (+4 opt-in skipped), 95 new (pure Python, no database, no
+    key); ruff, mypy, import-linter clean.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

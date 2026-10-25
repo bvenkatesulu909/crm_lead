@@ -1,6 +1,6 @@
 # Agent evaluation harness (BP-10) - design note and step plan
 
-- **Status:** Proposed (2026-10-25), waiting for the owner's review. **No code yet.**
+- **Status:** Accepted (2026-10-25). Steps EV0-EV1 done; EV2-EV5 not started.
 - **Size:** medium (EV1-EV5). A short design note, not an ADR: nothing here sends data anywhere
   new, changes security rules or adds a table.
 - **Master plan:** `docs/master-plan.md` (AI Track A1, BP-10).
@@ -55,6 +55,10 @@ need a paid key on every pull request.
   - `outcome`: e.g. `proposal_pending`, `refused`, `not_found`, `lead_saved`, `nothing_changed`;
   - `answer_must_contain` / `answer_must_not_contain` (e.g. never "has been changed" when only
     proposed; never another customer's data).
+- `live` (default true): `false` marks a case that forces a bad call on purpose to see the CRM
+  refuse it (an unknown tool, "converted"); scripted runs always play it, real-model runs skip it.
+- `{{lead.own}}`-style placeholders stand for records of the fictional test world; a runner
+  replaces them with real ids.
 - Everything fictional; no real names, numbers or keys.
 
 ## 4. What gets measured (the scorecard)
@@ -99,6 +103,17 @@ table printed in the terminal and in the CI job summary.
 
 CI needs no new secrets and no new job: the cases run inside the existing `pytest` step.
 
+## 6a. What exists after EV1
+
+- Package `backend/agent_evals/` (outside `app`, so it is not in the Docker image):
+  `matchers.py` (equal / any / any_uuid / one_of / matches / contains / absent),
+  `cases.py` (case models, loader, tool-name checks against the real tools, placeholders,
+  dataset hash), `scoring.py` (score one conversation, "claimed done" detector, scorecard).
+- Case files: `backend/evals/agents/*.json` (4 starter staff-assistant cases).
+- Tests: `tests/test_agent_evals_matchers.py`, `..._cases.py`, `..._scoring.py`,
+  `..._dataset.py` (all pure Python, no database, no key).
+- Nothing plays a conversation yet - that is EV2.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).
@@ -107,7 +122,7 @@ CI needs no new secrets and no new job: the cases run inside the existing `pytes
 - Changing how the assistants work: BP-10 only measures them. A failing case is fixed in a
   separate, reviewed step.
 
-## 8. Decisions for the owner
+## 8. Decisions for the owner (all three accepted 2026-10-25, as recommended)
 
 1. **Scorecard endpoint.** Your table lists `GET /api/v1/assistant/eval-scorecard`. I suggest
    **not** building it now: the scorecard is a file in git plus the CI summary, and an endpoint

@@ -24,4 +24,4 @@ Rules:
 | [0010](0010-knowledge-search-pgvector-embeddings.md) | Knowledge search: pgvector image, embedding model and index | Accepted |
 | [0011](0011-chunking-and-hybrid-search.md) | Chunking and hybrid search: starting settings | Accepted |
 | [0012](0012-communication-center.md) | Communication Center: one-to-one e-mail, templates, conversation history | Accepted |
-| [0013](0013-public-chat-save-lead.md) | Public website chat that saves real-estate leads (BP-01) | Proposed |
+| [0013](0013-public-chat-save-lead.md) | Public website chat that saves real-estate leads (BP-01) | Accepted |

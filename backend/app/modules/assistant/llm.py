@@ -5,8 +5,10 @@ use a scripted fake. The rest of the module never imports the SDK, so the securi
 tested without calling (or paying for) a real model.
 """
 
+import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -15,6 +17,9 @@ from app.core.errors import DomainError
 from app.core.observability.metrics import observe_ai_call
 
 logger = logging.getLogger(__name__)
+
+# What DeepSeekChatModel calls to send a request: httpx.post, or a fake in tests.
+HttpPost = Callable[..., Any]
 
 
 class AssistantUnavailableError(DomainError):
@@ -138,15 +143,19 @@ class ClaudeChatModel:
 class DeepSeekChatModel:
     """DeepSeek's OpenAI-compatible chat endpoint, behind the same ChatModel interface.
 
-    Tool calling is deliberately not translated yet: the grounded knowledge answer path uses
-    tools=[], while the portal assistant still runs on Anthropic. Selecting DeepSeek for a
-    tool-using call fails closed instead of silently changing tool semantics.
+    The rest of the CRM speaks one tool format (Anthropic-style: definitions with
+    ``input_schema``, ``tool_use`` and ``tool_result`` blocks). This class translates both ways
+    (ADR 0013): tools go out as OpenAI "function" tools, ``tool_calls`` come back as ``ToolUse``,
+    and tool results go back as ``role: "tool"`` messages. Arguments that aren't a JSON object
+    reach the tool as ``{}``, whose own validation then refuses them - nothing is guessed.
+
+    ``http_post`` is ``httpx.post`` unless a test passes a fake (no key or network needed).
     """
 
     available = True
     provider = "deepseek"
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, http_post: HttpPost | None = None) -> None:
         if settings.deepseek_api_key is None:
             raise ValueError("deepseek_api_key is not configured")
         self._api_key = settings.deepseek_api_key.get_secret_value()
@@ -156,41 +165,34 @@ class DeepSeekChatModel:
         self._max_tokens = settings.assistant_max_tokens
         self._input_price = settings.ai_input_price_per_million
         self._output_price = settings.ai_output_price_per_million
+        self._post = http_post
 
     def reply(
         self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
     ) -> ModelReply:
+        payload: dict[str, Any] = {
+            "model": self._model,
+            "messages": [{"role": "system", "content": system}, *_openai_messages(messages)],
+            "max_tokens": self._max_tokens,
+            "temperature": 0,
+        }
         if tools:
-            raise AssistantUnavailableError(
-                "DeepSeek tool calling is not enabled; use the Anthropic provider for tools."
-            )
-        normalized: list[dict[str, str]] = []
-        for message in messages:
-            content = message.get("content", "")
-            if isinstance(content, list):
-                content = "\n".join(
-                    str(part.get("text", ""))
-                    for part in content
-                    if isinstance(part, dict) and part.get("type") == "text"
-                )
-            normalized.append({"role": str(message["role"]), "content": str(content)})
+            payload["tools"] = [_openai_tool(t) for t in tools]
 
         started = time.perf_counter()
         try:
-            import httpx
+            post = self._post
+            if post is None:
+                import httpx
 
-            response = httpx.post(
+                post = httpx.post
+            response = post(
                 f"{self._base_url}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {self._api_key}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "model": self._model,
-                    "messages": [{"role": "system", "content": system}, *normalized],
-                    "max_tokens": self._max_tokens,
-                    "temperature": 0,
-                },
+                json=payload,
                 timeout=self._timeout,
             )
             response.raise_for_status()
@@ -222,17 +224,105 @@ class DeepSeekChatModel:
             input_price_per_million=self._input_price,
             output_price_per_million=self._output_price,
         )
-        text = ""
         try:
-            text = str(data["choices"][0]["message"]["content"] or "").strip()
+            message = data["choices"][0]["message"]
         except (KeyError, IndexError, TypeError):
-            text = ""
+            message = {}
+        text = str(message.get("content") or "").strip() if isinstance(message, dict) else ""
+        tool_uses = _tool_uses(message)
         return ModelReply(
             text,
-            [],
-            "end_turn",
+            tool_uses,
+            "tool_use" if tool_uses else "end_turn",
             {"input_tokens": input_tokens, "output_tokens": output_tokens},
         )
+
+
+def _openai_tool(tool: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "function",
+        "function": {
+            "name": tool["name"],
+            "description": tool.get("description", ""),
+            "parameters": tool.get("input_schema", {"type": "object", "properties": {}}),
+        },
+    }
+
+
+def _text_of(blocks: list[Any]) -> str:
+    return "\n".join(
+        str(b.get("text", "")) for b in blocks if isinstance(b, dict) and b.get("type") == "text"
+    )
+
+
+def _openai_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Our (Anthropic-style) history as OpenAI-style messages.
+
+    - plain text stays a plain message;
+    - an assistant turn with ``tool_use`` blocks becomes one message with ``tool_calls``
+      (``content`` is None when the turn had no text);
+    - a user turn with ``tool_result`` blocks becomes one ``role: "tool"`` message per result
+      (a failed tool's content is prefixed with "Error: " so the model knows).
+    """
+    converted: list[dict[str, Any]] = []
+    for message in messages:
+        role = str(message["role"])
+        content = message.get("content", "")
+        if not isinstance(content, list):
+            converted.append({"role": role, "content": str(content)})
+            continue
+        calls = [b for b in content if isinstance(b, dict) and b.get("type") == "tool_use"]
+        results = [b for b in content if isinstance(b, dict) and b.get("type") == "tool_result"]
+        if role == "assistant" and calls:
+            converted.append(
+                {
+                    "role": "assistant",
+                    "content": _text_of(content) or None,
+                    "tool_calls": [
+                        {
+                            "id": str(c["id"]),
+                            "type": "function",
+                            "function": {
+                                "name": str(c["name"]),
+                                "arguments": json.dumps(c.get("input") or {}),
+                            },
+                        }
+                        for c in calls
+                    ],
+                }
+            )
+        elif results:
+            for r in results:
+                body = str(r.get("content", ""))
+                converted.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": str(r["tool_use_id"]),
+                        "content": f"Error: {body}" if r.get("is_error") else body,
+                    }
+                )
+        else:
+            converted.append({"role": role, "content": _text_of(content)})
+    return converted
+
+
+def _tool_uses(message: Any) -> list[ToolUse]:
+    if not isinstance(message, dict):
+        return []
+    uses: list[ToolUse] = []
+    for call in message.get("tool_calls") or []:
+        try:
+            function = call["function"]
+            name, raw = str(function["name"]), function.get("arguments") or ""
+            call_id = str(call["id"])
+        except (KeyError, TypeError):
+            continue
+        try:
+            arguments = json.loads(raw)
+        except (TypeError, ValueError):
+            arguments = None
+        uses.append(ToolUse(call_id, name, arguments if isinstance(arguments, dict) else {}))
+    return uses
 
 
 class UnconfiguredChatModel:

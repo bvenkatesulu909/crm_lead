@@ -243,8 +243,13 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     0 failed; lint, typecheck and production build clean. **Communication Center complete**,
     approved by the owner and **merged into `main` (PR #15, 2026-10-25)**.
 - **Public website chat (BP-01, Phase PC, ADR 0013)** - started 2026-10-25 on branch
-  `feat/public-chat-save-lead`. PC0 (ADR 0013 proposed + phase plan) written, waiting for owner
-  review; PC1-PC6 not started. Order of all PDF work: `docs/master-plan.md`.
+  `feat/public-chat-save-lead`. PC0: ADR 0013 accepted + phase plan. Order of all PDF work:
+  `docs/master-plan.md`.
+  - PC1 (CRM-104, 2026-10-25): `DeepSeekChatModel` supports tool calling (tools as OpenAI
+    functions, `tool_calls` -> `ToolUse`, results as `role: "tool"`, broken arguments -> `{}`);
+    Anthropic unchanged; injectable HTTP function for tests. Tests (run 2026-10-25): backend
+    1403 passed (+4 opt-in skipped), incl. 12 new in `test_deepseek_tools.py`; ruff, mypy,
+    import-linter clean. PC2-PC6 not started.
 - **Next planned, in order:** BP-01 (public chat), then the master plan's AI tracks, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
   an ADR.

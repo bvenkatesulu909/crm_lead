@@ -1,6 +1,6 @@
 # ADR 0013 — Public website chat that saves real-estate leads (BP-01)
 
-- **Status:** Proposed (2026-10-25) — waiting for the owner's review
+- **Status:** Accepted (2026-10-25)
 - **Date:** 2026-10-25
 - **Deciders:** Project owner
 - **Covers:** blueprint BP-01, tickets CRM-104 (DeepSeek tool calling), CRM-105 (real-estate lead

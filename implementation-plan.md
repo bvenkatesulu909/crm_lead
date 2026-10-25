@@ -298,6 +298,32 @@ First object of the rest of AI Track A1 (then BP-10 evaluation harness, BP-11 MC
   denial and ID tampering are tested.
 - Works without any paid key (fake model in tests). Definition of Done checklist complete.
 
+## Phase EV — Agent evaluation harness (BP-10)  *(design note accepted 2026-10-25; EV0-EV5 done; the one paid DeepSeek pass run 2026-10-26)*
+
+Fixed test conversations that measure what the CRM's AI agents DO - which tool they pick, with
+which arguments, which tools they must never touch - and a cited-answer set that runs without a
+paid key. Same expectations are played with a scripted model in CI (tests the CRM around the
+model) and, on demand, with a real model (tests the model's behaviour). Design note:
+`docs/agent-evals.md` (not an ADR: no new data flow, table or security rule).
+
+**Steps (each stops for review)**
+- **EV0** - design note and this description (documents only).
+- **EV1** - case format (`backend/evals/agents/*.json`), loader, argument matchers, scoring,
+  dataset hash; pure unit tests first.
+- **EV2** - runner for the staff assistant against the real test database with a scripted model;
+  about 12 cases; a pytest file that runs them in CI.
+- **EV3** - portal assistant, public chat and guardrail cases (about 18 more).
+- **EV4** - cited-answer cases in CI without a paid key (fake embedder, scripted answers, existing
+  metrics), plus "not found" cases.
+- **EV5** - CLI `python -m scripts.eval_agents --provider fake|deepseek|anthropic`, scorecard JSON,
+  `--baseline`, CI job-summary table, final docs, full runs, pull request.
+
+**Acceptance criteria**
+- Every case passes with the scripted model in CI; any failing case fails the pull request.
+- Forbidden-tool violations and "claimed done" answers are 0.
+- No secrets, no real data, no paid call in CI; real-model results are a report, never a gate.
+- Definition of Done checklist complete.
+
 ## Phase 16 — Marketing Management (Module 7)
 
 **Acceptance criteria**

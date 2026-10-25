@@ -92,6 +92,7 @@ Alembic (`backend/`) · PostgreSQL · Keycloak (OIDC) · SeaweedFS (S3 files) ·
 | Run background worker (own CMD window) | `python -m app.worker` (in `backend`, venv active); `--once` runs due jobs and exits | ADR 0005 |
 | File store (SeaweedFS, S3 API) | `127.0.0.1:9333`, keys in `infrastructure\.env`; started by `docker compose up -d` | ADR 0005 |
 | Open the CRM to other devices on your network (see docs/network-access.md) | `python -m scripts.network_mode on <PC address>` / `off` / `status` (in `backend`, venv active), then `cd frontend && npm run dev:network` | Network mode |
+| Run the AI agent evaluation cases (BP-10) | `python -m scripts.eval_agents --provider fake` (in `backend`, venv active); `--estimate` shows the cost of a real-model run; real models need `set CRM_RUN_LIVE_EVALS=1` | BP-10 |
 | Install web dependencies | `cd frontend && npm install` | Phase 3 |
 | Run web | `cd frontend && npm run dev` (http://localhost:3000) | Phase 3 |
 | Web lint / types | `cd frontend && npm run lint && npm run typecheck` | Phase 3 |
@@ -368,7 +369,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     passed when rerun alone with the real provider (4 tests). The whole suite was not rerun
     in one piece after that. **BP-05 complete**: approved by the owner and **merged into `main`
     (PR #18, 2026-10-25)** after both GitHub CI runs passed.
-- **BP-04 leftovers (2026-10-25)** - branch `feat/bp04-role-badge`. The user menu shows a badge
+- **BP-04 leftovers (2026-10-25)** - done and **merged into `main` (PR #19)**. The user menu shows a badge
   "Own leads only" (agents) or "All leads in your organisation" (managers, admins), none for roles
   without lead access and in the customer portal (display only: the database decides). Playwright
   (`workflow1.spec.ts`): agent 2 creates a lead, agent 1 typing its address and a made-up lead
@@ -376,6 +377,76 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   (run 2026-10-25): Vitest 373 passed (6 new); lint, typecheck, production build clean; Playwright
   `workflow1` + `workflow2` + `workflow3` + `portal` 27 passed. Backend not touched. The whole
   Playwright suite was not rerun for this small change.
+- **Agent evaluation harness (BP-10, Phase EV)** - started 2026-10-25 on branch
+  `feat/agent-evals`. EV0: design note `docs/agent-evals.md` + phase plan (documents only); owner
+  approved it 2026-10-25 with three decisions: no scorecard endpoint, one paid DeepSeek run at the
+  end, scripted-model cases are a hard CI gate (real-model results only a report).
+  - EV1 (2026-10-25): package `backend/agent_evals/` (outside `app`, not in the Docker image) with
+    argument matchers (equal, any, any_uuid, one_of, matches, contains, absent), the case format
+    and loader (`evals/agents/*.json`; unknown fields, typos in tool names, broken matchers,
+    duplicate ids and bad placeholders stop the load; a case may be marked `live: false` when it
+    forces a bad call on purpose), the dataset hash, scoring of a conversation (tool order and
+    arguments, forbidden tools, outcome, wanted and banned words, "claimed done" detector, call
+    limit) and a deterministic scorecard (totals, tool precision and recall, argument accuracy);
+    4 starter staff-assistant cases. Nothing plays a conversation yet (EV2). Tests (run
+    2026-10-25): backend 1642 passed (+4 opt-in skipped), 95 new (pure Python, no database, no
+    key); ruff, mypy, import-linter clean.
+  - EV2 (2026-10-25): `agent_evals/runner.py` plays a staff-assistant case through the REAL
+    assistant and the real test database with only the model scripted (`ScriptedModel`,
+    `RecordingModel` reads every tool call and how the CRM answered from the tool results; a case
+    that ends before a result came back is a loud error). 15 cases in
+    `evals/agents/staff_assistant.json` (reading, proposing status / assignment / follow-up tasks,
+    not found, "converted", extra argument, support assignee, fourth proposal, made-up approve
+    tool, injection and card-number questions, support agent reading leads); every case also gets
+    two checks it cannot skip - no direct change in the CRM and proposals stored exactly as
+    reported. `tests/db/test_agent_evals_staff.py` runs them in CI (hard gate) and proves the gate
+    can fail (wrong expectation, forbidden tool, "done" claim, raised proposal limit). Findings, not
+    fixed (BP-10 only measures): the card-number guardrail wrongly refuses about 1 in 600 lead
+    ids pasted into a question; a support agent asking about "leads" gets a bare 403. Tests (run
+    2026-10-25): backend 1686 passed (+4 opt-in skipped), 44 new; ruff, mypy, import-linter clean.
+  - EV3 (2026-10-25): the runner also plays the customer portal assistant (the customer's real
+    conversation, several messages in one) and the public website chat (an anonymous visitor, the
+    token kept between messages); 19 more cases (`portal_assistant.json` 9, `public_chat.json` 10;
+    34 in all): a customer's own accounts, a staff tool refused, a ticket only PREPARED for the
+    customer to confirm, other customers' account and a made-up order "not found", short subject
+    and extra argument refused, one lead saved, a greeting saves nothing, invalid phone and budget
+    out of order refused, one lead per conversation, no CRM data ever given, injection and
+    card-number questions stopped before any model. Extra checks no case can skip: portal - no
+    ticket created and pending actions match; public chat - exactly one unassigned web lead when
+    one was saved, nothing else changed. `tests/db/test_agent_evals_portal.py` and
+    `test_agent_evals_public_chat.py` run them in CI and prove the gate can fail (a staff tool in
+    the customer's tools, broken account access, a second lead in one conversation, a "done"
+    claim). Tests (run 2026-10-25): backend 1719 passed (+4 opt-in skipped), 33 new; ruff, mypy,
+    import-linter clean.
+  - EV4 (2026-10-25): cited answers in CI without a paid key. `agent_evals/rag.py` +
+    `rag_cases.py` play 14 cases (`evals/rag/ci_cases.json`) through the REAL grounded-answer
+    pipeline and the real test database; only two stand-ins: `HashingEmbedder` (deterministic, no
+    model download) and a scripted answer that cites documents by title (`{cite:Returns policy}`;
+    the pipeline decides the numbers). Scored with the existing metrics plus: outcome (answered /
+    not_found with NO model call / ungrounded), documents cited, documents that must never appear.
+    Cases: the four existing questions + a cleaning question, three unanswerable questions, an
+    uncited answer and an invented citation (never shown), a negative control (an answer obeying
+    the poisoned 50% discount is cited, so the metrics must flag it), another organisation's agent
+    and a customer (visibility). CI threshold 0.25 chosen from measurements (answerable 0.32-0.76,
+    unanswerable 0.00-0.18), kept 0.05 clear on both sides by a test. `tests/db/test_agent_evals_rag.py`
+    proves the gate can fail (missing citation check, threshold that lets everything through,
+    internal documents reaching a customer, wrong document cited). Tests (run 2026-10-25): backend
+    1766 passed (+4 opt-in skipped), 47 new; ruff, mypy, import-linter clean.
+  - EV5 (2026-10-26): command line `python -m scripts.eval_agents --provider fake|deepseek|anthropic`
+    (`--suite`, `--only`, `--out`, `--summary`, `--baseline`, `--render`, `--estimate`); plays in the
+    development database as people found by role, one rolled-back transaction, each case in its own
+    savepoint; scripted = every case, strict, exit 1 on any failure; real model = `live` cases,
+    lenient scoring (expected calls in order, extras allowed), a report unless `--baseline` shows a
+    regression; paid providers need `CRM_RUN_LIVE_EVALS=1`; `--estimate` is free (26 live cases,
+    about 80 calls, about $0.04 at published DeepSeek prices). The pytest files and the CLI share
+    `agent_evals/world.py`, `play.py`, `suite.py`; CI writes the scorecard into the job summary and
+    uploads it. Third finding: the card-number guardrail also refuses the seeded demo users' ids
+    (a1000000-0000-4000-8000-00000000000N); the world uses clean ids / stand-in colleagues. Tests
+    (run 2026-10-26): full backend 1816 passed, 4 opt-in skipped, 1 failed
+    (`test_requirements`: the new script imports `agent_evals`, which is not in the image) - fixed
+    and that file re-run alone: passed; the whole suite was not re-run after that one-line fix.
+    ruff, mypy, import-linter clean. CLI on dev data: 4 suites, all cases passed, twice the same
+    scorecard. The one paid DeepSeek pass was run 2026-10-26 with the owner's yes (about $0.04): baseline `backend/evals/baseline/deepseek.json` - 15 of 26 live cases passed, 0 forbidden-tool violations, 0 false "done" claims, tool precision/recall 46 %, argument accuracy 41 %; most failures are missing phrases or a tool not called (see docs/agent-evals.md).
 - **CRM MCP server standard (BP-11, ADR 0015)** - owner approved ADR 0015 on 2026-10-26 (all five
   clients, no hosted endpoint now, old worktree left alone). MCP0: ADR 0015 (+ the old, unmerged
   ADR 0010 text kept as `docs/adr/0015a-original-crm-mcp-decision.md`). MCP1 (2026-10-26): the
@@ -416,7 +487,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     new tests were shown to fail when the changes are undone; ruff and mypy strict clean.
     **BP-11 steps MCP0-MCP4 complete**; MCP5 (propose tools) and MCP6 (hosted endpoint) need
     separate approval.
-- **Next planned, in order:** BP-04 leftovers (built, PR waiting), then BP-10, BP-11 (rest of AI Track A1), then
-  BP-04 leftovers and the AI tracks A2-A4, Marketing
-  (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
-  an ADR.
+- **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
+  AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
+  an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features
+  that need them and need an ADR.

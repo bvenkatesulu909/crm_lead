@@ -413,6 +413,20 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     the customer's tools, broken account access, a second lead in one conversation, a "done"
     claim). Tests (run 2026-10-25): backend 1719 passed (+4 opt-in skipped), 33 new; ruff, mypy,
     import-linter clean.
+  - EV4 (2026-10-25): cited answers in CI without a paid key. `agent_evals/rag.py` +
+    `rag_cases.py` play 14 cases (`evals/rag/ci_cases.json`) through the REAL grounded-answer
+    pipeline and the real test database; only two stand-ins: `HashingEmbedder` (deterministic, no
+    model download) and a scripted answer that cites documents by title (`{cite:Returns policy}`;
+    the pipeline decides the numbers). Scored with the existing metrics plus: outcome (answered /
+    not_found with NO model call / ungrounded), documents cited, documents that must never appear.
+    Cases: the four existing questions + a cleaning question, three unanswerable questions, an
+    uncited answer and an invented citation (never shown), a negative control (an answer obeying
+    the poisoned 50% discount is cited, so the metrics must flag it), another organisation's agent
+    and a customer (visibility). CI threshold 0.25 chosen from measurements (answerable 0.32-0.76,
+    unanswerable 0.00-0.18), kept 0.05 clear on both sides by a test. `tests/db/test_agent_evals_rag.py`
+    proves the gate can fail (missing citation check, threshold that lets everything through,
+    internal documents reaching a customer, wrong document cited). Tests (run 2026-10-25): backend
+    1766 passed (+4 opt-in skipped), 47 new; ruff, mypy, import-linter clean.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

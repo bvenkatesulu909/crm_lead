@@ -1,6 +1,6 @@
 """Shared helpers for playing agent evaluation cases against the real test database (BP-10).
 
-Staff assistant (EV2), customer portal assistant and public website chat (EV3).
+Staff assistant (EV2), customer portal assistant and public website chat (EV3), cited answers (EV4).
 
 Builds the fictional world a case refers to (``{{lead.own}}`` ...) from the people and records of
 ``test_quotes_api.world``, plays a case through the real assistant as the right person, and adds
@@ -17,6 +17,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agent_evals.cases import Case, substitute
+from agent_evals.rag import (
+    HashingEmbedder,
+    RagRun,
+    ingest_documents,
+    run_rag_case,
+    score_rag_case,
+)
+from agent_evals.rag_cases import RagCase
 from agent_evals.runner import (
     PortalRun,
     PublicRun,
@@ -31,6 +39,7 @@ from app.core.config import Settings
 from app.modules.activities.models import Activity
 from app.modules.approvals.models import AgentAction
 from app.modules.assistant.models import PendingAction
+from app.modules.knowledge import retrieval
 from app.modules.leads.models import Lead
 from app.modules.support.models import Ticket
 from tests.auth_helpers import TEST_ISSUER
@@ -46,6 +55,7 @@ PERSONA_USER = {
     "support_agent": "alpha.support",
     "tenant_admin": "alpha.admin",
     "customer": "alpha.customer",  # a customer of account A1 (not of A2)
+    "beta_agent": "beta.agent",  # an agent of the OTHER organisation
 }
 OTHER_AGENT = "alpha.agent2"
 
@@ -275,3 +285,102 @@ def play_public(session: Session, world: World, case: Case) -> tuple[CaseResult,
         ),
     ]
     return with_checks(score_case(ready, run.trajectory), checks), run
+
+
+# --- cited answers (EV4) --------------------------------------------------------------------------
+
+# Chosen from measurements, not guessed: with the hashing embedder the answerable demo questions
+# score 0.32 - 0.76 and the unanswerable ones 0.00 - 0.18 (docs/agent-evals.md, section 6d).
+RAG_MIN_SIMILARITY = 0.25
+
+
+def rag_settings(min_similarity: float = RAG_MIN_SIMILARITY) -> Settings:
+    return Settings(
+        _env_file=None,
+        environment="test",
+        database_url=UNREACHABLE_DATABASE_URL,
+        oidc_issuer=TEST_ISSUER,
+        knowledge_min_similarity=min_similarity,
+    )
+
+
+def ingest_corpus(session: Session, world: World, embedder: HashingEmbedder) -> None:
+    """The fictional demo documents of both organisations (as scripts/seed_knowledge_demo.py)."""
+    from app.core.db import bind_tenant
+    from scripts.seed_knowledge_demo import (
+        BETA_DOCUMENTS,
+        DEMO_DOCUMENTS,
+        POISONED,
+        PORTAL_DOCUMENTS,
+    )
+
+    alpha = world.users["alpha.admin"].tenant_id
+    beta = world.users["beta.admin"].tenant_id
+    bind_tenant(session, alpha)
+    ingest_documents(
+        session,
+        embedder,
+        alpha,
+        [
+            *((t, f, x, "internal") for t, f, x in DEMO_DOCUMENTS),
+            *((t, f, x, "customer_visible") for t, f, x in PORTAL_DOCUMENTS),
+            ("TEST ONLY - poisoned document", "test-poisoned.md", POISONED, "internal"),
+        ],
+    )
+    bind_tenant(session, beta)
+    ingest_documents(session, embedder, beta, [(t, f, x, "internal") for t, f, x in BETA_DOCUMENTS])
+
+
+def _rag_principal(
+    session: Session, world: World, persona: str
+) -> tuple[Principal, list[uuid.UUID] | None]:
+    name = PERSONA_USER[persona]
+    principal = principal_for(world.users[name], ROLES[name])
+    bind_principal(session, principal)
+    granted = [world.ids["A1"]] if persona == "customer" else None  # the customer's one account
+    return principal, granted
+
+
+def best_similarity(
+    session: Session, world: World, case: RagCase, embedder: HashingEmbedder
+) -> float:
+    """How close the best chunk is to the question, for this person (no threshold applied)."""
+    principal, granted = _rag_principal(session, world, case.persona)
+    settings = rag_settings()
+    found = retrieval.search(
+        session,
+        principal,
+        embedder,
+        query=case.question,
+        candidates=settings.knowledge_candidates,
+        rrf_k=settings.knowledge_rrf_k,
+        top_k=settings.knowledge_top_k,
+        min_similarity=None,
+        account_ids=granted,
+    )
+    return found.best_similarity or 0.0
+
+
+def play_rag(
+    session: Session,
+    world: World,
+    case: RagCase,
+    *,
+    embedder: HashingEmbedder | None = None,
+    min_similarity: float = RAG_MIN_SIMILARITY,
+    ingest: bool = True,
+) -> tuple[CaseResult, RagRun]:
+    """Play one cited-answer case for real and score it."""
+    embedder = embedder or HashingEmbedder()
+    if ingest:
+        ingest_corpus(session, world, embedder)
+    principal, granted = _rag_principal(session, world, case.persona)
+    run = run_rag_case(
+        session,
+        principal,
+        case,
+        embedder=embedder,
+        settings=rag_settings(min_similarity),
+        account_ids=granted,
+    )
+    return score_rag_case(case, run.outcome, model_calls=run.model_calls), run

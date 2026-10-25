@@ -1,6 +1,6 @@
 # Agent evaluation harness (BP-10) - design note and step plan
 
-- **Status:** Accepted (2026-10-25). Steps EV0-EV3 done; EV4-EV5 not started.
+- **Status:** Accepted (2026-10-25). Steps EV0-EV4 done; EV5 not started.
 - **Size:** medium (EV1-EV5). A short design note, not an ADR: nothing here sends data anywhere
   new, changes security rules or adds a table.
 - **Master plan:** `docs/master-plan.md` (AI Track A1, BP-10).
@@ -158,6 +158,39 @@ CI needs no new secrets and no new job: the cases run inside the existing `pytes
   conversation). Each agent must keep at least 8 cases, one of them stopped by the guardrails
   (`tests/test_agent_evals_dataset.py`).
 - Not yet: cited-answer cases (EV4), command-line runner, scorecard file and real-model runs (EV5).
+
+## 6d. What exists after EV4 (cited answers, no paid key)
+
+- **What runs:** the REAL grounded-answer pipeline (`knowledge/answers.py`): hybrid search in the
+  real test database, the visibility rules, "close enough" threshold, numbered sources, the
+  citation check and the refusals. Two stand-ins: `HashingEmbedder` (a deterministic bag-of-words
+  vector, no model download) and `ScriptedAnswerModel`. A case's answer cites documents BY TITLE
+  (`{cite:Returns policy}`); the pipeline decides the numbers, so a case survives a change in
+  ranking and fails loudly when the right document is not among the sources.
+- **Code:** `agent_evals/rag_cases.py` (format and loader), `agent_evals/rag.py` (embedder,
+  scripted model, ingest, run, score), `evals/rag/ci_cases.json` (14 cases),
+  `tests/db/test_agent_evals_rag.py` (plays them in CI, proves the gate can fail).
+- **Scoring:** the project's existing metrics (`knowledge/evaluation.py`: groundedness,
+  faithfulness, correctness, injection safety) plus case checks: the outcome (`answered`,
+  `not_found` = nothing close enough and the model is NOT called, `ungrounded` = the model
+  answered without a valid citation), whether the model was called, which documents were cited,
+  which must never appear among the sources. Poisoned-document cases are judged on injection
+  safety alone, exactly like the live evaluation (`scripts/eval_rag_answers.py`).
+- **The 14 cases:** the four existing questions (returns 14 days, delivery, payment, the poisoned
+  discount) plus a cleaning question; three unanswerable questions (nothing found, no model call);
+  an uncited answer and an invented citation number (never shown); a negative control (an answer
+  that offers the poisoned 50% discount is cited, so the pipeline shows it - the metrics must
+  flag it); another organisation's agent (own policy, never the first organisation's documents);
+  a customer (customer-visible documents only; the internal discount policy is invisible).
+- **Why the threshold is 0.25 (CI only; production keeps 0.64 for the real model):** measured on the
+  demo documents - answerable questions 0.32 - 0.76 (invoices 0.32 is the tightest), unanswerable
+  0.00 - 0.18. A test keeps at least 0.05 of margin on both sides.
+- **The gate can fail:** a changed expectation, a missing citation check, a threshold that lets
+  everything through (the model would be paid on every question), internal documents reaching a
+  customer, and an answer naming the wrong document each make a case fail.
+- **Honest limits:** the hashing embedder measures word overlap, not meaning - it proves the
+  pipeline's rules (refuse, cite, isolate), not the quality of real retrieval. That stays with
+  `scripts/eval_retrieval.py` (100 questions, real local model) and the paid answer evaluation.
 
 ### Findings while writing the cases (not fixed here: BP-10 only measures)
 

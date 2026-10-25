@@ -193,7 +193,7 @@ audit log; outbox table + worker skeleton; admin UI to list users, assign roles 
 - Internal fields (notes, margins, internal comments) never appear in portal responses (tested).
 - Playwright: two portal users from different accounts cannot see each other's data.
 
-## Phase CC — Communication Center (Module 18)  *(ADR 0012, accepted by the owner 2026-10-24; CC0–CC4 done 2026-10-24, CC5 and CC6 done 2026-10-25 - phase complete, see docs/communications.md; merge of PR #13 pending)*
+## Phase CC — Communication Center (Module 18)  *(ADR 0012, accepted by the owner 2026-10-24; CC0–CC4 done 2026-10-24, CC5 and CC6 done 2026-10-25 - phase complete, see docs/communications.md; merged into main 2026-10-25 as PR #15)*
 
 One-to-one e-mail from the CRM: a composer, templates and each record's conversation history.
 Built before Marketing (Phase 16), which will reuse its templates. Receiving replies
@@ -226,6 +226,45 @@ automatically waits for Phase 19 (Integrations); until then received e-mails are
 - The Communication Center list is filtered in SQL (`read:all` vs `read:own`); a record's history
   follows that record's read rules.
 - E-mail bodies never appear in logs or event payloads.
+- Definition of Done checklist complete.
+
+## Phase PC — Public website chat that saves real-estate leads (BP-01, Module 20)  *(ADR 0013 proposed 2026-10-25; PC0 written, PC1–PC6 not started)*
+
+A chat on the company's public website: a home buyer gives name, phone, property type, budget
+and location, and a lead is saved for the sales team. Tickets CRM-104, CRM-105, CRM-106a/b.
+The first endpoint where someone without an account creates data - see ADR 0013 for the
+protection (server-only key, one tenant per website, limits, guardrails, plain-text answers).
+
+**Steps (each stops for review)**
+- **PC0** — ADR 0013 and this phase description (documents only).
+- **PC1 (CRM-104)** — DeepSeek tool calling in `DeepSeekChatModel`: tools in OpenAI format,
+  `tool_calls` → `ToolUse`, tool results as `role: "tool"`; Anthropic unchanged; tests with a
+  fake HTTP client (no key needed).
+- **PC2 (CRM-105)** — Real-estate lead fields `property_type`, `budget_min_inr`,
+  `budget_max_inr`, `location` (migration 0040, database checks, schemas, lead form and page).
+- **PC3 (CRM-106a)** — `public_chat` module: `public_chat_sessions` + `public_chat_messages`
+  (migration 0041, forced RLS), settings (tenant slug, server key, provider, limits),
+  `POST /api/v1/public/chat` with the server key, hashed conversation token, `save_lead` tool
+  (lead via `leads/api.py` as the Automation identity, one per conversation), guardrails,
+  limits, `fake` provider refused in production.
+- **PC4 (CRM-106a)** — `public_chat.lead_captured` event → notification to sales managers;
+  transcript on the lead page for staff who may read the lead; 30-day clean-up of
+  conversations without a lead (worker).
+- **PC5 (CRM-106b)** — Web: public `/chat` page (plain-text answers, privacy notice, honeypot)
+  and `/api/public-chat` route handler (adds the server key, visitor address and httpOnly
+  `crm_chat` cookie); `proxy.ts` exception; Vitest.
+- **PC6** — Playwright journey with the fake provider, `docs/public-chat.md`, refreshed
+  inventory, full run, PR.
+
+**Acceptance criteria**
+- Without the server key, with the feature switched off, or for an unknown conversation token:
+  404 (tested). The tenant comes only from the server setting.
+- A visitor can continue only their own conversation and can never read CRM data (tested).
+- One lead per conversation, in the configured tenant only, with the real-estate fields; the
+  database refuses impossible budgets (tested).
+- Every limit and guardrail refusal is tested; answers are shown as plain text.
+- Works without any paid key (fake provider); the fake provider can't start in production.
+- Going live is not part of this phase (ADR 0007, owner's "go live").
 - Definition of Done checklist complete.
 
 ## Phase 16 — Marketing Management (Module 7)

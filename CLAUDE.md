@@ -241,7 +241,10 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     Full run (2026-10-25): backend 1391 passed (+4 opt-in skipped); ruff, mypy, import-linter
     clean; Vitest 295 passed; Playwright 77 passed, 2 skipped (live assistant, slow refresh),
     0 failed; lint, typecheck and production build clean. **Communication Center complete**,
-    waiting for owner review and the merge of draft PR #13.
-- **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
-  (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
-  features that need them and need an ADR.
+    approved by the owner and **merged into `main` (PR #15, 2026-10-25)**.
+- **Public website chat (BP-01, Phase PC, ADR 0013)** - started 2026-10-25 on branch
+  `feat/public-chat-save-lead`. PC0 (ADR 0013 proposed + phase plan) written, waiting for owner
+  review; PC1-PC6 not started. Order of all PDF work: `docs/master-plan.md`.
+- **Next planned, in order:** BP-01 (public chat), then the master plan's AI tracks, Marketing
+  (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
+  an ADR.

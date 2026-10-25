@@ -69,11 +69,18 @@ def list_actions(
     session: Db,
     status: Status | None = None,
     mine: bool = False,
+    target_id: uuid.UUID | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0, le=100_000),
 ) -> AgentActionPage:
     items, total = service.list_actions(
-        session, principal, status=status, mine=mine, limit=limit, offset=offset
+        session,
+        principal,
+        status=status,
+        mine=mine,
+        target_id=target_id,
+        limit=limit,
+        offset=offset,
     )
     return AgentActionPage(
         items=[_read(session, principal, a) for a in items], total=total, limit=limit, offset=offset

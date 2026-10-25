@@ -149,6 +149,31 @@ def test_filters_run_in_the_database(api, auth, world, db_session) -> None:
     assert (len(paged["items"]), paged["total"]) == (1, 2)
 
 
+def test_proposals_of_one_record(api, auth, world, db_session) -> None:
+    lead1 = add_lead(db_session, world, "alpha.agent1")
+    lead2 = add_lead(db_session, world, "alpha.agent1")
+    propose(db_session, world, "alpha.agent1", lead1)
+    propose(db_session, world, "alpha.agent1", lead1, "qualified")
+    propose(db_session, world, "alpha.agent1", lead2)
+
+    page = ok(api.get(ACTIONS, params={"target_id": str(lead1.id)}, headers=auth("alpha.manager")))
+    assert page["total"] == 2
+    assert {i["target_id"] for i in page["items"]} == {str(lead1.id)}
+    both = {"target_id": str(lead1.id), "status": "pending"}
+    assert ok(api.get(ACTIONS, params=both, headers=auth("alpha.manager")))["total"] == 2
+    # Others only ever see their own proposals, whatever they ask for.
+    assert (
+        ok(api.get(ACTIONS, params={"target_id": str(lead1.id)}, headers=auth("alpha.agent2")))[
+            "total"
+        ]
+        == 0
+    )
+    other_tenant = {"target_id": str(lead1.id)}
+    assert ok(api.get(ACTIONS, params=other_tenant, headers=auth("beta.admin")))["total"] == 0
+    bad = api.get(ACTIONS, params={"target_id": "nope"}, headers=auth("alpha.manager"))
+    assert bad.status_code == 422
+
+
 def test_one_proposal(api, auth, world, db_session) -> None:
     lead = add_lead(db_session, world)
     action = propose(db_session, world, "alpha.agent1", lead)

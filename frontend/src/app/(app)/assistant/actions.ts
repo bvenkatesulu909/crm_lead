@@ -1,5 +1,6 @@
 "use server";
 
+import type { AssistantProposal } from "@/lib/api-types";
 import { apiFetch } from "@/lib/server/api";
 
 import { initialStaffAssistantState, type StaffAssistantState } from "./state";
@@ -17,7 +18,11 @@ export async function askStaffAssistant(
    if (Object.keys(fieldErrors).length > 0)
     return { ...initialStaffAssistantState, attempt: previous.attempt + 1, values, fieldErrors };
   try {
-    const result = await apiFetch<{ answer: string; links: string[] }>("/assistant/ask", {
+    const result = await apiFetch<{
+      answer: string;
+      links: string[];
+      proposals?: AssistantProposal[];
+    }>("/assistant/ask", {
       method: "POST",
       body: JSON.stringify({ question: values.question }),
     });
@@ -25,6 +30,7 @@ export async function askStaffAssistant(
       attempt: previous.attempt + 1,
       answer: result.answer,
       links: result.links,
+      proposals: result.proposals ?? [],
       values,
       fieldErrors: {},
       error: null,
@@ -34,6 +40,7 @@ export async function askStaffAssistant(
       attempt: previous.attempt + 1,
       answer: null,
       links: [],
+      proposals: [],
       values,
       fieldErrors: {},
       error: (await import("@/lib/api-error")).toErrorInfo(error),

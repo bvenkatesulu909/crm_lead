@@ -150,4 +150,6 @@ different person (sales manager or tenant admin) approves or rejects it.
 - The answer lists the proposals (`proposals`: id, description, status, link to
   `/approvals/{id}`); the tool result tells the model "nothing has changed yet".
 - Tests: `tests/db/test_assistant_proposals.py` (scripted model, no paid key).
+- Screen (step AP4): the answer card lists the proposals under "Waiting for approval" with a
+  link to each one; the Approvals page (`/approvals`) is where managers decide.
 

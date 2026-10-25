@@ -48,10 +48,13 @@ def page(
     *,
     status: str | None,
     requester: uuid.UUID | None,
+    target_id: uuid.UUID | None = None,
     limit: int,
     offset: int,
 ) -> tuple[list[AgentAction], int]:
     conditions = [AgentAction.tenant_id == tenant_id]
+    if target_id is not None:
+        conditions.append(AgentAction.target_id == target_id)
     if status is not None:
         conditions.append(AgentAction.status == status)
     if requester is not None:

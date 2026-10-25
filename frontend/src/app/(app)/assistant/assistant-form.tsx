@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useRef } from "react";
 
+import { AssistantProposals } from "@/components/approval-views";
 import { Card, ErrorAlert, buttonClass } from "@/components/ui";
 import { SpeakButton } from "@/components/speak-button";
 import { VoiceRecorder } from "@/components/voice-recorder";
@@ -74,8 +75,10 @@ export function StaffAssistantForm() {
               ))}
             </ul>
           )}
+          <AssistantProposals proposals={state.proposals} />
           <p className="mt-3 text-xs text-slate-500">
-            Read-only advice. Nothing is sent to the customer automatically.
+            Advice only. Nothing is sent to the customer automatically, and changes the assistant
+            proposes wait for a manager&apos;s approval.
           </p>
         </Card>
       )}

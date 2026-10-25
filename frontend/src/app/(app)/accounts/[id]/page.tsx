@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { ActivityPanel } from "@/components/activity-panel";
 import { EmailCard } from "@/components/email-card";
+import { RecordProposals } from "@/components/record-proposals";
 import { DocumentsCard } from "@/components/documents-card";
 import { PaymentStateBadge, invoiceNumber } from "@/components/invoices";
 import {
@@ -404,6 +405,8 @@ export default async function AccountPage({
           )}
 
           <ActivityPanel link={{ type: "account", id: a }} me={me} people={people} ownsRecord={isOwner} />
+
+          <RecordProposals me={me} targetId={a} />
 
           <EmailCard me={me} record={{ type: "account", id: a }} accountId={a} />
 

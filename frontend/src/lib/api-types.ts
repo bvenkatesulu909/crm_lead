@@ -1415,3 +1415,54 @@ export type TemplatePreview = {
 };
 
 export type Placeholder = { name: string; description: string };
+
+// --- Approval queue for AI-proposed actions (ADR 0014) -------------------------------------
+
+export const AGENT_ACTION_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+  "expired",
+  "failed",
+] as const;
+export type AgentActionStatus = (typeof AGENT_ACTION_STATUSES)[number];
+
+/** One change an AI feature proposed; it waits for a different person's decision. */
+export type AgentAction = {
+  id: string;
+  kind: string;
+  /** One line for the approver, e.g. "Change the lead's status to contacted". */
+  description: string;
+  target_type: "lead" | "account" | "contact";
+  target_id: string;
+  target_link: string;
+  /** The record's name - only if the reader may see that record. */
+  target_label: string | null;
+  payload: Record<string, unknown>;
+  reason: string;
+  agent: string;
+  requested_by_user_id: string;
+  status: AgentActionStatus;
+  expires_at: string;
+  decided_by_user_id: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  result: string | null;
+  created_at: string;
+  version: number;
+};
+
+export type AgentActionPage = {
+  items: AgentAction[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+/** A change the staff assistant proposed while answering (it waits for approval). */
+export type AssistantProposal = {
+  id: string;
+  description: string;
+  status: string;
+  link: string;
+};

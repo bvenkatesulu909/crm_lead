@@ -349,6 +349,7 @@ def list_actions(
     *,
     status: str | None,
     mine: bool,
+    target_id: uuid.UUID | None = None,
     limit: int,
     offset: int,
 ) -> tuple[list[AgentAction], int]:
@@ -360,7 +361,13 @@ def list_actions(
     )
     requester = user_id if mine or not approver else None
     return repository.page(
-        session, tenant_id, status=status, requester=requester, limit=limit, offset=offset
+        session,
+        tenant_id,
+        status=status,
+        requester=requester,
+        target_id=target_id,
+        limit=limit,
+        offset=offset,
     )
 
 

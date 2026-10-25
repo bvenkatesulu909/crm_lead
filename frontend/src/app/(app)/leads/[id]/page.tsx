@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ActivityPanel } from "@/components/activity-panel";
 import { ChatTranscriptCard } from "@/components/chat-transcript-card";
 import { EmailCard } from "@/components/email-card";
+import { RecordProposals } from "@/components/record-proposals";
 import { LeadScoreCard } from "@/components/lead-score";
 import { Card, Forbidden, StatusBadge, SuccessAlert } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
@@ -268,6 +269,7 @@ export default async function LeadPage({
             ownsRecord={lead.owner_id === me.user_id}
             planOnly
           />
+          <RecordProposals me={me} targetId={lead.id} />
           <EmailCard me={me} record={{ type: "lead", id: lead.id }} person={{ email: lead.email }} personLabel={name} />
         </div>
 

@@ -234,6 +234,7 @@ describe("dashboard module catalog", () => {
       "Reports",
       "Integrations",
       "AI Assistant",
+      "AI Approvals",
       "Knowledge Base",
       "Administration",
     ]);

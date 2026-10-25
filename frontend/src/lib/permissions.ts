@@ -108,6 +108,13 @@ export const canReadEmailHistory = (me: Pick<Me, "permissions">) =>
 export const canManageEmailTemplates = (me: Pick<Me, "permissions">) =>
   hasAny(me, "communication:template:manage");
 
+/** Approval queue for AI-proposed actions (ADR 0014). Everyone with an AI assistant sees their
+ * own proposals; only approvers (sales managers, tenant admins) see and decide on all. */
+export const canReadApprovals = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "agent_action:propose", "agent_action:approve");
+export const canApproveActions = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "agent_action:approve");
+
 export const canReadActivities = (me: Pick<Me, "permissions">) =>
   hasAny(me, "activity:read:all", "activity:read:own");
 export const canWriteActivities = (me: Pick<Me, "permissions">) =>
@@ -161,6 +168,7 @@ export type NavItem = {
     | "reports"
     | "knowledge"
     | "assistant"
+    | "approvals"
     | "organisations";
 };
 
@@ -207,6 +215,8 @@ export function navigationFor(
     items.push({ href: "/knowledge", label: "Knowledge", icon: "knowledge" });
   if (canReadTickets(me))
     items.push({ href: "/assistant", label: "AI Assistant", icon: "assistant" });
+  if (canReadApprovals(me))
+    items.push({ href: "/approvals", label: "Approvals", icon: "approvals" });
   if (me.permissions.length > 0 && canUseReports(me))
     items.push({ href: "/reports", label: "Reports", icon: "reports" });
   if (canReadUsers(me))
@@ -301,6 +311,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "communication:read:own": "See the e-mails you sent or logged",
   "communication:template:manage": "Create and change e-mail templates",
   "workflow:manage": "Create automation rules",
+  "agent_action:propose": "Let the AI assistant propose changes, and see your own proposals",
+  "agent_action:approve": "Approve or reject AI proposals made for colleagues",
   "portal:quote:read": "View your company's quotes in the portal",
   "portal:quote:respond": "Accept or decline quotes in the portal",
   "dashboard:executive": "See the executive dashboard",

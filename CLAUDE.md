@@ -329,6 +329,21 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     Scripted model, no paid key. Tests (run 2026-10-25): backend 1534 passed (+4 opt-in
     skipped), 11 new in `test_assistant_proposals.py`; ruff, mypy, import-linter clean;
     docs/assistant.md.
+  - AP4 (2026-10-25): screens. Menu entry "Approvals" (everyone with `agent_action:propose` or
+    `:approve`) and module tile "AI Approvals". `/approvals`: tabs Waiting (approvers only) /
+    My proposals / History with a status filter and paging, one card per proposal (what, record
+    link, why, who asked, expiry, how it ended) with Details / Reject / Approve; `/approvals/{id}`
+    (notifications link here); Reject needs a note, Approve may have one, both confirm first and
+    show the API's reasons in plain words (already decided, changed, expired, own proposal, record
+    not visible). "AI proposals" card on the lead, account and contact pages (waiting ones for
+    that record; new `target_id` filter on the list API), a card with the number waiting on the
+    Automation page, and the assistant's answer lists what it proposed ("Nothing has changed
+    yet"). Everything the model or a person wrote is shown as plain text. Tests (run
+    2026-10-25): backend 1535 passed (+4 opt-in skipped), ruff, mypy, import-linter clean; Vitest 367 passed (20 new in `approvals.test.tsx` and
+    `assistant-proposals.test.tsx`; two module-count tests updated); lint, typecheck and
+    production build clean; Playwright `workflow1` + `notifications` 10 passed (menu and tile
+    lists updated); browser check with a demo proposal as manager, agent and admin worked.
+    A demo proposal ("Demo proposal (fictional)") is left waiting in the dev database.
 - **Next planned, in order:** BP-05 (in progress), BP-10, BP-11 (rest of AI Track A1), then
   BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need

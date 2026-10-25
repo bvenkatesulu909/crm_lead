@@ -26,3 +26,4 @@ Rules:
 | [0012](0012-communication-center.md) | Communication Center: one-to-one e-mail, templates, conversation history | Accepted |
 | [0013](0013-public-chat-save-lead.md) | Public website chat that saves real-estate leads (BP-01) | Accepted |
 | [0014](0014-agent-action-approvals.md) | Approval queue for AI-proposed actions (BP-05) | Accepted |
+| [0015](0015-crm-mcp-server-standard.md) | A standard CRM MCP server for IDEs and workplace agents (BP-11) | Proposed |

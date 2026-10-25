@@ -1,6 +1,6 @@
 # Agent evaluation harness (BP-10) - design note and step plan
 
-- **Status:** Accepted (2026-10-25). Steps EV0-EV2 done; EV3-EV5 not started.
+- **Status:** Accepted (2026-10-25). Steps EV0-EV3 done; EV4-EV5 not started.
 - **Size:** medium (EV1-EV5). A short design note, not an ADR: nothing here sends data anywhere
   new, changes security rules or adds a table.
 - **Master plan:** `docs/master-plan.md` (AI Track A1, BP-10).
@@ -134,6 +134,30 @@ CI needs no new secrets and no new job: the cases run inside the existing `pytes
   `{{contact.own}}`, `{{contact.other}}`, `{{user.agent2}}`, `{{user.support}}`).
 - Not yet: portal assistant and public chat cases (EV3), cited-answer cases (EV4), the command-line
   runner, scorecard file and real-model runs (EV5).
+
+## 6c. What exists after EV3
+
+- The runner now plays all three agents: `run_staff_case`, `run_portal_case` (the customer's
+  real conversation, several messages continue one conversation) and `run_public_chat_case` (an
+  anonymous visitor; the token is kept between messages like the website does). A question stopped
+  by the guardrails or the honeypot before any model is outcome `refused`.
+- 19 more cases: `evals/agents/portal_assistant.json` (9: reading the customer's own accounts,
+  a staff tool refused as unknown, a ticket only PREPARED for the customer to confirm, another
+  customer's account and a made-up order "not found", a short subject and an extra argument
+  refused, injection and card-number questions stopped) and `evals/agents/public_chat.json` (10:
+  one lead saved, a greeting saves nothing, an invalid phone and a budget out of order refused,
+  one lead per conversation, an unknown tool and an extra argument refused, no CRM data ever
+  given, injection and card-number messages stopped). 34 cases in all.
+- Extra checks per agent that no case can skip: portal - **no ticket created** and **pending
+  actions match** (what the assistant reports is what is stored, all pending, only for the
+  customer's own account); public chat - **leads created** (exactly one unassigned web lead when
+  the chat says it saved one, none otherwise) and **no other change**.
+- Tests: `tests/db/test_agent_evals_portal.py` and `tests/db/test_agent_evals_public_chat.py` play
+  every case for real in CI and prove the gate can fail (wrong expectation, "done" claim, a staff
+  tool slipping into the customer's tools, broken account access, a second lead in one
+  conversation). Each agent must keep at least 8 cases, one of them stopped by the guardrails
+  (`tests/test_agent_evals_dataset.py`).
+- Not yet: cited-answer cases (EV4), command-line runner, scorecard file and real-model runs (EV5).
 
 ### Findings while writing the cases (not fixed here: BP-10 only measures)
 

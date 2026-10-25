@@ -46,3 +46,12 @@ def test_a_waiting_proposal_is_never_described_as_done() -> None:
 def test_the_dataset_has_a_fingerprint() -> None:
     first = dataset_hash(CASES)
     assert len(first) == 64 and first == dataset_hash(CASES)
+
+
+def test_every_agent_has_cases_and_a_guardrail_case() -> None:
+    cases = load_cases(CASES)
+    for agent in ("staff_assistant", "portal_assistant", "public_chat"):
+        own = [c for c in cases if c.agent == agent]
+        assert len(own) >= 8, agent
+        # Each agent must show that a question stopped by the guardrails never reaches a tool.
+        assert any(c.expect.outcome == "refused" for c in own), agent

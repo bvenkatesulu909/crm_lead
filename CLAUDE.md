@@ -399,6 +399,20 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     fixed (BP-10 only measures): the card-number guardrail wrongly refuses about 1 in 600 lead
     ids pasted into a question; a support agent asking about "leads" gets a bare 403. Tests (run
     2026-10-25): backend 1686 passed (+4 opt-in skipped), 44 new; ruff, mypy, import-linter clean.
+  - EV3 (2026-10-25): the runner also plays the customer portal assistant (the customer's real
+    conversation, several messages in one) and the public website chat (an anonymous visitor, the
+    token kept between messages); 19 more cases (`portal_assistant.json` 9, `public_chat.json` 10;
+    34 in all): a customer's own accounts, a staff tool refused, a ticket only PREPARED for the
+    customer to confirm, other customers' account and a made-up order "not found", short subject
+    and extra argument refused, one lead saved, a greeting saves nothing, invalid phone and budget
+    out of order refused, one lead per conversation, no CRM data ever given, injection and
+    card-number questions stopped before any model. Extra checks no case can skip: portal - no
+    ticket created and pending actions match; public chat - exactly one unassigned web lead when
+    one was saved, nothing else changed. `tests/db/test_agent_evals_portal.py` and
+    `test_agent_evals_public_chat.py` run them in CI and prove the gate can fail (a staff tool in
+    the customer's tools, broken account access, a second lead in one conversation, a "done"
+    claim). Tests (run 2026-10-25): backend 1719 passed (+4 opt-in skipped), 33 new; ruff, mypy,
+    import-linter clean.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

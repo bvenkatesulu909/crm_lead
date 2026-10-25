@@ -168,3 +168,45 @@ def test_the_outcome_of_a_conversation(
     calls: list[ToolCall], proposals: int, expected: str
 ) -> None:
     assert conversation_outcome(calls, proposals) == expected
+
+
+# --- the public chat and portal: outcomes and wrong-agent mistakes (EV3) --------------------------
+
+
+def test_a_saved_lead_beats_everything_else_for_the_public_chat() -> None:
+    from agent_evals.runner import public_chat_outcome
+
+    assert public_chat_outcome([call("ok")], lead_saved=True) == "lead_saved"
+    assert public_chat_outcome([call("refused"), call("ok")], lead_saved=True) == "lead_saved"
+    assert public_chat_outcome([], lead_saved=False) == "answered"
+    assert public_chat_outcome([call("refused")], lead_saved=False) == "nothing_changed"
+
+
+def test_each_runner_refuses_a_case_for_another_agent() -> None:
+    from agent_evals.cases import Case
+    from agent_evals.runner import run_portal_case, run_public_chat_case, run_staff_case
+
+    def case_for(agent: str, persona: str) -> Case:
+        return Case.model_validate(
+            {
+                "id": "wrong-agent-case",
+                "description": "A case for a different agent.",
+                "agent": agent,
+                "as": persona,
+                "messages": ["Hello"],
+                "script": [],
+                "expect": {"outcome": "answered"},
+            }
+        )
+
+    portal = case_for("portal_assistant", "customer")
+    public = case_for("public_chat", "visitor")
+    staff = case_for("staff_assistant", "sales_agent")
+    with pytest.raises(RunnerError, match="portal_assistant"):
+        run_staff_case(None, None, portal)  # type: ignore[arg-type]
+    with pytest.raises(RunnerError, match="staff_assistant"):
+        run_portal_case(None, None, staff)  # type: ignore[arg-type]
+    with pytest.raises(RunnerError, match="staff_assistant"):
+        run_public_chat_case(None, None, staff)  # type: ignore[arg-type]
+    with pytest.raises(RunnerError, match="public_chat"):
+        run_portal_case(None, None, public)  # type: ignore[arg-type]

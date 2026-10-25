@@ -1,7 +1,9 @@
-"""Playing a case through the real assistant (BP-10, step EV2).
+"""Playing a case through the real assistant (BP-10, steps EV2 and EV3).
 
 The assistant under test is the real one - real tools, real permission checks, real database.
-Only the language model is replaced by a script. Two small wrappers do the work:
+Only the language model is replaced by a script. Three agents can be played: the staff
+assistant, the customer portal assistant and the public website chat. Two small wrappers do
+the work:
 
 * ``ScriptedModel`` replays the case's replies (some words and/or tool calls) in order;
 * ``RecordingModel`` notes every tool call and how the CRM answered it. It reads that from the
@@ -20,9 +22,13 @@ from sqlalchemy.orm import Session
 from agent_evals.cases import CallOutcome, Case, Step
 from agent_evals.scoring import ToolCall, Trajectory
 from app.core.auth.principal import Principal
+from app.core.config import Settings
+from app.modules.assistant import service as portal_service
 from app.modules.assistant import staff_service, staff_tools
 from app.modules.assistant.llm import ChatModel, ModelReply, ToolUse
 from app.modules.assistant.service import GuardrailError
+from app.modules.public_chat import service as public_chat_service
+from app.modules.public_chat.schemas import PublicChatRequest
 
 
 class RunnerError(RuntimeError):
@@ -166,3 +172,98 @@ def run_staff_case(
     calls = recorder.calls
     outcome = conversation_outcome(calls, len(proposals))
     return StaffRun(Trajectory(calls, answer, outcome), [p.id for p in proposals])
+
+
+# --- the customer portal assistant (EV3) ----------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PortalRun:
+    trajectory: Trajectory
+    # Tickets the assistant prepared for the customer to confirm (nothing is created yet).
+    pending_actions: int
+
+
+def run_portal_case(
+    session: Session,
+    principal: Principal,
+    case: Case,
+    *,
+    messages_per_hour: int = 1000,
+    max_tool_rounds: int = 6,
+) -> PortalRun:
+    """Play a portal-assistant case as the customer ``principal``. Several messages continue
+    one conversation. Placeholders must already be replaced."""
+    if case.agent != "portal_assistant":
+        raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the portal_assistant")
+    recorder = RecordingModel(ScriptedModel(case.script))
+    conversation_id: uuid.UUID | None = None
+    answer = ""
+    pending = 0
+    for text in case.messages:
+        try:
+            conversation = portal_service.send_message(
+                session,
+                principal,
+                recorder,
+                conversation_id=conversation_id,
+                text=text,
+                messages_per_hour=messages_per_hour,
+                max_tool_rounds=max_tool_rounds,
+            )
+        except GuardrailError as exc:
+            return PortalRun(Trajectory(recorder.calls, exc.detail, "refused"), 0)
+        conversation_id = conversation.id
+        answer = conversation.messages[-1].content if conversation.messages else ""
+        pending = sum(1 for action in conversation.actions if action.status == "pending")
+    calls = recorder.calls
+    return PortalRun(Trajectory(calls, answer, conversation_outcome(calls, pending)), pending)
+
+
+# --- the public website chat (EV3) ----------------------------------------------------------------
+
+
+def public_chat_outcome(calls: list[ToolCall], *, lead_saved: bool) -> str:
+    """A saved lead beats everything; otherwise like any other conversation (no proposals here)."""
+    return "lead_saved" if lead_saved else conversation_outcome(calls, 0)
+
+
+@dataclass(frozen=True)
+class PublicRun:
+    trajectory: Trajectory
+    lead_saved: bool
+
+
+def run_public_chat_case(
+    session: Session,
+    settings: Settings,
+    case: Case,
+    *,
+    visitor_ip: str = "203.0.113.7",
+) -> PublicRun:
+    """Play a public-chat case as an anonymous visitor: each message continues one conversation
+    (the token is kept like the website does). ``settings`` must switch the chat on for the
+    organisation of the test world."""
+    if case.agent != "public_chat":
+        raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the public_chat")
+    recorder = RecordingModel(ScriptedModel(case.script))
+    token: str | None = None
+    answer = ""
+    lead_saved = False
+    for text in case.messages:
+        try:
+            reply = public_chat_service.handle_message(
+                session,
+                settings,
+                recorder,
+                PublicChatRequest(token=token, message=text),
+                visitor_ip=visitor_ip,
+            )
+        except public_chat_service.MessageRefusedError as exc:
+            # Stopped by the guardrails or the honeypot before any model ran.
+            return PublicRun(Trajectory(recorder.calls, exc.detail, "refused"), lead_saved)
+        token, answer, lead_saved = reply.token, reply.reply, reply.lead_saved
+    calls = recorder.calls
+    return PublicRun(
+        Trajectory(calls, answer, public_chat_outcome(calls, lead_saved=lead_saved)), lead_saved
+    )

@@ -49,7 +49,9 @@ export function ChatTranscriptCard({
                   </time>
                 </span>
               </p>
-              <p className="mt-1 whitespace-pre-line break-words">{m.content}</p>
+              <p className="mt-1 whitespace-pre-line break-words">
+                {m.content}
+              </p>
             </li>
           ))}
         </ol>

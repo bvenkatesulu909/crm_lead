@@ -276,9 +276,23 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     `identity_api.bind_reader`; worker tests now clear the request's settings first.
     Tests (run 2026-10-25): public-chat 60 passed (10 new), notifications + workflows 32
     passed; ruff, mypy, import-linter clean; Vitest 330 passed (3 new); lint, typecheck clean.
-    Full backend suite was still running at commit time. Playwright and production build not
-    re-run; the lead-page card was not checked in the browser (no website chat in the dev
-    database until PC5). PC5-PC6 not started.
-- **Next planned, in order:** BP-01 (public chat), then the master plan's AI tracks, Marketing
+    Full backend suite (finished after the commit): 1481 passed (+4 opt-in skipped).
+  - PC5 (CRM-106b, 2026-10-25): public page `/chat` (no sign-in, privacy notice, plain-text
+    answers, hidden honeypot field, works on a phone) and route handler `/api/public-chat`
+    (adds the server key and the visitor's address - Netlify's own header first - keeps the
+    token in the httpOnly `crm_chat` cookie, path `/api/public-chat`, 30 days; one retry when
+    the old conversation was cleaned up); `proxy.ts` lets both through; both are 404 without
+    `PUBLIC_CHAT_SERVER_KEY`. Browser check (phone size, fake model): conversation -> details
+    saved, token not readable by page JavaScript, nothing in localStorage.
+  - PC6 (2026-10-25): Playwright `e2e/public-chat.spec.ts` (visitor -> lead -> manager
+    notification -> transcript on the lead page; agent can't see it; honeypot refused),
+    `docs/public-chat.md`, refreshed `docs/inventory.md`. Full runs (2026-10-25): backend 1481
+    passed (+4 opt-in skipped; no backend code changed after that run); Vitest 347 passed;
+    Playwright 79 passed, 2 skipped, 1 failed - the new chat journey, refused by the
+    3-conversations-per-address limit because every local run shared one address; fixed by
+    giving each run its own test address, then the spec passed twice (2 + 2). The full
+    Playwright suite was not re-run after that fix. Lint, typecheck, production build clean.
+    **BP-01 built**; PR open, waiting for the owner's review.
+- **Next planned, in order:** BP-01 review and merge, then BP-04 leftovers and the master plan's AI tracks, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
   an ADR.

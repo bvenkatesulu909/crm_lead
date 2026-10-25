@@ -19,6 +19,8 @@ class Settings:
     # Must match the redirect URI registered on the crm-mcp Keycloak client.
     redirect_port: int = 8765
     login_timeout_seconds: int = 300
+    # A runaway agent loop must not hammer the CRM; one tool call makes 1-4 API calls.
+    max_calls_per_minute: int = 60
 
     @property
     def redirect_uri(self) -> str:
@@ -43,9 +45,16 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         port = int(env.get("CRM_MCP_REDIRECT_PORT", defaults.redirect_port))
     except ValueError as error:
         raise ConfigError("CRM_MCP_REDIRECT_PORT must be a number") from error
+    try:
+        per_minute = int(env.get("CRM_MCP_MAX_CALLS_PER_MINUTE", defaults.max_calls_per_minute))
+    except ValueError as error:
+        raise ConfigError("CRM_MCP_MAX_CALLS_PER_MINUTE must be a number (1-600)") from error
+    if not 1 <= per_minute <= 600:
+        raise ConfigError("CRM_MCP_MAX_CALLS_PER_MINUTE must be between 1 and 600")
     return Settings(
         api_url=env.get("CRM_MCP_API_URL", defaults.api_url).rstrip("/"),
         issuer=env.get("CRM_MCP_ISSUER", defaults.issuer).rstrip("/"),
         client_id=env.get("CRM_MCP_CLIENT_ID", defaults.client_id),
         redirect_port=port,
+        max_calls_per_minute=per_minute,
     ).validate()

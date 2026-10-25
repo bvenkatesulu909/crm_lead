@@ -405,6 +405,17 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     mcp-server 92 passed (4 new, 7 live included), ruff and mypy strict clean. Finding, not
     fixed: a tool call with an invalid ID still opens the sign-in first (input is checked after
     sign-in). MCP4 not started.
+  - MCP4 (2026-10-26, branch `feat/mcp-hardening`): hardening review. Input checked before sign-in
+    (a bad ID no longer opens the browser); free text cut at 2,000 characters with a marker;
+    at most 60 API calls per minute from the server (`CRM_MCP_MAX_CALLS_PER_MINUTE`); HTTP 429,
+    non-JSON answers, unreachable Keycloak and unexpected errors become short safe messages
+    (nothing internal, no token); prompt-injection tests (three attack texts stay under `data`,
+    envelope fixed, no tool can write). Forged `azp`: already covered by the backend tests
+    (`test_request_client_id.py`: a rejected token cannot choose its name, odd names logged as
+    `invalid`). Tests (run 2026-10-26): mcp-server 116 passed (24 new, 7 live included); the
+    new tests were shown to fail when the changes are undone; ruff and mypy strict clean.
+    **BP-11 steps MCP0-MCP4 complete**; MCP5 (propose tools) and MCP6 (hosted endpoint) need
+    separate approval.
 - **Next planned, in order:** BP-04 leftovers (built, PR waiting), then BP-10, BP-11 (rest of AI Track A1), then
   BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need

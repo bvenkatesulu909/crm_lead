@@ -389,6 +389,13 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   backend suite was not re-run (only a script, two small API edits and tests changed). MCP2-MCP4
   not started; the connector in `~/.claude.json` still points at the old worktree until the
   owner confirms.
+  - MCP2 (2026-10-26, branch `feat/mcp-contract`): `docs/mcp-tools.md` (generated tool table + rules
+    + version rule), committed `mcp-server/contract/catalogue.json`, `crm_mcp/catalogue.py` with
+    `python -m crm_mcp.catalogue [--write]`. Tests fail when the live tools, the snapshot or the
+    page differ, when a tool is not read-only / badly named / without endpoints / page size above
+    50, and `--write` refuses a change whose version bump is too small (breaking = new major,
+    before 1.0 new minor). Tests (run 2026-10-26): mcp-server 88 passed (37 new, 7 live included),
+    ruff and mypy strict clean. MCP3-MCP4 not started.
 - **Next planned, in order:** BP-04 leftovers (built, PR waiting), then BP-10, BP-11 (rest of AI Track A1), then
   BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need

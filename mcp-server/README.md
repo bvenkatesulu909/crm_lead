@@ -33,6 +33,8 @@ It speaks **MCP** (Model Context Protocol), the standard way AI apps call tools.
 Lists return at most 50 records. Every answer starts with a notice telling Claude that record
 text is data, not instructions (protection against "prompt injection" hidden in a note).
 
+The full contract (inputs, API calls, rules, version rule) is in [`docs/mcp-tools.md`](../docs/mcp-tools.md); a test keeps it identical to the running server.
+
 ## Setup (once)
 
 Needs: the local stack running (`cd infrastructure && docker compose up -d`) and the API

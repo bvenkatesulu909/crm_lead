@@ -175,7 +175,13 @@ def render_markdown(
 
 def render_summary(cards: dict[str, Scorecard]) -> str:
     """One page for a CI job: a section per scorecard."""
-    parts = ["## Agent evaluations (scripted model, no paid key)", ""]
+    providers = {card.provider for card in cards.values()}
+    how = (
+        "scripted model, no paid key"
+        if providers == {"fake"}
+        else "real model: " + ", ".join(sorted(providers))
+    )
+    parts = [f"## Agent evaluations ({how})", ""]
     for name in sorted(cards):
         parts.append(render_markdown(cards[name], title=name))
     return "\n".join(parts)

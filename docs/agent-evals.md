@@ -1,6 +1,6 @@
 # Agent evaluation harness (BP-10) - design note and step plan
 
-- **Status:** Accepted (2026-10-25). Steps EV0-EV5 done (the paid DeepSeek pass waits for the owner's yes).
+- **Status:** Accepted (2026-10-25). Steps EV0-EV5 done (the one paid DeepSeek pass was run 2026-10-26).
 - **Size:** medium (EV1-EV5). A short design note, not an ADR: nothing here sends data anywhere
   new, changes security rules or adds a table.
 - **Master plan:** `docs/master-plan.md` (AI Track A1, BP-10).
@@ -251,6 +251,16 @@ CI needs no new secrets and no new job: the cases run inside the existing `pytes
   (`a1000000-0000-4000-8000-000000000004`). The world now creates the records a question mentions
   with a clean id, and a stand-in colleague with a clean id (inside the rolled-back transaction)
   when a seeded one would be refused. The guardrail itself is unchanged: BP-10 only measures.
+- **First real-model baseline (DeepSeek `deepseek-chat`, 2026-10-26, one paid pass, 26 live cases,
+  `backend/evals/baseline/deepseek.json` + `.md`):** 15 passed, 11 failed; 0 forbidden-tool
+  violations, 0 false "done" claims; tool precision 46 %, recall 46 %, argument accuracy 41 %.
+  Cited answers 11/11, portal 2/4, public chat 1/3, staff 1/8. Reading the failures: the model
+  often answers in its own words, so the required phrase ("could not find", "waiting", "can't
+  share") is missing - the phrase checks are strict for a real model; and sometimes it does not
+  call the tool at all (answers a question about a made-up lead without searching, calls
+  `search_accounts` instead of the proposing tool, never saves the lead). These are measurements,
+  not fixes: tightening prompts or loosening phrase checks is a separate, reviewed step. The
+  safety numbers (no forbidden tool, no false claim) held.
 - **Honest limits:** the cited-answer stand-in embedder measures word overlap, not meaning. A real
   model run scores behaviour (tools, arguments, claims), not the quality of the wording. One paid
   pass is a snapshot: real models vary a little from run to run, hence the 5-point tolerance.

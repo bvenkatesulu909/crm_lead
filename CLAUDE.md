@@ -442,7 +442,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     (`test_requirements`: the new script imports `agent_evals`, which is not in the image) - fixed
     and that file re-run alone: passed; the whole suite was not re-run after that one-line fix.
     ruff, mypy, import-linter clean. CLI on dev data: 4 suites, all cases passed, twice the same
-    scorecard. The one paid DeepSeek pass has NOT been run (waits for the owner's yes).
+    scorecard. The one paid DeepSeek pass was run 2026-10-26 with the owner's yes (about $0.04): baseline `backend/evals/baseline/deepseek.json` - 15 of 26 live cases passed, 0 forbidden-tool violations, 0 false "done" claims, tool precision/recall 46 %, argument accuracy 41 %; most failures are missing phrases or a tool not called (see docs/agent-evals.md).
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

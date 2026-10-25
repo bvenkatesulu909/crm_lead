@@ -335,6 +335,10 @@ class UnconfiguredChatModel:
 
 
 def build_chat_model(settings: Settings) -> ChatModel:
+    if settings.ai_provider == "fake":
+        from app.modules.assistant.fake_llm import FakeStaffModel  # tests and demos only
+
+        return FakeStaffModel()
     if settings.ai_provider == "deepseek":
         if settings.deepseek_api_key is None:
             return UnconfiguredChatModel()

@@ -140,7 +140,7 @@ with a fake HTTP client (`backend/tests/test_deepseek_tools.py`).
 The staff assistant (`POST /api/v1/assistant/ask`) now gets its tools. Besides the reading
 tools it has three **proposing** tools: `propose_lead_status`, `propose_lead_assignment` and
 `propose_follow_up_task`. They never change anything: each creates a **pending** proposal in
-the approval queue (`docs/approvals.md`, from AP5; API `/api/v1/approvals/actions`), and a
+the approval queue (`docs/approvals.md`; API `/api/v1/approvals/actions`), and a
 different person (sales manager or tenant admin) approves or rejects it.
 
 - The record must be visible to the employee asking; otherwise the model gets "not found" and

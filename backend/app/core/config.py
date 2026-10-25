@@ -73,7 +73,8 @@ class Settings(BaseSettings):
     invite_link_lifespan_seconds: int = Field(default=72 * 3600, ge=3600, le=14 * 24 * 3600)
 
     # AI runtime: "anthropic" (default, existing behaviour) or "deepseek" (OpenAI-compatible).
-    ai_provider: Literal["anthropic", "deepseek"] = "anthropic"
+    # "fake" = a scripted model for tests and local demos (no key); refused in production.
+    ai_provider: Literal["anthropic", "deepseek", "fake"] = "anthropic"
     # AI assistant (ADR 0003). Without a key the assistant answers 503 and the portal hides it.
     # The key stays on the server; customers' questions and the tool results the assistant
     # reads are sent to the selected provider.
@@ -212,6 +213,10 @@ class Settings(BaseSettings):
     def _public_chat_is_safe(self) -> "Settings":
         if self.environment == "production" and self.public_chat_provider == "fake":
             raise ValueError("The fake public chat provider can't be used in production.")
+        if self.environment == "production" and self.ai_provider == "fake":
+            raise ValueError(
+                "The fake assistant provider (ai_provider) can't be used in production."
+            )
         key = self.public_chat_server_key
         if key is not None and len(key.get_secret_value()) < 32:
             raise ValueError("public_chat_server_key must be at least 32 characters long.")

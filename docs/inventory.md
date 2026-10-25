@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **205** operations over **163** paths and **232** schemas.
+- **209** operations over **167** paths and **237** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -33,6 +33,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | notifications | 5 |
 | orders | 5 |
 | reports | 5 |
+| approvals | 4 |
 | customer relationships | 3 |
 | identity | 3 |
 | portal access | 3 |
@@ -46,18 +47,18 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0041**
-- Tables in the current schema: **58**
-- Tables with Row-Level Security: **54** (54 policies)
+- Alembic revision: **0042**
+- Tables in the current schema: **59**
+- Tables with Row-Level Security: **55** (55 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **41**
-- Heads: `0041`
+- Migration files: **42**
+- Heads: `0042`
 
 ## Web app (`frontend/src/app`)
 
-- 77 pages and 13 route handlers.
+- 79 pages and 13 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -74,6 +75,8 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/api/public-chat` | route handler |
 | `/api/voice/speak` | route handler |
 | `/api/voice/transcribe` | route handler |
+| `/approvals` | page |
+| `/approvals/[id]` | page |
 | `/assistant` | page |
 | `/automation` | page |
 | `/automation/[id]` | page |
@@ -154,10 +157,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **94**
-- Frontend component test files: **23**
-- Playwright end-to-end specs: **25**
+- Backend test files: **98**
+- Frontend component test files: **25**
+- Playwright end-to-end specs: **26**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **50** (14 in `docs/adr/`)
+- Markdown documents under `docs/`: **52** (15 in `docs/adr/`)

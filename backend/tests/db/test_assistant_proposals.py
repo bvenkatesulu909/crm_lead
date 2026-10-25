@@ -285,3 +285,21 @@ def test_without_proposals_the_answer_is_unchanged(make_api, auth, world) -> Non
     body = ok(ask(make_api(Scripted(ModelReply("Nothing to do."))), auth, "alpha.agent1"))
     assert body["answer"] == "Nothing to do."
     assert body["proposals"] == []
+
+
+def test_with_the_fake_provider_the_assistant_proposes_without_any_key(
+    make_api, auth, world, db_session
+) -> None:
+    """The setting behind the browser journey: CRM_AI_PROVIDER=fake, no model object given."""
+    lead = add_lead(db_session, world)
+    api = make_api(None, ai_provider="fake")
+    question = f"Please mark lead {lead.id} as qualified because the budget is confirmed."
+    body = ok(ask(api, auth, "alpha.agent1", question))
+    [action] = actions(db_session, world)
+    assert (action.kind, action.payload, action.status) == (
+        "lead.set_status",
+        {"status": "qualified"},
+        "pending",
+    )
+    assert [p["id"] for p in body["proposals"]] == [str(action.id)]
+    assert "waiting" in body["answer"].lower()

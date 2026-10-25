@@ -344,7 +344,26 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     production build clean; Playwright `workflow1` + `notifications` 10 passed (menu and tile
     lists updated); browser check with a demo proposal as manager, agent and admin worked.
     A demo proposal ("Demo proposal (fictional)") is left waiting in the dev database.
-- **Next planned, in order:** BP-05 (in progress), BP-10, BP-11 (rest of AI Track A1), then
+  - AP5 (2026-10-25): `CRM_AI_PROVIDER=fake` - a scripted staff assistant (`assistant/fake_llm.py`,
+    understands "mark lead <id> as contacted because ...", refused in production) so the queue
+    can be tried without a paid key; Playwright `e2e/approvals.spec.ts` (agent asks the
+    assistant -> a proposal waits and the lead is unchanged -> the asker can't approve and a
+    colleague can't see it -> a manager approves -> only then the lead changes -> notifications;
+    a rejection needs a reason and changes nothing; runs only with `E2E_FAKE_ASSISTANT=1` and the
+    fake provider); `docs/approvals.md`; refreshed `docs/inventory.md`.
+    **First real-model try (DeepSeek, 2026-10-25, by hand with a script, not an automated test):**
+    asked as an agent by lead id and by lead name, `deepseek-chat` called the proposing tool,
+    a pending proposal was stored, the lead stayed unchanged and the answer said nothing had
+    changed yet and a manager must approve. Two more demo proposals are waiting in the dev
+    database (fictional alpha-demo leads). Claude (Anthropic) not tried: account has no credit.
+    Full runs (2026-10-25): backend 1547 passed (+4 opt-in skipped), ruff, mypy, import-linter
+    clean; Vitest 367 passed; lint, typecheck, production build clean; Playwright 79 passed,
+    2 skipped, 3 failed in the full run - `communications` and `lead-property` timed out while
+    the backend test suite ran at the same time, `portal-knowledge` failed because the fake
+    provider was switched on for the run (that screen asks the assistant model); all three
+    passed when rerun alone with the real provider (4 tests). The whole suite was not rerun
+    in one piece after that. **BP-05 built**; PR open, waiting for the owner's review.
+- **Next planned, in order:** BP-05 review and merge, then BP-10, BP-11 (rest of AI Track A1), then
   BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need
   an ADR.

@@ -227,8 +227,12 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     deal pages, Communication Center page (`/communications`, filters, paging), Templates pages
     for managers (list, new, edit, deactivate/reactivate, placeholder list), "E-mail" menu
     entry, module tile "Available". Tests (run 2026-10-25): Vitest 295 passed (30 new); lint,
-    typecheck and production build clean. NOT yet checked in a browser (Docker Desktop was
-    stopped). CC6 not started.
+    typecheck and production build clean. Browser check (2026-10-25, as alpha.manager, dev
+    database at 0039): menu entry, Communication Center list + status filter, template create
+    (unknown placeholder refused, text kept), edit, deactivate/reactivate, contact card
+    without address (blocked message), Send dialog with template preview, e-mail delivered to
+    Mailpit with Reply-To the sender, status Sending -> Sent, log received e-mail (empty form
+    refused), account page contact list - all worked, no console errors. CC6 not started.
 - **Next planned, in order:** Communication Center, Marketing (Phase 16), Integrations
   (Phase 19), staff AI assistant (Phase 20b/20c). Teams come before the
   features that need them and need an ADR.

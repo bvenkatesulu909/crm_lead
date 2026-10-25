@@ -1,5 +1,8 @@
 """Per-request context: a request ID for tracing, an access log line, and a safe 500 fallback.
 
+The access log line also names the calling application (the token's ``azp``, e.g. ``crm-web`` or
+``crm-mcp``), so calls made through the MCP server can be told apart (ADR 0015 (originally 0010), decision 6).
+
 Written as a plain ASGI middleware (not BaseHTTPMiddleware) so the request ID stays available
 to log calls everywhere in the request, including in exception handlers.
 """
@@ -19,12 +22,27 @@ REQUEST_ID_HEADER = "X-Request-ID"
 # inject fake lines or huge values into the logs.
 _VALID_REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
 _request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
+# A mutable holder rather than its own ContextVar: sync dependencies run in a worker thread with
+# a *copy* of the context, so a value set there would never reach the middleware's log line.
+_request_info: ContextVar[dict[str, str] | None] = ContextVar("request_info", default=None)
+_VALID_CLIENT_ID = re.compile(r"[A-Za-z0-9._:-]{1,64}")
 
 logger = logging.getLogger("app.request")
 
 
 def get_request_id() -> str | None:
     return _request_id.get()
+
+
+def set_client_id(client_id: object) -> None:
+    """Record which application called (from a VERIFIED token only). Odd values are not logged."""
+    info = _request_info.get()
+    if info is None or client_id is None:
+        return
+    if isinstance(client_id, str) and _VALID_CLIENT_ID.fullmatch(client_id):
+        info["client_id"] = client_id
+    else:
+        info["client_id"] = "invalid"
 
 
 class RequestContextMiddleware:
@@ -42,6 +60,8 @@ class RequestContextMiddleware:
         else:
             request_id = uuid.uuid4().hex
         token = _request_id.set(request_id)
+        info: dict[str, str] = {}
+        info_token = _request_info.set(info)
 
         status_code = 500
         response_started = False
@@ -75,6 +95,8 @@ class RequestContextMiddleware:
                     "path": scope["path"],
                     "status_code": status_code,
                     "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
+                    **info,
                 },
             )
+            _request_info.reset(info_token)
             _request_id.reset(token)

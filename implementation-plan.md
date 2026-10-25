@@ -328,7 +328,7 @@ First object of the rest of AI Track A1 (then BP-10 evaluation harness, BP-11 MC
 - All report queries apply tenant + record-level filters; CSV export respects the same rules (tested).
 - Definition of Done checklist complete.
 
-## Phase 19 — External Integrations (Module 17)
+## Phase 19 — External Integrations (Module 17)  *(CRM MCP server: ADR 0015, steps MCP0-MCP6; MCP1 done 2026-10-26)*
 
 **Acceptance criteria**
 - Connector interface + first agreed connector(s); signed outgoing webhooks with retries; verified, idempotent incoming webhooks.

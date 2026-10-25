@@ -1,6 +1,6 @@
 # ADR 0015 — A standard CRM MCP server for IDEs and workplace agents (BP-11)
 
-- **Status:** Proposed (2026-10-26) — waits for the owner's review; no code until approved
+- **Status:** Accepted (2026-10-26, as recommended: all five clients, no hosted endpoint now, old worktree left alone). MCP1 done.
 - **Date:** 2026-10-26
 - **Deciders:** Project owner
 - **Depends on:** ADR 0002 (tenant from the verified identity), ADR 0007 (online deployment),

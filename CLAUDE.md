@@ -81,6 +81,10 @@ Alembic (`backend/`) · PostgreSQL · Keycloak (OIDC) · SeaweedFS (S3 files) ·
 | Create migration | `alembic revision --autogenerate -m "message"` | Phase 2b |
 | Export API contract (after endpoint/schema changes) | `python -m scripts.export_openapi` (in `backend`, venv active) | Phase 7 |
 | Regenerate the project inventory (`docs/inventory.md`) | `python -m scripts.report_inventory` (in `backend`, venv active) | 2026-10-20 |
+| Add new Keycloak clients from realm-crm.json to the running Keycloak (non-destructive) | `python -m scripts.keycloak_add_clients` (in `backend`, venv active) | ADR 0015 |
+| Install the CRM MCP server (once) | `cd mcp-server && uv sync` | ADR 0015 |
+| MCP server tests (unit / + live) | `cd mcp-server && uv run pytest -m "not live"` / `uv run pytest` | ADR 0015 |
+| Connect Claude Code to the CRM (read-only) | `claude mcp add crm-lead -- E:\crm-lead\mcp-server\.venv\Scripts\crm-mcp.exe` | ADR 0015 |
 | Seed local test data (fictional) | `python -m scripts.seed_dev_data` (in `backend`, venv active) | Phase 4 |
 | Seed fictional knowledge documents (RAG R1.6) | `python -m scripts.seed_knowledge_demo` (in `backend`, venv active) | RAG R1 |
 | Keycloak admin console | http://localhost:9080/admin (credentials in `infrastructure\.env`) | Phase 4 |
@@ -372,6 +376,19 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   (run 2026-10-25): Vitest 373 passed (6 new); lint, typecheck, production build clean; Playwright
   `workflow1` + `workflow2` + `workflow3` + `portal` 27 passed. Backend not touched. The whole
   Playwright suite was not rerun for this small change.
+- **CRM MCP server standard (BP-11, ADR 0015)** - owner approved ADR 0015 on 2026-10-26 (all five
+  clients, no hosted endpoint now, old worktree left alone). MCP0: ADR 0015 (+ the old, unmerged
+  ADR 0010 text kept as `docs/adr/0015a-original-crm-mcp-decision.md`). MCP1 (2026-10-26): the
+  existing read-only server was found uncommitted in another worktree and is now on branch
+  `feat/mcp-standard`: `mcp-server/` (8 read-only tools, PKCE sign-in, `uv.lock`), Keycloak
+  client `crm-mcp` (not in the production realm), `scripts/keycloak_add_clients.py`, API access
+  log `client_id` from the verified token's `azp`, new CI job `mcp-server`. Fixed on the way: the
+  server's default Keycloak address was still port 8080 (Keycloak moved to 9080). Tests (run
+  2026-10-26): mcp-server 44 unit + 7 live (real Keycloak + API) passed, ruff and mypy strict
+  clean; backend realm/client-id tests 16 passed, ruff, mypy, import-linter clean. The full
+  backend suite was not re-run (only a script, two small API edits and tests changed). MCP2-MCP4
+  not started; the connector in `~/.claude.json` still points at the old worktree until the
+  owner confirms.
 - **Next planned, in order:** BP-04 leftovers (built, PR waiting), then BP-10, BP-11 (rest of AI Track A1), then
   BP-04 leftovers and the AI tracks A2-A4, Marketing
   (Phase 16), Integrations (Phase 19). Teams come before the features that need them and need

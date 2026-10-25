@@ -8,7 +8,7 @@ network, no clock - the same input always gives the same bytes.
 import json
 import re
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from agent_evals.cases import WAITING_OUTCOMES, CallOutcome, Case
@@ -217,6 +217,12 @@ def score_case(case: Case, run: Trajectory) -> CaseResult:
         expected_args=expected_args,
         matched_args=matched_args,
     )
+
+
+def with_checks(result: CaseResult, extra: list[Check]) -> CaseResult:
+    """A copy of the result with more checks - for things only a runner can look at, such as
+    "the database did not change"."""
+    return replace(result, checks=[*result.checks, *extra])
 
 
 # --- a whole dataset -----------------------------------------------------------------------------

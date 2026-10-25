@@ -1,6 +1,6 @@
 # Agent evaluation harness (BP-10) - design note and step plan
 
-- **Status:** Accepted (2026-10-25). Steps EV0-EV1 done; EV2-EV5 not started.
+- **Status:** Accepted (2026-10-25). Steps EV0-EV2 done; EV3-EV5 not started.
 - **Size:** medium (EV1-EV5). A short design note, not an ADR: nothing here sends data anywhere
   new, changes security rules or adds a table.
 - **Master plan:** `docs/master-plan.md` (AI Track A1, BP-10).
@@ -112,7 +112,36 @@ CI needs no new secrets and no new job: the cases run inside the existing `pytes
 - Case files: `backend/evals/agents/*.json` (4 starter staff-assistant cases).
 - Tests: `tests/test_agent_evals_matchers.py`, `..._cases.py`, `..._scoring.py`,
   `..._dataset.py` (all pure Python, no database, no key).
-- Nothing plays a conversation yet - that is EV2.
+
+## 6b. What exists after EV2
+
+- `agent_evals/runner.py`: `ScriptedModel` (replays a case's replies), `RecordingModel` (notes every
+  tool call and how the CRM answered it, read from the tool results the assistant feeds back - the
+  assistant itself is not changed), `classify_result` (`ok` / `not_found` / `refused`),
+  `conversation_outcome` and `run_staff_case`. A case that ends before the result of a call came
+  back (more than three tool rounds) is a loud `RunnerError`, never a silent pass.
+- 15 staff-assistant cases in `evals/agents/staff_assistant.json`: reading leads; proposing a
+  status change, an assignment and follow-up tasks (only pending proposals, "nothing has changed");
+  other people's leads and contacts and made-up ids ("not found"); "converted", an extra argument,
+  an assignment to a support colleague, a fourth proposal and a made-up approve tool (refused);
+  injection and card-number questions (stopped before any model); a support agent reading leads.
+- `tests/db/test_agent_evals_staff.py` plays every case through the REAL staff assistant against
+  the real test database and adds two checks no case can skip: **no direct change** (no lead
+  changed, no activity created) and **proposals stored** (what the assistant reports is exactly
+  what is stored, all pending). It also proves the gate can fail: a wrong expectation, a forbidden
+  tool, a "done" claim and a raised proposal limit each make a case fail.
+- Shared world for the cases: `tests/db/agent_eval_support.py` (`{{lead.own}}`, `{{lead.other}}`,
+  `{{contact.own}}`, `{{contact.other}}`, `{{user.agent2}}`, `{{user.support}}`).
+- Not yet: portal assistant and public chat cases (EV3), cited-answer cases (EV4), the command-line
+  runner, scorecard file and real-model runs (EV5).
+
+### Findings while writing the cases (not fixed here: BP-10 only measures)
+
+1. **The card-number guardrail refuses some lead ids.** A question that contains a lead's id is
+   stopped as "card numbers" when the id has a long run of digits (about 1 in 600 random ids; an id
+   such as 00000000-0000-4000-8000-000000000000 always). Needs its own small fix with a test first.
+2. **A support agent asking about "leads" gets a bare 403** ("You may not read leads.") from the
+   API before the assistant answers; a friendlier answer would be better. Low priority.
 
 ## 7. What stays out (on purpose)
 

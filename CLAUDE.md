@@ -386,6 +386,19 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     4 starter staff-assistant cases. Nothing plays a conversation yet (EV2). Tests (run
     2026-10-25): backend 1642 passed (+4 opt-in skipped), 95 new (pure Python, no database, no
     key); ruff, mypy, import-linter clean.
+  - EV2 (2026-10-25): `agent_evals/runner.py` plays a staff-assistant case through the REAL
+    assistant and the real test database with only the model scripted (`ScriptedModel`,
+    `RecordingModel` reads every tool call and how the CRM answered from the tool results; a case
+    that ends before a result came back is a loud error). 15 cases in
+    `evals/agents/staff_assistant.json` (reading, proposing status / assignment / follow-up tasks,
+    not found, "converted", extra argument, support assignee, fourth proposal, made-up approve
+    tool, injection and card-number questions, support agent reading leads); every case also gets
+    two checks it cannot skip - no direct change in the CRM and proposals stored exactly as
+    reported. `tests/db/test_agent_evals_staff.py` runs them in CI (hard gate) and proves the gate
+    can fail (wrong expectation, forbidden tool, "done" claim, raised proposal limit). Findings, not
+    fixed (BP-10 only measures): the card-number guardrail wrongly refuses about 1 in 600 lead
+    ids pasted into a question; a support agent asking about "leads" gets a bare 403. Tests (run
+    2026-10-25): backend 1686 passed (+4 opt-in skipped), 44 new; ruff, mypy, import-linter clean.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

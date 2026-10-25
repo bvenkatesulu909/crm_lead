@@ -289,3 +289,16 @@ def test_the_scorecard_is_deterministic_json() -> None:
     assert [r["case_id"] for r in data["results"]] == ["staff-propose-status"] * 3
     assert "checks" in data["results"][0]
     assert "timestamp" not in one.lower()  # same input, same bytes: no clock in the file
+
+
+def test_extra_checks_can_be_added_to_a_result() -> None:
+    from agent_evals.scoring import Check, with_checks
+
+    result = score_case(make_case(), good_run())
+    more = with_checks(
+        result, [Check("database_unchanged", True), Check("proposals_stored", False, "none")]
+    )
+    assert [c.name for c in more.checks][-2:] == ["database_unchanged", "proposals_stored"]
+    assert more.passed is False  # one extra check failed
+    assert len(result.checks) == len(more.checks) - 2  # the original is untouched
+    assert more.case_id == result.case_id and more.expected_tools == result.expected_tools

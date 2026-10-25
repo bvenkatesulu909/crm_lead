@@ -27,12 +27,12 @@ def test_every_scripted_call_is_a_real_tool_or_asserted_as_refused() -> None:
                 assert call.name in real | refused, (case.id, call.name)
 
 
-def test_cases_that_force_a_bad_call_are_marked_scripted_only() -> None:
-    # A real model is not asked to make a call that must be refused; the scripted run forces it.
+def test_cases_that_call_a_made_up_tool_are_marked_scripted_only() -> None:
+    # A real model is not asked to call a tool that doesn't exist; the scripted run forces it.
+    # (Other forced bad calls - "converted", an extra argument - are marked by the author.)
     for case in load_cases(CASES):
-        asserts_refusal = any(call.outcome == "refused" for call in case.expect.tools)
-        forces = asserts_refusal and any(step.calls for step in case.script)
-        if forces:
+        real = known_tools(case.agent)
+        if any(call.name not in real for step in case.script for call in step.calls):
             assert case.live is False, case.id
 
 

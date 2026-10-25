@@ -1,0 +1,309 @@
+{
+  "tools": [
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "One account with its contacts and open opportunities.",
+      "endpoints": [
+        "GET /accounts/{id}",
+        "GET /contacts",
+        "GET /opportunities"
+      ],
+      "input_schema": {
+        "properties": {
+          "account_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ],
+        "type": "object"
+      },
+      "name": "get_account"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Dashboard figures for your role (default: last 30 days, widest view you have).",
+      "endpoints": [
+        "GET /dashboard"
+      ],
+      "input_schema": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "view": {
+            "anyOf": [
+              {
+                "enum": [
+                  "executive",
+                  "manager",
+                  "representative"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_dashboard"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "One lead with its 10 most recent activities.",
+      "endpoints": [
+        "GET /leads/{id}",
+        "GET /leads/{id}/activities"
+      ],
+      "input_schema": {
+        "properties": {
+          "lead_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lead_id"
+        ],
+        "type": "object"
+      },
+      "name": "get_lead"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Your open tasks and activities: all, overdue, due today, or due in the next 7 days.",
+      "endpoints": [
+        "GET /activities"
+      ],
+      "input_schema": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "type": "integer"
+          },
+          "window": {
+            "default": "all",
+            "enum": [
+              "all",
+              "overdue",
+              "today",
+              "next_7_days"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_my_tasks"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Deals. Default: your open deals; only_mine=false shows all deals you may see.",
+      "endpoints": [
+        "GET /opportunities"
+      ],
+      "input_schema": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "type": "integer"
+          },
+          "only_mine": {
+            "default": true,
+            "type": "boolean"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "prospecting",
+                    "qualification",
+                    "proposal",
+                    "negotiation",
+                    "closed_won",
+                    "closed_lost"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_opportunities"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Search customer accounts by name. Max 50.",
+      "endpoints": [
+        "GET /accounts"
+      ],
+      "input_schema": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "type": "integer"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "name": "search_accounts"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Search leads by name, company or e-mail; optionally filter by status. Max 50.",
+      "endpoints": [
+        "GET /leads"
+      ],
+      "input_schema": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "type": "integer"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "status": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "new",
+                    "contacted",
+                    "qualified",
+                    "unqualified",
+                    "converted"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "name": "search_leads"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Who is signed in: name, organisation and roles.",
+      "endpoints": [
+        "GET /me"
+      ],
+      "input_schema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "whoami"
+    }
+  ],
+  "version": "0.1.0"
+}

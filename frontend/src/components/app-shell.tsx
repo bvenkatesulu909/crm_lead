@@ -74,6 +74,9 @@ function NavIcon({ name }: { name: NavItem["icon"] }) {
 }
 
 export function isActive(pathname: string, href: string) {
+  // Two separate menu entries: the agents page is not part of the rules page.
+  if (href === "/automation" && pathname.startsWith("/automation/agents"))
+    return false;
   return href === "/"
     ? pathname === "/"
     : pathname === href || pathname.startsWith(`${href}/`);

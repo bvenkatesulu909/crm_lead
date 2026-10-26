@@ -1,8 +1,8 @@
 # AI agent registry (BP-14, ADR 0016)
 
 Which AI agents the CRM has, what an organisation lets them do, and how to switch one off.
-**Status:** steps AG1 (module, tables, services) and AG2 (the governed model on the four call
-sites) are done. The API and notifications are AG3, the admin page AG4.
+**Status:** all steps are done: AG1 (module, tables, services), AG2 (the governed model on the four call
+sites), AG3 (API, audit, events, notifications) and AG4 (the admin page).
 
 ## The four agents
 
@@ -82,3 +82,22 @@ and after). Events carry ids and codes only: `agent.switched` (only when the swi
 flips) and `agent.budget_warning` (once per month and agent) notify the other tenant admins
 (not the one who acted) with a link to `/automation/agents` (the page comes in AG4). Both types
 appear on the notification settings page (in-app by default).
+
+## The admin page (AG4)
+
+**AI agents** (`/automation/agents`), in the menu for tenant admins and sales managers (and linked
+from the Automation page). One card per agent: what it is, its state as a word (On, Switched off,
+Near its limit from 80 %, Limit reached), a usage bar ("1,000 of 2,000,000 tokens used this month",
+"(the standard limit)" when nobody set one), the number of calls and of allowed tools.
+
+Tenant admins also see the settings under each card: **Switched on**, **Monthly token budget**
+(empty = the standard limit; whole numbers, commas fine) and the **tools it may use** (tick
+off, never add). One Save button sends all three; the API checks everything again (role, tool
+names, version). Sales managers see the cards and a note that only a tenant administrator can
+change them; everyone else gets "no permission" and no menu entry. Notifications about a switch or
+the 80 % warning link here.
+
+Code: `frontend/src/app/(app)/automation/agents/` (page, Server Action), `components/agent-views.tsx`,
+`components/agent-settings-form.tsx`, `lib/agents.ts`. Tests: `src/lib/agents.test.tsx` (29),
+Playwright `e2e/agents.spec.ts` (a real admin switches, caps and narrows; a manager only reads; an
+agent has no entry; the settings are put back at the end).

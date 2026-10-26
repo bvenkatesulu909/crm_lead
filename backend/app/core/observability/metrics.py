@@ -62,6 +62,18 @@ AI_COST = Counter(
     ["provider", "model"],
     registry=REGISTRY,
 )
+AI_REFUSALS = Counter(
+    "crm_ai_refusals_total",
+    "AI calls refused before reaching the model, by agent and reason (ADR 0016). No tenant label.",
+    ["agent", "reason"],
+    registry=REGISTRY,
+)
+AI_DROPPED_TOOL_CALLS = Counter(
+    "crm_ai_dropped_tool_calls_total",
+    "Tool calls a model made that its agent may not use (ADR 0016). No tenant label.",
+    ["agent"],
+    registry=REGISTRY,
+)
 
 RAG_SEARCHES = Counter(
     "crm_rag_searches_total",
@@ -247,6 +259,8 @@ def observe_request_metric(method: str, route: str, status: int, seconds: float)
 
 __all__ = [
     "AI_COST",
+    "AI_DROPPED_TOOL_CALLS",
+    "AI_REFUSALS",
     "AI_REQUESTS",
     "AI_TOKENS",
     "MetricsMiddleware",

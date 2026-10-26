@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
 from app.core.records import RecordFacts
+from app.modules.agents import api as agents_api
 from app.modules.assistant import staff_service
 from app.modules.assistant.service import GuardrailError
 from app.modules.support import api as support_api
@@ -41,6 +42,9 @@ def _facts(tenant: uuid.UUID) -> RecordFacts:
 
 def test_answer_uses_ticket_facts_and_returns_links(monkeypatch):
     facts = _facts(uuid.uuid4())
+    # This unit test has no database; the registry gate (ADR 0016) is tested with one in
+    # tests/db/test_agents_sites.py, so here the model is used as it is.
+    monkeypatch.setattr(agents_api, "governed", lambda model, *args, **kwargs: model)
     monkeypatch.setattr(support_api, "ticket_facts_by_reference", lambda *a, **k: facts)
     model = FakeModel()
     principal = cast(Principal, SimpleNamespace(user_type="staff", tenant_id=facts.record_id))

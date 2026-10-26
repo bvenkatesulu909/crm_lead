@@ -11,6 +11,7 @@ from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.db import get_db_session
 from app.core.errors import problem_responses
+from app.modules.agents import api as agents_api
 from app.modules.assistant import service
 from app.modules.assistant.llm import ChatModel
 from app.modules.assistant.schemas import (
@@ -75,6 +76,7 @@ def send(
         text=data.text,
         messages_per_hour=settings.assistant_messages_per_hour,
         max_tool_rounds=settings.assistant_max_tool_rounds,
+        limits=agents_api.Limits.from_settings(settings),
     )
     session.commit()
     return result

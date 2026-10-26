@@ -13,6 +13,10 @@ MAX_TOOL_ROUNDS = 2
 # How much of the conversation the model sees each time.
 HISTORY_MESSAGES = 20
 # What the visitor sees if the model ends without a usable answer.
+RESTING_REPLY = (
+    "Our chat assistant is resting right now. Please leave a message through our contact form "
+    "or call us, and an advisor will get back to you."
+)
 FALLBACK_REPLY = (
     "Sorry, I couldn't answer that. Please leave your name and phone number and an advisor will "
     "call you."

@@ -24,6 +24,7 @@ from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
 from app.modules.accounts import api as accounts_api
+from app.modules.agents import api as agents_api
 from app.modules.assistant import guardrails, tools
 from app.modules.assistant.llm import ChatModel
 from app.modules.assistant.models import Conversation, Message, PendingAction, ToolCall
@@ -248,8 +249,13 @@ def send_message(
     text: str,
     messages_per_hour: int,
     max_tool_rounds: int,
+    limits: agents_api.Limits | None = None,
 ) -> ConversationRead:
     tenant_id, user_id = _require_customer(principal)
+    # The registry gate (ADR 0016): off, over budget or a tool not allowed stops here.
+    model = agents_api.governed(
+        model, session, tenant_id, "portal_assistant", limits or agents_api.Limits.default()
+    )
     if not model.available:
         # Raise through the model so the error is the same as an outage.
         model.reply(system="", messages=[], tools=[])

@@ -67,3 +67,18 @@ the model of none of them. Evaluation cases (`governance` block, outcomes `agent
 `over_budget`, `expect.model_called`) are in `docs/agent-evals.md`.
 
 Not counted: tokens of a request that fails after the model call and rolls back.
+
+## API, audit and notifications (AG3)
+
+| Endpoint | Who | What |
+|---|---|---|
+| `GET /api/v1/agents` | tenant admins, sales managers | the four agents with switch, budget (and whether it is the default), allowed tools, this month's usage and `percent_used`, `version` |
+| `GET /api/v1/agents/{key}` | the same | one agent (404 `agent_not_found`) |
+| `PATCH /api/v1/agents/{key}` | tenant admins | `enabled`, `monthly_token_budget` (1 - 10,000,000,000), `allowed_tools`; only the fields sent change, `null` for the budget or the tools means the default; send the `version` you read once the agent has settings (409 `version_conflict` otherwise) |
+
+The body accepts nothing else (no tenant, no key): an unknown tool, a tool of another agent, a
+budget out of range or an empty change is 422. Every change is audited (`agent.updated`, before
+and after). Events carry ids and codes only: `agent.switched` (only when the switch really
+flips) and `agent.budget_warning` (once per month and agent) notify the other tenant admins
+(not the one who acted) with a link to `/automation/agents` (the page comes in AG4). Both types
+appear on the notification settings page (in-app by default).

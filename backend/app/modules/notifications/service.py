@@ -25,6 +25,7 @@ from app.core.events import Event, uuid_of
 from app.core.mail import Mail, Mailer
 from app.core.outbox import PermanentJobError, enqueue
 from app.modules.activities import api as activities_api
+from app.modules.agents import api as agents_api
 from app.modules.approvals import api as approvals_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
@@ -60,6 +61,8 @@ TYPES: dict[str, str] = {
     "public_chat.lead_captured": "A visitor left their details in the website chat",
     "agent_action.proposed": "An AI proposal is waiting for your approval",
     "agent_action.decided": "A decision on an AI proposal you asked for",
+    "agent.switched": "An AI agent was switched on or off",
+    "agent.budget_warning": "An AI agent is close to its monthly limit",
     "workflow.message": "A message from an automation rule",
 }
 RULE_MESSAGE = "workflow.message"
@@ -224,6 +227,32 @@ def _sales_managers(session: Session, event: Event) -> set[uuid.UUID]:
     return set(identity_api.staff_with_role(session, event.tenant_id, Role.SALES_MANAGER))
 
 
+def _agent_admins(session: Session, event: Event) -> set[uuid.UUID]:
+    """Who manages the AI agents; the admin who flipped the switch is the actor, left out."""
+    return set(
+        identity_api.staff_with_permission(session, event.tenant_id, Permission.AGENT_MANAGE)
+    )
+
+
+def _agent_title(event: Event) -> str | None:
+    agent = agents_api.AGENTS.get(str(event.data.get("agent")))
+    return agent.title if agent else None
+
+
+def _agent_switched(session: Session, me: Principal, event: Event) -> Draft | None:
+    title = _agent_title(event)
+    state = "on" if event.data.get("state") == "on" else "off"
+    return Draft(f"AI agent switched {state}: {title}", "/automation/agents") if title else None
+
+
+def _agent_warning(session: Session, me: Principal, event: Event) -> Draft | None:
+    title = _agent_title(event)
+    if title is None:
+        return None
+    percent = int(event.data.get("percent", 80))
+    return Draft(f"AI agent near its monthly limit ({percent} %): {title}", "/automation/agents")
+
+
 def _proposal_approvers(session: Session, event: Event) -> set[uuid.UUID]:
     """Everyone who may decide; the requester is the actor and so left out by on_event."""
     return set(
@@ -256,6 +285,8 @@ RULES: dict[str, tuple[Recipients, Describe]] = {
     "public_chat.lead_captured": (_sales_managers, _website_lead),
     "agent_action.proposed": (_proposal_approvers, _proposal_waiting),
     "agent_action.decided": (_proposal_requester, _proposal_decided),
+    "agent.switched": (_agent_admins, _agent_switched),
+    "agent.budget_warning": (_agent_admins, _agent_warning),
 }
 
 

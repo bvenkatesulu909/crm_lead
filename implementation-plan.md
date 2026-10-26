@@ -324,7 +324,7 @@ model) and, on demand, with a real model (tests the model's behaviour). Design n
 - No secrets, no real data, no paid call in CI; real-model results are a report, never a gate.
 - Definition of Done checklist complete.
 
-## Phase AG — Agent registry, budgets and kill switch (BP-14)  *(ADR 0016 accepted 2026-10-26; AG0, AG1, AG2 done)*
+## Phase AG — Agent registry, budgets and kill switch (BP-14)  *(ADR 0016 accepted 2026-10-26; AG0, AG1, AG2, AG3 done)*
 
 A list of the CRM's AI agents with an owner, allowed tools, a monthly token budget per
 organisation and an on/off switch, enforced by one governed-model wrapper at the four places that

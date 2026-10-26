@@ -74,6 +74,13 @@ class Limits:
     def from_settings(cls, settings: Settings) -> "Limits":
         return cls(settings.ai_disabled, settings.agent_default_monthly_tokens)
 
+    @classmethod
+    def default(cls) -> "Limits":
+        """The rules with no platform switch and the standard budget (for callers without
+        application settings, such as the evaluation harness)."""
+        default = Settings.model_fields["agent_default_monthly_tokens"].default
+        return cls(False, int(default))
+
 
 @dataclass(frozen=True)
 class EffectiveAgent:

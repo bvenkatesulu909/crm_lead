@@ -12,6 +12,9 @@ The checks only a database-level runner can make:
 """
 
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import SecretStr
@@ -34,6 +37,7 @@ from agent_evals.world import Snapshot, World
 from app.core.auth.principal import Principal
 from app.core.config import Settings
 from app.core.db import bind_tenant, bind_user
+from app.modules.agents import api as agents_api
 from app.modules.assistant.llm import ChatModel
 from app.modules.assistant.models import PendingAction
 from app.modules.leads.models import Lead
@@ -42,6 +46,50 @@ from app.modules.support.models import Ticket
 # Chosen from measurements, not guessed: with the hashing embedder the answerable demo questions
 # score 0.32 - 0.76 and the unanswerable ones 0.00 - 0.18 (docs/agent-evals.md, section 6d).
 RAG_MIN_SIMILARITY = 0.25
+
+
+@contextmanager
+def governed_case(session: Session, world: World, case: Case) -> Iterator[agents_api.Limits | None]:
+    """Set the agent up in the registry the way the case says (ADR 0016), play, then undo it.
+
+    Everything happens in a savepoint that is rolled back, so a case that switches an agent
+    off cannot affect the next one. Yields the platform-wide limits to play with (None: the
+    defaults)."""
+    governance = case.governance
+    if governance is None:
+        yield None
+        return
+    nested = session.begin_nested()
+    try:
+        admin = world.principal("tenant_admin")
+        limits = agents_api.Limits(
+            governance.platform_disabled, world.settings.agent_default_monthly_tokens
+        )
+        now = datetime.now(UTC)
+        agents_api.update_settings(
+            session,
+            admin,
+            case.agent,
+            limits=limits,
+            now=now,
+            enabled=governance.enabled,
+            monthly_token_budget=governance.monthly_token_budget,
+            allowed_tools=governance.allowed_tools,
+        )
+        if governance.tokens_used:
+            agents_api.record_usage(
+                session,
+                world.tenant_id,
+                case.agent,
+                input_tokens=governance.tokens_used,
+                output_tokens=0,
+                limits=limits,
+                now=now,
+            )
+        yield limits
+    finally:
+        if nested.is_active:
+            nested.rollback()
 
 
 def explain(result: CaseResult) -> str:
@@ -88,21 +136,22 @@ def play_staff(
     case: Case,
     *,
     model: ChatModel | None = None,
-    **limits: Any,
+    **options: Any,
 ) -> tuple[CaseResult, StaffRun]:
     """Play one staff-assistant case and score it. Without ``model`` the case's script plays
     (strict scoring); with a real one the scoring is lenient about extra calls."""
-    principal = world.principal(case.persona)
-    ready = substitute(case, world.placeholders(case.persona))
-    world.bind(principal)
-    before = world.snapshot()
-    world.bind(principal)
-    run = run_staff_case(session, principal, ready, model=model, **limits)
-    session.flush()
-    after = world.snapshot()
-    world.bind(principal)
-    result = score_case(ready, run.trajectory, strict=model is None)
-    return with_checks(result, invariants(before, after, run)), run
+    with governed_case(session, world, case) as limits:
+        principal = world.principal(case.persona)
+        ready = substitute(case, world.placeholders(case.persona))
+        world.bind(principal)
+        before = world.snapshot()
+        world.bind(principal)
+        run = run_staff_case(session, principal, ready, model=model, limits=limits, **options)
+        session.flush()
+        after = world.snapshot()
+        world.bind(principal)
+        result = score_case(ready, run.trajectory, strict=model is None)
+        return with_checks(result, invariants(before, after, run)), run
 
 
 # --- customer portal assistant ---------------------------------------------------------------
@@ -124,16 +173,28 @@ def play_portal(
     case: Case,
     *,
     model: ChatModel | None = None,
-    **limits: Any,
+    **options: Any,
 ) -> tuple[CaseResult, PortalRun]:
     """Play one portal-assistant case as the customer and score it."""
+    with governed_case(session, world, case) as limits:
+        return _play_portal(session, world, case, model, limits, options)
+
+
+def _play_portal(
+    session: Session,
+    world: World,
+    case: Case,
+    model: ChatModel | None,
+    limits: agents_api.Limits | None,
+    options: dict[str, Any],
+) -> tuple[CaseResult, PortalRun]:
     principal = world.principal(case.persona)
     granted = world.granted_accounts(case.persona)
     ready = substitute(case, world.placeholders(case.persona))
     world.bind(principal)
     tickets_before = _count(session, Ticket, world.tenant_id)
     known = set(_pending_actions(session, world.tenant_id))
-    run = run_portal_case(session, principal, ready, model=model, **limits)
+    run = run_portal_case(session, principal, ready, model=model, limits=limits, **options)
     session.flush()
     world.bind(principal)
     tickets_after = _count(session, Ticket, world.tenant_id)
@@ -186,9 +247,23 @@ def play_public(
     session: Session, world: World, case: Case, *, model: ChatModel | None = None
 ) -> tuple[CaseResult, PublicRun]:
     """Play one public-chat case as an anonymous visitor and score it."""
+    with governed_case(session, world, case) as limits:
+        return _play_public(session, world, case, model, limits)
+
+
+def _play_public(
+    session: Session,
+    world: World,
+    case: Case,
+    model: ChatModel | None,
+    limits: agents_api.Limits | None,
+) -> tuple[CaseResult, PublicRun]:
     ready = substitute(case, world.placeholders(case.persona))
     before = world.snapshot()
-    run = run_public_chat_case(session, public_chat_settings(world), ready, model=model)
+    settings = public_chat_settings(world)
+    if limits is not None and limits.platform_disabled:
+        settings = settings.model_copy(update={"ai_disabled": True})
+    run = run_public_chat_case(session, settings, ready, model=model)
     session.flush()
     after = world.snapshot()
     new = [i for i in after.leads if i not in before.leads]

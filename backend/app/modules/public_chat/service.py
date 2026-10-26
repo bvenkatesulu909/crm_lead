@@ -20,6 +20,7 @@ from app.core.config import Settings
 from app.core.db import bind_tenant
 from app.core.errors import DomainError, NotFoundError
 from app.core.events import publish
+from app.modules.agents import api as agents_api
 from app.modules.assistant import api as assistant_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
@@ -210,9 +211,17 @@ def handle_message(
     ]
     system = rules.SYSTEM_PROMPT.format(organisation=organisation)
 
+    model = agents_api.governed(
+        model, session, tenant_id, "public_chat", agents_api.Limits.from_settings(settings)
+    )
     answer = rules.FALLBACK_REPLY
     for _ in range(rules.MAX_TOOL_ROUNDS + 1):
-        reply = model.reply(system=system, messages=messages, tools=[rules.SAVE_LEAD_TOOL])
+        try:
+            reply = model.reply(system=system, messages=messages, tools=[rules.SAVE_LEAD_TOOL])
+        except (agents_api.AgentUnavailableError, agents_api.AgentBudgetReachedError):
+            # Switched off or over budget (ADR 0016): the page keeps working, nothing is saved.
+            answer = rules.RESTING_REPLY
+            break
         if not reply.tool_uses:
             answer = assistant_api.sanitise_output(reply.text or rules.FALLBACK_REPLY)
             break

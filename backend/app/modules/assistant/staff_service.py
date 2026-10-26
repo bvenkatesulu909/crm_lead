@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.modules.agents import api as agents_api
 from app.modules.assistant import guardrails, staff_tools
 from app.modules.assistant.llm import ChatModel
 from app.modules.assistant.service import GAVE_UP, GuardrailError
@@ -76,12 +77,22 @@ def answer(
     ticket_id: str | uuid.UUID | None = None,
     max_tool_rounds: int = 3,
     budget: staff_tools.ProposalBudget | None = None,
+    limits: agents_api.Limits | None = None,
 ) -> tuple[str, uuid.UUID, list[str], list[staff_tools.ProposalRef]]:
     if principal.user_type != "staff":
         raise GuardrailError("The staff assistant is only for employees.")
     decision = guardrails.inspect_input(question)
     if not decision.allowed:
         raise GuardrailError(decision.reason)
+    if principal.tenant_id is not None:
+        # The registry gate (ADR 0016): off, over budget or a tool not allowed stops here.
+        model = agents_api.governed(
+            model,
+            session,
+            principal.tenant_id,
+            "staff_assistant",
+            limits or agents_api.Limits.default(),
+        )
     if not model.available:
         model.reply(system="", messages=[], tools=[])
     context, facts = retrieve_context(session, principal, question, ticket_id)

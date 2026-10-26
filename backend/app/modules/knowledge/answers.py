@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.ai.embeddings import Embedder
 from app.core.auth.principal import Principal
 from app.core.config import Settings
+from app.modules.agents import api as agents_api
 from app.modules.assistant.llm import AssistantUnavailableError, ChatModel
 from app.modules.knowledge import retrieval
 
@@ -134,6 +135,15 @@ def answer_question(
 
     if not chat_model.available:
         raise AssistantUnavailableError("The assistant is not configured (CRM_ANTHROPIC_API_KEY).")
+    if principal.tenant_id is not None:
+        # The registry gate (ADR 0016): off or over budget stops here, before any model call.
+        chat_model = agents_api.governed(
+            chat_model,
+            session,
+            principal.tenant_id,
+            "knowledge_answers",
+            agents_api.Limits.from_settings(settings),
+        )
 
     system, messages, sources = build_prompt(question, outcome.results)
     reply = chat_model.reply(system=system, messages=messages, tools=[])

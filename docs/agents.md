@@ -1,8 +1,8 @@
 # AI agent registry (BP-14, ADR 0016)
 
 Which AI agents the CRM has, what an organisation lets them do, and how to switch one off.
-**Status:** step AG1 (module, tables, services). The governed model on the four call sites is AG2,
-the API AG3, the admin page AG4: until AG2, nothing consults the registry yet.
+**Status:** steps AG1 (module, tables, services) and AG2 (the governed model on the four call
+sites) are done. The API and notifications are AG3, the admin page AG4.
 
 ## The four agents
 
@@ -41,3 +41,29 @@ into a notification). A call can overshoot the budget slightly: the check is bef
 `agent_settings` (an organisation's overrides) and `agent_usage` (monthly counts only, never
 prompts or answers), migration 0043, forced row-level security; usage rows cannot be deleted by
 the application role.
+
+## The governed model (AG2)
+
+`governed(model, session, tenant_id, agent_key, limits)` (in `agents/governed.py`, exported by
+`agents/api.py`) wraps the model a feature received. Before **every** `reply()` it asks
+`check_can_call`; a "no" is raised before the model is touched, so a conversation switched off in
+the middle stops at its next step. It then offers the model only the allowed tools, adds the
+call's tokens to the month, and removes any call to a tool of this agent that the organisation
+removed (counted in `crm_ai_dropped_tool_calls_total`). A tool name the agent never had passes
+through: the feature's own dispatcher refuses it and tells the model. Refusals are counted in
+`crm_ai_refusals_total{agent,reason}` - no organisation in any label.
+
+| Call site | Where it is wrapped | When off or over budget |
+|---|---|---|
+| staff assistant | `staff_service.answer` | HTTP 503 `agent_unavailable` / `agent_budget_reached` |
+| portal assistant | `service.send_message` | the same |
+| knowledge answers | `answers.answer_question` (after the "nothing close enough" refusal, which needs no model) | the same |
+| website chat | `public_chat.service.handle_message` | a normal 200 reply with the fixed "resting" sentence; no lead is saved |
+
+The services take an optional `limits` (the platform switch and default budget); the two routers
+pass `Limits.from_settings(settings)`, the knowledge and website-chat sites read it from the
+`settings` they already receive. A test per site over HTTP proves that `CRM_AI_DISABLED` reaches
+the model of none of them. Evaluation cases (`governance` block, outcomes `agent_off` and
+`over_budget`, `expect.model_called`) are in `docs/agent-evals.md`.
+
+Not counted: tokens of a request that fails after the model call and rolls back.

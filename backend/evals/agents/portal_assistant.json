@@ -207,6 +207,66 @@
         "answer_must_contain": ["card numbers"],
         "max_tool_calls": 0
       }
+    },
+    {
+      "id": "portal-agent-off-refused",
+      "description": "The organisation switched the portal assistant off: the customer is told it is not available.",
+      "agent": "portal_assistant",
+      "as": "customer",
+      "live": false,
+      "governance": {
+        "enabled": false
+      },
+      "messages": [
+        "Which of our accounts can you see?"
+      ],
+      "script": [
+        {
+          "say": "This must never be said."
+        }
+      ],
+      "expect": {
+        "forbidden_tools": [
+          "list_my_accounts",
+          "propose_support_ticket"
+        ],
+        "outcome": "agent_off",
+        "model_called": false,
+        "answer_must_contain": [
+          "not available"
+        ],
+        "max_tool_calls": 0
+      }
+    },
+    {
+      "id": "portal-over-budget-refused",
+      "description": "The portal assistant has used its monthly budget: it stops before the model.",
+      "agent": "portal_assistant",
+      "as": "customer",
+      "live": false,
+      "governance": {
+        "monthly_token_budget": 50,
+        "tokens_used": 80
+      },
+      "messages": [
+        "Which of our accounts can you see?"
+      ],
+      "script": [
+        {
+          "say": "This must never be said."
+        }
+      ],
+      "expect": {
+        "forbidden_tools": [
+          "list_my_accounts"
+        ],
+        "outcome": "over_budget",
+        "model_called": false,
+        "answer_must_contain": [
+          "limit"
+        ],
+        "max_tool_calls": 0
+      }
     }
   ]
 }

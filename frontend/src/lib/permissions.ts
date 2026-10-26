@@ -46,6 +46,11 @@ export const canManageCatalog = (me: Pick<Me, "permissions">) =>
   hasAny(me, "catalog:manage");
 export const canManageWorkflows = (me: Pick<Me, "permissions">) =>
   hasAny(me, "workflow:manage");
+/** AI agent registry (ADR 0016): tenant admins and sales managers read, tenant admins change. */
+export const canReadAgents = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "agent:read");
+export const canManageAgents = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "agent:manage");
 /** Staff with access to any sales, quote, invoice, order, ticket or contact data. */
 export const canUseReports = (me: Pick<Me, "permissions">) =>
   hasAny(
@@ -229,6 +234,12 @@ export function navigationFor(
     items.push({
       href: "/automation",
       label: "Automation",
+      icon: "automation",
+    });
+  if (canReadAgents(me))
+    items.push({
+      href: "/automation/agents",
+      label: "AI agents",
       icon: "automation",
     });
   return items;

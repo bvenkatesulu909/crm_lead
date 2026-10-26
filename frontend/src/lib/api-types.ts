@@ -1452,6 +1452,29 @@ export type AgentAction = {
   version: number;
 };
 
+/** One AI agent of the organisation: its settings and this month's usage (ADR 0016). */
+export type Agent = {
+  key: string;
+  title: string;
+  description: string;
+  owner_role: string;
+  enabled: boolean;
+  monthly_token_budget: number;
+  budget_is_default: boolean;
+  allowed_tools: string[];
+  all_tools: string[];
+  month: string;
+  input_tokens: number;
+  output_tokens: number;
+  used_tokens: number;
+  calls: number;
+  percent_used: number;
+  /** null until the organisation first changes the agent. */
+  version: number | null;
+};
+
+export type AgentPage = { items: Agent[] };
+
 export type AgentActionPage = {
   items: AgentAction[];
   total: number;

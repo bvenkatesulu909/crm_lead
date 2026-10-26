@@ -78,6 +78,13 @@ export default async function AutomationPage({
           <ButtonLink href="/approvals" variant="secondary">Open approvals</ButtonLink>
         </Card>
       )}
+      <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 px-5 py-4" aria-labelledby="agents-heading">
+        <div>
+          <h2 id="agents-heading" className="text-base font-semibold text-slate-900">AI agents</h2>
+          <p className="text-sm text-slate-600">Switch an AI feature off, limit what it may use each month, or take away tools.</p>
+        </div>
+        <ButtonLink href="/automation/agents" variant="secondary">Open AI agents</ButtonLink>
+      </Card>
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3" aria-labelledby="rules-heading">
           <h2 id="rules-heading" className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">Rules</h2>

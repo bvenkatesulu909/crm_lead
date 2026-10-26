@@ -343,6 +343,19 @@ call a language model. Design: `docs/adr/0016-agent-registry-budgets-kill-switch
 - A tenant admin can switch, cap and narrow an agent; other organisations are unaffected; changes are audited.
 - Definition of Done checklist complete.
 
+## Phase SN — Sentinel action verifier and input screening (BP-21)  *(ADR 0017 proposed 2026-10-26; SN0 done)*
+
+A deterministic second check on every AI proposal before it reaches the approval queue (words,
+pattern, state, tenant, the record's own text), plus stronger input screening. Design:
+`docs/adr/0017-sentinel-action-verifier.md`.
+
+**Steps (each stops for review)**
+- **SN0** - ADR 0017 and this description (documents only).
+- **SN1** - `core/screening.py`, `approvals/sentinel.py`, an attack-string library; tests first.
+- **SN2** - hook into `propose()` / `approve()`, migration 0044 (`verification`), audit, metric.
+- **SN3** - input screening in the guardrails and the staff prompt; warnings on the approval card.
+- **SN4** - BP-10 cases, docs, full runs, pull request.
+
 ## Phase 16 — Marketing Management (Module 7)
 
 **Acceptance criteria**

@@ -1,6 +1,6 @@
 # ADR 0017 — Sentinel: a rule-based second check on AI proposals, and stronger input screening (BP-21)
 
-- **Status:** Proposed (2026-10-26) — waits for the owner's review; no code until approved
+- **Status:** Accepted (2026-10-26, with the recommended answers: every link blocked, caps of 10 proposals and 3 assignments per hour, re-check at approval, warnings on the card only, "Safety check" on screen)
 - **Date:** 2026-10-26
 - **Deciders:** Project owner
 - **Depends on:** ADR 0014 (approval queue), ADR 0016 (agent registry), BP-10 (evaluation harness)

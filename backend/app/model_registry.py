@@ -10,6 +10,7 @@ from app.core import outbox as outbox_models
 from app.core.models import Base
 from app.modules.accounts import models as accounts_models
 from app.modules.activities import models as activities_models
+from app.modules.agents import models as agents_models
 from app.modules.approvals import models as approvals_models
 from app.modules.assistant import models as assistant_models
 from app.modules.catalog import models as catalog_models
@@ -32,6 +33,7 @@ from app.modules.workflows import models as workflows_models
 __all__ = [
     "Base",
     "accounts_models",
+    "agents_models",
     "activities_models",
     "assistant_models",
     "audit_models",

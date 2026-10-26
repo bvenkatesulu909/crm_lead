@@ -186,6 +186,11 @@ class Settings(BaseSettings):
     # Price per 1M tokens, used only to ESTIMATE cost (model prices change; set from the provider).
     ai_input_price_per_million: float = Field(default=0.0, ge=0.0)
     ai_output_price_per_million: float = Field(default=0.0, ge=0.0)
+    # AI governance (ADR 0016). The platform switch refuses EVERY AI call for every organisation
+    # (a leaked key, a runaway); the default budget is tokens per agent and organisation per month
+    # for agents nobody has configured. There is no "unlimited": a cap is always in force.
+    ai_disabled: bool = False
+    agent_default_monthly_tokens: int = Field(default=2_000_000, ge=1, le=10_000_000_000)
     # Workflow rules (ADR 0006): automatic actions per organisation per hour, at most.
     workflow_actions_per_hour: int = Field(default=500, ge=1, le=100_000)
 

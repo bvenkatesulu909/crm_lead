@@ -159,6 +159,11 @@ class Permission(StrEnum):
     AGENT_ACTION_PROPOSE = "agent_action:propose"
     AGENT_ACTION_APPROVE = "agent_action:approve"
 
+    # AI agent registry (ADR 0016): see the agents, their budgets and usage / switch them off,
+    # change budgets and allowed tools.
+    AGENT_READ = "agent:read"
+    AGENT_MANAGE = "agent:manage"
+
 
 _P = Permission
 
@@ -174,7 +179,7 @@ _SALES_ALL = frozenset(
         _P.CONTRACT_READ_ALL, _P.CONTRACT_WRITE_ALL, _P.CONTRACT_MANAGE,
         _P.DOCUMENT_READ, _P.DOCUMENT_WRITE, _P.DOCUMENT_DELETE,
         _P.COMMUNICATION_SEND, _P.COMMUNICATION_READ_ALL, _P.COMMUNICATION_TEMPLATE_MANAGE,
-        _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE,
+        _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE, _P.AGENT_READ,
     }
 )  # fmt: skip
 
@@ -188,7 +193,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.SUPER_ADMIN: frozenset({_P.PLATFORM_TENANT_READ, _P.PLATFORM_TENANT_MANAGE}),
     Role.TENANT_ADMIN: _SALES_ALL
     | {_P.TENANT_USER_READ, _P.TENANT_USER_MANAGE, _P.PORTAL_USER_INVITE}
-    | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE}
+    | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE, _P.AGENT_MANAGE}
     | {_P.TICKET_READ_ALL, _P.TICKET_MANAGE}
     | _ORDERS_ALL
     | _BILLING_ALL

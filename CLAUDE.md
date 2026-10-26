@@ -490,7 +490,24 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
 - **Agent registry, budgets and kill switch (BP-14, Phase AG, ADR 0016)** - started 2026-10-26 on
   branch `feat/agent-registry`. AG0: ADR 0016 (proposed) + phase plan, documents only; five
   questions for the owner (token budget, default on with a cap, public-chat "off" sentence, who
-  switches, platform switch `CRM_AI_DISABLED`). No code yet.
+  switches, platform switch `CRM_AI_DISABLED`); owner approved it with the recommended answers
+  (docs PR #25).
+  - AG1 (2026-10-26, branch `feat/agents-module`): module `agents` - catalogue of the four AI
+    agents (tools checked against the real tools by a test), tables `agent_settings` +
+    `agent_usage` (migration 0043, forced RLS, usage rows can't be deleted), permissions
+    `agent:read` (tenant admin, sales manager) / `agent:manage` (tenant admin), settings
+    `CRM_AI_DISABLED` and `CRM_AGENT_DEFAULT_MONTHLY_TOKENS` (2,000,000), services
+    (`check_can_call`, atomic `record_usage` with a once-a-month 80 % flag, audited
+    `update_settings` with version check and tools-only-narrowing). Nothing calls it yet (AG2).
+    See `docs/agents.md`. Dev database at 0043.
+  - AG2 (2026-10-26, branch `feat/agents-governed`): `governed(model, ...)` in front of the four
+    call sites (staff assistant, portal assistant, knowledge answers, website chat): refuses when
+    the platform switch is on, the agent is off or its month's tokens are used up (503
+    `agent_unavailable` / `agent_budget_reached`; the website chat answers with a fixed "resting"
+    sentence and saves no lead), offers only the allowed tools, drops a removed tool's call, meters
+    tokens, counts refusals (`crm_ai_refusals_total`, no tenant label). BP-10 harness: `governance`
+    block, outcomes `agent_off` / `over_budget`, `expect.model_called`, 8 new cases. A made-up tool
+    name still reaches the feature's own refusal (existing `staff-no-approve-tool` case unchanged). Tests (run 2026-10-26): full backend 1941 passed (+4 opt-in skipped), 1 failed - an old unit test that gave the staff service a fake session (fixed: it now bypasses the gate; that file re-run alone passed, the whole suite not re-run after that fix); ruff, mypy, import-linter clean; the eval scorecard on the dev data passed all cases. With the gate removed, 14 of the 16 site tests and the 8 new cases fail (the other 2 are expected to pass). Tests (run 2026-10-26): full backend 1882 passed (+4 opt-in skipped), 53 new; ruff, mypy, import-linter clean. Atomicity of the usage upsert is checked by looking at the SQL, not by a parallel run.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

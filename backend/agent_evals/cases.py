@@ -33,7 +33,16 @@ Persona = Literal[
 ]
 # How a whole conversation ended, as seen by the person.
 Outcome = Literal[
-    "answered", "proposal_pending", "refused", "not_found", "lead_saved", "nothing_changed"
+    "answered",
+    "proposal_pending",
+    "refused",
+    "not_found",
+    "lead_saved",
+    "nothing_changed",
+    # Stopped by the agent registry (ADR 0016) before any model call. The website chat shows the
+    # same "resting" sentence for both reasons, so it always reports "agent_off".
+    "agent_off",
+    "over_budget",
 ]
 # How the CRM answered one tool call.
 CallOutcome = Literal["ok", "refused", "not_found"]
@@ -112,6 +121,19 @@ class ExpectedCall(_Strict):
         return self
 
 
+class Governance(_Strict):
+    """How the organisation has set the agent up for this case (ADR 0016). Applied inside a
+    savepoint that is rolled back after the case, so no case leaks into the next."""
+
+    enabled: bool = True
+    monthly_token_budget: int | None = Field(default=None, ge=1)
+    tokens_used: int = Field(default=0, ge=0)
+    # None = every tool; a list (maybe empty) = only these.
+    allowed_tools: list[str] | None = None
+    # The platform-wide switch (CRM_AI_DISABLED).
+    platform_disabled: bool = False
+
+
 class Expect(_Strict):
     tools: list[ExpectedCall] = Field(default_factory=list)
     forbidden_tools: list[str] = Field(default_factory=list)
@@ -121,6 +143,9 @@ class Expect(_Strict):
     max_tool_calls: int | None = Field(default=None, ge=0, le=20)
     # True: calls may not carry arguments the case didn't list (e.g. a made-up tenant_id).
     strict_args: bool = False
+    # True / False: whether the model must / must not have been called at all (a refused agent
+    # never reaches it). None: not checked.
+    model_called: bool | None = None
 
 
 def _strings(value: Any) -> list[str]:
@@ -145,6 +170,8 @@ class Case(BaseModel):
     # False: the case forces a bad call on purpose to see the CRM refuse it, so a real model
     # (which is not expected to make that call) is not run on it. Scripted runs always are.
     live: bool = True
+    # How the agent is set up in the registry; absent = the defaults (on, standard budget).
+    governance: Governance | None = None
     script: list[Step] = Field(default_factory=list)
     expect: Expect
 
@@ -156,6 +183,12 @@ class Case(BaseModel):
                 f"{', '.join(sorted(PERSONAS[self.agent]))})"
             )
         real = known_tools(self.agent)
+        if self.governance and self.governance.allowed_tools:
+            unknown = set(self.governance.allowed_tools) - real
+            if unknown:
+                raise ValueError(
+                    f"governance.allowed_tools: {sorted(unknown)} are not tools of {self.agent}"
+                )
         expected = {call.name: call.outcome for call in self.expect.tools}
         for step in self.script:
             for call in step.calls:

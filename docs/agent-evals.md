@@ -265,6 +265,17 @@ CI needs no new secrets and no new job: the cases run inside the existing `pytes
   model run scores behaviour (tools, arguments, claims), not the quality of the wording. One paid
   pass is a snapshot: real models vary a little from run to run, hence the 5-point tolerance.
 
+## 6f. Governance cases (BP-14, AG2)
+
+A case may carry a `governance` block - how the organisation set the agent up in the registry
+(`enabled`, `monthly_token_budget`, `tokens_used`, `allowed_tools`, `platform_disabled`). It is
+applied inside a savepoint that is rolled back after the case, so it cannot leak into the next
+one. New outcomes: `agent_off` (switched off, or the platform switch; the website chat shows the
+same "resting" sentence for any reason) and `over_budget`. New expectation `model_called: false`
+proves the model was never reached. A tool call the organisation removed is dropped before the
+CRM sees it, so such a case lists no tools and the runner does not count the unanswered call.
+8 cases (4 staff, 2 portal, 2 website chat), all `live: false` (they test the gate, not a model).
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

@@ -227,6 +227,72 @@
         "answer_must_contain": ["card numbers"],
         "max_tool_calls": 0
       }
+    },
+    {
+      "id": "public-agent-off-rests",
+      "description": "The website chat is switched off: the visitor gets the friendly 'resting' sentence and nothing is saved.",
+      "agent": "public_chat",
+      "as": "visitor",
+      "live": false,
+      "governance": {
+        "enabled": false
+      },
+      "messages": [
+        "Hi, I want a 3BHK flat in Kokapet. I am Suresh, phone 98480 12345."
+      ],
+      "script": [
+        {
+          "say": "This must never be said."
+        }
+      ],
+      "expect": {
+        "forbidden_tools": [
+          "save_lead"
+        ],
+        "outcome": "agent_off",
+        "model_called": false,
+        "answer_must_contain": [
+          "resting"
+        ],
+        "max_tool_calls": 0
+      }
+    },
+    {
+      "id": "public-save-lead-tool-removed",
+      "description": "The admin removed the save-lead tool: the model's attempt is dropped and no lead is created.",
+      "agent": "public_chat",
+      "as": "visitor",
+      "live": false,
+      "governance": {
+        "allowed_tools": []
+      },
+      "messages": [
+        "I am Suresh Kumar, phone 98480 12345, I want a 3BHK in Kokapet."
+      ],
+      "script": [
+        {
+          "say": "Thank you, I have noted your interest.",
+          "calls": [
+            {
+              "name": "save_lead",
+              "arguments": {
+                "full_name": "Suresh Kumar",
+                "phone": "98480 12345",
+                "property_type": "apartment",
+                "location": "Kokapet, Hyderabad"
+              }
+            }
+          ]
+        }
+      ],
+      "expect": {
+        "forbidden_tools": [
+          "save_lead"
+        ],
+        "outcome": "answered",
+        "model_called": true,
+        "max_tool_calls": 0
+      }
     }
   ]
 }

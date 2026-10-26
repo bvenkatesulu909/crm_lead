@@ -23,11 +23,13 @@ from agent_evals.cases import CallOutcome, Case, Step
 from agent_evals.scoring import ToolCall, Trajectory
 from app.core.auth.principal import Principal
 from app.core.config import Settings
+from app.modules.agents import api as agents_api
 from app.modules.assistant import service as portal_service
 from app.modules.assistant import staff_service, staff_tools
 from app.modules.assistant.llm import ChatModel, ModelReply, ToolUse
 from app.modules.assistant.service import GuardrailError
 from app.modules.public_chat import service as public_chat_service
+from app.modules.public_chat.rules import RESTING_REPLY
 from app.modules.public_chat.schemas import PublicChatRequest
 
 
@@ -44,6 +46,7 @@ class ScriptedModel:
         self._steps = list(steps)
         self._next = 0
         self._ids = 0
+        self.asked = 0  # how often the model was asked, scripted or not
 
     @property
     def exhausted(self) -> bool:
@@ -52,6 +55,7 @@ class ScriptedModel:
     def reply(
         self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
     ) -> ModelReply:
+        self.asked += 1
         if self.exhausted:
             return ModelReply("")
         step = self._steps[self._next]
@@ -81,15 +85,20 @@ class _Record:
 class RecordingModel:
     """Wraps a model and records its tool calls with the CRM's answers."""
 
-    def __init__(self, inner: ChatModel) -> None:
+    def __init__(self, inner: ChatModel, *, drop_unanswered: bool = False) -> None:
         self._inner = inner
         self.available = bool(getattr(inner, "available", True))
+        # With the agent registry in front (ADR 0016) a tool call the organisation did not allow
+        # is removed before it reaches the CRM, so it never gets an answer: it is not a call.
+        self._drop_unanswered = drop_unanswered
+        self.asked = 0
         self._records: list[_Record] = []
         self._pending: dict[str, _Record] = {}
 
     def reply(
         self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
     ) -> ModelReply:
+        self.asked += 1
         self._resolve(messages)
         reply = self._inner.reply(system=system, messages=messages, tools=tools)
         for use in reply.tool_uses:
@@ -114,13 +123,18 @@ class RecordingModel:
     @property
     def calls(self) -> list[ToolCall]:
         waiting = [r.name for r in self._records if r.outcome is None]
-        if waiting:
+        if waiting and not self._drop_unanswered:
             raise RunnerError(
                 f"the result of the call(s) to {', '.join(waiting)} was never returned to the "
                 "model, so the case ended too early; shorten the script (the assistant allows "
                 "three tool rounds per question)"
             )
         return [ToolCall(r.name, r.arguments, r.outcome) for r in self._records if r.outcome]
+
+
+def registry_outcome(error: Exception) -> str:
+    """The outcome word for a call the agent registry refused (ADR 0016)."""
+    return "over_budget" if isinstance(error, agents_api.AgentBudgetReachedError) else "agent_off"
 
 
 def conversation_outcome(calls: list[ToolCall], proposals: int) -> str:
@@ -151,6 +165,7 @@ def run_staff_case(
     expiry_days: int = 7,
     pending_limit: int = 20,
     model: ChatModel | None = None,
+    limits: agents_api.Limits | None = None,
 ) -> StaffRun:
     """Play a staff-assistant case as ``principal``. The case must already have its
     placeholders replaced. The session stays uncommitted: the caller decides what to keep.
@@ -159,18 +174,24 @@ def run_staff_case(
         raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the staff assistant")
     if len(case.messages) != 1:
         raise RunnerError(f"case '{case.id}': the staff assistant answers one question at a time")
-    recorder = RecordingModel(model if model is not None else ScriptedModel(case.script))
+    recorder = RecordingModel(
+        model if model is not None else ScriptedModel(case.script),
+        drop_unanswered=case.governance is not None,
+    )
     budget = staff_tools.ProposalBudget(expiry_days=expiry_days, pending_limit=pending_limit)
     try:
         answer, _ticket, _links, proposals = staff_service.answer(
-            session, principal, recorder, question=case.messages[0], budget=budget
+            session, principal, recorder, question=case.messages[0], budget=budget, limits=limits
         )
     except GuardrailError as exc:
         # Stopped before any model ran: the person is told why, nothing is called.
-        return StaffRun(Trajectory(calls=[], answer=exc.detail, outcome="refused"), [])
+        return StaffRun(Trajectory([], exc.detail, "refused", recorder.asked), [])
+    except (agents_api.AgentUnavailableError, agents_api.AgentBudgetReachedError) as exc:
+        # Stopped by the agent registry (ADR 0016): the model is never reached.
+        return StaffRun(Trajectory([], exc.detail, registry_outcome(exc), recorder.asked), [])
     calls = recorder.calls
     outcome = conversation_outcome(calls, len(proposals))
-    return StaffRun(Trajectory(calls, answer, outcome), [p.id for p in proposals])
+    return StaffRun(Trajectory(calls, answer, outcome, recorder.asked), [p.id for p in proposals])
 
 
 # --- the customer portal assistant (EV3) ----------------------------------------------------------
@@ -191,12 +212,16 @@ def run_portal_case(
     messages_per_hour: int = 1000,
     max_tool_rounds: int = 6,
     model: ChatModel | None = None,
+    limits: agents_api.Limits | None = None,
 ) -> PortalRun:
     """Play a portal-assistant case as the customer ``principal``. Several messages continue
     one conversation. Placeholders must already be replaced."""
     if case.agent != "portal_assistant":
         raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the portal_assistant")
-    recorder = RecordingModel(model if model is not None else ScriptedModel(case.script))
+    recorder = RecordingModel(
+        model if model is not None else ScriptedModel(case.script),
+        drop_unanswered=case.governance is not None,
+    )
     conversation_id: uuid.UUID | None = None
     answer = ""
     pending = 0
@@ -210,14 +235,21 @@ def run_portal_case(
                 text=text,
                 messages_per_hour=messages_per_hour,
                 max_tool_rounds=max_tool_rounds,
+                limits=limits,
             )
         except GuardrailError as exc:
-            return PortalRun(Trajectory(recorder.calls, exc.detail, "refused"), 0)
+            return PortalRun(Trajectory(recorder.calls, exc.detail, "refused", recorder.asked), 0)
+        except (agents_api.AgentUnavailableError, agents_api.AgentBudgetReachedError) as exc:
+            return PortalRun(
+                Trajectory(recorder.calls, exc.detail, registry_outcome(exc), recorder.asked), 0
+            )
         conversation_id = conversation.id
         answer = conversation.messages[-1].content if conversation.messages else ""
         pending = sum(1 for action in conversation.actions if action.status == "pending")
     calls = recorder.calls
-    return PortalRun(Trajectory(calls, answer, conversation_outcome(calls, pending)), pending)
+    return PortalRun(
+        Trajectory(calls, answer, conversation_outcome(calls, pending), recorder.asked), pending
+    )
 
 
 # --- the public website chat (EV3) ----------------------------------------------------------------
@@ -247,7 +279,10 @@ def run_public_chat_case(
     organisation of the test world."""
     if case.agent != "public_chat":
         raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the public_chat")
-    recorder = RecordingModel(model if model is not None else ScriptedModel(case.script))
+    recorder = RecordingModel(
+        model if model is not None else ScriptedModel(case.script),
+        drop_unanswered=case.governance is not None,
+    )
     token: str | None = None
     answer = ""
     lead_saved = False
@@ -262,9 +297,12 @@ def run_public_chat_case(
             )
         except public_chat_service.MessageRefusedError as exc:
             # Stopped by the guardrails or the honeypot before any model ran.
-            return PublicRun(Trajectory(recorder.calls, exc.detail, "refused"), lead_saved)
+            return PublicRun(
+                Trajectory(recorder.calls, exc.detail, "refused", recorder.asked), lead_saved
+            )
         token, answer, lead_saved = reply.token, reply.reply, reply.lead_saved
     calls = recorder.calls
-    return PublicRun(
-        Trajectory(calls, answer, public_chat_outcome(calls, lead_saved=lead_saved)), lead_saved
-    )
+    outcome = public_chat_outcome(calls, lead_saved=lead_saved)
+    if answer == RESTING_REPLY:
+        outcome = "agent_off"  # the registry stopped it (ADR 0016); the visitor sees one sentence
+    return PublicRun(Trajectory(calls, answer, outcome, recorder.asked), lead_saved)

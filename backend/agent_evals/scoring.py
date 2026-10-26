@@ -31,6 +31,8 @@ class Trajectory:
     calls: list[ToolCall]
     answer: str
     outcome: str
+    # How often the model was asked for a reply (None: not counted).
+    model_calls: int | None = None
 
 
 @dataclass(frozen=True)
@@ -256,6 +258,18 @@ def score_case(case: Case, run: Trajectory, *, strict: bool = True) -> CaseResul
                 "the answer says a change was carried out although it only waits"
                 if claimed
                 else "",
+            )
+        )
+    if expect.model_called is not None and run.model_calls is not None:
+        reached = run.model_calls > 0
+        checks.append(
+            Check(
+                "model_called",
+                reached == expect.model_called,
+                ""
+                if reached == expect.model_called
+                else f"the model was called {run.model_calls} time(s), expected "
+                f"{'some' if expect.model_called else 'none'}",
             )
         )
     if strict and expect.max_tool_calls is not None:

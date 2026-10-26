@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.v1 import health, internal
 from app.modules.accounts.router import router as accounts_router
 from app.modules.activities.router import router as activities_router
+from app.modules.agents.router import router as agents_router
 from app.modules.approvals.router import router as approvals_router
 from app.modules.assistant.router import router as assistant_router
 from app.modules.assistant.staff_router import router as staff_assistant_router
@@ -63,6 +64,7 @@ api_router.include_router(communications_router)
 api_router.include_router(public_chat_router)
 api_router.include_router(public_chat_staff_router)
 api_router.include_router(approvals_router)
+api_router.include_router(agents_router)
 api_router.include_router(workflows_router)
 api_router.include_router(reports_router)
 api_router.include_router(leads_router)

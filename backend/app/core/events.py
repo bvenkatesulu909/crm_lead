@@ -46,6 +46,8 @@ EVENT_NAMES = frozenset(
         "public_chat.lead_captured",
         "agent_action.proposed",
         "agent_action.decided",
+        "agent.switched",
+        "agent.budget_warning",
     }
 )
 MAX_DEPTH = 3

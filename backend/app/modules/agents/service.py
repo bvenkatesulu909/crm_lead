@@ -20,6 +20,7 @@ from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.config import Settings
 from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
+from app.core.events import publish
 from app.modules.agents import repository
 from app.modules.agents.catalogue import AGENTS, AgentDef
 from app.modules.agents.models import MAX_TOKENS, AgentSetting
@@ -213,6 +214,9 @@ def record_usage(
     crossed = used * 100 >= budget * WARN_PERCENT and repository.mark_warned(
         session, tenant_id, key, month, now
     )
+    if crossed:
+        # Once per month and agent: the organisation's admins hear about it (codes only).
+        publish(session, tenant_id, "agent.budget_warning", {"agent": key, "percent": WARN_PERCENT})
     return UsageResult(used, crossed)
 
 
@@ -299,6 +303,17 @@ def update_settings(
         entity_id=setting.id,
         changes=_diff(key, before, after),
     )
+    if before.enabled != after.enabled:
+        publish(
+            session,
+            tenant_id,
+            "agent.switched",
+            {
+                "agent": key,
+                "state": "on" if after.enabled else "off",
+                "actor_id": str(principal.user_id),
+            },
+        )
     return after
 
 

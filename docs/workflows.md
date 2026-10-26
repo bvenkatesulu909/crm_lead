@@ -95,6 +95,8 @@ API (permission `workflow:manage`): `GET /workflows/catalogue`, `GET/POST /workf
 | `public_chat.lead_captured` | public_chat (a website visitor's details were saved as a lead; ADR 0013) | `lead_id`, `session_id` - notifies every sales manager (the lead is unassigned) |
 | `agent_action.proposed` | approvals (an AI feature proposed an action; ADR 0014) | `action_id`, `actor_id` (the requester) - notifies everyone who may approve, except the requester |
 | `agent_action.decided` | approvals (approved, rejected, failed, or expired by the worker) | `action_id`, `actor_id` (the decider; none for expiry) - notifies the requester |
+| `agent.switched` | agents (an admin switched an AI agent on or off) | `agent` (key), `state` (`on`/`off`), `actor_id` - notifies the other agent managers (tenant admins) |
+| `agent.budget_warning` | agents (a month's tokens first passed 80 % of the budget) | `agent`, `percent` - once per month and agent, notifies the agent managers |
 
 Rules: names must be in `EVENT_NAMES`; no personal data in payloads; subscribers must be safe
 to run twice; events caused by automation carry a `depth` (rules stop at 3, step 17b).

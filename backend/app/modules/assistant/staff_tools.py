@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
 from app.core.errors import DomainError, NotFoundError
+from app.core.screening import clean_records
 from app.modules.accounts import api as accounts_api
 from app.modules.approvals import api as approvals_api
 from app.modules.contacts import api as contacts_api
@@ -51,7 +52,8 @@ class StaffToolResult:
 
 
 def _json(data: Any) -> str:
-    text = json.dumps(data, default=str, ensure_ascii=False)
+    cleaned, _ = clean_records(data)  # record text is untrusted (ADR 0017)
+    text = json.dumps(cleaned, default=str, ensure_ascii=False)
     if len(text) > MAX_RESULT_CHARS:
         text = json.dumps({"truncated": True, "note": "Ask about one record."})
     return text

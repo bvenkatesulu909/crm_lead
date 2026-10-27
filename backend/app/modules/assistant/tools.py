@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
 from app.core.errors import DomainError, NotFoundError
+from app.core.screening import clean_records
 from app.modules.accounts import api as accounts_api
 from app.modules.catalog import api as catalog_api
 from app.modules.contacts import api as contacts_api
@@ -45,7 +46,8 @@ class ToolResult:
 
 
 def _json(data: Any) -> str:
-    text = json.dumps(data, default=str, ensure_ascii=False)
+    cleaned, _ = clean_records(data)  # record text is untrusted (ADR 0017)
+    text = json.dumps(cleaned, default=str, ensure_ascii=False)
     if len(text) > MAX_RESULT_CHARS:
         # Keep the model's context small and predictable; ask for a narrower question instead.
         text = json.dumps({"truncated": True, "note": "Too much data; ask about one item."})

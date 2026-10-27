@@ -15,6 +15,7 @@ Findings carry a stable ``code`` and a plain sentence; they never repeat the tex
 import re
 import unicodedata
 from dataclasses import dataclass
+from typing import Any
 
 LINK_PLACEHOLDER = "[link removed]"
 IMAGE_PLACEHOLDER = "[image removed]"
@@ -227,7 +228,12 @@ def _collapse_repeats(text: str) -> tuple[str, bool]:
 # --- the function ------------------------------------------------------------------------------
 
 
-def screen(text: str) -> Screened:
+def screen(text: str, *, strip_links: bool = True, strip_addresses: bool = True) -> Screened:
+    """Clean ``text`` and report what was found.
+
+    By default everything is taken out. Text a person TYPED keeps its links and addresses
+    (``strip_links=False, strip_addresses=False``: people paste them); record text keeps its
+    e-mail addresses (they are data) but loses links (``strip_addresses=False``)."""
     if not isinstance(text, str):
         raise TypeError("screen() needs text")
     codes: list[str] = []
@@ -256,20 +262,22 @@ def screen(text: str) -> Screened:
         found("external_image")
     work = new
     # 3. addresses, then links
-    new = _EMAIL.sub(ADDRESS_PLACEHOLDER, work)
-    if new != work:
-        found("email_address")
-    work = new
-    before = work
-    work = _MD_LINK.sub(lambda m: f"{m.group(1)} {LINK_PLACEHOLDER}".strip(), work)
-    work = _SCHEME_URL.sub(LINK_PLACEHOLDER, work)
-    work = _WWW.sub(LINK_PLACEHOLDER, work)
-    work = _DATA_URI.sub(LINK_PLACEHOLDER, work)
-    work = _DOMAIN_PATH.sub(
-        lambda m: m.group(0) if m.group(1).lower() in _UNIT_TLDS else LINK_PLACEHOLDER, work
-    )
-    if work != before:
-        found("link")
+    if strip_addresses:
+        new = _EMAIL.sub(ADDRESS_PLACEHOLDER, work)
+        if new != work:
+            found("email_address")
+        work = new
+    if strip_links:
+        before = work
+        work = _MD_LINK.sub(lambda m: f"{m.group(1)} {LINK_PLACEHOLDER}".strip(), work)
+        work = _SCHEME_URL.sub(LINK_PLACEHOLDER, work)
+        work = _WWW.sub(LINK_PLACEHOLDER, work)
+        work = _DATA_URI.sub(LINK_PLACEHOLDER, work)
+        work = _DOMAIN_PATH.sub(
+            lambda m: m.group(0) if m.group(1).lower() in _UNIT_TLDS else LINK_PLACEHOLDER, work
+        )
+        if work != before:
+            found("link")
     # 4. the tags that are left (their text stays)
     new = _TAG.sub("", work)
     if new != work:
@@ -282,3 +290,25 @@ def screen(text: str) -> Screened:
     if instructions_seen:
         found("instruction_phrase")
     return Screened(work, [Finding(code, MESSAGES[code]) for code in codes])
+
+
+def clean_records(value: Any) -> tuple[Any, bool]:
+    """Clean every text inside a structure of dicts, lists and strings that comes out of the CRM
+    on its way into a prompt: hidden characters, markup, images, links and floods go; e-mail
+    addresses stay (they are data). Returns the cleaned copy (the original is not changed) and
+    whether any text read like an instruction to an AI."""
+    suspicious = False
+
+    def walk(item: Any) -> Any:
+        nonlocal suspicious
+        if isinstance(item, str):
+            result = screen(item, strip_addresses=False)
+            suspicious = suspicious or any(f.code == "instruction_phrase" for f in result.findings)
+            return result.clean
+        if isinstance(item, dict):
+            return {key: walk(inner) for key, inner in item.items()}
+        if isinstance(item, (list, tuple)):
+            return [walk(inner) for inner in item]
+        return item
+
+    return walk(value), suspicious

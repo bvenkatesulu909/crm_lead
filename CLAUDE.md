@@ -535,6 +535,20 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     real and are fixed; the other failures were time- and connection-dependent (invoices
     overdue/due dates, dashboard, reminders, contracts, knowledge threshold, two orders setup
     errors). Re-run alone afterwards: those six files 200 passed, 1 failed (an expired test token in a 2h49 run) and that test passed when run alone.
+  - SN3 (2026-10-27, branch `feat/sentinel-input`): `guardrails.inspect_input` now cleans what a
+    person types (hidden characters, markup, images, floods; links and addresses stay) and refuses
+    a hidden or split instruction, hidden card numbers and an empty result - `decision.clean` is
+    used by the staff assistant, the portal assistant and the website chat; record text in the
+    staff prompt and in the results of the staff and portal tools goes through `clean_records`
+    (links out, addresses stay) and the model is told when a record reads like an instruction;
+    the approval card shows the stored warnings as **Safety check** above the buttons. Tests (run
+    2026-10-27): 77 new backend tests (pure input screening incl. the attack library, plus the
+    three entrances and the prompt through the real API); Vitest 406 passed (4 new); frontend lint,
+    typecheck and production build clean; ruff, mypy, import-linter clean. The full backend run took
+    7h25 because the PC slept: 2356 passed, 3 failed (a super-admin listing test, a payment
+    reversal and the reminders test, all time-dependent) - re-run alone: 3 passed. Playwright was
+    not re-run (the card change is covered by component tests; the approvals journey needs the
+    scripted assistant).
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

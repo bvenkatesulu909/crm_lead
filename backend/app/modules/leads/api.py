@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.errors import ForbiddenError
-from app.core.records import Recipient, RecordFacts
+from app.core.records import LeadSnapshot, Recipient, RecordFacts
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
 from app.modules.leads import repository, service
 from app.modules.leads.metrics import (
@@ -152,6 +152,20 @@ def lead_facts(session: Session, principal: Principal, lead_id: uuid.UUID) -> Re
         lead_id=lead.id,
         values={"status": lead.status, "source": lead.source or ""},
     )
+
+
+def lead_snapshot(
+    session: Session, principal: Principal, lead_id: uuid.UUID
+) -> LeadSnapshot | None:
+    """State and free text of a lead this principal may see (for the Sentinel, ADR 0017)."""
+    lead = repository.get_readable(session, principal, lead_id)
+    if lead is None:
+        return None
+    fields = (lead.first_name, lead.last_name, lead.company_name, lead.job_title, lead.location)
+    texts = [text for text in fields if text]
+    for activity in list(repository.list_activities(session, lead))[:10]:
+        texts.append(f"{activity.subject}\n{activity.body or ''}")
+    return LeadSnapshot(lead.tenant_id, lead.status, lead.owner_id, texts)
 
 
 def set_lead_status(

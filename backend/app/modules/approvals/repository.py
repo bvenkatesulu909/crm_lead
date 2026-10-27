@@ -3,6 +3,7 @@
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -40,6 +41,51 @@ def pending_count(session: Session, tenant_id: uuid.UUID, requester: uuid.UUID) 
         )
         or 0
     )
+
+
+def count_since(
+    session: Session,
+    tenant_id: uuid.UUID,
+    *,
+    since: datetime,
+    requester: uuid.UUID | None = None,
+    kind: str | None = None,
+    target_id: uuid.UUID | None = None,
+) -> int:
+    """Proposals made since a moment, however they ended (history counts: a flood of rejected
+    proposals is still a flood)."""
+    conditions = [AgentAction.tenant_id == tenant_id, AgentAction.created_at >= since]
+    if requester is not None:
+        conditions.append(AgentAction.requested_by_user_id == requester)
+    if kind is not None:
+        conditions.append(AgentAction.kind == kind)
+    if target_id is not None:
+        conditions.append(AgentAction.target_id == target_id)
+    return session.scalar(select(func.count()).select_from(AgentAction).where(*conditions)) or 0
+
+
+def identical_pending(
+    session: Session,
+    tenant_id: uuid.UUID,
+    *,
+    kind: str,
+    target_id: uuid.UUID,
+    payload: dict[str, Any],
+) -> bool:
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(AgentAction)
+            .where(
+                AgentAction.tenant_id == tenant_id,
+                AgentAction.status == "pending",
+                AgentAction.kind == kind,
+                AgentAction.target_id == target_id,
+                AgentAction.payload == payload,
+            )
+        )
+        or 0
+    ) > 0
 
 
 def page(

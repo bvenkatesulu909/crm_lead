@@ -341,7 +341,8 @@ def test_one_person_can_have_only_a_few_proposals_waiting(api, auth, world, db_s
         )
     )
     propose(db_session, world, "alpha.agent1", lead, "unqualified", pending_limit=2)
-    propose(db_session, world, "alpha.manager", lead, "qualified", pending_limit=2)
+    other_lead = add_lead(db_session, world, "alpha.manager")  # not a duplicate of agent1's
+    propose(db_session, world, "alpha.manager", other_lead, "qualified", pending_limit=2)
 
 
 def test_the_settings_have_safe_defaults() -> None:

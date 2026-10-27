@@ -122,6 +122,7 @@ class ProposalBudget:
 
     expiry_days: int = 7
     pending_limit: int = 20
+    sentinel: approvals_api.SentinelLimits | None = None
     made: list[ProposalRef] = field(default_factory=list)
 
 
@@ -241,7 +242,12 @@ def _propose(
                 agent="staff_assistant",
                 expires_in_days=budget.expiry_days,
                 pending_limit=budget.pending_limit,
+                sentinel_limits=budget.sentinel,
             )
+    except approvals_api.ProposalBlockedError as exc:
+        # Outside the savepoint, so the audit entry of the refusal is kept with the request.
+        approvals_api.audit_blocked(session, principal, exc)
+        return StaffToolResult("invalid", _json({"error": exc.detail}))
     except NotFoundError:
         return StaffToolResult("not_found", _json({"error": "Record not found."}))
     except DomainError as exc:

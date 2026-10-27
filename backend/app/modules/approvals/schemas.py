@@ -14,6 +14,13 @@ Status = Literal["pending", "approved", "rejected", "expired", "failed"]
 Note = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 
 
+class SafetyWarning(BaseModel):
+    """Something the approver should check (the Sentinel, ADR 0017). Shown as "Safety check"."""
+
+    code: str
+    message: str
+
+
 class AgentActionRead(BaseModel):
     id: uuid.UUID
     kind: str
@@ -33,6 +40,7 @@ class AgentActionRead(BaseModel):
     decided_at: datetime | None
     decision_note: str | None
     result: str | None
+    warnings: list[SafetyWarning]
     created_at: datetime
     version: int
 

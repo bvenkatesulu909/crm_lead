@@ -20,6 +20,7 @@ from app.modules.approvals.schemas import (
     AgentActionRead,
     Approve,
     Reject,
+    SafetyWarning,
     Status,
 )
 from app.modules.identity.api import require_any_permission
@@ -54,6 +55,7 @@ def _read(session: Session, principal: Principal, action: AgentAction) -> AgentA
         decided_at=action.decided_at,
         decision_note=action.decision_note,
         result=action.result,
+        warnings=[SafetyWarning(**w) for w in (action.verification or {}).get("warnings", [])],
         created_at=action.created_at,
         version=action.version,
     )

@@ -146,6 +146,21 @@ class Expect(_Strict):
     # True / False: whether the model must / must not have been called at all (a refused agent
     # never reaches it). None: not checked.
     model_called: bool | None = None
+    # The warning codes (the Sentinel, ADR 0017) the proposals made in this case must carry, all
+    # together. [] = none; None = not checked.
+    safety_warnings: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _warnings_are_warnings(self) -> "Expect":
+        if self.safety_warnings:
+            from app.modules.approvals.sentinel import WARNING_CODES
+
+            unknown = sorted(set(self.safety_warnings) - WARNING_CODES)
+            if unknown:
+                raise ValueError(
+                    f"safety_warnings: {unknown} are not warning codes of the Sentinel"
+                )
+        return self
 
 
 def _strings(value: Any) -> list[str]:

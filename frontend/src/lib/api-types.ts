@@ -1448,6 +1448,8 @@ export type AgentAction = {
   decided_at: string | null;
   decision_note: string | null;
   result: string | null;
+  /** What the Sentinel (ADR 0017) wants the approver to check; shown as "Safety check". */
+  warnings: { code: string; message: string }[];
   created_at: string;
   version: number;
 };

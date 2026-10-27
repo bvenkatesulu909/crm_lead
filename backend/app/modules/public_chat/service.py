@@ -174,6 +174,7 @@ def handle_message(
     decision = assistant_api.inspect_input(data.message)
     if not decision.allowed:
         raise MessageRefusedError(decision.reason)
+    message = decision.clean
     if not model.available:
         raise assistant_api.AssistantUnavailableError(
             "The chat is not available right now. Please call us or try again later."
@@ -201,7 +202,7 @@ def handle_message(
             tenant_id=tenant_id,
             session_id=conversation.id,
             role="visitor",
-            content=data.message[:MESSAGE_MAX],
+            content=message[:MESSAGE_MAX],
         )
     )
     session.flush()

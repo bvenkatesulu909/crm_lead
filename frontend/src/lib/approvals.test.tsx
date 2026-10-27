@@ -58,6 +58,7 @@ function action(changes: Partial<AgentAction> = {}): AgentAction {
     decided_at: null,
     decision_note: null,
     result: null,
+    warnings: [],
     created_at: "2026-10-25T10:00:00Z",
     version: 1,
     ...changes,
@@ -207,6 +208,86 @@ describe("ApprovalCard", () => {
     expect(within(card).getByText(/<b>Hurry<\/b> please/)).toBeInTheDocument();
     expect(container.querySelector("b")).toBeNull();
     expect(within(card).getByText("Waiting")).toBeInTheDocument();
+  });
+
+  it("shows no safety check when there is nothing to check", () => {
+    render(<ApprovalCard action={action()} people={people} me={me([])} />);
+    expect(screen.queryByText("Safety check")).toBeNull();
+  });
+
+  it("shows the safety check above the buttons, one line per warning", () => {
+    render(
+      <ApprovalCard
+        action={action({
+          warnings: [
+            {
+              code: "lead_owned_by_other",
+              message: "Someone else owns this lead.",
+            },
+            {
+              code: "record_contains_instruction",
+              message:
+                "This record contains text that looks like an instruction to an AI.",
+            },
+          ],
+        })}
+        people={people}
+        me={me(["agent_action:approve"])}
+        decision={<button>Approve</button>}
+      />,
+    );
+    const box = screen.getByRole("group", { name: "Safety check" });
+    expect(
+      within(box).getByText("Check this before you decide:"),
+    ).toBeInTheDocument();
+    const items = within(box).getAllByRole("listitem");
+    expect(items.map((i) => i.textContent)).toEqual([
+      "Someone else owns this lead.",
+      "This record contains text that looks like an instruction to an AI.",
+    ]);
+    const button = screen.getByRole("button", { name: "Approve" });
+    expect(
+      box.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("shows warning text as plain text, not markup", () => {
+    const { container } = render(
+      <ApprovalCard
+        action={action({
+          warnings: [
+            { code: "x", message: "<img src=x onerror=alert(1)> beware" },
+          ],
+        })}
+        people={people}
+        me={me([])}
+      />,
+    );
+    expect(screen.getByText(/<img src=x/)).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("keeps the safety check on a decided proposal, as part of its history", () => {
+    render(
+      <ApprovalCard
+        action={action({
+          status: "approved",
+          decided_by_user_id: ME,
+          decided_at: "2026-10-26T10:00:00Z",
+          warnings: [
+            {
+              code: "busy_record",
+              message: "Several proposals were made for this record today.",
+            },
+          ],
+        })}
+        people={people}
+        me={me([])}
+      />,
+    );
+    expect(
+      screen.getByRole("group", { name: "Safety check" }),
+    ).toBeInTheDocument();
   });
 
   it("says when the record isn't visible to the reader, without naming it", () => {

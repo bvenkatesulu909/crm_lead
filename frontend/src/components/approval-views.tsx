@@ -114,6 +114,25 @@ export function ApprovalCard({
             </>
           )}
         </p>
+        {action.warnings.length > 0 && (
+          <div
+            role="group"
+            aria-label="Safety check"
+            className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+          >
+            <p className="font-semibold">Safety check</p>
+            <p className="text-xs text-amber-800">
+              Check this before you decide:
+            </p>
+            <ul className="mt-1 list-disc pl-5">
+              {action.warnings.map((warning) => (
+                <li key={warning.code} className="break-words">
+                  {warning.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {action.status !== "pending" && action.decided_at && (
           <div className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-700">
             <p>

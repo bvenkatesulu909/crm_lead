@@ -262,6 +262,7 @@ def send_message(
     decision = guardrails.inspect_input(text)
     if not decision.allowed:
         raise GuardrailError(decision.reason)
+    text = decision.clean
     _check_rate(session, tenant_id, user_id, messages_per_hour)
 
     if conversation_id is None:

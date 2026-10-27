@@ -343,7 +343,7 @@ call a language model. Design: `docs/adr/0016-agent-registry-budgets-kill-switch
 - A tenant admin can switch, cap and narrow an agent; other organisations are unaffected; changes are audited.
 - Definition of Done checklist complete.
 
-## Phase SN — Sentinel action verifier and input screening (BP-21)  *(ADR 0017 accepted 2026-10-26; SN0, SN1, SN2 done)*
+## Phase SN — Sentinel action verifier and input screening (BP-21)  *(ADR 0017 accepted 2026-10-26; SN0-SN3 done)*
 
 A deterministic second check on every AI proposal before it reaches the approval queue (words,
 pattern, state, tenant, the record's own text), plus stronger input screening. Design:

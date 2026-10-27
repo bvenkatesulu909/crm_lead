@@ -549,6 +549,20 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     reversal and the reminders test, all time-dependent) - re-run alone: 3 passed. Playwright was
     not re-run (the card change is covered by component tests; the approvals journey needs the
     scripted assistant).
+  - SN4 (2026-10-27, branch `feat/sentinel-eval`): 11 BP-10 cases for the Sentinel (9 staff, 1
+    portal, 1 website chat; 53 agent cases in all, all `live: false`): a link, an instruction or an
+    address in what a model writes is refused; a duplicate is refused; a warned proposal is stored
+    with its warning (new `expect.safety_warnings`, checked on the stored proposals); a lead whose
+    own text tries to steer an AI (`{{lead.poisoned}}`) warns, or blocks when the reason repeats it;
+    a hidden instruction is refused before any model in all three entrances; invisible characters
+    in an ordinary question are cleaned. Fixed on the way: governance cases failed on the
+    development data once a real `agent_settings` row existed (version conflict) - they now change
+    the settings from where they are. Docs `docs/sentinel.md`, `docs/agent-evals.md` 6g.
+    **Phase SN (BP-21) complete.** Tests (run 2026-10-27): evaluation DB tests (staff, portal,
+    website chat, CLI) 92 passed; with the Sentinel off the five "blocked" cases fail; the pure
+    tests of the new format and dataset 47 passed; the scripted run on the development data
+    passed all 4 suites; ruff, mypy, import-linter clean. The full backend suite was not re-run
+    (only the harness, the dataset and one constant changed since the last full run).
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

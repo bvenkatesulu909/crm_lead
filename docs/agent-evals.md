@@ -276,6 +276,16 @@ proves the model was never reached. A tool call the organisation removed is drop
 CRM sees it, so such a case lists no tools and the runner does not count the unanswered call.
 8 cases (4 staff, 2 portal, 2 website chat), all `live: false` (they test the gate, not a model).
 
+## 6g. Sentinel cases (BP-21, SN4)
+
+11 more cases (9 staff, 1 portal, 1 website chat; the dataset has 53 agent cases now), all
+`live: false`: a link, an instruction or an address in what a model writes is refused by the
+Sentinel; a duplicate proposal is refused; a manager giving a colleague's lead away and a lead whose
+own text tries to steer an AI are stored WITH a warning; an instruction hidden by invisible
+characters is refused before any model runs, in all three entrances. New expectation
+`safety_warnings` (checked on the stored proposals), new `{{lead.poisoned}}` placeholder. Details:
+`docs/sentinel.md`.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

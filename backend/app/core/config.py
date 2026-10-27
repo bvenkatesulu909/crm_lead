@@ -191,6 +191,10 @@ class Settings(BaseSettings):
     # for agents nobody has configured. There is no "unlimited": a cap is always in force.
     ai_disabled: bool = False
     agent_default_monthly_tokens: int = Field(default=2_000_000, ge=1, le=10_000_000_000)
+    # Sentinel (ADR 0017): thresholds of the second check on AI proposals.
+    sentinel_proposals_per_hour: int = Field(default=10, ge=1, le=1000)
+    sentinel_assignments_per_hour: int = Field(default=3, ge=1, le=1000)
+    sentinel_busy_record_per_day: int = Field(default=3, ge=2, le=100)
     # Workflow rules (ADR 0006): automatic actions per organisation per hour, at most.
     workflow_actions_per_hour: int = Field(default=500, ge=1, le=100_000)
 

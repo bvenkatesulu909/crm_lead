@@ -68,6 +68,12 @@ AI_REFUSALS = Counter(
     ["agent", "reason"],
     registry=REGISTRY,
 )
+AI_SENTINEL_FINDINGS = Counter(
+    "crm_ai_sentinel_findings_total",
+    "Findings of the Sentinel on AI proposals, by rule and severity (ADR 0017). No tenant label.",
+    ["rule", "severity"],
+    registry=REGISTRY,
+)
 AI_DROPPED_TOOL_CALLS = Counter(
     "crm_ai_dropped_tool_calls_total",
     "Tool calls a model made that its agent may not use (ADR 0016). No tenant label.",
@@ -261,6 +267,7 @@ __all__ = [
     "AI_COST",
     "AI_DROPPED_TOOL_CALLS",
     "AI_REFUSALS",
+    "AI_SENTINEL_FINDINGS",
     "AI_REQUESTS",
     "AI_TOKENS",
     "MetricsMiddleware",

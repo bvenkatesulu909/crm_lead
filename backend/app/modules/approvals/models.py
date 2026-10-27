@@ -55,6 +55,10 @@ class AgentAction(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Version
         CheckConstraint(f"agent IN {AGENTS}", name="agent_allowed"),
         CheckConstraint("kind ~ '^[a-z_]+\\.[a-z_]+$'", name="kind_shape"),
         CheckConstraint("jsonb_typeof(payload) = 'object'", name="payload_is_object"),
+        CheckConstraint(
+            "verification IS NULL OR jsonb_typeof(verification) = 'object'",
+            name="verification_is_object",
+        ),
         CheckConstraint(f"char_length(reason) BETWEEN 1 AND {REASON_MAX}", name="reason_length"),
         # A decision is final and has a time; a pending proposal has neither.
         CheckConstraint("(status = 'pending') = (decided_at IS NULL)", name="decided_when_final"),
@@ -79,6 +83,8 @@ class AgentAction(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Version
     target_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     # Only IDs, codes and short texts, checked against the kind's schema (catalogue.py).
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # What the Sentinel checked and its warnings (ADR 0017); codes and sentences, no record text.
+    verification: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
     reason: Mapped[str] = mapped_column(String(REASON_MAX))
     agent: Mapped[str] = mapped_column(String(40))
     requested_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)

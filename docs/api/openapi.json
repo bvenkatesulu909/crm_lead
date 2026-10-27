@@ -1201,6 +1201,13 @@
           "version": {
             "title": "Version",
             "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/SafetyWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
           }
         },
         "required": [
@@ -1221,6 +1228,7 @@
           "decided_at",
           "decision_note",
           "result",
+          "warnings",
           "created_at",
           "version"
         ],
@@ -12654,6 +12662,25 @@
           "created_at"
         ],
         "title": "RunRead",
+        "type": "object"
+      },
+      "SafetyWarning": {
+        "description": "Something the approver should check (the Sentinel, ADR 0017). Shown as \"Safety check\".",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "SafetyWarning",
         "type": "object"
       },
       "ScoreFactor": {

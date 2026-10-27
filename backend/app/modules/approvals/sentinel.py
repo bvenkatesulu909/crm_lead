@@ -16,6 +16,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from app.core.config import Settings
 from app.core.screening import find_instructions, screen
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,18 @@ class Limits:
     assignments_per_hour: int
     # A record that already has this many proposals today, counting the new one, is "busy".
     busy_record_per_day: int
+
+    @classmethod
+    def from_settings(cls, settings: Settings) -> "Limits":
+        return cls(
+            settings.sentinel_proposals_per_hour,
+            settings.sentinel_assignments_per_hour,
+            settings.sentinel_busy_record_per_day,
+        )
+
+    @classmethod
+    def default(cls) -> "Limits":
+        return cls(10, 3, 3)
 
 
 @dataclass(frozen=True)

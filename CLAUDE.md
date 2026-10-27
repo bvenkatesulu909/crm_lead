@@ -516,10 +516,25 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
   `feat/sentinel-rules`): `app/core/screening.py` (clean untrusted text, report instruction
   phrases) and `approvals/sentinel.py` (words, pattern, state, tenant and the record's own text as
   pure rules; fails closed; re-check mode for approval), attack library
-  `backend/evals/attacks/library.json` (55 texts), `docs/sentinel.md`. Nothing calls them yet (SN2).
+  `backend/evals/attacks/library.json` (55 texts), `docs/sentinel.md`.
   Tests (run 2026-10-26): 288 new pure tests passed; with the link rule and one instruction
   pattern disabled 19 fail; ruff, mypy, import-linter clean. The full backend suite was not
   re-run (only new files were added).
+  - SN2 (2026-10-27, branch `feat/sentinel-hook`): the Sentinel runs inside `approvals.propose()`
+    (facts from the database: the lead's state and free text, the asker's hourly counts, an
+    identical waiting proposal, the assignee's organisation) and `approve()` (state and tenant
+    rules again; a stale proposal ends as failed); migration 0044 `agent_actions.verification`;
+    `ProposalBlockedError` (422 `proposal_blocked`), audit `agent_action.blocked` written by the
+    caller after its savepoint (the staff assistant does), metric `crm_ai_sentinel_findings_total`,
+    settings `CRM_SENTINEL_*`, `warnings` on every proposal in the API; OpenAPI and inventory
+    refreshed; dev database at 0044. Existing tests adjusted: two (proposals made twice on one
+    lead were duplicates; the failed approval now names "already has this status"). Tests (run
+    2026-10-27): 30 new database tests passed; approvals, approvals API, assistant proposals and
+    the new file together 85 passed; ruff, mypy, import-linter clean. The full backend run took
+    12h39 because the PC slept: 2278 passed, 12 failed, 2 errors - the 2 approvals failures were
+    real and are fixed; the other failures were time- and connection-dependent (invoices
+    overdue/due dates, dashboard, reminders, contracts, knowledge threshold, two orders setup
+    errors). Re-run alone afterwards: those six files 200 passed, 1 failed (an expired test token in a 2h49 run) and that test passed when run alone.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

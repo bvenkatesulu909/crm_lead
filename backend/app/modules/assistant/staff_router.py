@@ -12,6 +12,7 @@ from app.core.config import Settings
 from app.core.db import get_db_session
 from app.core.errors import problem_responses
 from app.modules.agents import api as agents_api
+from app.modules.approvals import api as approvals_api
 from app.modules.assistant import staff_service, staff_tools
 from app.modules.assistant.llm import ChatModel
 from app.modules.assistant.staff_schemas import ProposalRead, StaffAnswer, StaffQuestion
@@ -54,6 +55,7 @@ def ask(
         budget=staff_tools.ProposalBudget(
             expiry_days=settings.agent_action_expiry_days,
             pending_limit=settings.agent_action_pending_per_user,
+            sentinel=approvals_api.SentinelLimits.from_settings(settings),
         ),
         limits=agents_api.Limits.from_settings(settings),
     )

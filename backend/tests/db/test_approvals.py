@@ -328,7 +328,8 @@ def test_a_failing_action_changes_nothing_and_is_marked_failed(acting, db_sessio
     )
     done = acting.approve("alpha.manager2", action)
     assert done.status == "failed"
-    assert "contacted" in (done.result or "")
+    # The Sentinel's re-check at approval (ADR 0017) names the reason before the module can.
+    assert "already has this status" in (done.result or "")
     assert reload_lead(db_session, world, lead).status == "contacted"
     assert audits(db_session, world, "agent_action.failed")
 

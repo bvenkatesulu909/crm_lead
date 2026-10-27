@@ -22,11 +22,13 @@ from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
 from app.core.events import publish
+from app.core.observability.metrics import AI_SENTINEL_FINDINGS
 from app.modules.accounts import api as accounts_api
-from app.modules.approvals import repository
+from app.modules.approvals import repository, sentinel
 from app.modules.approvals.catalogue import KINDS, ActionKind, Proposal
 from app.modules.approvals.models import AGENTS, REASON_MAX, AgentAction
 from app.modules.contacts import api as contacts_api
+from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 
 ENTITY = "agent_action"
@@ -42,6 +44,35 @@ class UnknownActionError(DomainError):
 class InvalidActionError(DomainError):
     status_code = 422
     code = "invalid_agent_action"
+
+
+class ProposalBlockedError(DomainError):
+    """The Sentinel (ADR 0017) refused the proposal. Nothing was stored. The reasons are plain
+    sentences that never repeat the text that was found."""
+
+    status_code = 422
+    code = "proposal_blocked"
+
+    def __init__(
+        self,
+        findings: list[sentinel.Finding],
+        *,
+        kind: str,
+        target_type: str,
+        target_id: uuid.UUID,
+        requester_id: uuid.UUID,
+        agent: str,
+    ) -> None:
+        self.codes = [f.code for f in findings]
+        self.kind, self.target_type, self.target_id = kind, target_type, target_id
+        self.requester_id, self.agent = requester_id, agent
+        self.action_id = uuid.uuid4()  # the id the proposal would have had (for the audit entry)
+        super().__init__("The proposal was not accepted. " + " ".join(f.message for f in findings))
+
+
+class RecheckFailedError(DomainError):
+    status_code = 409
+    code = "agent_action_recheck_failed"
 
 
 class LimitReachedError(DomainError):
@@ -183,6 +214,92 @@ def _audit(session: Session, principal: Principal, action: AgentAction, what: st
     )
 
 
+# --- the Sentinel (ADR 0017) ---------------------------------------------------------------
+
+
+def sentinel_facts(
+    session: Session,
+    principal: Principal,
+    *,
+    kind: str,
+    target_type: str,
+    target_id: uuid.UUID,
+    payload: dict[str, Any],
+    now: datetime | None = None,
+) -> sentinel.Facts:
+    """What the database says about the record and the asker, for the rules."""
+    tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_PROPOSE)
+    moment = now or _now()
+    status: str | None = None
+    owner: uuid.UUID | None = None
+    texts: list[str] = []
+    record_tenant = tenant_id  # an account or contact: the visibility check already ran
+    if target_type == "lead":
+        snapshot = leads_api.lead_snapshot(session, principal, target_id)
+        if snapshot is None:
+            raise RecordNotFoundError()
+        record_tenant, status, owner, texts = (
+            snapshot.tenant_id,
+            snapshot.status,
+            snapshot.owner_id,
+            snapshot.texts,
+        )
+    assignee_tenant: uuid.UUID | None = None
+    person = payload.get("owner_id") or payload.get("assignee_id")
+    if person:
+        try:
+            known = identity_api.is_active_staff_member(session, tenant_id, uuid.UUID(str(person)))
+        except ValueError:
+            known = False
+        # A person who is not an active colleague here belongs to "no known organisation".
+        assignee_tenant = tenant_id if known else uuid.UUID(int=0)
+    hour, day = moment - timedelta(hours=1), moment - timedelta(days=1)
+    return sentinel.Facts(
+        record_tenant_id=record_tenant,
+        assignee_tenant_id=assignee_tenant,
+        lead_status=status,
+        lead_owner_id=owner,
+        proposals_last_hour=repository.count_since(
+            session, tenant_id, since=hour, requester=user_id
+        ),
+        assignments_last_hour=repository.count_since(
+            session, tenant_id, since=hour, requester=user_id, kind="lead.assign"
+        ),
+        same_record_today=repository.count_since(
+            session, tenant_id, since=day, target_id=target_id
+        ),
+        identical_pending=repository.identical_pending(
+            session, tenant_id, kind=kind, target_id=target_id, payload=payload
+        ),
+        record_texts=texts,
+    )
+
+
+def _observe(verdict: sentinel.Verdict) -> None:
+    for finding in verdict.findings:
+        AI_SENTINEL_FINDINGS.labels(rule=finding.code, severity=finding.severity).inc()
+
+
+def audit_blocked(session: Session, principal: Principal, error: ProposalBlockedError) -> None:
+    """Write the audit entry of a refused proposal. Called by the caller AFTER it has rolled
+    back its savepoint, so the entry survives: it holds rule codes and ids, never text."""
+    record_audit(
+        session,
+        principal,
+        action="agent_action.blocked",
+        entity_type=ENTITY,
+        entity_id=error.action_id,
+        changes={
+            "kind": error.kind,
+            "target_type": error.target_type,
+            "target_id": str(error.target_id),
+            "requested_by": str(error.requester_id),
+            "agent": error.agent,
+            "codes": error.codes,
+        },
+    )
+
+
 # --- proposing -------------------------------------------------------------------------------
 
 
@@ -198,6 +315,7 @@ def propose(
     target_type: str | None = None,
     expires_in_days: int = DEFAULT_EXPIRY_DAYS,
     pending_limit: int = DEFAULT_PENDING_LIMIT,
+    sentinel_limits: sentinel.Limits | None = None,
 ) -> AgentAction:
     """Store a pending proposal. Nothing in the CRM changes until someone else approves it."""
     tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_PROPOSE)
@@ -220,13 +338,41 @@ def propose(
     if repository.pending_count(session, tenant_id, user_id) >= pending_limit:
         raise LimitReachedError()
 
+    # The second, rule-based check (ADR 0017). It fails closed: a rule that cannot be
+    # evaluated refuses the proposal.
+    stored_payload = data.model_dump(mode="json", exclude_none=True)
+    candidate = sentinel.Candidate(kind, why, stored_payload, user_id, tenant_id)
+    verdict = sentinel.verify(
+        candidate,
+        sentinel_facts(
+            session,
+            principal,
+            kind=kind,
+            target_type=target,
+            target_id=target_id,
+            payload=stored_payload,
+        ),
+        sentinel_limits or sentinel.Limits.default(),
+    )
+    _observe(verdict)
+    if verdict.blocked:
+        raise ProposalBlockedError(
+            verdict.blocks,
+            kind=kind,
+            target_type=target,
+            target_id=target_id,
+            requester_id=user_id,
+            agent=agent,
+        )
+
     action = AgentAction(
         id=uuid.uuid4(),
         tenant_id=tenant_id,
         kind=kind,
         target_type=target,
         target_id=target_id,
-        payload=data.model_dump(mode="json", exclude_none=True),
+        payload=stored_payload,
+        verification=verdict.to_json(),
         reason=why,
         agent=agent,
         requested_by_user_id=user_id,
@@ -303,6 +449,30 @@ def _decide(
     _publish(session, action, "agent_action.decided", actor=user_id)
 
 
+def _recheck(session: Session, principal: Principal, action: AgentAction) -> None:
+    """Judge the record's state again at approval (ADR 0017, S4): a lead converted or changed
+    while the proposal waited must not be acted on with stale facts."""
+    candidate = sentinel.Candidate(
+        action.kind,
+        action.reason,
+        dict(action.payload),
+        action.requested_by_user_id,
+        action.tenant_id,
+    )
+    facts = sentinel_facts(
+        session,
+        principal,
+        kind=action.kind,
+        target_type=action.target_type,
+        target_id=action.target_id,
+        payload=candidate.payload,
+    )
+    verdict = sentinel.verify(candidate, facts, sentinel.Limits.default(), recheck=True)
+    _observe(verdict)
+    if verdict.blocked:
+        raise RecheckFailedError(" ".join(f.message for f in verdict.blocks))
+
+
 def approve(
     session: Session,
     principal: Principal,
@@ -322,6 +492,7 @@ def approve(
     status = "approved"
     try:
         with session.begin_nested():
+            _recheck(session, principal, action)
             action.result = kind.run(session, principal, _proposal(action), data)[:REASON_MAX]
     except DomainError as exc:
         status = "failed"

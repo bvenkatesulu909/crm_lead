@@ -25,6 +25,17 @@ class RecordFacts:
 
 
 @dataclass(frozen=True)
+class LeadSnapshot:
+    """A lead as the Sentinel needs it (ADR 0017): organisation, state and the free text people
+    typed into it (screened for instructions aimed at an AI)."""
+
+    tenant_id: uuid.UUID
+    status: str
+    owner_id: uuid.UUID | None
+    texts: list[str]
+
+
+@dataclass(frozen=True)
 class Recipient:
     """A person the Communication Center may write to (ADR 0012): a lead or a contact.
 

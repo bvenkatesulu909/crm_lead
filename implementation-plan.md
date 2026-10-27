@@ -356,6 +356,21 @@ pattern, state, tenant, the record's own text), plus stronger input screening. D
 - **SN3** - input screening in the guardrails and the staff prompt; warnings on the approval card.
 - **SN4** - BP-10 cases, docs, full runs, pull request.
 
+## Phase VA — Verification artifacts and injection defences (BP-29)  *(ADR 0018 proposed 2026-10-27; VA0 done)*
+
+Every AI proposal stores the plan (what will change, before and after), is checked after it runs
+(did it match the plan?), and outside text that could carry an injection is cleaned at the door and
+at the exit; identity comes only from the token, proven by a test. Design:
+`docs/adr/0018-verification-artifacts-and-injection-defences.md`.
+
+**Steps (each stops for review)**
+- **VA0** - ADR 0018 and this description (documents only).
+- **VA1** - `spec` per action kind, artifact v2 at `propose()`, `outcome` at `approve()`.
+- **VA2** - door and exit: screening of stored chat text, link/image removal in answers, the
+  identity-argument test, the no-fetch test.
+- **VA3** - API, approval card ("Would change", "What happened"), CSP in report-only mode.
+- **VA4** - BP-10 cases, `docs/injection-defences.md`, full runs, pull request.
+
 ## Phase 16 — Marketing Management (Module 7)
 
 **Acceptance criteria**

@@ -117,6 +117,22 @@ class Verdict:
         }
 
 
+# Every code that only WARNS (an approver is told, the proposal is stored). The evaluation case
+# format checks `expect.safety_warnings` against this list, so a typo cannot pass.
+WARNING_CODES = frozenset(
+    {
+        "phone_number",
+        "busy_record",
+        "downgrade_qualified",
+        "lead_owned_by_other",
+        "task_for_other",
+        "record_contains_instruction",
+        "record_contains_hidden_text",
+        "record_contains_link",
+    }
+)
+
+
 # --- the words ---------------------------------------------------------------------------------
 
 _PHONE = re.compile(r"(?<!\d)\+?\d[\d\s-]{8,}\d(?!\d)")

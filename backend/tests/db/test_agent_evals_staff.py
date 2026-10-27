@@ -35,7 +35,7 @@ def variant(case_id: str, **changes: Any) -> Case:
     return Case.model_validate(raw)
 
 
-# --- every case of the dataset --------------------------------------------------------------------
+# --- every case of the dataset -----------------------------------------------------------------
 
 
 def test_there_are_staff_cases() -> None:
@@ -58,7 +58,7 @@ def test_the_whole_staff_dataset_scores_clean(db_session: Session, world: World)
     assert card.argument_accuracy == 1.0
 
 
-# --- the gate can fail: a change in what is expected, or in what the CRM does, is noticed ---------
+# --- the gate can fail: a change in what is expected, or in what the CRM does, is noticed ------
 
 
 def test_a_wrong_expectation_fails_the_case(db_session: Session, world: World) -> None:
@@ -110,3 +110,83 @@ def test_a_case_that_is_never_played_to_the_end_is_an_error_not_a_pass(
     case = variant("staff-read-leads", script=[{"calls": [call]}] * 4)
     with pytest.raises(RunnerError, match="never returned"):
         play_staff(db_session, world, case)
+
+
+# --- the Sentinel cases (BP-21, ADR 0017) ------------------------------------------------------
+
+SENTINEL_BLOCKED = [
+    "staff-sentinel-link-in-reason-blocked",
+    "staff-sentinel-instruction-in-reason-blocked",
+    "staff-sentinel-address-in-task-subject-blocked",
+    "staff-sentinel-duplicate-proposal-blocked",
+    "staff-sentinel-record-instruction-repeated-blocked",
+]
+
+
+def test_there_are_sentinel_cases() -> None:
+    assert len([c for c in STAFF if "-sentinel-" in c.id]) >= 9
+
+
+@pytest.mark.parametrize("case_id", SENTINEL_BLOCKED)
+def test_a_switched_off_sentinel_is_caught_by_its_cases(
+    case_id: str, db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.modules.approvals import sentinel
+
+    monkeypatch.setattr(sentinel, "verify", lambda *args, **kwargs: sentinel.Verdict([], []))
+    result, _ = play_staff(db_session, world, BY_ID[case_id])
+    assert result.passed is False, case_id
+
+
+def test_a_lost_warning_is_caught(
+    db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.modules.approvals import sentinel
+
+    real = sentinel.verify
+
+    def without_warnings(*args: Any, **kwargs: Any) -> Any:
+        verdict = real(*args, **kwargs)
+        return sentinel.Verdict(verdict.blocks, verdict.checked)
+
+    monkeypatch.setattr(sentinel, "verify", without_warnings)
+    result, _ = play_staff(db_session, world, BY_ID["staff-sentinel-warned-proposal-is-stored"])
+    assert result.passed is False and "safety_warnings" in explain(result)
+
+
+def test_a_wrong_warning_expectation_fails_the_case(db_session: Session, world: World) -> None:
+    case = variant(
+        "staff-sentinel-warned-proposal-is-stored", **{"expect.safety_warnings": ["busy_record"]}
+    )
+    result, _ = play_staff(db_session, world, case)
+    assert result.passed is False and "safety_warnings" in explain(result)
+
+
+def test_governance_cases_work_when_the_organisation_already_has_settings(
+    db_session: Session, world: World
+) -> None:
+    """The development data may already hold settings for an agent; a case changes them from
+    where they are and leaves them as they were."""
+    from datetime import UTC, datetime
+
+    from agent_evals.world import World as EvalWorld
+    from app.modules.agents import api as agents_api
+    from tests.db.agent_eval_support import eval_test_settings
+
+    env = EvalWorld(db_session, eval_test_settings(), "alpha-quotes", "beta-quotes")
+    limits = agents_api.Limits.default()
+    admin = env.principal("tenant_admin")
+    agents_api.update_settings(
+        db_session,
+        admin,
+        "staff_assistant",
+        limits=limits,
+        now=datetime.now(UTC),
+        monthly_token_budget=777,
+    )
+    result, _ = play_staff(db_session, world, BY_ID["staff-agent-off-refused"])
+    assert result.passed, explain(result)
+    after = agents_api.effective(
+        db_session, env.tenant_id, "staff_assistant", limits, datetime.now(UTC)
+    )
+    assert (after.enabled, after.budget, after.version) == (True, 777, 1)

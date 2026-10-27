@@ -38,6 +38,7 @@ from app.core.auth.principal import Principal
 from app.core.config import Settings
 from app.core.db import bind_tenant, bind_user
 from app.modules.agents import api as agents_api
+from app.modules.approvals.models import AgentAction
 from app.modules.assistant.llm import ChatModel
 from app.modules.assistant.models import PendingAction
 from app.modules.leads.models import Lead
@@ -66,12 +67,16 @@ def governed_case(session: Session, world: World, case: Case) -> Iterator[agents
             governance.platform_disabled, world.settings.agent_default_monthly_tokens
         )
         now = datetime.now(UTC)
+        # The organisation may already have settings for this agent (the development data does):
+        # change them from where they are, inside the savepoint that is rolled back afterwards.
+        current = agents_api.effective(session, world.tenant_id, case.agent, limits, now)
         agents_api.update_settings(
             session,
             admin,
             case.agent,
             limits=limits,
             now=now,
+            version=current.version,
             enabled=governance.enabled,
             monthly_token_budget=governance.monthly_token_budget,
             allowed_tools=governance.allowed_tools,
@@ -130,6 +135,27 @@ def invariants(before: Snapshot, after: Snapshot, run: StaffRun) -> list[Check]:
     return [direct, stored]
 
 
+def warning_checks(session: Session, case: Case, run: StaffRun) -> list[Check]:
+    """When the case lists ``safety_warnings``: the proposals stored must carry exactly those."""
+    wanted = case.expect.safety_warnings
+    if wanted is None:
+        return []
+    found: set[str] = set()
+    if run.proposal_ids:
+        for action in session.scalars(
+            select(AgentAction).where(AgentAction.id.in_(run.proposal_ids))
+        ):
+            found |= {w["code"] for w in (action.verification or {}).get("warnings", [])}
+    ok = found == set(wanted)
+    return [
+        Check(
+            "safety_warnings",
+            ok,
+            "" if ok else f"the proposals carry {sorted(found)}, expected {sorted(wanted)}",
+        )
+    ]
+
+
 def play_staff(
     session: Session,
     world: World,
@@ -151,7 +177,9 @@ def play_staff(
         after = world.snapshot()
         world.bind(principal)
         result = score_case(ready, run.trajectory, strict=model is None)
-        return with_checks(result, invariants(before, after, run)), run
+        checks = invariants(before, after, run)
+        checks += warning_checks(session, ready, run)
+        return with_checks(result, checks), run
 
 
 # --- customer portal assistant ---------------------------------------------------------------

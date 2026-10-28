@@ -33,6 +33,7 @@ class LeadSnapshot:
     status: str
     owner_id: uuid.UUID | None
     texts: list[str]
+    version: int = 1
 
 
 @dataclass(frozen=True)

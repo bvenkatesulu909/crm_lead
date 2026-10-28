@@ -1,7 +1,8 @@
 """Public interface of the activities module."""
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import ColumnElement, false, func, or_, select
 from sqlalchemy.orm import Session
@@ -21,6 +22,7 @@ __all__ = [
     "export_table",
     "overdue_tasks",
     "create_task",
+    "task_snapshot",
     "log_email",
     "activity_facts",
     "ACTIVITY_PRIORITIES",
@@ -174,6 +176,22 @@ def activity_facts(
         lead_id=activity.lead_id,
         values={"kind": activity.kind, "priority": activity.priority},
     )
+
+
+def task_snapshot(
+    session: Session, principal: Principal, activity_id: uuid.UUID, today: date
+) -> dict[str, Any] | None:
+    """A task as the verification artifact (ADR 0018) describes it: its subject, how many days
+    from ``today`` it is due and who it is for. None if this principal may not see it."""
+    activity = repository.get_readable(session, principal, activity_id)
+    if activity is None:
+        return None
+    due = activity.due_at.date() if activity.due_at is not None else None
+    return {
+        "subject": activity.subject,
+        "due_in_days": (due - today).days if due is not None else None,
+        "assignee_id": str(activity.assignee_id) if activity.assignee_id else None,
+    }
 
 
 def overdue_tasks(

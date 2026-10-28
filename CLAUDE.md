@@ -549,6 +549,17 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     reversal and the reminders test, all time-dependent) - re-run alone: 3 passed. Playwright was
     not re-run (the card change is covered by component tests; the approvals journey needs the
     scripted assistant).
+  - Verification artifacts (BP-29, Phase VA, ADR 0018) - ADR accepted 2026-10-27 with the recommended
+    answers (changes and outcome in the normal proposal read, no plan for old proposals, CSP
+    report-only first, every link to another site removed from answers, only cleaned text plus a note
+    in a lead). VA1 (2026-10-27, branch `feat/artifacts-plan`): every action kind has `spec` and
+    `observe`; a proposal stores its plan (`spec.changes`, `spec.basis`) in `verification` v2; an
+    approval writes an `outcome` (`matches_spec`, `differs`) and a mismatch is audited
+    (`agent_action.mismatch`); a plan that cannot be prepared refuses the proposal. Tests (run
+    2026-10-27/28): 40 new (20 pure, 20 against the database); the full backend run took 15h08
+    because the PC slept: 2428 passed, 2 failed (the reminders test, time-dependent, and an RLS
+    knowledge test) - both passed when re-run alone; ruff, mypy, import-linter clean. VA2-VA4 not
+    started. See `docs/approvals.md`.
   - SN4 (2026-10-27, branch `feat/sentinel-eval`): 11 BP-10 cases for the Sentinel (9 staff, 1
     portal, 1 website chat; 53 agent cases in all, all `live: false`): a link, an instruction or an
     address in what a model writes is refused; a duplicate is refused; a warned proposal is stored

@@ -16,7 +16,9 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.records import LeadSnapshot
 from app.modules.activities import api as activities_api
+from app.modules.approvals.artifact import Change, Plan
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 
@@ -54,8 +56,23 @@ class Proposal:
 
 # Returns an error text for the proposer (None = fine). Visibility is checked before.
 Check = Callable[[Session, Proposal, Any], str | None]
-# Performs the action as the approver; returns a short result for the history.
-Run = Callable[[Session, Principal, Proposal, Any], str]
+
+
+@dataclass(frozen=True)
+class Ran:
+    """What running an action gives back: a short result for the history, and the id of the
+    record it created, if any (so the outcome can be checked against the plan)."""
+
+    text: str
+    created_id: uuid.UUID | None = None
+
+
+# Performs the action as the approver.
+Run = Callable[[Session, Principal, Proposal, Any], Ran]
+# The plan (ADR 0018): what the action will change, judged against the record as it is now.
+Spec = Callable[[Session, Principal, Proposal, Any], Plan]
+# What is true after the action ran, in the same shape as the plan's ``after`` values.
+Observe = Callable[[Session, Principal, Proposal, Any, Ran], list[Change]]
 
 
 @dataclass(frozen=True)
@@ -66,6 +83,8 @@ class ActionKind:
     describe: Callable[[Any], str]
     check: Check
     run: Run
+    spec: Spec
+    observe: Observe
 
 
 def _note(proposal: Proposal) -> str:
@@ -78,9 +97,9 @@ def _no_check(session: Session, proposal: Proposal, payload: BaseModel) -> str |
 
 def _run_status(
     session: Session, me: Principal, proposal: Proposal, payload: LeadStatusPayload
-) -> str:
+) -> Ran:
     leads_api.set_lead_status(session, me, proposal.target_id, payload.status, _note(proposal))
-    return f"Lead status changed to {payload.status}."
+    return Ran(f"Lead status changed to {payload.status}.")
 
 
 def _check_owner(session: Session, proposal: Proposal, payload: LeadAssignPayload) -> str | None:
@@ -91,9 +110,9 @@ def _check_owner(session: Session, proposal: Proposal, payload: LeadAssignPayloa
 
 def _run_assign(
     session: Session, me: Principal, proposal: Proposal, payload: LeadAssignPayload
-) -> str:
+) -> Ran:
     leads_api.assign_lead(session, me, proposal.target_id, payload.owner_id, _note(proposal))
-    return "Lead assigned."
+    return Ran("Lead assigned.")
 
 
 def _check_assignee(session: Session, proposal: Proposal, payload: TaskPayload) -> str | None:
@@ -105,9 +124,9 @@ def _check_assignee(session: Session, proposal: Proposal, payload: TaskPayload) 
     return None
 
 
-def _run_task(session: Session, me: Principal, proposal: Proposal, payload: TaskPayload) -> str:
+def _run_task(session: Session, me: Principal, proposal: Proposal, payload: TaskPayload) -> Ran:
     link = {f"{proposal.target_type}_id": proposal.target_id}
-    activities_api.create_task(
+    created = activities_api.create_task(
         session,
         me,
         subject=payload.subject,
@@ -117,7 +136,69 @@ def _run_task(session: Session, me: Principal, proposal: Proposal, payload: Task
         account_id=link.get("account_id"),
         contact_id=link.get("contact_id"),
     )
-    return "Task created."
+    return Ran("Task created.", created)
+
+
+def _lead(session: Session, me: Principal, proposal: Proposal) -> LeadSnapshot:
+    snapshot = leads_api.lead_snapshot(session, me, proposal.target_id)
+    if snapshot is None:
+        raise LookupError(
+            "the lead cannot be read"
+        )  # the Sentinel's caller turns this into a block
+    return snapshot
+
+
+def _basis(snapshot: LeadSnapshot) -> dict[str, Any]:
+    return {
+        "record_version": snapshot.version,
+        "status": snapshot.status,
+        "owner_id": str(snapshot.owner_id) if snapshot.owner_id else None,
+    }
+
+
+def _spec_status(
+    session: Session, me: Principal, proposal: Proposal, payload: LeadStatusPayload
+) -> Plan:
+    lead = _lead(session, me, proposal)
+    return Plan([Change("status", lead.status, payload.status)], _basis(lead))
+
+
+def _observe_status(
+    session: Session, me: Principal, proposal: Proposal, payload: LeadStatusPayload, ran: Ran
+) -> list[Change]:
+    return [Change("status", None, _lead(session, me, proposal).status)]
+
+
+def _spec_assign(
+    session: Session, me: Principal, proposal: Proposal, payload: LeadAssignPayload
+) -> Plan:
+    lead = _lead(session, me, proposal)
+    return Plan([Change("owner_id", lead.owner_id, payload.owner_id)], _basis(lead))
+
+
+def _observe_assign(
+    session: Session, me: Principal, proposal: Proposal, payload: LeadAssignPayload, ran: Ran
+) -> list[Change]:
+    return [Change("owner_id", None, _lead(session, me, proposal).owner_id)]
+
+
+def _spec_task(session: Session, me: Principal, proposal: Proposal, payload: TaskPayload) -> Plan:
+    task = {
+        "subject": payload.subject[:200],
+        "due_in_days": payload.due_in_days,
+        "assignee_id": str(payload.assignee_id or proposal.requested_by_user_id),
+    }
+    basis = _basis(_lead(session, me, proposal)) if proposal.target_type == "lead" else {}
+    return Plan([Change("task", None, task)], basis)
+
+
+def _observe_task(
+    session: Session, me: Principal, proposal: Proposal, payload: TaskPayload, ran: Ran
+) -> list[Change]:
+    seen = None
+    if ran.created_id is not None:
+        seen = activities_api.task_snapshot(session, me, ran.created_id, datetime.now(UTC).date())
+    return [Change("task", None, seen)]
 
 
 def _describe_status(payload: LeadStatusPayload) -> str:
@@ -138,6 +219,8 @@ KINDS: dict[str, ActionKind] = {
             _describe_status,
             _no_check,
             _run_status,
+            _spec_status,
+            _observe_status,
         ),
         ActionKind(
             "lead.assign",
@@ -146,6 +229,8 @@ KINDS: dict[str, ActionKind] = {
             lambda payload: "Give the lead to another sales person",
             _check_owner,
             _run_assign,
+            _spec_assign,
+            _observe_assign,
         ),
         ActionKind(
             "activity.create_task",
@@ -154,6 +239,8 @@ KINDS: dict[str, ActionKind] = {
             _describe_task,
             _check_assignee,
             _run_task,
+            _spec_task,
+            _observe_task,
         ),
     )
 }

@@ -165,7 +165,7 @@ def lead_snapshot(
     texts = [text for text in fields if text]
     for activity in list(repository.list_activities(session, lead))[:10]:
         texts.append(f"{activity.subject}\n{activity.body or ''}")
-    return LeadSnapshot(lead.tenant_id, lead.status, lead.owner_id, texts)
+    return LeadSnapshot(lead.tenant_id, lead.status, lead.owner_id, texts, lead.version)
 
 
 def set_lead_status(

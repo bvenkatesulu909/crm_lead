@@ -10,6 +10,7 @@
 The service never commits; the router (step AP2) commits once.
 """
 
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -24,14 +25,15 @@ from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFound
 from app.core.events import publish
 from app.core.observability.metrics import AI_SENTINEL_FINDINGS
 from app.modules.accounts import api as accounts_api
-from app.modules.approvals import repository, sentinel
-from app.modules.approvals.catalogue import KINDS, ActionKind, Proposal
+from app.modules.approvals import artifact, repository, sentinel
+from app.modules.approvals.catalogue import KINDS, ActionKind, Proposal, Ran
 from app.modules.approvals.models import AGENTS, REASON_MAX, AgentAction
 from app.modules.contacts import api as contacts_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 
 ENTITY = "agent_action"
+logger = logging.getLogger(__name__)
 DEFAULT_EXPIRY_DAYS = 7
 DEFAULT_PENDING_LIMIT = 20
 
@@ -365,6 +367,27 @@ def propose(
             agent=agent,
         )
 
+    # The plan (ADR 0018): what will change, judged against the record as it is now. A plan that
+    # cannot be prepared refuses the proposal: an approver must never decide without one.
+    try:
+        plan = action_kind.spec(session, principal, proposal, data)
+    except Exception as error:  # noqa: BLE001 - fail closed, whatever went wrong
+        logger.error("preparing the plan of a %s proposal failed (%s)", kind, type(error).__name__)
+        raise ProposalBlockedError(
+            [
+                sentinel.Finding(
+                    "artifact_error",
+                    "block",
+                    "The plan for this proposal could not be prepared, so it was not accepted.",
+                )
+            ],
+            kind=kind,
+            target_type=target,
+            target_id=target_id,
+            requester_id=user_id,
+            agent=agent,
+        ) from None
+
     action = AgentAction(
         id=uuid.uuid4(),
         tenant_id=tenant_id,
@@ -372,7 +395,7 @@ def propose(
         target_type=target,
         target_id=target_id,
         payload=stored_payload,
-        verification=verdict.to_json(),
+        verification=artifact.build_artifact(verdict, plan.changes, plan.basis),
         reason=why,
         agent=agent,
         requested_by_user_id=user_id,
@@ -490,16 +513,65 @@ def approve(
     kind = _kind(action.kind)
     data = _payload(kind, action.payload)  # checked again: the catalogue may have changed
     status = "approved"
+    ran: Ran | None = None
     try:
         with session.begin_nested():
             _recheck(session, principal, action)
-            action.result = kind.run(session, principal, _proposal(action), data)[:REASON_MAX]
+            ran = kind.run(session, principal, _proposal(action), data)
+            action.result = ran.text[:REASON_MAX]
     except DomainError as exc:
         status = "failed"
+        ran = None
         action.result = exc.detail[:REASON_MAX]
+    seen: list[artifact.Change] | None = None
+    if ran is not None:
+        try:
+            seen = kind.observe(session, principal, _proposal(action), data, ran)
+        except Exception as error:  # noqa: BLE001 - the action ran; say we could not look
+            logger.error("observing a %s outcome failed (%s)", action.kind, type(error).__name__)
+            seen = []
+    _write_outcome(session, principal, action, user_id, seen)
     _decide(session, action, user_id, status, (note or "").strip()[:REASON_MAX] or None)
     _audit(session, principal, action, status)
     return action
+
+
+def _planned(action: AgentAction) -> list[artifact.Change] | None:
+    """The plan stored with the proposal, or None for one made before artifacts existed."""
+    spec = (action.verification or {}).get("spec")
+    if not isinstance(spec, dict):
+        return None
+    return [
+        artifact.Change(item["field"], item.get("before"), item.get("after"))
+        for item in spec.get("changes", [])
+    ]
+
+
+def _write_outcome(
+    session: Session,
+    principal: Principal,
+    action: AgentAction,
+    approver_id: uuid.UUID,
+    seen: list[artifact.Change] | None,
+) -> None:
+    """Add what was seen after the action to the artifact (a new dict, so the change is saved)
+    and record a difference between the plan and what happened."""
+    outcome = artifact.outcome_json(approver_id, _planned(action), seen)
+    action.verification = {**(action.verification or {}), "outcome": outcome}
+    if outcome["matches_spec"] is False:
+        record_audit(
+            session,
+            principal,
+            action="agent_action.mismatch",
+            entity_type=ENTITY,
+            entity_id=action.id,
+            changes={
+                "kind": action.kind,
+                "target_type": action.target_type,
+                "target_id": str(action.target_id),
+                "differs": outcome["differs"],
+            },
+        )
 
 
 def reject(

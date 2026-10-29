@@ -109,6 +109,33 @@ The fake provider is **refused when `CRM_ENVIRONMENT=production`**. Set the prov
 real one (`anthropic` / `deepseek`) afterwards. A real model has not been tried yet (no API credit
 so far); until then the assistant is tested with scripted models only.
 
+## The plan and the outcome - the verification artifact (BP-29, ADR 0018)
+
+Every proposal made since step VA1 stores, in `agent_actions.verification` (version 2), next to what
+the Sentinel found:
+
+- **`spec.changes`** - the PLAN: for each field it will change, `{field, before, after}`. Ids and
+  codes only, never names (names are looked up when someone reads it, for a reader who may see them).
+  A status change plans `status: new -> contacted`; an assignment `owner_id: <old> -> <new>`
+  (`null` before for an unassigned lead); a task `task: null -> {subject, due_in_days, assignee_id}`
+  (nobody named = the asker).
+- **`spec.basis`** - the record as it was when the proposal was made (its version, status, owner;
+  empty for an account or contact). Judged against the same facts the Sentinel used.
+- **`outcome`** - written when the proposal is **approved** (and when approving fails): who it ran
+  as, what was seen afterwards (`seen`), `matches_spec` (`true`, `false`, or `null` when it did not
+  run or the proposal has no plan) and `differs` (the fields). A rejected proposal has no outcome.
+
+Each action kind in `catalogue.py` provides `spec` (the plan) and `observe` (what is true after it
+ran, in the same shape); the same two functions are used before and after, so a difference is a real
+one. `run` now returns `Ran(text, created_id)` so a created task can be looked at. An approval that
+ran but did not do what was announced stays "approved" and is recorded: audit
+`agent_action.mismatch` (kind, record id, field names - no text). A plan that cannot be prepared
+refuses the proposal (`artifact_error`, fail closed). Proposals from before this step have a version
+1 artifact or none: they are approved as before, with an outcome that does not judge.
+
+Not yet (VA3): `changes` and `outcome` in the proposal read of the API, and the "Would change" /
+"What happened" blocks on the approval card.
+
 ## Tests
 
 - Backend: `tests/db/test_approvals.py` (module rules), `tests/db/test_approvals_api.py`

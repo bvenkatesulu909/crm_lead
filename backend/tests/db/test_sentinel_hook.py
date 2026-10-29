@@ -83,7 +83,7 @@ def test_a_clean_proposal_is_stored_with_its_verification(acting, db_session, wo
     lead = add_lead(db_session, world)
     action = acting.propose("alpha.agent1", **status_proposal(lead))
     assert action.verification is not None
-    assert action.verification["version"] == 1 and action.verification["warnings"] == []
+    assert action.verification["version"] == 2 and action.verification["warnings"] == []
     assert {"words", "pattern", "state", "tenant", "record_text"} <= set(
         action.verification["checked"]
     )

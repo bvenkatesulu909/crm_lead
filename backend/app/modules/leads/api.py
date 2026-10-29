@@ -106,6 +106,7 @@ def create_lead_from_website(
     budget_max_inr: int | None,
     location: str | None,
     notes: str | None,
+    cleaned_codes: list[str] | None = None,
 ) -> uuid.UUID:
     """A lead from the public website chat (ADR 0013), with this module's own rules and audit.
 
@@ -134,6 +135,19 @@ def create_lead_from_website(
         lead.id,
         ActivityCreate(kind="note", subject="Created from the website chat", body=notes),
     )
+    if cleaned_codes:
+        # Only the kinds of finding, never the removed text (ADR 0018).
+        service.add_activity(
+            session,
+            principal,
+            lead.id,
+            ActivityCreate(
+                kind="note",
+                subject="Some text from the website chat was cleaned",
+                body="Found in what the visitor or the assistant wrote: "
+                + ", ".join(cleaned_codes),
+            ),
+        )
     return lead.id
 
 

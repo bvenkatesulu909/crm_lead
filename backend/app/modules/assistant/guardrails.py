@@ -91,7 +91,12 @@ def sanitise_output(text: str) -> str:
     cleaned = (text or "").strip()[:MAX_OUTPUT_CHARS]
     if not cleaned:
         return SAFE_OUTPUT
-    lowered = cleaned.lower()
-    if any(marker in lowered for marker in SECRET_PATTERNS):
+    if any(marker in cleaned.lower() for marker in SECRET_PATTERNS):
+        return SAFE_OUTPUT
+    # A model that read a poisoned record could write an image or a link whose address carries
+    # data out when the page loads or is clicked (ADR 0018). Links to other sites and images are
+    # removed (the words stay, a marker shows something was there); links inside the CRM stay.
+    cleaned = screen(cleaned, strip_links=True, strip_addresses=False).clean.strip()
+    if not cleaned or any(marker in cleaned.lower() for marker in SECRET_PATTERNS):
         return SAFE_OUTPUT
     return cleaned

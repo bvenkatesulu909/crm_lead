@@ -16,7 +16,12 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1, // tests share the local Keycloak and database
   retries: 0,
-  timeout: 60_000,
+  // A journey signs several people in; late in a full run the dev server is slow, so the whole
+  // test gets more time than any single step (each step's wait is the expect timeout below).
+  timeout: 120_000,
+  // The web app runs in dev mode here, which compiles a page the first time it is visited; under
+  // full-suite load that can take longer than Playwright's default 5 s wait for an element.
+  expect: { timeout: 15_000 },
   reporter: [["list"]],
   use: {
     baseURL: "http://localhost:3000",

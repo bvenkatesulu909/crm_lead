@@ -576,6 +576,13 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     (website chat: what was stored in the lead and its timeline); `docs/injection-defences.md`. With the exit cleaning and the
     door screening switched off the new cases fail. No eval case plays an approval, so the plan/outcome mismatch is covered by
     `test_artifacts.py` only. **Phase VA (BP-29) complete.** Full backend run (2026-10-29, real PostgreSQL, 33 min, PC awake): 2530 passed, 0 failed, 4 opt-in skipped; ruff, mypy, import-linter clean. Playwright (2026-10-29, worker running, file store reachable): first full run 79 passed, 3 failed, 4 skipped - the 3 failures (documents upload, two quote journeys) were the file store being unreachable (Windows reserved TCP ports 9245-9344, so Docker could not publish 9333; the local file store now uses port 9400). Second full run in one piece: 79 passed, 3 failed, 4 skipped in 17.5 min - invoices, relationships "a customer complains" and workflow3 "manager browses" timed out under full-suite load and the three spec files re-run alone passed 14 of 14 (the last two were already known load flakes). Frontend untouched in VA4.
+  - Playwright flakiness fix (2026-10-29, branch `fix/e2e-flaky`): `playwright.config.ts` now waits 15 s per expectation and 120 s per test
+    (the dev server compiles a page on first visit, slowly late in a full run); `reports.spec.ts` waits for the Columns group before
+    `.all()` (a real race). Full runs after the change: 82 passed / 1 failed (session-refresh setup stall), 80 / 2 (relationships
+    60 s test limit, reports race - the race is now fixed), 81 / 1 (reports: Keycloak login page stalled for 120 s) - 3-4 skipped each time;
+    the three load timeouts of the earlier run (invoices, relationships, workflow3) did not recur as 5 s expectation failures. The failures that
+    remain differ every run, appear in long runs (24-26 min instead of 15-17) and pass when run alone, so they look like machine
+    stalls, not product bugs; a run with zero failures was not achieved.
   - SN4 (2026-10-27, branch `feat/sentinel-eval`): 11 BP-10 cases for the Sentinel (9 staff, 1
     portal, 1 website chat; 53 agent cases in all, all `live: false`): a link, an instruction or an
     address in what a model writes is refused; a duplicate is refused; a warned proposal is stored

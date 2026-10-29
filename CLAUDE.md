@@ -575,7 +575,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     notes kept but reported, a name that is a link refused); new expectation `stored_must_contain` / `stored_must_not_contain`
     (website chat: what was stored in the lead and its timeline); `docs/injection-defences.md`. With the exit cleaning and the
     door screening switched off the new cases fail. No eval case plays an approval, so the plan/outcome mismatch is covered by
-    `test_artifacts.py` only. **Phase VA (BP-29) complete.** Full backend run (2026-10-29, real PostgreSQL, 33 min, PC awake): 2530 passed, 0 failed, 4 opt-in skipped; ruff, mypy, import-linter clean. Not re-run: Playwright, frontend (untouched in VA4).
+    `test_artifacts.py` only. **Phase VA (BP-29) complete.** Full backend run (2026-10-29, real PostgreSQL, 33 min, PC awake): 2530 passed, 0 failed, 4 opt-in skipped; ruff, mypy, import-linter clean. Playwright (2026-10-29, worker running): full run 79 passed, 3 failed, 4 skipped - the 3 failures (documents upload, two quote PDF journeys) were the file store being unreachable (Windows reserved TCP ports 9245-9344, so Docker could not publish 9333); with the file store recreated on port 9400 the two spec files re-ran 6 passed. The whole suite was not re-run in one piece after that. Frontend untouched in VA4.
   - SN4 (2026-10-27, branch `feat/sentinel-eval`): 11 BP-10 cases for the Sentinel (9 staff, 1
     portal, 1 website chat; 53 agent cases in all, all `live: false`): a link, an instruction or an
     address in what a model writes is refused; a duplicate is refused; a warned proposal is stored

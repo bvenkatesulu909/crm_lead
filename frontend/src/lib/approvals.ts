@@ -126,3 +126,58 @@ export function approvalPageHref(
   if (page > 1) p.set("page", String(page));
   return p.toString() ? `/approvals?${p}` : "/approvals";
 }
+
+const FIELD_LABELS: Record<string, string> = {
+  status: "Status",
+  owner_id: "Owner",
+  task: "New task",
+};
+const PERSON_FIELDS = new Set(["owner_id", "assignee_id"]);
+
+export function fieldLabel(field: string): string {
+  return FIELD_LABELS[field] ?? field;
+}
+
+function plain(value: unknown): string {
+  if (value === null || value === undefined) return "nothing";
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+/**
+ * One planned change as a sentence (ADR 0018). The values are ids and codes from the plan the
+ * proposal stored; people are shown by name, a missing owner as "nobody". Anything a model
+ * wrote (a task subject) stays plain text - React escapes it where it is shown.
+ */
+export function describeChange(
+  change: { field: string; before: unknown; after: unknown },
+  nameOf: (id: string | null) => string,
+): string {
+  const label = fieldLabel(change.field);
+  if (
+    change.field === "task" &&
+    change.after &&
+    typeof change.after === "object"
+  ) {
+    const task = change.after as {
+      subject?: unknown;
+      due_in_days?: unknown;
+      assignee_id?: unknown;
+    };
+    const days = Number(task.due_in_days);
+    const due = Number.isFinite(days)
+      ? `, due in ${days} ${days === 1 ? "day" : "days"}`
+      : "";
+    const who =
+      typeof task.assignee_id === "string"
+        ? `, for ${nameOf(task.assignee_id)}`
+        : "";
+    return `${label}: ${plain(task.subject)}${due}${who}`;
+  }
+  const show = (value: unknown) =>
+    PERSON_FIELDS.has(change.field)
+      ? value
+        ? nameOf(String(value))
+        : "nobody"
+      : plain(value);
+  return `${label}: ${show(change.before)} → ${show(change.after)}`;
+}

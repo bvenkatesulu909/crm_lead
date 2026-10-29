@@ -845,6 +845,48 @@
         "title": "AccountUpdate",
         "type": "object"
       },
+      "ActionOutcome": {
+        "description": "What happened when the proposal was approved, next to what was announced.",
+        "properties": {
+          "differs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Differs",
+            "type": "array"
+          },
+          "matches_plan": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matches Plan"
+          },
+          "ran": {
+            "title": "Ran",
+            "type": "boolean"
+          },
+          "seen": {
+            "items": {
+              "$ref": "#/components/schemas/SeenValue"
+            },
+            "title": "Seen",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ran",
+          "matches_plan",
+          "differs",
+          "seen"
+        ],
+        "title": "ActionOutcome",
+        "type": "object"
+      },
       "ActivityPage": {
         "properties": {
           "items": {
@@ -1080,6 +1122,13 @@
             "title": "Agent",
             "type": "string"
           },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1137,6 +1186,16 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "payload": {
             "additionalProperties": true,
@@ -1229,6 +1288,8 @@
           "decision_note",
           "result",
           "warnings",
+          "changes",
+          "outcome",
           "created_at",
           "version"
         ],
@@ -8975,6 +9036,28 @@
         "title": "PlaceholderRead",
         "type": "object"
       },
+      "PlannedChange": {
+        "description": "One field the proposal will change (ADR 0018): ids and codes only, never names.",
+        "properties": {
+          "after": {
+            "title": "After"
+          },
+          "before": {
+            "title": "Before"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "before",
+          "after"
+        ],
+        "title": "PlannedChange",
+        "type": "object"
+      },
       "PortalAccountRead": {
         "description": "What customer-portal users see: no owners, internal numbers or audit fields.",
         "properties": {
@@ -12699,6 +12782,23 @@
           "points"
         ],
         "title": "ScoreFactor",
+        "type": "object"
+      },
+      "SeenValue": {
+        "properties": {
+          "after": {
+            "title": "After"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "after"
+        ],
+        "title": "SeenValue",
         "type": "object"
       },
       "SignupCodeRead": {

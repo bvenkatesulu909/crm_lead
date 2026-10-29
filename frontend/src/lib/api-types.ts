@@ -37,7 +37,12 @@ export const LEAD_SOURCES = [
 export type LeadSource = (typeof LEAD_SOURCES)[number];
 
 /** Real-estate wishes on a lead (ADR 0013). Budgets are whole rupees. */
-export const PROPERTY_TYPES = ["apartment", "villa", "plot", "commercial"] as const;
+export const PROPERTY_TYPES = [
+  "apartment",
+  "villa",
+  "plot",
+  "commercial",
+] as const;
 export type PropertyType = (typeof PROPERTY_TYPES)[number];
 
 export const LEAD_SORTS = {
@@ -1348,11 +1353,7 @@ export type ContractPage = {
 
 export type ContractEvent = {
   event_type:
-    | "created"
-    | "status_changed"
-    | "note"
-    | "renewal_reminder"
-    | "expired";
+    "created" | "status_changed" | "note" | "renewal_reminder" | "expired";
   from_status: ContractStatus | null;
   to_status: ContractStatus | null;
   note: string | null;
@@ -1450,6 +1451,15 @@ export type AgentAction = {
   result: string | null;
   /** What the Sentinel (ADR 0017) wants the approver to check; shown as "Safety check". */
   warnings: { code: string; message: string }[];
+  /** What the proposal will change, as announced when it was made (ADR 0018). Ids and codes only. */
+  changes: { field: string; before: unknown; after: unknown }[];
+  /** What happened when it was approved; null until then (and for rejected proposals). */
+  outcome: {
+    ran: boolean;
+    matches_plan: boolean | null;
+    differs: string[];
+    seen: { field: string; after: unknown }[];
+  } | null;
   created_at: string;
   version: number;
 };

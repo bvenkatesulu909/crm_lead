@@ -21,6 +21,29 @@ class SafetyWarning(BaseModel):
     message: str
 
 
+class PlannedChange(BaseModel):
+    """One field the proposal will change (ADR 0018): ids and codes only, never names."""
+
+    field: str
+    before: Any
+    after: Any
+
+
+class SeenValue(BaseModel):
+    field: str
+    after: Any
+
+
+class ActionOutcome(BaseModel):
+    """What happened when the proposal was approved, next to what was announced."""
+
+    ran: bool
+    # None: not judged (a proposal made before plans existed, or an action that did not run).
+    matches_plan: bool | None
+    differs: list[str]
+    seen: list[SeenValue]
+
+
 class AgentActionRead(BaseModel):
     id: uuid.UUID
     kind: str
@@ -41,6 +64,8 @@ class AgentActionRead(BaseModel):
     decision_note: str | None
     result: str | None
     warnings: list[SafetyWarning]
+    changes: list[PlannedChange]
+    outcome: ActionOutcome | None
     created_at: datetime
     version: int
 

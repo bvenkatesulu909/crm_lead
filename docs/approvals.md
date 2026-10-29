@@ -151,3 +151,9 @@ Not yet (VA3): `changes` and `outcome` in the proposal read of the API, and the 
 - A rule-based check before a proposal is stored (BP-21), before/after records (BP-29), agent
   switches and budgets (BP-14).
 - A live check with a real model.
+
+## What the approver sees: the plan and what happened (ADR 0018, VA3)
+
+`GET /approvals/actions` and `/actions/{id}` now carry `changes` (the plan: field, before, after - ids and codes only) and `outcome` (`ran`, `matches_plan`, `differs`, `seen`; null until approved). The same read rules as the rest of the proposal apply. The approval card shows **Would change** and **What happened** blocks; a result that did not match the plan is shown in red with the field names. Proposals made before plans existed show neither block.
+
+The web app also sends `Content-Security-Policy-Report-Only` (outside images and plug-ins blocked, framing refused). It only reports in the browser console for now; enforcing it is a later decision.

@@ -41,7 +41,7 @@ from app.modules.agents import api as agents_api
 from app.modules.approvals.models import AgentAction
 from app.modules.assistant.llm import ChatModel
 from app.modules.assistant.models import PendingAction
-from app.modules.leads.models import Lead
+from app.modules.leads.models import Lead, LeadActivity
 from app.modules.support.models import Ticket
 
 # Chosen from measurements, not guessed: with the hashing embedder the answerable demo questions
@@ -317,8 +317,31 @@ def _play_public(
             "no_other_change", untouched, "" if untouched else f"existing leads changed: {changed}"
         ),
     ]
+    if ready.expect.stored_must_contain or ready.expect.stored_must_not_contain:
+        stored = _stored_text(session, [lead for lead in created if lead is not None])
+        missing = [t for t in ready.expect.stored_must_contain if t not in stored]
+        leaked = [t for t in ready.expect.stored_must_not_contain if t in stored]
+        ok = not missing and not leaked
+        detail = "" if ok else f"missing {missing}, leaked {leaked}"
+        checks.append(Check("stored_text", ok, detail))
     result = score_case(ready, run.trajectory, strict=model is None)
     return with_checks(result, checks), run
+
+
+def _stored_text(session: Session, leads: list[Lead]) -> str:
+    """Everything the website chat wrote into these leads: their fields and their timeline."""
+    parts: list[str] = []
+    for lead in leads:
+        parts += [
+            lead.first_name or "",
+            lead.last_name,
+            lead.phone or "",
+            lead.email or "",
+            lead.location or "",
+        ]
+        for entry in session.scalars(select(LeadActivity).where(LeadActivity.lead_id == lead.id)):
+            parts += [entry.subject or "", entry.body or ""]
+    return "\n".join(parts)
 
 
 # --- cited answers ----------------------------------------------------------------------------

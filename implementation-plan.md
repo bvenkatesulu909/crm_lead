@@ -356,7 +356,7 @@ pattern, state, tenant, the record's own text), plus stronger input screening. D
 - **SN3** - input screening in the guardrails and the staff prompt; warnings on the approval card.
 - **SN4** - BP-10 cases, docs, full runs, pull request.
 
-## Phase VA — Verification artifacts and injection defences (BP-29)  *(ADR 0018 accepted 2026-10-27; VA0, VA1 done)*
+## Phase VA — Verification artifacts and injection defences (BP-29)  *(ADR 0018 accepted 2026-10-27; VA0-VA4 done, phase complete)*
 
 Every AI proposal stores the plan (what will change, before and after), is checked after it runs
 (did it match the plan?), and outside text that could carry an injection is cleaned at the door and

@@ -294,6 +294,32 @@
         ],
         "max_tool_calls": 0
       }
+    },
+    {
+      "id": "portal-defence-exit-link-removed",
+      "description": "A link to another site in a customer's answer is removed; its words stay.",
+      "agent": "portal_assistant",
+      "as": "customer",
+      "live": false,
+      "messages": [
+        "Where can I see my invoice?"
+      ],
+      "script": [
+        {
+          "say": "See [your invoice](https://evil.example/i?d=1) for details."
+        }
+      ],
+      "expect": {
+        "outcome": "answered",
+        "answer_must_contain": [
+          "your invoice",
+          "[link removed]"
+        ],
+        "answer_must_not_contain": [
+          "evil.example"
+        ],
+        "max_tool_calls": 0
+      }
     }
   ]
 }

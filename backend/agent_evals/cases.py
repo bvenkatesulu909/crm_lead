@@ -149,6 +149,10 @@ class Expect(_Strict):
     # The warning codes (the Sentinel, ADR 0017) the proposals made in this case must carry, all
     # together. [] = none; None = not checked.
     safety_warnings: list[str] | None = None
+    # Website chat only (ADR 0018): texts that must / must not be in what the chat stored in
+    # the CRM (the lead's fields and its timeline), after the door cleaned it.
+    stored_must_contain: list[str] = Field(default_factory=list)
+    stored_must_not_contain: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _warnings_are_warnings(self) -> "Expect":
@@ -197,6 +201,10 @@ class Case(BaseModel):
                 f"as: a {self.persona} can't use the {self.agent} (allowed: "
                 f"{', '.join(sorted(PERSONAS[self.agent]))})"
             )
+        if self.agent != "public_chat" and (
+            self.expect.stored_must_contain or self.expect.stored_must_not_contain
+        ):
+            raise ValueError("expect.stored_*: only the website chat stores text in the CRM")
         real = known_tools(self.agent)
         if self.governance and self.governance.allowed_tools:
             unknown = set(self.governance.allowed_tools) - real

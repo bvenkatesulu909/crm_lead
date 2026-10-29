@@ -32,6 +32,9 @@ When the visitor has confirmed their name and phone number, call the save_lead t
 Afterwards thank them and say an advisor will call. You can't look anything up in the CRM.
 Answer in plain text only - no links, no images, no Markdown."""
 
+# Cleaning that does not make a name suspicious (a link or an image in a name does).
+HARMLESS_NAME_FINDINGS = {"hidden_characters", "control_characters", "repeated_text"}
+
 _PHONE = r"^\+?[0-9][0-9\s-]{6,18}[0-9]$"
 
 

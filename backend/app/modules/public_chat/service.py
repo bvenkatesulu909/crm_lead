@@ -20,6 +20,7 @@ from app.core.config import Settings
 from app.core.db import bind_tenant
 from app.core.errors import DomainError, NotFoundError
 from app.core.events import publish
+from app.core.screening import screen
 from app.modules.agents import api as agents_api
 from app.modules.assistant import api as assistant_api
 from app.modules.identity import api as identity_api
@@ -129,7 +130,24 @@ def _save_lead(
     # module). It reads all leads, so leads' RLS allows a lead without an owner.
     automation = identity_api.automation_principal(session, tenant_id)
     identity_api.bind_reader(session, automation)
-    first_name, last_name = rules.split_name(args.full_name)
+    # What is stored is read later by staff and by their assistants, so it is cleaned at the door
+    # (ADR 0018): hidden text, markup, images and links go, instructions are kept but reported.
+    codes: list[str] = []
+
+    def cleaned(text: str | None) -> tuple[str | None, list[str]]:
+        if text is None:
+            return None, []
+        result = screen(text)
+        found = [f.code for f in result.findings]
+        codes.extend(c for c in found if c not in codes)
+        return result.clean.strip(), found
+
+    full_name, name_found = cleaned(args.full_name)
+    if not full_name or len(full_name) < 2 or set(name_found) - rules.HARMLESS_NAME_FINDINGS:
+        return "The name is not valid. Ask the visitor for their full name again.", True
+    location, _ = cleaned(args.location)
+    notes, _ = cleaned(args.notes)
+    first_name, last_name = rules.split_name(full_name)
     conversation.lead_id = leads_api.create_lead_from_website(
         session,
         automation,
@@ -140,8 +158,9 @@ def _save_lead(
         property_type=args.property_type,
         budget_min_inr=args.budget_min_inr,
         budget_max_inr=args.budget_max_inr,
-        location=args.location,
-        notes=args.notes,
+        location=location,
+        notes=notes,
+        cleaned_codes=codes,
     )
     session.flush()
     # Sales managers hear about it through the worker (notifications, ADR 0006): IDs only.

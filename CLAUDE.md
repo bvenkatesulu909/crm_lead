@@ -560,6 +560,12 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     because the PC slept: 2428 passed, 2 failed (the reminders test, time-dependent, and an RLS
     knowledge test) - both passed when re-run alone; ruff, mypy, import-linter clean. VA2-VA4 not
     started. See `docs/approvals.md`.
+  - VA2 (2026-10-29, branch `feat/artifacts-defences`): what the website chat stores (name, location, notes) is cleaned
+    at the door (links, images, hidden text, markup out; an instruction is kept but reported; a name that is a link is refused)
+    and the lead gets a note "Some text from the website chat was cleaned" naming only the kinds of finding; answers from
+    the three assistants lose images and links to other sites (links inside the CRM stay); new tests that no tool takes an
+    identity argument and no tool fetches an address. Tests (run 2026-10-29): 80 new/targeted passed; related suites 68 + 164
+    passed (4 opt-in skipped); ruff, mypy, import-linter clean. The full backend suite was not re-run. VA3-VA4 not started.
   - SN4 (2026-10-27, branch `feat/sentinel-eval`): 11 BP-10 cases for the Sentinel (9 staff, 1
     portal, 1 website chat; 53 agent cases in all, all `live: false`): a link, an instruction or an
     address in what a model writes is refused; a duplicate is refused; a warned proposal is stored

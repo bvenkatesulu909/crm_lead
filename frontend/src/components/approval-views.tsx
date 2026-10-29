@@ -8,7 +8,11 @@ import type {
   AssistantProposal,
   Me,
 } from "@/lib/api-types";
-import { APPROVAL_STATUS_LABELS } from "@/lib/approvals";
+import {
+  APPROVAL_STATUS_LABELS,
+  describeChange,
+  fieldLabel,
+} from "@/lib/approvals";
 import { formatDateTime } from "@/lib/format";
 
 const BADGE: Record<AgentActionStatus, string> = {
@@ -114,6 +118,45 @@ export function ApprovalCard({
             </>
           )}
         </p>
+        {action.changes.length > 0 && (
+          <div
+            role="group"
+            aria-label="Would change"
+            className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800"
+          >
+            <p className="font-semibold">Would change</p>
+            <ul className="mt-1 list-disc pl-5">
+              {action.changes.map((change) => (
+                <li key={change.field} className="break-words">
+                  {describeChange(change, nameOf)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {action.outcome && (
+          <div
+            role="group"
+            aria-label="What happened"
+            className={cx(
+              "mt-4 rounded-md border p-3 text-sm",
+              action.outcome.matches_plan === false
+                ? "border-red-200 bg-red-50 text-red-800"
+                : "border-slate-200 bg-slate-50 text-slate-800",
+            )}
+          >
+            <p className="font-semibold">What happened</p>
+            <p className="mt-1">
+              {!action.outcome.ran
+                ? "It did not run, so nothing was changed."
+                : action.outcome.matches_plan === true
+                  ? "It ran and matched what was announced."
+                  : action.outcome.matches_plan === false
+                    ? `It ran, but the result did not match the plan: ${action.outcome.differs.map(fieldLabel).join(", ")}.`
+                    : "It ran."}
+            </p>
+          </div>
+        )}
         {action.warnings.length > 0 && (
           <div
             role="group"

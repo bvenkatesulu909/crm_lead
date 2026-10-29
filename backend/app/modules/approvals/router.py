@@ -4,7 +4,7 @@ Thin layer: permissions, then the service; write endpoints commit once.
 """
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -16,11 +16,14 @@ from app.core.errors import problem_responses
 from app.modules.approvals import service
 from app.modules.approvals.models import AgentAction
 from app.modules.approvals.schemas import (
+    ActionOutcome,
     AgentActionPage,
     AgentActionRead,
     Approve,
+    PlannedChange,
     Reject,
     SafetyWarning,
+    SeenValue,
     Status,
 )
 from app.modules.identity.api import require_any_permission
@@ -56,8 +59,25 @@ def _read(session: Session, principal: Principal, action: AgentAction) -> AgentA
         decision_note=action.decision_note,
         result=action.result,
         warnings=[SafetyWarning(**w) for w in (action.verification or {}).get("warnings", [])],
+        changes=[PlannedChange(**c) for c in _stored(action).get("spec", {}).get("changes", [])],
+        outcome=_outcome(_stored(action).get("outcome")),
         created_at=action.created_at,
         version=action.version,
+    )
+
+
+def _stored(action: AgentAction) -> dict[str, Any]:
+    return action.verification or {}
+
+
+def _outcome(raw: dict[str, Any] | None) -> ActionOutcome | None:
+    if raw is None:
+        return None
+    return ActionOutcome(
+        ran=raw["ran"],
+        matches_plan=raw.get("matches_spec"),
+        differs=raw.get("differs", []),
+        seen=[SeenValue(**v) for v in raw.get("seen", [])],
     )
 
 

@@ -566,6 +566,10 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     the three assistants lose images and links to other sites (links inside the CRM stay); new tests that no tool takes an
     identity argument and no tool fetches an address. Tests (run 2026-10-29): 80 new/targeted passed; related suites 68 + 164
     passed (4 opt-in skipped); ruff, mypy, import-linter clean. The full backend suite was not re-run. VA3-VA4 not started.
+  - VA3 (2026-10-29, branch `feat/artifacts-display`): the proposal read has `changes` and `outcome`; the approval card shows
+    "Would change" and "What happened"; the web app sends `Content-Security-Policy-Report-Only`. Tests (run 2026-10-29): 6 new
+    backend API tests + 19 related passed; Vitest 417 passed (11 new); lint, typecheck, production build clean; mypy and
+    import-linter clean; OpenAPI refreshed. Not re-run: full backend suite, Playwright, a browser check of the card. VA4 not started.
   - SN4 (2026-10-27, branch `feat/sentinel-eval`): 11 BP-10 cases for the Sentinel (9 staff, 1
     portal, 1 website chat; 53 agent cases in all, all `live: false`): a link, an instruction or an
     address in what a model writes is refused; a duplicate is refused; a warned proposal is stored

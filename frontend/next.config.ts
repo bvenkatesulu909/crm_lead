@@ -24,6 +24,19 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
+          // Report-only first (ADR 0018): browsers log what a stricter policy would block, so
+          // nothing breaks while we learn what the screens load. Outside images are the way a
+          // poisoned text sends data out, so they are what this policy is about.
+          {
+            key: "Content-Security-Policy-Report-Only",
+            value: [
+              "default-src 'self'",
+              "img-src 'self' data:",
+              "object-src 'none'",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+            ].join("; "),
+          },
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(self), geolocation=()",
@@ -43,4 +56,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-

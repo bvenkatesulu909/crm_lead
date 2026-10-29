@@ -59,6 +59,8 @@ function action(changes: Partial<AgentAction> = {}): AgentAction {
     decision_note: null,
     result: null,
     warnings: [],
+    changes: [],
+    outcome: null,
     created_at: "2026-10-25T10:00:00Z",
     version: 1,
     ...changes,

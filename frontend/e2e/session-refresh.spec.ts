@@ -7,12 +7,14 @@ import { USERS, login, requireCredentials } from "./helpers";
  * automatically by proxy.ts, so users are not logged out while working.
  * Run with:  set E2E_SLOW=1 && npx playwright test session-refresh
  */
+// Skipped at file level, so no browser is started for a test that will not run.
+test.skip(!process.env.E2E_SLOW, "slow test: set E2E_SLOW=1 to run");
+
 test("an expiring access token is refreshed without logging the user out", async ({
   page,
   context,
 }) => {
   requireCredentials();
-  test.skip(!process.env.E2E_SLOW, "slow test: set E2E_SLOW=1 to run");
   test.setTimeout(8 * 60_000);
 
   await login(page, USERS.agent1, "/leads");

@@ -187,5 +187,9 @@ describe("the content security policy (ADR 0018)", () => {
     expect(value).toContain("object-src 'none'");
     expect(value).toContain("frame-ancestors 'none'");
     expect(value).toContain("base-uri 'self'");
+    // No default-src / script-src: dev React evaluates strings, and each one would be reported,
+    // flooding the browser console (and the end-to-end logs) with thousands of lines.
+    expect(value).not.toContain("default-src");
+    expect(value).not.toContain("script-src");
   });
 });

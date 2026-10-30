@@ -1388,6 +1388,42 @@ export type EmailMessage = {
   created_at: string;
 };
 
+/** A place a web check can look (ADR 0019): only the ones switched on are offered. */
+export type WebCheckSource = {
+  key: string;
+  title: string;
+  kind: "rera" | "company";
+  /** What a valid search text looks like, in words. */
+  query_hint: string;
+  /** A fictional registry served inside the CRM (tests and trials). */
+  demo: boolean;
+};
+
+export type WebEvidenceVerdict = "found" | "not_found" | "unclear" | "error";
+
+/** What one finished web check found - parsed and cleaned, never the raw page. */
+export type WebEvidence = {
+  id: string;
+  request_id: string;
+  source_key: string;
+  query: string;
+  requested_by_user_id: string;
+  verdict: WebEvidenceVerdict;
+  error_code: string | null;
+  http_status: number | null;
+  final_url: string | null;
+  registered_name: string | null;
+  status: string | null;
+  valid_until: string | null;
+  excerpt: string;
+  /** The kinds of finding when text had to be cleaned; never the removed text. */
+  cleaned: string[];
+  created_at: string;
+};
+
+export type WebEvidencePage = { items: WebEvidence[] };
+export type WebCheckSourcePage = { items: WebCheckSource[] };
+
 export type EmailPage = {
   items: EmailMessage[];
   total: number;

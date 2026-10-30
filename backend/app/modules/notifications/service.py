@@ -24,6 +24,7 @@ from app.core.errors import DomainError, NotFoundError
 from app.core.events import Event, uuid_of
 from app.core.mail import Mail, Mailer
 from app.core.outbox import PermanentJobError, enqueue
+from app.modules.accounts import api as accounts_api
 from app.modules.activities import api as activities_api
 from app.modules.agents import api as agents_api
 from app.modules.approvals import api as approvals_api
@@ -63,6 +64,7 @@ TYPES: dict[str, str] = {
     "agent_action.decided": "A decision on an AI proposal you asked for",
     "agent.switched": "An AI agent was switched on or off",
     "agent.budget_warning": "An AI agent is close to its monthly limit",
+    "webcheck.completed": "A web check you asked for has finished",
     "workflow.message": "A message from an automation rule",
 }
 RULE_MESSAGE = "workflow.message"
@@ -253,6 +255,38 @@ def _agent_warning(session: Session, me: Principal, event: Event) -> Draft | Non
     return Draft(f"AI agent near its monthly limit ({percent} %): {title}", "/automation/agents")
 
 
+_WEBCHECK_WORDS = {
+    "found": "found",
+    "not_found": "not found",
+    "unclear": "could not be read with certainty",
+    "error": "could not be checked",
+}
+
+
+def _requester(session: Session, event: Event) -> set[uuid.UUID]:
+    person = _optional_uuid(event, "requested_by_user_id")
+    return {person} if person else set()
+
+
+def _webcheck_done(session: Session, me: Principal, event: Event) -> Draft | None:
+    """Only if the person can still read the lead or account (it may have been reassigned)."""
+    target_id = uuid_of(event, "target_id")
+    words = _WEBCHECK_WORDS.get(str(event.data.get("verdict")))
+    if words is None:
+        return None
+    if event.data.get("target_type") == "lead":
+        label = leads_api.lead_brief(session, me, target_id)
+        link = f"/leads/{target_id}"
+    elif event.data.get("target_type") == "account":
+        if not accounts_api.is_readable_account(session, me, target_id):
+            return None
+        label = str(accounts_api.get_account_brief(session, me, target_id)["name"])
+        link = f"/accounts/{target_id}"
+    else:
+        return None
+    return Draft(f"Web check finished for {label}: {words}", link) if label else None
+
+
 def _proposal_approvers(session: Session, event: Event) -> set[uuid.UUID]:
     """Everyone who may decide; the requester is the actor and so left out by on_event."""
     return set(
@@ -287,6 +321,7 @@ RULES: dict[str, tuple[Recipients, Describe]] = {
     "agent_action.decided": (_proposal_requester, _proposal_decided),
     "agent.switched": (_agent_admins, _agent_switched),
     "agent.budget_warning": (_agent_admins, _agent_warning),
+    "webcheck.completed": (_requester, _webcheck_done),
 }
 
 

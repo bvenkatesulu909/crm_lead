@@ -22,6 +22,7 @@ from app.core.auth.rbac import Permission
 from app.core.config import Settings
 from app.core.db import bind_tenant
 from app.core.errors import DomainError, ForbiddenError, NotFoundError
+from app.core.events import publish
 from app.core.outbox import Job, PermanentJobError, enqueue
 from app.core.webfetch import (
     FetchPolicy,
@@ -143,6 +144,17 @@ def _enabled(settings: Settings) -> dict[str, sources.Source]:
         return {}
 
 
+def offered_sources(settings: Settings) -> list[sources.Source]:
+    """The sources a person can choose from: those switched on, RERA sources first, then by key.
+    Nothing at all when the platform switch is on."""
+    if settings.webcheck_disabled:
+        return []
+    # RERA sources first: the form starts with the check people ask for most.
+    return sorted(
+        _enabled(settings).values(), key=lambda source: (source.kind != "rera", source.key)
+    )
+
+
 # --- asking -------------------------------------------------------------------------------------
 
 
@@ -246,6 +258,21 @@ def _read_payload(payload: Mapping[str, Any]) -> _Request:
     return request
 
 
+def _announce(session: Session, tenant_id: uuid.UUID, request: _Request, verdict: str) -> None:
+    """Tell the person who asked (ADR 0006). Ids and the verdict code only: no text of a page."""
+    publish(
+        session,
+        tenant_id,
+        "webcheck.completed",
+        {
+            "target_type": request.target_type,
+            "target_id": str(request.target_id),
+            "verdict": verdict,
+            "requested_by_user_id": str(request.requested_by),
+        },
+    )
+
+
 def _store_error(session: Session, tenant_id: uuid.UUID, request: _Request, code: str) -> None:
     repository.add_evidence(
         session,
@@ -263,6 +290,7 @@ def _store_error(session: Session, tenant_id: uuid.UUID, request: _Request, code
             cleaned=[],
         ),
     )
+    _announce(session, tenant_id, request, "error")
 
 
 def run_check(
@@ -340,6 +368,7 @@ def run_check(
             cleaned=list(record.cleaned),
         ),
     )
+    _announce(session, tenant_id, request, record.verdict)
 
 
 # --- reading and retention ----------------------------------------------------------------------

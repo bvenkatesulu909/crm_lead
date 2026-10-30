@@ -6,6 +6,7 @@ import { ActivityPanel } from "@/components/activity-panel";
 import { ChatTranscriptCard } from "@/components/chat-transcript-card";
 import { EmailCard } from "@/components/email-card";
 import { RecordProposals } from "@/components/record-proposals";
+import { WebCheckCard } from "@/components/webcheck-card";
 import { LeadScoreCard } from "@/components/lead-score";
 import { Card, Forbidden, StatusBadge, SuccessAlert } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
@@ -48,6 +49,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const DONE: Record<string, string> = {
   "email-sent": "The e-mail is on its way. Its status is shown under E-mails.",
+  "webcheck-queued":
+    "The web check was queued. The result appears under Web check and you get a notification.",
   "email-logged": "The received e-mail was saved in the history.",
   updated: "The lead was updated.",
   assigned: "The lead was assigned.",
@@ -270,6 +273,7 @@ export default async function LeadPage({
             planOnly
           />
           <RecordProposals me={me} targetId={lead.id} />
+          <WebCheckCard me={me} record={{ type: "lead", id: lead.id }} />
           <EmailCard me={me} record={{ type: "lead", id: lead.id }} person={{ email: lead.email }} personLabel={name} />
         </div>
 

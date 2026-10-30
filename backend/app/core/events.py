@@ -48,6 +48,7 @@ EVENT_NAMES = frozenset(
         "agent_action.decided",
         "agent.switched",
         "agent.budget_warning",
+        "webcheck.completed",
     }
 )
 MAX_DEPTH = 3

@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { ActivityPanel } from "@/components/activity-panel";
 import { EmailCard } from "@/components/email-card";
 import { RecordProposals } from "@/components/record-proposals";
+import { WebCheckCard } from "@/components/webcheck-card";
 import { DocumentsCard } from "@/components/documents-card";
 import { PaymentStateBadge, invoiceNumber } from "@/components/invoices";
 import {
@@ -114,6 +115,8 @@ function section<T>(
 const DONE: Record<string, string> = {
   "email-sent": "The e-mail is on its way. Its status is shown under E-mails.",
   "email-logged": "The received e-mail was saved in the history.",
+  "webcheck-queued":
+    "The web check was queued. The result appears under Web check and you get a notification.",
   invited: "The invitation was sent. The customer sets a password and then sees this account.",
   revoked: "Portal access was removed for this account.",
   created: "The account was created.",
@@ -407,6 +410,7 @@ export default async function AccountPage({
           <ActivityPanel link={{ type: "account", id: a }} me={me} people={people} ownsRecord={isOwner} />
 
           <RecordProposals me={me} targetId={a} />
+          <WebCheckCard me={me} record={{ type: "account", id: a }} />
 
           <EmailCard me={me} record={{ type: "account", id: a }} accountId={a} />
 

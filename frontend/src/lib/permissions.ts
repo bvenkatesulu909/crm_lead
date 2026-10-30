@@ -102,6 +102,11 @@ export const canSendEmails = (me: Pick<Me, "permissions">) =>
 /** The Communication Center list: everyone's e-mails (read:all) or one's own (read:own). */
 export const canReadEmailCenter = (me: Pick<Me, "permissions">) =>
   hasAny(me, "communication:read:all", "communication:read:own");
+/** The web check (ADR 0019): ask for one / read the evidence. The record decides too. */
+export const canRunWebCheck = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "webcheck:run");
+export const canReadWebCheck = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "webcheck:read");
 /** A record's e-mail history: anyone with any communication permission (the record decides). */
 export const canReadEmailHistory = (me: Pick<Me, "permissions">) =>
   hasAny(
@@ -276,6 +281,8 @@ export const ROLE_LABELS: Record<string, string> = {
 export const PERMISSION_LABELS: Record<string, string> = {
   "platform:tenant:read": "View organisations on the platform",
   "platform:tenant:manage": "Manage organisations on the platform",
+  "webcheck:run": "Look up a RERA number or a company on a public registry",
+  "webcheck:read": "Read the results of those lookups",
   "tenant:user:read": "View your organisation's users",
   "tenant:user:manage": "Manage your organisation's users",
   "account:read:all": "View all customer accounts",

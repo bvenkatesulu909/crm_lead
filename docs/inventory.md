@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-10-26 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-10-30 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **212** operations over **169** paths and **241** schemas.
+- **215** operations over **172** paths and **250** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -38,6 +38,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | customer relationships | 3 |
 | identity | 3 |
 | portal access | 3 |
+| webcheck | 3 |
 | health | 2 |
 | onboarding | 2 |
 | portal-knowledge | 2 |
@@ -48,14 +49,14 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0044**
-- Tables in the current schema: **61**
-- Tables with Row-Level Security: **57** (57 policies)
+- Alembic revision: **0045**
+- Tables in the current schema: **62**
+- Tables with Row-Level Security: **58** (58 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **44**
-- Heads: `0044`
+- Migration files: **45**
+- Heads: `0045`
 
 ## Web app (`frontend/src/app`)
 
@@ -159,10 +160,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **122**
-- Frontend component test files: **26**
+- Backend test files: **136**
+- Frontend component test files: **28**
 - Playwright end-to-end specs: **27**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **62** (19 in `docs/adr/`)
+- Markdown documents under `docs/`: **65** (21 in `docs/adr/`)

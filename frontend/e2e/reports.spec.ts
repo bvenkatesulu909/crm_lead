@@ -74,6 +74,9 @@ test("the report builder lists, filters and exports records", async ({ browser }
   await agent.getByRole("button", { name: "Apply" }).click();
   // Only chosen columns appear.
   const columns = agent.getByRole("group", { name: "Columns" });
+  // Wait for the new page: .all() below does not wait, and on an empty list nothing would be
+  // unchecked, leaving every default column ticked.
+  await expect(columns).toBeVisible();
   for (const box of await columns.getByRole("checkbox").all()) await box.uncheck();
   await columns.getByLabel("Last name").check();
   await columns.getByLabel("Status").check();

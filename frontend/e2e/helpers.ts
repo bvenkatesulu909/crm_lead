@@ -21,18 +21,32 @@ export function requireCredentials() {
 
 /** Signs in through the real Keycloak login page (Authorization Code + PKCE). */
 export async function login(page: Page, username: string, target = "/") {
-  await page.goto(target);
-  await expect(page).toHaveURL(/\/login/);
-  await page.getByRole("link", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/localhost:9080\/realms\/crm\//);
-  await page.locator("#username").fill(username);
-  await page.locator("#password").fill(process.env.E2E_USER_PASSWORD ?? "");
-  await page.locator("#kc-login").click();
-  await page.waitForURL(
-    (url) =>
-      url.origin === "http://localhost:3000" &&
-      !url.pathname.startsWith("/login"),
-  );
+  // Now and then the Keycloak page does not show its password field (it is slow, or the login
+  // session was dropped). Waiting longer does not help, so after a short wait the sign-in is
+  // started again, up to three times; a real fault still fails on the last try.
+  const ATTEMPTS = 3;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await page.goto(target);
+      await expect(page).toHaveURL(/\/login/);
+      await page.getByRole("link", { name: "Sign in" }).click();
+      await expect(page).toHaveURL(/localhost:9080\/realms\/crm\//);
+      await page.locator("#username").fill(username);
+      await page
+        .locator("#password")
+        .fill(process.env.E2E_USER_PASSWORD ?? "", { timeout: 20_000 });
+      await page.locator("#kc-login").click();
+      await page.waitForURL(
+        (url) =>
+          url.origin === "http://localhost:3000" &&
+          !url.pathname.startsWith("/login"),
+      );
+      return;
+    } catch (error) {
+      if (attempt >= ATTEMPTS) throw error;
+      await page.context().clearCookies();
+    }
+  }
 }
 
 export async function signOut(page: Page) {

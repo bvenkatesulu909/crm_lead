@@ -30,7 +30,6 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy-Report-Only",
             value: [
-              "default-src 'self'",
               "img-src 'self' data:",
               "object-src 'none'",
               "frame-ancestors 'none'",

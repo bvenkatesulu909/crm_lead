@@ -13,8 +13,10 @@ from sqlalchemy import column, func, select, table, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError
 from sqlalchemy.orm import Session
 
-from app.core.db import bind_tenant, clear_tenant
+from app.core.db import bind_tenant, bind_user, clear_tenant
 from app.modules.accounts.models import Account
+from app.modules.contacts.models import Contact
+from app.modules.leads.models import Lead, LeadActivity, LeadAssignment
 from tests.db.test_quotes_api import world  # noqa: F401
 
 # Tables without a tenant_id column, each a documented exception in ADR 0009.
@@ -141,3 +143,44 @@ def test_app_role_cannot_switch_rls_off(db_session: Session) -> None:
     with pytest.raises(DBAPIError), db_session.begin_nested():
         db_session.execute(text("set local row_security = off"))
         db_session.execute(text("select count(*) from accounts")).scalar()
+
+
+CORE_TABLES = ("accounts", "contacts", "lead_activities", "lead_assignments")
+
+
+def _seed_core_rows(session: Session, tenant: uuid.UUID, user_id: uuid.UUID) -> None:
+    """One lead with its timeline entry and assignment, and one contact on an account."""
+    bind_tenant(session, tenant)
+    bind_user(session, user_id, "all")
+    lead = Lead(
+        id=uuid.uuid4(), tenant_id=tenant, last_name="Probe", status="new", owner_id=user_id
+    )
+    account = Account(id=uuid.uuid4(), tenant_id=tenant, name="Probe account")
+    session.add_all([lead, account])
+    session.flush()
+    session.add_all(
+        [
+            LeadActivity(tenant_id=tenant, lead_id=lead.id, kind="note", subject="probe"),
+            LeadAssignment(tenant_id=tenant, lead_id=lead.id, to_user_id=user_id),
+            Contact(tenant_id=tenant, last_name="Probe", account_id=account.id),
+        ]
+    )
+    session.flush()
+
+
+def test_core_tables_hide_the_other_tenants_real_rows(world, db_session) -> None:
+    """CRM-107: accounts, contacts, lead_activities and lead_assignments are probed on rows that
+    exist in both tenants (the general probe passes even when these tables are empty)."""
+    alpha = world.users["alpha.admin"]
+    beta = world.users["beta.admin"]
+    _seed_core_rows(db_session, alpha.tenant_id, alpha.id)
+    _seed_core_rows(db_session, beta.tenant_id, beta.id)
+    for tenant in (alpha.tenant_id, beta.tenant_id):
+        bind_tenant(db_session, tenant)
+        for name in CORE_TABLES:
+            visible = _rows_by_tenant(db_session, name)
+            assert visible, f"{name}: no rows to probe for this tenant"
+            assert set(visible) == {tenant}, f"{name} shows another tenant's rows"
+    clear_tenant(db_session)
+    for name in CORE_TABLES:
+        assert _rows_by_tenant(db_session, name) == {}, f"{name} leaks rows without a tenant"

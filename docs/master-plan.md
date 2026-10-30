@@ -40,7 +40,7 @@ Corrections to the PDF that apply everywhere:
 
 | # | Item (PDF reference) | Status | Needed before |
 |---|---|---|---|
-| O1 | **CRM-101 / T0.1:** open the affected agent's Role mapping in Keycloak; remove `sales_manager` / `tenant_admin` if present; sign out and in; send the 2 screenshots (role mapping, Leads list as that agent) | Open | Closing CRM-101 |
+| O1 | **CRM-101 / T0.1:** role check in Keycloak | **Done 2026-10-30.** Read-only check of all 142 realm users: no agent holds `sales_manager` or `tenant_admin`. The three agents have only `sales_agent`. Not captured: a screenshot of Keycloak's own role-mapping page for the originally affected agent (the username was not given) | Closed CRM-101 |
 | O2 | **CRM-103 / T1.2:** protect `main` on GitHub (Settings → Branches: require a PR and passing CI) | Open (GitHub says "Branch not protected") | Next PR |
 | O5 | **T2.2:** choose a host for the API (ADR 0007) so Netlify can reach it | Open | Live demo |
 | O6 | Keep Docker Desktop + `docker compose up -d` running for database tests (T0.2, T3.1) | Done today | Every object |
@@ -50,7 +50,7 @@ Corrections to the PDF that apply everywhere:
 
 | Item | What | Status today | What is left |
 |---|---|---|---|
-| CRM-101 / Task 0 | One agent sees another agent's leads | Code done: RLS on leads (tenant + owner), role boundary tests | O1 (screenshots, role check) |
+| CRM-101 / Task 0 | One agent sees another agent's leads | **Closed 2026-10-30.** Code: RLS on leads (tenant + owner), role boundary tests. Database: 58 tables protected, 0 unprotected tenant tables, the app role cannot bypass RLS. Tests: 2 RLS lead tests and 18 API-level lead isolation tests pass. Browser: agent 1's Leads list does not show agent 2's lead, and its address answers "Page not found". Keycloak: see O1 | — |
 | CRM-102 | The fix for CRM-101 | Done (PR #1) | — |
 | CRM-103 / Task 1 | Failing settings test via PR, then protect `main` | Test fixed (PR #7) | O2 |
 | Task 3 | RLS on core tables (target 7 of 47) | Done, more than asked: 50 of 50 tables | — |

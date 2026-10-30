@@ -39,6 +39,7 @@ from app.modules.knowledge import api as knowledge_api
 from app.modules.notifications import api as notifications_api
 from app.modules.public_chat import api as public_chat_api
 from app.modules.quotes import api as quotes_api
+from app.modules.webcheck import api as webcheck_api
 from app.modules.workflows import api as workflows_api
 
 logger = logging.getLogger("app.worker")
@@ -69,6 +70,7 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
             services.mailer, services.settings.web_app_url
         ),
         communications_api.EMAIL_JOB: communications_api.email_job_handler(services.mailer),
+        webcheck_api.CHECK_JOB: webcheck_api.check_job_handler(services.settings),
         # Domain events (ADR 0006): every "event.<name>" job goes to its subscribers.
         **dispatcher(
             merge_subscribers(
@@ -120,6 +122,10 @@ def run_schedules(
                 count += public_chat_api.delete_stale_conversations(
                     session, now, tenant_id=tenant_id, retention_days=retention
                 )
+            # Web check evidence older than the retention (ADR 0019): deleted.
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += webcheck_api.delete_expired(session, now, tenant_id=tenant_id)
             # AI proposals nobody decided on in time (ADR 0014): expired, requester told.
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)

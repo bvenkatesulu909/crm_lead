@@ -596,8 +596,15 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     repeated field or wrong registration = unclear, text cleaned, excerpt built from parsed fields only, scripts/styles ignored, long lists not walked),
     `fake.py` (an in-process demo registry: the real fetcher and parser run, only the network is replaced; a poisoned page, a changed layout, a wrong registration).
     Tests (run 2026-10-30): 95 new pure tests; 14 deliberate breaks of the parsers/cleaning are all caught (3 weak tests were found and strengthened first);
-    the webfetch + webcheck tests together 214 passed; ruff, mypy, import-linter clean. The full backend suite was not re-run (only new files). WC2b (table,
-    service, worker job, API) and WC3-WC5 not started.
+    the webfetch + webcheck tests together 214 passed; ruff, mypy, import-linter clean. The full backend suite was not re-run (only new files). WC2b (2026-10-30, branch `feat/webcheck-store`): migration 0045 `web_evidence` (forced RLS, insert-only: a trigger refuses every UPDATE and refuses to delete a row
+    younger than 365 days, and the app role has no UPDATE/TRUNCATE - two locks), permissions `webcheck:run` / `webcheck:read` (sales roles and support agents; the record-level rule
+    decides: support may check an account, not a lead), settings `CRM_WEBCHECK_DISABLED`, `CRM_WEBCHECK_SOURCES`, `CRM_WEBCHECK_DEMO` (refused in production),
+    `CRM_WEBCHECK_PER_USER_HOUR` (10), `CRM_WEBCHECK_PER_TENANT_DAY` (200); service `request_check` (permission, a record the person may read - else 404, a source that
+    is switched on, a query in shape, the limits counted from queued jobs, then ONE job with ids and keys and an audit entry `webcheck.requested`), worker job `webcheck.run`
+    (real fetcher + parser, demo registry for demo sources, safe to run twice, temporary failures retried up to 3 tries and only the last stored as an error), `list_evidence`
+    (newest first), retention sweep in the worker's schedule. No endpoints, no notification yet (WC2c: API; the event/notification with WC4). Tests (run 2026-10-30): 60 new
+    database tests (request rules, record-level denial, tenant isolation, ID tampering, limits, the job, the insert-only table, retention, the real worker); 13 deliberate breaks of
+    the service and 2 of the worker wiring are all caught; ruff, mypy, import-linter, RLS guard and config tests clean; full backend run (2026-10-30, real PostgreSQL, 33 min): 2804 passed, 0 failed, 4 opt-in skipped. WC2c-WC5 not started.
   - SN4 (2026-10-27, branch `feat/sentinel-eval`): 11 BP-10 cases for the Sentinel (9 staff, 1
     portal, 1 website chat; 53 agent cases in all, all `live: false`): a link, an instruction or an
     address in what a model writes is refused; a duplicate is refused; a warned proposal is stored

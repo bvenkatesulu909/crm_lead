@@ -164,6 +164,11 @@ class Permission(StrEnum):
     AGENT_READ = "agent:read"
     AGENT_MANAGE = "agent:manage"
 
+    # Live web check of a RERA number or a company (ADR 0019): ask for a check / read the
+    # evidence. Both still need the right to read the lead or account the check is about.
+    WEBCHECK_RUN = "webcheck:run"
+    WEBCHECK_READ = "webcheck:read"
+
 
 _P = Permission
 
@@ -180,6 +185,7 @@ _SALES_ALL = frozenset(
         _P.DOCUMENT_READ, _P.DOCUMENT_WRITE, _P.DOCUMENT_DELETE,
         _P.COMMUNICATION_SEND, _P.COMMUNICATION_READ_ALL, _P.COMMUNICATION_TEMPLATE_MANAGE,
         _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE, _P.AGENT_READ,
+        _P.WEBCHECK_RUN, _P.WEBCHECK_READ,
     }
 )  # fmt: skip
 
@@ -235,6 +241,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.COMMUNICATION_SEND,
             _P.COMMUNICATION_READ_OWN,
             _P.AGENT_ACTION_PROPOSE,
+            _P.WEBCHECK_RUN,
+            _P.WEBCHECK_READ,
         }
     ),  # fmt: skip
     Role.SUPPORT_AGENT: frozenset(
@@ -253,6 +261,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.COMMUNICATION_SEND,
             _P.COMMUNICATION_READ_OWN,
             _P.AGENT_ACTION_PROPOSE,
+            _P.WEBCHECK_RUN,
+            _P.WEBCHECK_READ,
         }
     ),
     Role.CUSTOMER: frozenset(

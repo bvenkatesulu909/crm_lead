@@ -583,6 +583,14 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     evaluates strings, and each one was reported, flooding the browser console with thousands of lines). Full runs on the way: 82/1, 80/2,
     81/1, 81/1 (passed/failed, 3-4 skipped); **the last full run in one piece: 82 passed, 0 failed, 4 skipped in 25.6 min**, 0 CSP
     violations logged. One clean run does not prove the flakiness is gone.
+  - Live web check of a RERA number or a company (BP-15, Phase WC, ADR 0019) - ADR accepted 2026-10-30 with the recommended answers
+    (fake source first, no model reads pages in v1, every staff member who can read the record may ask 10 per hour, switch in the agent
+    registry, evidence kept 12 months). WC1 (2026-10-30, branch `feat/webfetch`): `app/core/webfetch.py`, the only code that fetches a page
+    for a user - https and port 443 only, only the source's host (nobody gives an address), every resolved address must be public and the
+    connection is pinned to it, robots.txt honoured, redirects only inside the host and re-checked, 10 s total / 1 MB / no cookies / no
+    compressed bodies, text content types only, per-host rate limiter with a daily ceiling; a guard test fails when a new module imports an
+    HTTP client. Nothing calls it yet (WC2). Tests (run 2026-10-30): 119 new (pure with a fake network + the real transport against a local
+    TLS server); breaking any of 9 protections makes tests fail; ruff, mypy, import-linter clean; full backend run (2026-10-30, real PostgreSQL, 28 min): 2649 passed, 0 failed, 4 opt-in skipped. WC2-WC5 not started.
   - SN4 (2026-10-27, branch `feat/sentinel-eval`): 11 BP-10 cases for the Sentinel (9 staff, 1
     portal, 1 website chat; 53 agent cases in all, all `live: false`): a link, an instruction or an
     address in what a model writes is refused; a duplicate is refused; a warned proposal is stored

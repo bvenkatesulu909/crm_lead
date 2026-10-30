@@ -1,6 +1,6 @@
 # ADR 0019 — Live web check of a RERA number or a company (BP-15)
 
-- **Status:** Proposed (2026-10-30) — waits for the owner's review; no code until approved
+- **Status:** Accepted (2026-10-30) with the recommended answers to the five questions in section 5
 - **Date:** 2026-10-30
 - **Deciders:** Project owner
 - **Depends on:** ADR 0005 (outbox and worker), ADR 0014 (approval queue), ADR 0016 (agent

@@ -372,9 +372,9 @@ at the exit; identity comes only from the token, proven by a test. Design:
 - **VA4** - BP-10 cases, `docs/injection-defences.md`, full runs, pull request.
 
 
-## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 proposed 2026-10-30; WC0 done)*
+## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 accepted 2026-10-30; WC0, WC1 done)*
 
-Needs the owner's answers to the five questions in ADR 0019. No code before the ADR is accepted.
+Accepted 2026-10-30 with the recommended answers to the five questions in ADR 0019.
 
 | Step | Content |
 |---|---|

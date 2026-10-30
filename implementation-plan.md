@@ -371,6 +371,19 @@ at the exit; identity comes only from the token, proven by a test. Design:
 - **VA3** - API, approval card ("Would change", "What happened"), CSP in report-only mode.
 - **VA4** - BP-10 cases, `docs/injection-defences.md`, full runs, pull request.
 
+
+## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 proposed 2026-10-30; WC0 done)*
+
+Needs the owner's answers to the five questions in ADR 0019. No code before the ADR is accepted.
+
+| Step | Content |
+|---|---|
+| WC0 | ADR 0019 + this plan (documents only) |
+| WC1 | `app/core/webfetch.py`: hardened fetcher (https only, public addresses only, same host, size/time limits, robots, rate limits), tested without a network |
+| WC2 | Module `webcheck`: migration 0045 (`web_evidence`, forced RLS, insert-only), source catalogue with a fake source, parsers, service, worker job, API, audit, retention |
+| WC3 | Agent registry entry (no model), staff assistant tool `check_rera`, limits |
+| WC4 | Screens: Check button and Evidence card on lead and account pages |
+| WC5 | BP-10 cases, `docs/webcheck.md`, Playwright journey, full runs |
 ## Phase 16 — Marketing Management (Module 7)
 
 **Acceptance criteria**

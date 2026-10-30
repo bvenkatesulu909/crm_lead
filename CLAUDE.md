@@ -590,7 +590,14 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     connection is pinned to it, robots.txt honoured, redirects only inside the host and re-checked, 10 s total / 1 MB / no cookies / no
     compressed bodies, text content types only, per-host rate limiter with a daily ceiling; a guard test fails when a new module imports an
     HTTP client. Nothing calls it yet (WC2). Tests (run 2026-10-30): 119 new (pure with a fake network + the real transport against a local
-    TLS server); breaking any of 9 protections makes tests fail; ruff, mypy, import-linter clean; full backend run (2026-10-30, real PostgreSQL, 28 min): 2649 passed, 0 failed, 4 opt-in skipped. WC2-WC5 not started.
+    TLS server); breaking any of 9 protections makes tests fail; ruff, mypy, import-linter clean; full backend run (2026-10-30, real PostgreSQL, 28 min): 2649 passed, 0 failed, 4 opt-in skipped. WC2a (2026-10-30, branch `feat/webcheck`): `app/modules/webcheck/` pure part, no database - `rules.py` (the record a parser makes, text cleaned with
+    `screen()`, caps), `sources.py` (catalogue of DEMO sources `demo_rera` and `demo_company`, each names one host and builds its own address; queries must match a
+    pattern - no link, space, line break or hidden character in a RERA number; deterministic parsers: found / not_found / unclear, never a guess, unknown status or
+    repeated field or wrong registration = unclear, text cleaned, excerpt built from parsed fields only, scripts/styles ignored, long lists not walked),
+    `fake.py` (an in-process demo registry: the real fetcher and parser run, only the network is replaced; a poisoned page, a changed layout, a wrong registration).
+    Tests (run 2026-10-30): 95 new pure tests; 14 deliberate breaks of the parsers/cleaning are all caught (3 weak tests were found and strengthened first);
+    the webfetch + webcheck tests together 214 passed; ruff, mypy, import-linter clean. The full backend suite was not re-run (only new files). WC2b (table,
+    service, worker job, API) and WC3-WC5 not started.
   - SN4 (2026-10-27, branch `feat/sentinel-eval`): 11 BP-10 cases for the Sentinel (9 staff, 1
     portal, 1 website chat; 53 agent cases in all, all `live: false`): a link, an instruction or an
     address in what a model writes is refused; a duplicate is refused; a warned proposal is stored

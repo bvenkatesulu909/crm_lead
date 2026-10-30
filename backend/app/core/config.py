@@ -167,6 +167,15 @@ class Settings(BaseSettings):
     agent_action_expiry_days: int = Field(default=7, ge=1, le=90)
     agent_action_pending_per_user: int = Field(default=20, ge=1, le=1_000)
 
+    # Live web check (ADR 0019). Sources are OFF until listed here (comma-separated keys from the
+    # catalogue); ``webcheck_demo`` switches on the fictional demo sources served inside the CRM
+    # (never in production). ``webcheck_disabled`` is the platform-wide kill switch.
+    webcheck_disabled: bool = False
+    webcheck_sources: str = Field(default="", max_length=500)
+    webcheck_demo: bool = False
+    webcheck_per_user_hour: int = Field(default=10, ge=1, le=1_000)
+    webcheck_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+
     # Background worker (outbox jobs, ADR 0005).
     worker_poll_seconds: float = Field(default=2, gt=0, le=60)
     worker_max_attempts: int = Field(default=5, ge=1, le=20)
@@ -216,6 +225,12 @@ class Settings(BaseSettings):
     def _production_requires_secure_transport(self) -> "Settings":
         if self.environment == "production" and not self.files_s3_secure:
             raise ValueError("In production the file store must use HTTPS (files_s3_secure).")
+        return self
+
+    @model_validator(mode="after")
+    def _webcheck_demo_is_not_for_production(self) -> "Settings":
+        if self.environment == "production" and self.webcheck_demo:
+            raise ValueError("The demo web check sources can't be used in production.")
         return self
 
     @model_validator(mode="after")

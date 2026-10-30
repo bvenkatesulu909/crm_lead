@@ -41,6 +41,7 @@ function agent(changes: Partial<Agent> = {}): Agent {
     title: "Staff assistant",
     description: "Answers staff questions about leads.",
     owner_role: "tenant_admin",
+    uses_model: true,
     enabled: true,
     monthly_token_budget: 2_000_000,
     budget_is_default: true,

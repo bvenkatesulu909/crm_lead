@@ -1381,6 +1381,10 @@
             "title": "Used Tokens",
             "type": "integer"
           },
+          "uses_model": {
+            "title": "Uses Model",
+            "type": "boolean"
+          },
           "version": {
             "anyOf": [
               {
@@ -1398,6 +1402,7 @@
           "title",
           "description",
           "owner_role",
+          "uses_model",
           "enabled",
           "monthly_token_budget",
           "budget_is_default",

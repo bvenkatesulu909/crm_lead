@@ -61,27 +61,29 @@ export function AgentSettingsForm({
           running stops at its next step.
         </p>
       </div>
-      <DialogField
-        id={id("budget")}
-        label="Monthly token budget"
-        error={e.budget}
-        hint="Leave empty to use the standard limit. Whole numbers; commas are fine."
-      >
-        {(p) => (
-          <input
-            name="budget"
-            inputMode="numeric"
-            defaultValue={budget}
-            placeholder={
-              agent.budget_is_default
-                ? agent.monthly_token_budget.toLocaleString("en-US")
-                : "Standard limit"
-            }
-            {...p}
-          />
-        )}
-      </DialogField>
-      {agent.all_tools.length > 0 && (
+      {agent.uses_model && (
+        <DialogField
+          id={id("budget")}
+          label="Monthly token budget"
+          error={e.budget}
+          hint="Leave empty to use the standard limit. Whole numbers; commas are fine."
+        >
+          {(p) => (
+            <input
+              name="budget"
+              inputMode="numeric"
+              defaultValue={budget}
+              placeholder={
+                agent.budget_is_default
+                  ? agent.monthly_token_budget.toLocaleString("en-US")
+                  : "Standard limit"
+              }
+              {...p}
+            />
+          )}
+        </DialogField>
+      )}
+      {agent.uses_model && agent.all_tools.length > 0 && (
         <fieldset>
           <legend className="text-sm font-medium text-slate-700">
             Tools it may use

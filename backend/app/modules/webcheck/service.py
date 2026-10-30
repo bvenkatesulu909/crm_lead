@@ -35,6 +35,7 @@ from app.core.webfetch import (
     system_resolver,
 )
 from app.modules.accounts import api as accounts_api
+from app.modules.agents import api as agents_api
 from app.modules.leads import api as leads_api
 from app.modules.webcheck import repository, sources
 from app.modules.webcheck.fake import DemoRegistry
@@ -44,6 +45,8 @@ from app.modules.webcheck.rules import InvalidQueryError
 logger = logging.getLogger(__name__)
 
 CHECK_JOB = "webcheck.run"
+# Its entry in the agent registry (ADR 0016): the organisation's switch and the monthly count.
+AGENT_KEY = "web_check"
 RETENTION = timedelta(days=365)  # the database enforces the same figure (migration 0045)
 MAX_ATTEMPTS = 3
 LIST_LIMIT = 50
@@ -171,6 +174,12 @@ def request_check(
     if settings.webcheck_disabled:
         raise WebCheckDisabledError
     tenant_id, user_id = _person(principal, Permission.WEBCHECK_RUN)
+    now = datetime.now(UTC)
+    limits = agents_api.Limits.default()  # no AI platform switch: this feature calls no model
+    try:
+        agents_api.check_can_call(session, tenant_id, AGENT_KEY, limits, now)
+    except agents_api.AgentUnavailableError:
+        raise WebCheckDisabledError from None  # the organisation switched the web check off
     _check_target(session, principal, target_type, target_id)
     source = _enabled(settings).get(source_key)
     if source is None:
@@ -180,7 +189,6 @@ def request_check(
     except InvalidQueryError as exc:
         raise QueryNotValidError(str(exc)) from None
 
-    now = datetime.now(UTC)
     if (
         repository.count_requests(
             session,
@@ -197,6 +205,10 @@ def request_check(
     ):
         raise CheckLimitError
 
+    # Counted as one check of the month on the registry page (a request, not a result).
+    agents_api.record_usage(
+        session, tenant_id, AGENT_KEY, input_tokens=0, output_tokens=0, limits=limits, now=now
+    )
     request_id = uuid.uuid4()
     # Ids and keys only (ADR 0005): no page, no person's data.
     enqueue(

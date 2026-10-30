@@ -56,6 +56,7 @@ def ask(
             expiry_days=settings.agent_action_expiry_days,
             pending_limit=settings.agent_action_pending_per_user,
             sentinel=approvals_api.SentinelLimits.from_settings(settings),
+            settings=settings,
         ),
         limits=agents_api.Limits.from_settings(settings),
     )

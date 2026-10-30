@@ -1506,6 +1506,8 @@ export type Agent = {
   title: string;
   description: string;
   owner_role: string;
+  /** False for the web check: it counts checks and has no token budget or tools. */
+  uses_model: boolean;
   enabled: boolean;
   monthly_token_budget: number;
   budget_is_default: boolean;

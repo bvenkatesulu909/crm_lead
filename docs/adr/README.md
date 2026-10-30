@@ -30,4 +30,4 @@ Rules:
 | [0016](0016-agent-registry-budgets-kill-switch.md) | Agent registry, monthly token budgets and a kill switch (BP-14) | Accepted |
 | [0017](0017-sentinel-action-verifier.md) | Sentinel: rule-based second check on AI proposals and input screening (BP-21) | Accepted |
 | [0018](0018-verification-artifacts-and-injection-defences.md) | Verification artifacts and the ForcedLeak / BodySnatcher defences (BP-29) | Accepted |
-| [0019](0019-live-web-check-rera-and-company.md) | Live web check of a RERA number or a company (BP-15) | Proposed |
+| [0019](0019-live-web-check-rera-and-company.md) | Live web check of a RERA number or a company (BP-15) | Accepted |

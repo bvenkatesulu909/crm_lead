@@ -222,9 +222,7 @@ def test_the_sources_list_holds_what_a_form_needs(api, auth, world) -> None:
     assert rera["kind"] == "rera" and rera["demo"] is True
 
 
-def test_rera_sources_come_first_so_the_form_starts_with_the_common_case(
-    api, auth, world
-) -> None:
+def test_rera_sources_come_first_so_the_form_starts_with_the_common_case(api, auth, world) -> None:
     items = ok(api.get(SOURCES, headers=auth("alpha.agent1")))["items"]
     assert [i["kind"] for i in items] == ["rera", "company"]
     assert items[0]["key"] == "demo_rera"

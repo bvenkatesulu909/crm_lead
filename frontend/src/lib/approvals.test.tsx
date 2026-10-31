@@ -51,6 +51,7 @@ function action(changes: Partial<AgentAction> = {}): AgentAction {
     payload: { status: "contacted" },
     reason: "She answered my call today.",
     agent: "staff_assistant",
+    via_client: null,
     requested_by_user_id: OTHER,
     status: "pending",
     expires_at: "2026-11-01T10:00:00Z",
@@ -361,5 +362,51 @@ describe("RecordProposalsList", () => {
       <RecordProposalsList items={[action({ status: "rejected" })]} />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+// --- proposals from an outside AI client (ADR 0020) ---------------------------------------
+
+describe("provenance of a proposal from an outside AI client", () => {
+  const people = { [OTHER]: "Alex Agent" };
+  const show = (a: AgentAction) =>
+    render(<ApprovalCard action={a} people={people} me={{ user_id: ME }} />);
+
+  it("names the outside client and the verified application", () => {
+    show(action({ agent: "mcp_client", via_client: "crm-mcp" }));
+    expect(
+      screen.getByText(/through an outside AI client \(MCP\)/),
+    ).toHaveTextContent('application "crm-mcp"');
+  });
+
+  it("says nothing about an application for our own assistant", () => {
+    show(action());
+    const line = screen.getByText(/through the staff assistant/);
+    expect(line).not.toHaveTextContent("application");
+  });
+
+  it("shows a client name as plain text, never as markup or a link", () => {
+    show(
+      action({
+        agent: "mcp_client",
+        via_client: '<img src=x onerror="alert(1)"> https://evil.example',
+      }),
+    );
+    expect(document.querySelector("img")).toBeNull();
+    expect(screen.queryByRole("link", { name: /evil/ })).toBeNull();
+    expect(screen.getByText(/through an outside AI client/)).toHaveTextContent(
+      "<img src=x",
+    );
+  });
+
+  it("still shows the approval buttons slot and the safety warnings for such a proposal", () => {
+    show(
+      action({
+        agent: "mcp_client",
+        via_client: "crm-mcp",
+        warnings: [{ code: "x", message: "Check the reason" }],
+      }),
+    );
+    expect(screen.getByText("Check the reason")).toBeInTheDocument();
   });
 });

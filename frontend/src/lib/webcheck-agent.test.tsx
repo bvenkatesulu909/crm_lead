@@ -172,3 +172,34 @@ describe("saving the settings", () => {
     });
   });
 });
+
+describe("the outside-client agent (ADR 0020)", () => {
+  const client = (changes: Partial<Agent> = {}) =>
+    agent({
+      key: "mcp_client",
+      title: "AI clients (MCP)",
+      enabled: false,
+      ...changes,
+    });
+
+  it("counts proposals, not checks, and says there is no token budget", () => {
+    const { rerender } = render(<AgentCard agent={client()} />);
+    expect(screen.getByText(/No proposals this month/)).toBeInTheDocument();
+    expect(screen.queryByText(/check/i)).toBeNull();
+    rerender(<AgentCard agent={client({ calls: 1 })} />);
+    expect(screen.getByText(/1 proposal this month/)).toBeInTheDocument();
+    rerender(<AgentCard agent={client({ calls: 3 })} />);
+    expect(screen.getByText(/3 proposals this month/)).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+  });
+
+  it("shows that it is switched off by default", () => {
+    render(<AgentCard agent={client()} />);
+    expect(screen.getAllByText(/off/i).length).toBeGreaterThan(0);
+  });
+
+  it("keeps counting checks for the web check agent", () => {
+    render(<AgentCard agent={agent({ calls: 2 })} />);
+    expect(screen.getByText(/2 checks this month/)).toBeInTheDocument();
+  });
+});

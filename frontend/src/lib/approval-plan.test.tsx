@@ -23,6 +23,7 @@ function action(changes: Partial<AgentAction> = {}): AgentAction {
     payload: { status: "contacted" },
     reason: "She answered my call today.",
     agent: "staff_assistant",
+    via_client: null,
     requested_by_user_id: AVERY,
     status: "pending",
     expires_at: "2026-11-01T10:00:00Z",

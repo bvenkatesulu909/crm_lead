@@ -1478,6 +1478,8 @@ export type AgentAction = {
   payload: Record<string, unknown>;
   reason: string;
   agent: string;
+  /** The outside application the proposal came through (ADR 0020), e.g. "crm-mcp"; null for our own AI features. */
+  via_client: string | null;
   requested_by_user_id: string;
   status: AgentActionStatus;
   expires_at: string;

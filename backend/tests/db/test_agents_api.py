@@ -69,7 +69,7 @@ def test_the_admin_sees_all_agents_with_their_settings_and_this_months_usage(
     staff = body["items"][0]
     assert staff["enabled"] is True and staff["budget_is_default"] is True
     assert staff["monthly_token_budget"] == 2_000_000  # the standard default
-    assert staff["allowed_tools"] == staff["all_tools"] and len(staff["all_tools"]) == 8
+    assert staff["allowed_tools"] == staff["all_tools"] and len(staff["all_tools"]) == 9
     assert (staff["used_tokens"], staff["calls"], staff["percent_used"]) == (0, 0, 0)
     assert staff["version"] is None and staff["owner_role"] == "tenant_admin"
 

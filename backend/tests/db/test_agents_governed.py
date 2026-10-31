@@ -124,7 +124,9 @@ def test_an_agent_over_budget_never_reaches_the_model(ctx: Ctx) -> None:
 def test_the_platform_switch_stops_every_agent(ctx: Ctx) -> None:
     off = Limits(platform_disabled=True, default_monthly_tokens=1000)
     spy = Spy()
-    for key in AGENTS:
+    for key, agent in AGENTS.items():
+        if not agent.uses_model:
+            continue  # the web check calls no model, so there is nothing to stop
         with pytest.raises(AgentUnavailableError):
             call(gate(ctx, spy, off, key))
     assert spy.calls == []

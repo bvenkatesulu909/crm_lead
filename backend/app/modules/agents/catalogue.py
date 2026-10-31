@@ -17,6 +17,9 @@ class AgentDef:
     owner_role: str
     # Every tool the code gives this agent. An organisation can only remove tools, never add.
     tools: tuple[str, ...]
+    # False for a feature that is governed like an agent (switch, usage) but calls no language
+    # model: it has no token budget and the AI platform switch does not apply to it.
+    uses_model: bool = True
 
 
 AGENTS: dict[str, AgentDef] = {
@@ -34,6 +37,7 @@ AGENTS: dict[str, AgentDef] = {
                 "propose_follow_up_task",
                 "propose_lead_assignment",
                 "propose_lead_status",
+                "check_rera",
                 "search_accounts",
                 "search_leads",
             ),
@@ -72,6 +76,17 @@ AGENTS: dict[str, AgentDef] = {
             description="Answers questions from the knowledge base, always with sources.",
             owner_role="tenant_admin",
             tools=(),
+        ),
+        AgentDef(
+            key="web_check",
+            title="Web check",
+            description=(
+                "Looks up a RERA number or a company on a public registry and keeps the result "
+                "as evidence. It uses no language model: usage counts checks, not tokens."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
         ),
     )
 }

@@ -4,14 +4,22 @@ Which AI agents the CRM has, what an organisation lets them do, and how to switc
 **Status:** all steps are done: AG1 (module, tables, services), AG2 (the governed model on the four call
 sites), AG3 (API, audit, events, notifications) and AG4 (the admin page).
 
-## The four agents
+## The agents
 
 | Key | What it is | Tools |
 |---|---|---|
-| `staff_assistant` | answers staff questions about leads, proposes changes for approval | 8 |
+| `staff_assistant` | answers staff questions about leads, proposes changes for approval, queues a web check (`check_rera`) | 9 |
 | `portal_assistant` | helps signed-in customers with orders, invoices, tickets | 13 |
 | `public_chat` | talks to website visitors, saves a lead on request | 1 |
 | `knowledge_answers` | answers from the knowledge base with sources | 0 |
+| `web_check` | looks up a RERA number or a company on a public registry (ADR 0019) - **uses no model** | 0 |
+
+`web_check` is governed like an agent but calls no language model (`uses_model = false`): an
+organisation can switch it off (then no check can be asked for, by a person or by the assistant's
+`check_rera` tool), the page counts **checks** instead of tokens, and it has no token budget and no
+tools to choose - the API refuses a budget or a tool list for it. The AI platform switch
+(`CRM_AI_DISABLED`) does not apply to it; it has its own (`CRM_WEBCHECK_DISABLED`, see
+[webcheck.md](webcheck.md)).
 
 The list is in code (`app/modules/agents/catalogue.py`); a test fails if a listed tool does not
 match the tools the code really gives the agent.

@@ -36,7 +36,7 @@ test("an admin switches, caps and narrows; a manager only reads; an agent cannot
   const adminPage = await (await browser.newContext()).newPage();
   await login(adminPage, USERS.admin);
   try {
-    // The menu entry opens the page, and it lists the four agents.
+    // The menu entry opens the page, and it lists the agents (the web check uses no model).
     await adminPage.getByRole("link", { name: "AI agents" }).click();
     await expect(adminPage).toHaveURL(/\/automation\/agents$/);
     await expect(
@@ -47,8 +47,16 @@ test("an admin switches, caps and narrows; a manager only reads; an agent cannot
       "Customer portal assistant",
       "Website chat",
       "Knowledge answers",
+      "Web check",
     ])
       await expect(card(adminPage, title)).toBeVisible();
+
+    // The web check counts checks, and has only the switch: no budget, no tools.
+    const webCheck = card(adminPage, "Web check");
+    await expect(webCheck).toContainText("checks this month");
+    await expect(webCheck.getByLabel("Switched on")).toBeVisible();
+    await expect(webCheck.getByLabel("Monthly token budget")).toHaveCount(0);
+    await expect(webCheck.getByRole("progressbar")).toHaveCount(0);
 
     // Switch knowledge answers off and give it a small budget.
     const knowledge = card(adminPage, "Knowledge answers");

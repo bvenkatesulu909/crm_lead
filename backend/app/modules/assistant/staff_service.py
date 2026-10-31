@@ -13,6 +13,7 @@ from app.modules.assistant import guardrails, staff_tools
 from app.modules.assistant.llm import ChatModel
 from app.modules.assistant.service import GAVE_UP, GuardrailError
 from app.modules.support import api as support_api
+from app.modules.webcheck import api as webcheck_api
 
 SYSTEM = """You are a CRM staff assistant helping an employee before they reply to a customer.
 Use the tools to read only records the employee is allowed to see. Never invent customer data,
@@ -114,6 +115,15 @@ def answer(
         )
     messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
     budget = budget or staff_tools.ProposalBudget()
+    if budget.settings is not None:
+        sources = webcheck_api.offered_sources(budget.settings)
+        if sources:
+            # The keys are ours, never typed by a person: the model needs them to fill the tool.
+            prompt += (
+                "\n\nWeb check sources switched on (use check_rera only when asked): "
+                + "; ".join(f"{s.key} = {s.title} ({s.kind})" for s in sources)
+                + "."
+            )
     tools = staff_tools.definitions()
     answer_text = GAVE_UP
     for _ in range(max_tool_rounds + 1):

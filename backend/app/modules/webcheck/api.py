@@ -9,8 +9,16 @@ from app.modules.webcheck import service
 
 CHECK_JOB = service.CHECK_JOB
 delete_expired = service.delete_expired
+request_check = service.request_check
+offered_sources = service.offered_sources
 
-__all__ = ["CHECK_JOB", "check_job_handler", "delete_expired"]
+__all__ = [
+    "CHECK_JOB",
+    "check_job_handler",
+    "delete_expired",
+    "offered_sources",
+    "request_check",
+]
 
 
 def check_job_handler(settings: Settings) -> JobHandler:

@@ -385,7 +385,7 @@ Design: [docs/qualifier.md](docs/qualifier.md). Waits for the owner's answers to
 | QA4 | Screens: lead card with the Qualify button, admin page with a dry run, notifications |
 | QA5 | BP-10 evaluation cases, final docs, Playwright journey, full runs |
 
-## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 accepted 2026-10-30; WC0, WC1, WC2a, WC2b, WC2c, WC4 done)*
+## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 accepted 2026-10-30; WC0, WC1, WC2a, WC2b, WC2c, WC3, WC4 done)*
 
 Accepted 2026-10-30 with the recommended answers to the five questions in ADR 0019.
 
@@ -428,6 +428,18 @@ Accepted 2026-10-30 with the recommended answers to the five questions in ADR 00
   - **Still open:** saved/scheduled reports, charts, forecast, and the "team" filter (after teams).
 - All report queries apply tenant + record-level filters; CSV export respects the same rules (tested).
 - Definition of Done checklist complete.
+
+## Phase MCP5 — Propose-only tools in the CRM MCP server (BP-11, CRM-109)  *(ADR 0020 accepted 2026-10-31; MCP5-0 done)*
+
+Accepted 2026-10-31 with the recommended answers to the five questions in ADR 0020.
+
+| Step | Content |
+|---|---|
+| MCP5-0 | ADR 0020 + this plan (documents only) |
+| MCP5a | Migration 0046, registry entry `mcp_client` (default off), `POST /approvals/proposals/external` with the verified `azp` check, audit, tests |
+| MCP5b | Three `propose_*` tools in `mcp-server`, catalogue + `docs/mcp-tools.md`, rules and injection tests |
+| MCP5c | Provenance on the approval card, entry on the AI agents page |
+| MCP5d | Live tests, docs, full runs |
 
 ## Phase 19 — External Integrations (Module 17)  *(CRM MCP server: ADR 0015, steps MCP0-MCP6; MCP1 done 2026-10-26)*
 

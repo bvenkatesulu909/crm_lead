@@ -65,6 +65,19 @@ Error codes: `invalid_query` (422), `source_unavailable` (422), `invalid_target`
 - **Switches:** `CRM_WEBCHECK_DISABLED` stops everything; a source works only when it is listed in
   `CRM_WEBCHECK_SOURCES` (or the demo sources are on).
 
+## The organisation's switch and the assistant's tool
+
+- **Switch.** The web check is an entry on the *AI agents* page (Automation) of the organisation, next
+  to the four assistants. A tenant admin can switch it off; then nobody in the organisation can ask
+  for a check and the API answers `webcheck_disabled`. The page shows how many checks were asked for
+  this month. It has no token budget and no tools because it calls no language model.
+- **The staff assistant's `check_rera` tool.** Arguments: `record_type` (lead or account),
+  `record_id`, `source_key`, `query` - never an address. It queues a lookup **as the signed-in
+  person** (so every rule above applies: permission, the record they may read, the switch, the
+  limits) and tells the model only that the lookup is queued and that it must never state a result:
+  the model sees no page. The assistant's instructions name the sources that are switched on so it
+  can fill `source_key`. An organisation can take the tool away on the AI agents page like any other.
+
 ## Settings
 
 | Setting | Meaning | Default |

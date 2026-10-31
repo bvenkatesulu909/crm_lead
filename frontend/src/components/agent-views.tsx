@@ -67,34 +67,46 @@ export function AgentCard({
           </div>
           <AgentStateBadge agent={agent} />
         </div>
-        <div className="mt-4">
-          <div
-            role="progressbar"
-            aria-label={`${agent.title}: tokens used this month`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={shown}
-            className="h-2 overflow-hidden rounded-full bg-slate-100"
-          >
+        {!agent.uses_model ? (
+          <p className="mt-4 text-sm text-slate-700">
+            {agent.calls === 0
+              ? "No checks this month"
+              : `${agent.calls} ${agent.calls === 1 ? "check" : "checks"} this month`}
+            <span className="text-xs text-slate-500">
+              {" "}
+              - uses no language model, so there is no token budget
+            </span>
+          </p>
+        ) : (
+          <div className="mt-4">
             <div
-              className={cx("h-full rounded-full", BAR[state])}
-              style={{ width: `${shown}%` }}
-            />
+              role="progressbar"
+              aria-label={`${agent.title}: tokens used this month`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={shown}
+              className="h-2 overflow-hidden rounded-full bg-slate-100"
+            >
+              <div
+                className={cx("h-full rounded-full", BAR[state])}
+                style={{ width: `${shown}%` }}
+              />
+            </div>
+            <p className="mt-2 text-sm text-slate-700">
+              {agent.used_tokens.toLocaleString("en-US")} of{" "}
+              {formatTokens(agent.monthly_token_budget)} used this month
+              {agent.budget_is_default && (
+                <span className="text-slate-500"> (the standard limit)</span>
+              )}
+            </p>
+            <p className="text-xs text-slate-500">
+              {agent.calls} {agent.calls === 1 ? "call" : "calls"} -{" "}
+              {agent.all_tools.length === 0
+                ? "uses no tools"
+                : `${agent.allowed_tools.length} of ${agent.all_tools.length} tools allowed`}
+            </p>
           </div>
-          <p className="mt-2 text-sm text-slate-700">
-            {agent.used_tokens.toLocaleString("en-US")} of{" "}
-            {formatTokens(agent.monthly_token_budget)} used this month
-            {agent.budget_is_default && (
-              <span className="text-slate-500"> (the standard limit)</span>
-            )}
-          </p>
-          <p className="text-xs text-slate-500">
-            {agent.calls} {agent.calls === 1 ? "call" : "calls"} -{" "}
-            {agent.all_tools.length === 0
-              ? "uses no tools"
-              : `${agent.allowed_tools.length} of ${agent.all_tools.length} tools allowed`}
-          </p>
-        </div>
+        )}
         {children}
       </Card>
     </article>

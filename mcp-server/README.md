@@ -1,4 +1,4 @@
-# crm-mcp — read-only CRM access for Claude (ADR 0015)
+# crm-mcp — CRM access for Claude: reads, and proposals a person must approve (ADR 0015, 0020)
 
 `crm-mcp` is a small program that lets **Claude Desktop** or **Claude Code** answer questions
 from your CRM data ("which of my deals close this month?", "summarise the Acme account").
@@ -6,7 +6,11 @@ It speaks **MCP** (Model Context Protocol), the standard way AI apps call tools.
 
 **What it can and cannot do**
 
-- It only **reads**. No tool can create, change or delete anything.
+- Eight tools **read**. Three `propose_*` tools can only **suggest** a change (a lead's status, a
+  lead's owner, a follow-up task): that creates a *pending proposal* and the CRM stays unchanged
+  until a different person approves it in the CRM. They work only after a CRM administrator has
+  switched on "AI clients (MCP)" on the AI agents page (it is off by default). No tool can
+  approve, edit or delete anything.
 - It signs in **as you**, on the normal Keycloak login page in your browser. Claude never sees
   your password, and every answer contains only records you are allowed to see. The CRM API does
   all the checks (tenant, role, record-level), exactly as for the web app.
@@ -28,6 +32,9 @@ It speaks **MCP** (Model Context Protocol), the standard way AI apps call tools.
 | `get_account` | one account + contacts + open deals | `GET /accounts/{id}`, `/contacts`, `/opportunities` |
 | `list_my_tasks` | your open tasks: all / overdue / today / next 7 days | `GET /activities?mine=true` |
 | `list_opportunities` | your open deals (or all you may see) | `GET /opportunities` |
+| `propose_lead_status` | suggests contacted / qualified / unqualified for a lead (never converted) | `POST /approvals/proposals/external` |
+| `propose_lead_assignment` | suggests another sales colleague as a lead's owner | same |
+| `propose_follow_up_task` | suggests a task (0-60 days) on a lead, account or contact | same |
 | `get_dashboard` | dashboard figures for your role | `GET /dashboard` |
 
 Lists return at most 50 records. Every answer starts with a notice telling Claude that record

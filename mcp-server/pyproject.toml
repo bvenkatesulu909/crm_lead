@@ -1,6 +1,6 @@
 [project]
 name = "crm-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local, read-only MCP server for crm-lead (ADR 0010)"
 requires-python = ">=3.12,<3.13"
 dependencies = [

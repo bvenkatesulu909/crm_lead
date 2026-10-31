@@ -50,9 +50,15 @@ def test_the_live_tools_follow_the_rules() -> None:
     assert c.rule_violations(LIVE) == []
 
 
-def test_there_are_tools_and_they_are_all_read_only() -> None:
-    assert len(LIVE["tools"]) >= 8
-    assert all(t["annotations"]["readOnlyHint"] is True for t in LIVE["tools"])
+def test_only_the_three_propose_tools_are_not_read_only() -> None:
+    assert len(LIVE["tools"]) >= 11
+    writers = {t["name"] for t in LIVE["tools"] if t["annotations"]["readOnlyHint"] is not True}
+    assert writers == c.PROPOSE_TOOLS
+
+
+def test_the_only_write_is_the_proposal_endpoint() -> None:
+    writes = {e for t in LIVE["tools"] for e in t["endpoints"] if not e.startswith("GET ")}
+    assert writes == {c.PROPOSE_ENDPOINT}
 
 
 def test_the_version_is_the_package_version() -> None:
@@ -176,6 +182,46 @@ def test_a_tool_that_may_write_is_reported() -> None:
     assert any("read-only" in p for p in c.rule_violations(cat(writer)))
 
 
+def _proposer(name: str = "propose_lead_status") -> dict[str, Any]:
+    t = tool(name)
+    t["annotations"] = {
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": False,
+    }
+    t["endpoints"] = ["GET /me", c.PROPOSE_ENDPOINT]
+    return t
+
+
+def test_a_correct_propose_tool_has_no_problems() -> None:
+    problems = c.rule_violations(cat(_proposer()))
+    # (the check that every ENDPOINTS entry is a tool does not apply to a one-tool catalogue)
+    assert [p for p in problems if "ENDPOINTS" not in p] == []
+
+
+def test_an_unapproved_propose_tool_is_reported() -> None:
+    assert any("approved propose" in p for p in c.rule_violations(cat(_proposer("propose_x"))))
+
+
+def test_a_propose_tool_must_not_claim_to_be_read_only() -> None:
+    t = _proposer()
+    t["annotations"]["readOnlyHint"] = True
+    assert any("not read-only" in p for p in c.rule_violations(cat(t)))
+
+
+def test_a_propose_tool_may_write_only_to_the_proposal_endpoint() -> None:
+    t = _proposer()
+    t["endpoints"] = ["POST /leads"]
+    assert any("may write only" in p for p in c.rule_violations(cat(t)))
+
+
+def test_a_read_tool_that_posts_is_reported() -> None:
+    t = tool()
+    t["endpoints"] = ["POST /leads"]
+    assert any("only call GET" in p for p in c.rule_violations(cat(t)))
+
+
 def test_a_tool_without_description_or_endpoints_is_reported() -> None:
     bare = tool()
     bare["description"], bare["endpoints"] = " ", []
@@ -217,9 +263,9 @@ def test_write_refuses_a_change_without_a_big_enough_version_bump(
     assert c.main(["--write"]) == 1
     assert "breaking change needs a higher version" in capsys.readouterr().out
     assert json.loads(snapshot.read_text(encoding="utf-8")) == LIVE  # nothing was overwritten
-    removed["version"] = "0.2.0"
+    removed["version"] = "0.3.0"  # the live version is 0.2.0, so a breaking change needs 0.3
     assert c.main(["--write"]) == 0
-    assert json.loads(snapshot.read_text(encoding="utf-8"))["version"] == "0.2.0"
+    assert json.loads(snapshot.read_text(encoding="utf-8"))["version"] == "0.3.0"
     assert f"`{first}`" not in doc.read_text(encoding="utf-8")
 
 

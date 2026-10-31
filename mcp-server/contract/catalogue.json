@@ -203,6 +203,134 @@
     {
       "annotations": {
         "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Suggest a follow-up task on a lead, account or contact, due in 0-60 days. Creates a\n        proposal only; a different person must approve it in the CRM.",
+      "endpoints": [
+        "GET /me",
+        "POST /approvals/proposals/external"
+      ],
+      "input_schema": {
+        "properties": {
+          "assignee_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "due_in_days": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "record_id": {
+            "type": "string"
+          },
+          "record_type": {
+            "enum": [
+              "lead",
+              "account",
+              "contact"
+            ],
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_type",
+          "record_id",
+          "subject",
+          "due_in_days",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "name": "propose_follow_up_task"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Suggest assigning a lead to a sales colleague (owner_id). Creates a proposal only;\n        a different person must approve it in the CRM.",
+      "endpoints": [
+        "GET /me",
+        "POST /approvals/proposals/external"
+      ],
+      "input_schema": {
+        "properties": {
+          "lead_id": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lead_id",
+          "owner_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "name": "propose_lead_assignment"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Suggest a new status for a lead (contacted, qualified or unqualified). Creates a\n        proposal only; a different person must approve it in the CRM.",
+      "endpoints": [
+        "GET /me",
+        "POST /approvals/proposals/external"
+      ],
+      "input_schema": {
+        "properties": {
+          "lead_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "contacted",
+              "qualified",
+              "unqualified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "lead_id",
+          "status",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "name": "propose_lead_status"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
         "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": true
@@ -305,5 +433,5 @@
       "name": "whoami"
     }
   ],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

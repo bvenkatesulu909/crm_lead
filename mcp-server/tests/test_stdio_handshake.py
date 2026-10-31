@@ -53,9 +53,8 @@ def test_the_tools_over_stdio_are_the_documented_ones(conversation: tuple[Any, l
     assert {t.name for t in tools} == set(documented)
     for found in tools:
         notes = found.annotations
-        assert (
-            notes is not None and notes.read_only_hint is True and notes.destructive_hint is False
-        )
+        assert notes is not None and notes.destructive_hint is False
+        assert notes.read_only_hint is not found.name.startswith("propose_")
 
 
 def test_the_server_offers_tools_only() -> None:

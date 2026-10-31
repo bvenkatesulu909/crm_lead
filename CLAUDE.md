@@ -625,6 +625,13 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     tests of the new format and dataset 47 passed; the scripted run on the development data
     passed all 4 suites; ruff, mypy, import-linter clean. The full backend suite was not re-run
     (only the harness, the dataset and one constant changed since the last full run).
+- **Propose-only MCP tools (BP-11, Phase MCP5, ADR 0020)** - accepted 2026-10-31. MCP5a (merged, PR #54): `POST /approvals/proposals/external`
+  for the verified `crm-mcp` client only, registry agent `mcp_client` (off by default), `via_client` provenance, migration 0046; full backend
+  run 2914 passed. MCP5b (2026-10-31, branch `feat/mcp-propose-tools`): three `propose_*` tools in `mcp-server` (`propose_lead_status`,
+  `propose_lead_assignment`, `propose_follow_up_task`; input checked before sign-in, never "converted", fixed refusal sentences, one POST path
+  only, no approve/update/delete tool), catalogue contract 0.2.0 (propose tools marked not read-only; rules and `docs/mcp-tools.md` updated).
+  Tests (run 2026-10-31): mcp-server 158 incl. live: 157 passed, 1 live test failed in the full run and passed when re-run alone; 11 deliberate
+  breaks of the new protections are all caught; ruff and mypy strict clean. MCP5c (screens), MCP5d (live proposal test, full runs) not started.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

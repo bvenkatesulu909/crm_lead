@@ -1,5 +1,7 @@
-"""The only way this program reaches CRM data: GET requests to the CRM API as the signed-in user.
+"""The only way this program reaches CRM data: requests to the CRM API as the signed-in user.
 
+Reading is GET. The one write is ``post_proposal``: a POST to the single endpoint that only
+creates a pending proposal for a person to approve (ADR 0020). No other path can be posted to.
 All tenant, role and record-level checks happen in the API (ADR 0015, decision 1). This client
 only turns HTTP answers into short, safe messages - it never echoes tokens or raw bodies.
 """
@@ -20,6 +22,23 @@ log = logging.getLogger(__name__)
 
 class ApiError(Exception):
     """A CRM API call failed. The message is safe to show to Claude and the user."""
+
+
+PROPOSAL_PATH = "/approvals/proposals/external"
+
+# What a refused proposal means, by the API's stable error code. Fixed sentences only: the
+# API's own text can quote what a person typed.
+PROPOSAL_REFUSALS: dict[str, str] = {
+    "external_client_not_allowed": "this application may not send proposals to the CRM",
+    "agent_unavailable": (
+        "AI clients are switched off for your organisation; ask a CRM administrator to turn on "
+        "'AI clients (MCP)' on the AI agents page"
+    ),
+    "mcp_proposal_limit_reached": "you have reached the hourly limit for proposals; try later",
+    "agent_action_limit_reached": "too many of your proposals are already waiting for a decision",
+    "proposal_blocked": "the CRM's safety check refused this proposal (links, instructions or "
+    "a duplicate are not allowed); nothing was created",
+}
 
 
 class CrmApi:
@@ -56,22 +75,39 @@ class CrmApi:
             response = self._send(path, clean)
         return self._result(response)
 
-    def _send(self, path: str, params: dict[str, Any]) -> httpx.Response:
+    def post_proposal(self, body: dict[str, Any]) -> Any:
+        """Send one proposal. The only POST this program can make, and only to PROPOSAL_PATH."""
+        response = self._send(PROPOSAL_PATH, method="POST", body=body)
+        if response.status_code == 401:
+            self._auth.invalidate()  # nothing was processed on a 401, so one retry is safe
+            response = self._send(PROPOSAL_PATH, method="POST", body=body)
+        return self._result(response, refusals=PROPOSAL_REFUSALS)
+
+    def _send(
+        self,
+        path: str,
+        params: dict[str, Any] | None = None,
+        *,
+        method: str = "GET",
+        body: dict[str, Any] | None = None,
+    ) -> httpx.Response:
         self._throttle()
         token = self._auth.access_token()
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
         try:
-            return self._http.get(
-                f"{self._base}{path}",
-                params=params,
-                headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
-            )
+            if method == "POST":
+                return self._http.post(f"{self._base}{path}", json=body, headers=headers)
+            return self._http.get(f"{self._base}{path}", params=params, headers=headers)
         except httpx.HTTPError as error:
             raise ApiError(f"the CRM API is not reachable at {self._base}") from error
 
     @staticmethod
-    def _result(response: httpx.Response) -> Any:
+    def _result(response: httpx.Response, refusals: dict[str, str] | None = None) -> Any:
         status = response.status_code
-        if status == 200:
+        code = _problem_code(response) if refusals and status >= 400 else None
+        if code is not None and refusals and code in refusals:
+            raise ApiError(refusals[code])
+        if status in (200, 201):
             try:
                 return response.json()
             except ValueError:

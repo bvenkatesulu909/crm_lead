@@ -184,16 +184,17 @@ def test_tasks_due_today_use_a_time_zone_aware_day(crm: CrmTools, services: Fake
 # --- the MCP server -------------------------------------------------------------------------
 
 
-def test_server_offers_exactly_the_approved_read_only_tools(crm: CrmTools) -> None:
+def test_server_offers_exactly_the_approved_tools(crm: CrmTools) -> None:
     tools = asyncio.run(build_server(crm).list_tools())
     assert {tool.name for tool in tools} == {
         "whoami", "search_leads", "get_lead", "search_accounts", "get_account",
         "list_my_tasks", "list_opportunities", "get_dashboard",
+        "propose_lead_status", "propose_lead_assignment", "propose_follow_up_task",
     }  # fmt: skip
     for tool in tools:
         assert tool.annotations is not None
-        assert tool.annotations.read_only_hint is True
         assert tool.annotations.destructive_hint is False
+        assert tool.annotations.read_only_hint is not tool.name.startswith("propose_")
 
 
 def test_tool_call_through_mcp_returns_wrapped_json(crm: CrmTools, services: FakeServices) -> None:

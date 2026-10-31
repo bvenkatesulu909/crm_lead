@@ -1,4 +1,8 @@
-"""The read-only tools (ADR 0015, decision 3). Each one maps to existing GET endpoints.
+"""The tools (ADR 0015, decision 3; ADR 0020 for the propose tools).
+
+Eight tools only read, each mapping to existing GET endpoints. Three ``propose_*`` tools send a
+suggestion to the one endpoint that creates a *pending proposal*: nothing in the CRM changes
+until a different person approves it in the CRM. No tool approves, updates or deletes.
 
 Results are wrapped with a notice that the content is CRM data, not instructions (decision 5),
 and trimmed to the fields a person would look at. Page sizes are capped at MAX_LIMIT.
@@ -26,6 +30,16 @@ Stage = Literal[
 ]
 TaskWindow = Literal["all", "overdue", "today", "next_7_days"]
 DashboardView = Literal["executive", "manager", "representative"]
+
+ProposedLeadStatus = Literal["contacted", "qualified", "unqualified"]  # never "converted"
+TaskTarget = Literal["lead", "account", "contact"]
+MAX_REASON = 500
+MIN_SUBJECT, MAX_SUBJECT = 3, 200
+MAX_DUE_DAYS = 60
+NOT_CHANGED = (
+    "Nothing has changed in the CRM. This is only a proposal; a different person must approve "
+    "it in the CRM first."
+)
 
 LEAD_FIELDS = (
     "id", "first_name", "last_name", "company_name", "email", "phone", "job_title", "status",
@@ -74,6 +88,13 @@ def _uuid(value: str, name: str) -> str:
         return str(uuid.UUID(value.strip()))
     except (ValueError, AttributeError) as error:
         raise ApiError(f"{name} must be a record ID (UUID)") from error
+
+
+def _reason(value: str) -> str:
+    text = value.strip() if isinstance(value, str) else ""
+    if not 1 <= len(text) <= MAX_REASON:
+        raise ApiError(f"reason is required and must be at most {MAX_REASON} characters")
+    return text
 
 
 def _limit(value: int) -> int:
@@ -216,3 +237,81 @@ class CrmTools:
             },
         )
         return _wrap("dashboard", dashboard)
+
+    # --- proposals (ADR 0020): they create a pending proposal and change nothing else ---------
+
+    def propose_lead_status(
+        self, lead_id: str, status: ProposedLeadStatus, reason: str
+    ) -> dict[str, Any]:
+        lead_id = _uuid(lead_id, "lead_id")
+        if status not in ("contacted", "qualified", "unqualified"):
+            raise ApiError("status must be contacted, qualified or unqualified")
+        reason = _reason(reason)
+        return self._propose(
+            {
+                "kind": "lead.set_status",
+                "target_type": "lead",
+                "target_id": lead_id,
+                "payload": {"status": status},
+                "reason": reason,
+            }
+        )
+
+    def propose_lead_assignment(self, lead_id: str, owner_id: str, reason: str) -> dict[str, Any]:
+        lead_id = _uuid(lead_id, "lead_id")
+        owner_id = _uuid(owner_id, "owner_id")
+        reason = _reason(reason)
+        return self._propose(
+            {
+                "kind": "lead.assign",
+                "target_type": "lead",
+                "target_id": lead_id,
+                "payload": {"owner_id": owner_id},
+                "reason": reason,
+            }
+        )
+
+    def propose_follow_up_task(
+        self,
+        record_type: TaskTarget,
+        record_id: str,
+        subject: str,
+        due_in_days: int,
+        reason: str,
+        assignee_id: str | None = None,
+    ) -> dict[str, Any]:
+        if record_type not in ("lead", "account", "contact"):
+            raise ApiError("record_type must be lead, account or contact")
+        record_id = _uuid(record_id, "record_id")
+        subject = subject.strip() if isinstance(subject, str) else ""
+        if not MIN_SUBJECT <= len(subject) <= MAX_SUBJECT:
+            raise ApiError(f"subject must be {MIN_SUBJECT}-{MAX_SUBJECT} characters")
+        if isinstance(due_in_days, bool) or not 0 <= due_in_days <= MAX_DUE_DAYS:
+            raise ApiError(f"due_in_days must be a whole number from 0 to {MAX_DUE_DAYS}")
+        payload: dict[str, Any] = {"subject": subject, "due_in_days": due_in_days}
+        if assignee_id is not None:
+            payload["assignee_id"] = _uuid(assignee_id, "assignee_id")
+        reason = _reason(reason)
+        return self._propose(
+            {
+                "kind": "activity.create_task",
+                "target_type": record_type,
+                "target_id": record_id,
+                "payload": payload,
+                "reason": reason,
+            }
+        )
+
+    def _propose(self, body: dict[str, Any]) -> dict[str, Any]:
+        self.me()  # input was checked first; this may open the sign-in and refuses non-staff
+        action = self._api.post_proposal(body)
+        data = {
+            "proposal_id": action.get("id"),
+            "status": action.get("status"),
+            "description": action.get("description"),
+            "expires_at": action.get("expires_at"),
+            "safety_warnings": [w.get("message") for w in action.get("warnings") or []],
+            "planned_changes": action.get("changes") or [],
+            "result": NOT_CHANGED,
+        }
+        return _wrap("proposal", data)

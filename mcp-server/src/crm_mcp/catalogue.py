@@ -50,9 +50,17 @@ ENDPOINTS: dict[str, tuple[str, ...]] = {
     "list_my_tasks": ("GET /activities",),
     "list_opportunities": ("GET /opportunities",),
     "get_dashboard": ("GET /dashboard",),
+    "propose_lead_status": ("GET /me", "POST /approvals/proposals/external"),
+    "propose_lead_assignment": ("GET /me", "POST /approvals/proposals/external"),
+    "propose_follow_up_task": ("GET /me", "POST /approvals/proposals/external"),
 }
 
-TOOL_NAME = re.compile(r"^(get|search|list)_[a-z_]+$|^whoami$")
+TOOL_NAME = re.compile(r"^(get|search|list|propose)_[a-z_]+$|^whoami$")
+# The only tools that may write, and the only thing they may write: a pending proposal (ADR 0020).
+PROPOSE_TOOLS = frozenset(
+    {"propose_lead_status", "propose_lead_assignment", "propose_follow_up_task"}
+)
+PROPOSE_ENDPOINT = "POST /approvals/proposals/external"
 MAX_PAGE = 50
 
 
@@ -233,10 +241,23 @@ def rule_violations(catalogue: dict[str, Any]) -> list[str]:
         if not (tool["description"] or "").strip():
             problems.append(f"{name}: needs a description")
         notes = tool["annotations"]
-        if notes.get("readOnlyHint") is not True or notes.get("destructiveHint") is not False:
-            problems.append(f"{name}: must be marked read-only and not destructive")
-        if notes.get("idempotentHint") is not True or notes.get("openWorldHint") is not False:
-            problems.append(f"{name}: must be marked idempotent and closed-world")
+        if name.startswith("propose_"):
+            if name not in PROPOSE_TOOLS:
+                problems.append(f"{name}: not one of the approved propose tools (ADR 0020)")
+            if notes.get("readOnlyHint") is not False or notes.get("destructiveHint") is not False:
+                problems.append(f"{name}: must be marked not read-only and not destructive")
+            if notes.get("idempotentHint") is not False or notes.get("openWorldHint") is not False:
+                problems.append(f"{name}: must be marked not idempotent and closed-world")
+            writes = [e for e in tool["endpoints"] if not e.startswith("GET ")]
+            if writes != [PROPOSE_ENDPOINT]:
+                problems.append(f"{name}: may write only to {PROPOSE_ENDPOINT}")
+        else:
+            if notes.get("readOnlyHint") is not True or notes.get("destructiveHint") is not False:
+                problems.append(f"{name}: must be marked read-only and not destructive")
+            if notes.get("idempotentHint") is not True or notes.get("openWorldHint") is not False:
+                problems.append(f"{name}: must be marked idempotent and closed-world")
+            if any(not e.startswith("GET ") for e in tool["endpoints"]):
+                problems.append(f"{name}: a read tool may only call GET endpoints")
         if not tool["endpoints"]:
             problems.append(f"{name}: list the API endpoints it calls in ENDPOINTS")
         limit = tool["input_schema"].get("properties", {}).get("limit")
@@ -269,9 +290,12 @@ def _inputs(schema: dict[str, Any]) -> str:
 
 
 def render_table(catalogue: dict[str, Any]) -> str:
+    proposing = [t for t in catalogue["tools"] if t["name"] in PROPOSE_TOOLS]
+    reading = len(catalogue["tools"]) - len(proposing)
     lines = [
-        f"Contract version: **{catalogue['version']}** - {len(catalogue['tools'])} tools, all "
-        "read-only.",
+        f"Contract version: **{catalogue['version']}** - {len(catalogue['tools'])} tools: "
+        f"{reading} read-only, {len(proposing)} propose-only (they create a pending proposal "
+        "and change nothing else).",
         "",
         "| Tool | What it does | Inputs | API calls |",
         "|---|---|---|---|",

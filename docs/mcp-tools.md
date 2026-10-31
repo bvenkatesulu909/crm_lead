@@ -7,7 +7,7 @@ server, so this page cannot drift from the program.
 ## The tools
 
 <!-- catalogue:begin (generated: do not edit) -->
-Contract version: **0.1.0** - 8 tools, all read-only.
+Contract version: **0.2.0** - 11 tools: 8 read-only, 3 propose-only (they create a pending proposal and change nothing else).
 
 | Tool | What it does | Inputs | API calls |
 |---|---|---|---|
@@ -16,6 +16,9 @@ Contract version: **0.1.0** - 8 tools, all read-only.
 | `get_lead` | One lead with its 10 most recent activities. | `lead_id` (string, required) | `GET /leads/{id}`<br>`GET /leads/{id}/activities` |
 | `list_my_tasks` | Your open tasks and activities: all, overdue, due today, or due in the next 7 days. | `window` (string, default "all") one of `all`, `next_7_days`, `overdue`, `today`<br>`limit` (integer, default 20) | `GET /activities` |
 | `list_opportunities` | Deals. Default: your open deals; only_mine=false shows all deals you may see. | `stage` (array/string) one of `closed_lost`, `closed_won`, `negotiation`, `proposal`, `prospecting`, `qualification`<br>`only_mine` (boolean, default true)<br>`query` (string)<br>`limit` (integer, default 20) | `GET /opportunities` |
+| `propose_follow_up_task` | Suggest a follow-up task on a lead, account or contact, due in 0-60 days. Creates a         proposal only; a different person must approve it in the CRM. | `record_type` (string, required) one of `account`, `contact`, `lead`<br>`record_id` (string, required)<br>`subject` (string, required)<br>`due_in_days` (integer, required)<br>`reason` (string, required)<br>`assignee_id` (string) | `GET /me`<br>`POST /approvals/proposals/external` |
+| `propose_lead_assignment` | Suggest assigning a lead to a sales colleague (owner_id). Creates a proposal only;         a different person must approve it in the CRM. | `lead_id` (string, required)<br>`owner_id` (string, required)<br>`reason` (string, required) | `GET /me`<br>`POST /approvals/proposals/external` |
+| `propose_lead_status` | Suggest a new status for a lead (contacted, qualified or unqualified). Creates a         proposal only; a different person must approve it in the CRM. | `lead_id` (string, required)<br>`status` (string, required) one of `contacted`, `qualified`, `unqualified`<br>`reason` (string, required) | `GET /me`<br>`POST /approvals/proposals/external` |
 | `search_accounts` | Search customer accounts by name. Max 50. | `query` (string)<br>`limit` (integer, default 20) | `GET /accounts` |
 | `search_leads` | Search leads by name, company or e-mail; optionally filter by status. Max 50. | `query` (string)<br>`status` (array/string) one of `contacted`, `converted`, `new`, `qualified`, `unqualified`<br>`limit` (integer, default 20) | `GET /leads` |
 | `whoami` | Who is signed in: name, organisation and roles. | none | `GET /me` |
@@ -26,11 +29,23 @@ Name, inputs and descriptions are generated from the server. The machine-readabl
 
 ## Rules every tool follows
 
-- **Names** are `get_*`, `search_*` or `list_*` (plus `whoami`); a tool that changes something
-  would be called `propose_*` and only creates a proposal for a person to approve (later step).
-- **Read-only, closed-world, idempotent** annotations on every tool (`readOnlyHint`,
-  `destructiveHint=false`, `idempotentHint`, `openWorldHint=false`). Clients may use them to skip
-  confirmation prompts, so a tool that breaks them is a test failure.
+- **Names** are `get_*`, `search_*` or `list_*` (plus `whoami`) for tools that only read, and
+  exactly three `propose_*` tools (ADR 0020). There is no `approve_*`, `update_*`, `delete_*` or
+  `send_*` tool, and a test fails if one appears.
+- **Read tools** are marked read-only, closed-world and idempotent (`readOnlyHint`,
+  `destructiveHint=false`, `idempotentHint`, `openWorldHint=false`) and may call GET endpoints
+  only. Clients may use the hints to skip confirmation prompts, so a tool that breaks them is a
+  test failure.
+- **Propose tools** (`propose_lead_status`, `propose_lead_assignment`, `propose_follow_up_task`)
+  are marked *not* read-only, not destructive, not idempotent and closed-world, so a client asks
+  the user before running them. Their one write is `POST /approvals/proposals/external`, which
+  only creates a **pending proposal**; nothing in the CRM changes until a different person
+  approves it in the CRM. The input is checked before sign-in (lead status can never be
+  `converted`; reason 1-500 characters; task subject 3-200, due in 0-60 days). The API adds
+  its own locks: the organisation must have switched on "AI clients (MCP)" (off by default), at
+  most 5 proposals per person per hour, and the same safety check as every other proposal. A
+  refusal is told in a fixed sentence (see `PROPOSAL_REFUSALS` in `crm_mcp/api.py`). The answer
+  says plainly that nothing has changed yet.
 - **Lists** return at most 50 records and say `total`; the default page size is 20.
 - **Answers** always have the same shape: `source` ("crm-lead"), `notice`, `record_type`,
   optional `total`, and `data`. The notice tells the model that text under `data` was typed by

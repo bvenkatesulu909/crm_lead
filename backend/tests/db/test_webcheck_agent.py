@@ -87,7 +87,8 @@ def ask(db_session: Session, world: World, who: str, target: uuid.UUID, **values
 def test_the_web_check_is_in_the_registry_and_uses_no_model() -> None:
     agent = AGENTS[KEY]
     assert agent.uses_model is False and agent.tools == ()
-    assert all(other.uses_model for key, other in AGENTS.items() if key != KEY)
+    # The only other feature without a model of ours is the outside AI client (ADR 0020).
+    assert all(other.uses_model for key, other in AGENTS.items() if key not in (KEY, "mcp_client"))
 
 
 def test_the_registry_page_lists_it_and_says_it_uses_no_model(api, auth, world) -> None:

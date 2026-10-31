@@ -27,8 +27,14 @@ def test_the_four_ai_features_and_the_web_check_are_listed() -> None:
     models = {"staff_assistant", "portal_assistant", "public_chat", "knowledge_answers"}
     assert {key for key, agent in AGENTS.items() if agent.uses_model} == models
     # The web check is governed like an agent but calls no language model (ADR 0019).
-    assert set(AGENTS) == models | {"web_check"}
+    assert set(AGENTS) == models | {"web_check", "mcp_client"}
     assert AGENTS["web_check"].uses_model is False
+    # An outside AI client: no model of ours to meter, the platform switch still stops it, and an
+    # organisation must switch it ON (ADR 0020).
+    mcp = AGENTS["mcp_client"]
+    assert (mcp.uses_model, mcp.platform_switch, mcp.default_enabled) == (False, True, False)
+    assert AGENTS["web_check"].platform_switch is False
+    assert all(a.default_enabled for key, a in AGENTS.items() if key != "mcp_client")
 
 
 def test_every_key_fits_the_database_rule() -> None:

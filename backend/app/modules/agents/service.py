@@ -143,7 +143,7 @@ def _effective(
     tools = setting.allowed_tools if setting and setting.allowed_tools is not None else None
     return EffectiveAgent(
         agent=agent,
-        enabled=setting.enabled if setting else True,
+        enabled=setting.enabled if setting else agent.default_enabled,
         budget=budget if budget is not None else limits.default_monthly_tokens,
         budget_is_default=budget is None,
         # Order and membership follow the catalogue: a tool the code no longer offers is dropped.
@@ -175,9 +175,9 @@ def check_can_call(
 ) -> EffectiveAgent:
     """Raise unless this agent may call a model now; otherwise say what it may use."""
     agent = _agent(key)
-    # The AI platform switch and the token budget are about language models: a feature that
-    # calls none (the web check) answers only to its own on/off switch.
-    if limits.platform_disabled and agent.uses_model:
+    # The token budget is about OUR language-model calls; the platform switch stops everything an
+    # AI acts through. The web check calls none and answers only to its own on/off switch.
+    if limits.platform_disabled and agent.platform_switch:
         raise AgentUnavailableError()
     state = effective(session, tenant_id, key, limits, now)
     if not state.enabled:
@@ -290,7 +290,7 @@ def update_settings(
     if setting is None:
         if version is not None:
             raise VersionConflictError()
-        setting = AgentSetting(tenant_id=tenant_id, agent_key=key, enabled=True)
+        setting = AgentSetting(tenant_id=tenant_id, agent_key=key, enabled=agent.default_enabled)
         session.add(setting)
     elif version != setting.version:
         raise VersionConflictError()

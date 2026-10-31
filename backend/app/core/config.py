@@ -176,6 +176,11 @@ class Settings(BaseSettings):
     webcheck_per_user_hour: int = Field(default=10, ge=1, le=1_000)
     webcheck_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
 
+    # Proposals from an outside AI client (ADR 0020): which verified applications may create
+    # them (comma separated) and how many one person may make per hour through them.
+    external_proposal_clients: str = Field(default="crm-mcp", max_length=200)
+    mcp_proposals_per_hour: int = Field(default=5, ge=1, le=1_000)
+
     # Background worker (outbox jobs, ADR 0005).
     worker_poll_seconds: float = Field(default=2, gt=0, le=60)
     worker_max_attempts: int = Field(default=5, ge=1, le=20)

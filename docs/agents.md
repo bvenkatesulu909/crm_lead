@@ -13,6 +13,7 @@ sites), AG3 (API, audit, events, notifications) and AG4 (the admin page).
 | `public_chat` | talks to website visitors, saves a lead on request | 1 |
 | `knowledge_answers` | answers from the knowledge base with sources | 0 |
 | `web_check` | looks up a RERA number or a company on a public registry (ADR 0019) - **uses no model** | 0 |
+| `mcp_client` | lets an outside AI client (Claude Code, Cursor ...) suggest changes through the MCP server (ADR 0020) - **uses no model of ours, off until switched on** | 0 |
 
 `web_check` is governed like an agent but calls no language model (`uses_model = false`): an
 organisation can switch it off (then no check can be asked for, by a person or by the assistant's
@@ -20,6 +21,11 @@ organisation can switch it off (then no check can be asked for, by a person or b
 tools to choose - the API refuses a budget or a tool list for it. The AI platform switch
 (`CRM_AI_DISABLED`) does not apply to it; it has its own (`CRM_WEBCHECK_DISABLED`, see
 [webcheck.md](webcheck.md)).
+
+`mcp_client` also uses no model of ours (the model is the client's, so there is no budget and no
+tools to choose) but, unlike `web_check`, **the AI platform switch stops it** and an organisation
+starts with it **switched off** (`default_enabled = false`): a tenant admin turns it on on the AI
+agents page. See [approvals.md](approvals.md).
 
 The list is in code (`app/modules/agents/catalogue.py`); a test fails if a listed tool does not
 match the tools the code really gives the agent.

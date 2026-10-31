@@ -20,6 +20,11 @@ class AgentDef:
     # False for a feature that is governed like an agent (switch, usage) but calls no language
     # model: it has no token budget and the AI platform switch does not apply to it.
     uses_model: bool = True
+    # Whether the AI platform switch (CRM_AI_DISABLED) stops it. True for anything an AI acts
+    # through - also an outside model (the MCP client) that we cannot meter.
+    platform_switch: bool = True
+    # What an organisation without a settings row gets. An outside AI client starts switched OFF.
+    default_enabled: bool = True
 
 
 AGENTS: dict[str, AgentDef] = {
@@ -87,6 +92,20 @@ AGENTS: dict[str, AgentDef] = {
             owner_role="tenant_admin",
             tools=(),
             uses_model=False,
+            platform_switch=False,
+        ),
+        AgentDef(
+            key="mcp_client",
+            title="AI clients (MCP)",
+            description=(
+                "Lets an outside AI client such as Claude Code or Cursor, signed in as a person, "
+                "SUGGEST changes. They wait in the approval queue and a different person decides. "
+                "The model is the client's, so there is no token budget. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            default_enabled=False,
         ),
     )
 }

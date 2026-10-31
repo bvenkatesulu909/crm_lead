@@ -9,6 +9,7 @@ from app.modules.approvals.service import (
     describe,
     expire_due,
     propose,
+    propose_external,
     requester_of,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     "describe",
     "expire_due",
     "propose",
+    "propose_external",
     "requester_of",
 ]

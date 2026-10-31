@@ -16,6 +16,12 @@ It only reads; the tools are listed in [mcp-tools.md](mcp-tools.md).
   If two IDEs ask you to sign in at the very same moment, the second says the port is in use:
   finish the first sign-in, then ask again.
 - Nothing is put online. The program talks to the local CRM API and Keycloak only.
+- **Suggesting changes (ADR 0020).** Besides reading, the program has three `propose_*` tools
+  (lead status, lead owner, follow-up task). They only create a *pending proposal*: nothing in the
+  CRM changes until a different person approves it on the Approvals page. They are **off until a
+  CRM administrator switches on "AI clients (MCP)"** on Automation -> AI agents; until then the
+  tool answers that AI clients are switched off. Your IDE should ask before running them. A
+  proposal you made cannot be approved by you.
 
 ## One-time set-up (every client)
 
@@ -139,7 +145,13 @@ Apply, then check the server shows a green status in the same list.
 
 "Who am I in the CRM?" (calls `whoami`). A browser tab opens; sign in as a demo staff user (for
 example `alpha.agent1`), close the tab, and the tool answers. Then try "Which of my leads are
-new?" or "List my deals".
+new?" or "List my deals". After an administrator switched the agent on: "Suggest marking lead
+<id> as contacted because I spoke to them today" (the answer says nothing has changed yet; a
+manager approves or rejects it on the Approvals page, where the card shows the proposal came
+through an outside AI client).
+
+To try the tools against another API (for example a second copy on port 8001), set
+`CRM_MCP_API_URL=http://localhost:8001/api/v1`; `uv run pytest` honours it for the live tests too.
 
 ## Check the server by itself (no IDE)
 

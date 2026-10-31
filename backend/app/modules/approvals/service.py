@@ -25,6 +25,7 @@ from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFound
 from app.core.events import publish
 from app.core.observability.metrics import AI_SENTINEL_FINDINGS
 from app.modules.accounts import api as accounts_api
+from app.modules.agents import api as agents_api
 from app.modules.approvals import artifact, repository, sentinel
 from app.modules.approvals.catalogue import KINDS, ActionKind, Proposal, Ran
 from app.modules.approvals.models import AGENTS, REASON_MAX, AgentAction
@@ -83,6 +84,21 @@ class LimitReachedError(DomainError):
 
     def __init__(self) -> None:
         super().__init__("Too many proposals are waiting for a decision. Please wait for them.")
+
+
+class ExternalClientNotAllowedError(ForbiddenError):
+    code = "external_client_not_allowed"
+
+    def __init__(self) -> None:
+        super().__init__("This application may not create proposals.")
+
+
+class ExternalProposalLimitError(DomainError):
+    status_code = 429
+    code = "mcp_proposal_limit_reached"
+
+    def __init__(self) -> None:
+        super().__init__("You have made enough proposals through AI clients this hour.")
 
 
 class NoteRequiredError(DomainError):
@@ -210,6 +226,7 @@ def _audit(session: Session, principal: Principal, action: AgentAction, what: st
             "target_id": str(action.target_id),
             "requested_by": str(action.requested_by_user_id),
             "agent": action.agent,
+            **({"via_client": action.via_client} if action.via_client else {}),
             "status": action.status,
             "result": action.result,
         },
@@ -318,6 +335,7 @@ def propose(
     expires_in_days: int = DEFAULT_EXPIRY_DAYS,
     pending_limit: int = DEFAULT_PENDING_LIMIT,
     sentinel_limits: sentinel.Limits | None = None,
+    via_client: str | None = None,
 ) -> AgentAction:
     """Store a pending proposal. Nothing in the CRM changes until someone else approves it."""
     tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_PROPOSE)
@@ -327,6 +345,8 @@ def propose(
         raise InvalidActionError(f"'{kind}' can't be proposed for a {target}.")
     if agent not in AGENTS:
         raise InvalidActionError("Unknown AI feature.")
+    if (agent == "mcp_client") != (via_client is not None):
+        raise InvalidActionError("A proposal through a client must name it.")
     why = (reason or "").strip()
     if not why or len(why) > REASON_MAX:
         raise InvalidActionError(f"reason: 1 to {REASON_MAX} characters are required.")
@@ -398,6 +418,7 @@ def propose(
         verification=artifact.build_artifact(verdict, plan.changes, plan.basis),
         reason=why,
         agent=agent,
+        via_client=via_client,
         requested_by_user_id=user_id,
         status="pending",
         expires_at=_now() + timedelta(days=expires_in_days),
@@ -407,6 +428,66 @@ def propose(
     _audit(session, principal, action, "proposed")
     # Approvers are told by the worker (notifications); the requester isn't (actor).
     _publish(session, action, "agent_action.proposed", actor=user_id)
+    return action
+
+
+MCP_AGENT = "mcp_client"
+
+
+def propose_external(
+    session: Session,
+    principal: Principal,
+    *,
+    client_id: str | None,
+    allowed_clients: frozenset[str],
+    agent_limits: agents_api.Limits,
+    per_hour: int,
+    kind: str,
+    target_type: str | None,
+    target_id: uuid.UUID,
+    payload: Any,
+    reason: str,
+    expires_in_days: int = DEFAULT_EXPIRY_DAYS,
+    pending_limit: int = DEFAULT_PENDING_LIMIT,
+    sentinel_limits: sentinel.Limits | None = None,
+) -> AgentAction:
+    """A proposal from an outside AI client (ADR 0020): the same queue and the same rules as
+    every other proposal, behind three more locks - only a VERIFIED allow-listed application,
+    the organisation's switch (off until an administrator turns it on) and a lower hourly
+    ceiling for this person."""
+    # The client name comes from the verified token, never from the request body.
+    if client_id is None or client_id not in allowed_clients:
+        raise ExternalClientNotAllowedError()
+    tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_PROPOSE)
+    now = _now()
+    try:
+        agents_api.check_can_call(session, tenant_id, MCP_AGENT, agent_limits, now)
+    except agents_api.AgentUnavailableError:
+        raise  # a plain 503: the switch is the organisation's, or the platform's, to flip
+    since = now - timedelta(hours=1)
+    made = repository.count_since(
+        session, tenant_id, since=since, requester=user_id, agent=MCP_AGENT
+    )
+    if made >= per_hour:
+        raise ExternalProposalLimitError()
+    action = propose(
+        session,
+        principal,
+        kind=kind,
+        target_type=target_type,
+        target_id=target_id,
+        payload=payload,
+        reason=reason,
+        agent=MCP_AGENT,
+        via_client=client_id,
+        expires_in_days=expires_in_days,
+        pending_limit=pending_limit,
+        sentinel_limits=sentinel_limits,
+    )
+    # Counted as one call, so the registry page shows how often the switch is used.
+    agents_api.record_usage(
+        session, tenant_id, MCP_AGENT, input_tokens=0, output_tokens=0, limits=agent_limits, now=now
+    )
     return action
 
 

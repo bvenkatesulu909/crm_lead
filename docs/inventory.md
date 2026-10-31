@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-10-30 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-10-31 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **215** operations over **172** paths and **250** schemas.
+- **216** operations over **173** paths and **251** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -29,11 +29,11 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | assistant | 7 |
 | contacts | 7 |
 | workflows | 7 |
+| approvals | 5 |
 | documents | 5 |
 | notifications | 5 |
 | orders | 5 |
 | reports | 5 |
-| approvals | 4 |
 | agents | 3 |
 | customer relationships | 3 |
 | identity | 3 |
@@ -55,8 +55,8 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **45**
-- Heads: `0045`
+- Migration files: **46**
+- Heads: `0046`
 
 ## Web app (`frontend/src/app`)
 
@@ -160,7 +160,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **137**
+- Backend test files: **138**
 - Frontend component test files: **29**
 - Playwright end-to-end specs: **28**
 

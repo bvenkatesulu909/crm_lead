@@ -72,10 +72,29 @@ New kinds are added in code (`app/modules/approvals/catalogue.py`) with tests - 
 | `POST /actions/{id}/approve` `{version, note?}` | approvers, not the asker | runs the action as the approver |
 | `POST /actions/{id}/reject` `{version, note}` | approvers, not the asker | note required |
 
-No endpoint creates proposals: only AI features inside the CRM do, through the service. Error
-codes: `agent_action_already_decided` (409), `agent_action_changed` (409), `agent_action_expired`
+The only endpoint that creates a proposal is the one for outside AI clients (below); every other
+proposal is made by an AI feature inside the CRM, through the service. Error codes: `agent_action_already_decided` (409), `agent_action_changed` (409), `agent_action_expired`
 (409), `self_approval_forbidden` (403), `record_not_found` (404), `agent_action_limit_reached`
 (429), `unknown_agent_action` / `invalid_agent_action` (422).
+
+## Proposals from an outside AI client - the MCP server (ADR 0020, MCP5a)
+
+`POST /api/v1/approvals/proposals/external` `{kind, target_type?, target_id, payload, reason}`
+(strict body: nothing else is accepted). The proposal lands in the same queue, goes through the
+same Sentinel checks and needs a different person's approval, with these extra locks:
+
+| Lock | Refusal |
+|---|---|
+| Only a token whose **verified** `azp` is on `CRM_EXTERNAL_PROPOSAL_CLIENTS` (default `crm-mcp`) - the web app's token is refused | 403 `external_client_not_allowed` |
+| The organisation's switch for the `mcp_client` agent - **off until a tenant admin turns it on**; the platform switch `CRM_AI_DISABLED` also stops it | 503 `agent_unavailable` |
+| At most `CRM_MCP_PROPOSALS_PER_HOUR` (5) per person through this source | 429 `mcp_proposal_limit_reached` |
+| The record must be one the person may see | 404 `record_not_found` |
+
+The organisation and the person come from the token, never from the body. The row stores the
+agent `mcp_client` and the verified client in `via_client` (a database check keeps the two
+together); the audit entry `agent_action.proposed` and the proposal read carry it. Each proposal
+counts as one call on the AI agents page (there are no tokens of ours to count). The MCP server's
+three `propose_*` tools come in step MCP5b.
 
 ## Events and notifications
 

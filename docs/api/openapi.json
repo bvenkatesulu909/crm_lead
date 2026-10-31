@@ -1261,6 +1261,17 @@
             "title": "Version",
             "type": "integer"
           },
+          "via_client": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via Client"
+          },
           "warnings": {
             "items": {
               "$ref": "#/components/schemas/SafetyWarning"
@@ -1280,6 +1291,7 @@
           "payload",
           "reason",
           "agent",
+          "via_client",
           "requested_by_user_id",
           "status",
           "expires_at",
@@ -4934,6 +4946,58 @@
           "body"
         ],
         "title": "EmailSend",
+        "type": "object"
+      },
+      "ExternalProposal": {
+        "additionalProperties": false,
+        "description": "What an outside AI client may send. Nothing else: the organisation, the person, the\nagent and the client's name all come from the verified token or from the server.",
+        "properties": {
+          "kind": {
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "target_id": {
+            "format": "uuid",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "lead",
+                  "account",
+                  "contact"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Type"
+          }
+        },
+        "required": [
+          "kind",
+          "target_id",
+          "payload",
+          "reason"
+        ],
+        "title": "ExternalProposal",
         "type": "object"
       },
       "FactorRead": {
@@ -18133,6 +18197,103 @@
           }
         ],
         "summary": "Reject someone else's AI proposal (a note is required)",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
+    "/api/v1/approvals/proposals/external": {
+      "post": {
+        "description": "Only a token issued to an allow-listed application (default `crm-mcp`) may call this, only while an administrator has switched the `mcp_client` agent on. The proposal waits in the same queue as every other; nothing changes until a different person approves it in the CRM. The organisation and the person come from the token, never from the body.",
+        "operationId": "propose_external_api_v1_approvals_proposals_external_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalProposal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentActionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "An outside AI client (the MCP server) suggests a change; a person decides",
         "tags": [
           "approvals"
         ]

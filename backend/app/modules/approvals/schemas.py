@@ -56,6 +56,8 @@ class AgentActionRead(BaseModel):
     payload: dict[str, Any]
     reason: str
     agent: str
+    # The verified application a proposal came through (crm-mcp), None for our own assistant.
+    via_client: str | None
     requested_by_user_id: uuid.UUID
     status: Status
     expires_at: datetime
@@ -75,6 +77,19 @@ class AgentActionPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ExternalProposal(BaseModel):
+    """What an outside AI client may send. Nothing else: the organisation, the person, the
+    agent and the client's name all come from the verified token or from the server."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Annotated[str, StringConstraints(min_length=3, max_length=50)]
+    target_type: Literal["lead", "account", "contact"] | None = None
+    target_id: uuid.UUID
+    payload: dict[str, Any]
+    reason: Annotated[str, StringConstraints(min_length=1, max_length=500)]
 
 
 class Approve(BaseModel):

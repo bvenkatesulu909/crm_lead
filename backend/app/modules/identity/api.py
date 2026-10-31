@@ -17,7 +17,11 @@ from app.core.auth.rbac import (
     permissions_for,
 )
 from app.core.db import bind_user
-from app.modules.identity.dependencies import get_principal, require_any_permission
+from app.modules.identity.dependencies import (
+    get_principal,
+    get_verified_token,
+    require_any_permission,
+)
 from app.modules.identity.models import PortalAccessGrant, Tenant, User
 
 __all__ = [
@@ -26,6 +30,7 @@ __all__ = [
     "automation_principal",
     "bind_reader",
     "get_principal",
+    "get_verified_token",
     "granted_account_ids",
     "is_assignable_sales_user",
     "is_assignable_support_user",

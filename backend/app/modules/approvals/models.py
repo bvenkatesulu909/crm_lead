@@ -33,7 +33,7 @@ from app.core.models import (
 
 STATUSES = ("pending", "approved", "rejected", "expired", "failed")
 TARGET_TYPES = ("lead", "account", "contact")
-AGENTS = ("staff_assistant",)
+AGENTS = ("staff_assistant", "mcp_client")
 REASON_MAX = 500
 
 
@@ -53,6 +53,9 @@ class AgentAction(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Version
         CheckConstraint(f"status IN {STATUSES}", name="status_allowed"),
         CheckConstraint(f"target_type IN {TARGET_TYPES}", name="target_type_allowed"),
         CheckConstraint(f"agent IN {AGENTS}", name="agent_allowed"),
+        CheckConstraint(
+            "(agent = 'mcp_client') = (via_client IS NOT NULL)", name="via_client_matches_agent"
+        ),
         CheckConstraint("kind ~ '^[a-z_]+\\.[a-z_]+$'", name="kind_shape"),
         CheckConstraint("jsonb_typeof(payload) = 'object'", name="payload_is_object"),
         CheckConstraint(
@@ -87,6 +90,8 @@ class AgentAction(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Version
     verification: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
     reason: Mapped[str] = mapped_column(String(REASON_MAX))
     agent: Mapped[str] = mapped_column(String(40))
+    # The verified application the proposal came through (the token's azp), e.g. crm-mcp.
+    via_client: Mapped[str | None] = mapped_column(String(64), default=None)
     requested_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

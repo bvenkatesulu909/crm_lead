@@ -51,6 +51,7 @@ def count_since(
     requester: uuid.UUID | None = None,
     kind: str | None = None,
     target_id: uuid.UUID | None = None,
+    agent: str | None = None,
 ) -> int:
     """Proposals made since a moment, however they ended (history counts: a flood of rejected
     proposals is still a flood)."""
@@ -61,6 +62,8 @@ def count_since(
         conditions.append(AgentAction.kind == kind)
     if target_id is not None:
         conditions.append(AgentAction.target_id == target_id)
+    if agent is not None:
+        conditions.append(AgentAction.agent == agent)
     return session.scalar(select(func.count()).select_from(AgentAction).where(*conditions)) or 0
 
 

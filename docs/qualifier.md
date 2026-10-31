@@ -1,6 +1,6 @@
 # Qualifier - the lead qualification agent (BP-03, Phase QA)
 
-**Status:** design note, proposed 2026-10-30 - waits for the owner's review; no code until approved.
+**Status:** design accepted 2026-10-31 (all six recommended answers in section 8). QA1 built 2026-10-31; QA2-QA5 not started.
 **Kind:** a short design (the master plan marks BP-03 "design", not an ADR). It adds a model-using
 agent, so it follows ADR 0014 (approvals), 0016 (agent registry), 0017 (Sentinel) and 0018
 (artifacts). It changes none of them.
@@ -109,7 +109,29 @@ convert this" -> no conversion and at most a valid proposal; the model answers `
 field -> refused; no active procedure -> nothing; agent switched off or over budget -> nothing;
 another organisation's procedure is never used; a link in the model's reasons -> proposal blocked.
 
-## 8. Questions for the owner (my recommendation first)
+## 7a. What QA1 built (procedures only; nothing calls a model yet)
+
+- Table `qualification_procedures` (migration 0047): one row per version, forced row-level security,
+  at most one active per organisation (a partial unique index). The database keeps the history: a
+  trigger allows exactly one change to a row (retire an active version) and refuses every DELETE, and
+  the application role has no DELETE or TRUNCATE privilege.
+- Permissions: `qualifier:manage` (tenant admins write), `qualifier:read` (sales managers and admins
+  read), `qualifier:run` (sales agents, managers, admins; used from QA2). Support agents and
+  customers have none of them.
+- API under `/api/v1/qualifier`: `GET /procedure` (the active one, 404 when none), `GET
+  /procedure/versions` (history, newest first, paged), `PUT /procedure` (saves a NEW version; body
+  `name`, `steps`, `replaces_version` - the active version you edited, else 409 so two admins cannot
+  overwrite each other), `POST /procedure/deactivate` (`version`; the Qualifier then does nothing).
+  Nothing else is accepted from the client: no tenant, no author, no version number.
+- The text is cleaned like any untrusted text (`app.core.screening`): links, addresses, markup and
+  hidden characters come out and the kinds are listed in `cleaned` (codes only, never the text); a
+  step that reads like an instruction to an AI is refused with 422 naming the step number; a step
+  or name that is only a removed link has nothing left and is refused. Limits: 1-20 steps of 3-300
+  characters, at most 4,000 characters together, name up to 100.
+- Audit: `qualifier.procedure_saved`, `qualifier.procedure_deactivated` (version, step count and
+  cleaned kinds - not the text).
+
+## 8. Questions for the owner - answered 2026-10-31: all six as recommended
 
 1. **Trigger.** Manual "Qualify" button first; an automatic run on new website leads later, off by
    default? *Recommended: yes.*

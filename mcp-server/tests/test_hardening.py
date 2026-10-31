@@ -90,8 +90,18 @@ def test_instructions_hidden_in_records_stay_inside_data(
 def test_no_tool_can_act_on_an_injected_instruction(attack: str, crm: CrmTools) -> None:
     server = build_server(crm)
     tools = asyncio.run(server.list_tools())
-    assert all(t.annotations and t.annotations.read_only_hint for t in tools)
-    assert not any(t.name.startswith(("create", "update", "delete", "send")) for t in tools)
+    names = {t.name for t in tools}
+    proposing = {"propose_lead_status", "propose_lead_assignment", "propose_follow_up_task"}
+    # Every tool except the three proposal tools only reads ...
+    assert all(
+        t.annotations and t.annotations.read_only_hint for t in tools if t.name not in proposing
+    )
+    # ... and nothing can approve, change or remove anything (ADR 0020, decision 1).
+    assert proposing <= names
+    assert not any(
+        t.name.startswith(("create", "update", "delete", "send", "approve", "reject", "set"))
+        for t in tools
+    )
 
 
 # --- a runaway caller is slowed down ----------------------------------------------------------

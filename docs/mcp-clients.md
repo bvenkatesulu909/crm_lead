@@ -153,7 +153,7 @@ npx @modelcontextprotocol/inspector@2.12.0 --cli .venv\Scripts\crm-mcp.exe --met
 
 The first starts the real program over stdio, performs the MCP handshake and compares the tools
 with [mcp-tools.md](mcp-tools.md); it also runs in CI. The second is the official MCP Inspector in
-command-line mode and prints the same 8 tools. For the interactive screen, leave out `--cli`
+command-line mode and prints the same 11 tools. For the interactive screen, leave out `--cli`
 (this downloads the Inspector from npm the first time).
 
 ## When it does not work

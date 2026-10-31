@@ -168,6 +168,9 @@ class Permission(StrEnum):
     # evidence. Both still need the right to read the lead or account the check is about.
     WEBCHECK_RUN = "webcheck:run"
     WEBCHECK_READ = "webcheck:read"
+    QUALIFIER_RUN = "qualifier:run"
+    QUALIFIER_READ = "qualifier:read"
+    QUALIFIER_MANAGE = "qualifier:manage"
 
 
 _P = Permission
@@ -186,6 +189,7 @@ _SALES_ALL = frozenset(
         _P.COMMUNICATION_SEND, _P.COMMUNICATION_READ_ALL, _P.COMMUNICATION_TEMPLATE_MANAGE,
         _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE, _P.AGENT_READ,
         _P.WEBCHECK_RUN, _P.WEBCHECK_READ,
+        _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
     }
 )  # fmt: skip
 
@@ -199,7 +203,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.SUPER_ADMIN: frozenset({_P.PLATFORM_TENANT_READ, _P.PLATFORM_TENANT_MANAGE}),
     Role.TENANT_ADMIN: _SALES_ALL
     | {_P.TENANT_USER_READ, _P.TENANT_USER_MANAGE, _P.PORTAL_USER_INVITE}
-    | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE, _P.AGENT_MANAGE}
+    | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE, _P.AGENT_MANAGE, _P.QUALIFIER_MANAGE}
     | {_P.TICKET_READ_ALL, _P.TICKET_MANAGE}
     | _ORDERS_ALL
     | _BILLING_ALL
@@ -243,6 +247,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.AGENT_ACTION_PROPOSE,
             _P.WEBCHECK_RUN,
             _P.WEBCHECK_READ,
+            _P.QUALIFIER_RUN,
         }
     ),  # fmt: skip
     Role.SUPPORT_AGENT: frozenset(

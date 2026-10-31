@@ -416,9 +416,9 @@ Accepted 2026-10-30 with the recommended answers to the five questions in ADR 00
 - All report queries apply tenant + record-level filters; CSV export respects the same rules (tested).
 - Definition of Done checklist complete.
 
-## Phase MCP5 — Propose-only tools in the CRM MCP server (BP-11, CRM-109)  *(ADR 0020 proposed 2026-10-31; MCP5-0 done)*
+## Phase MCP5 — Propose-only tools in the CRM MCP server (BP-11, CRM-109)  *(ADR 0020 accepted 2026-10-31; MCP5-0 done)*
 
-Waiting for the owner's answers to the five questions in ADR 0020.
+Accepted 2026-10-31 with the recommended answers to the five questions in ADR 0020.
 
 | Step | Content |
 |---|---|

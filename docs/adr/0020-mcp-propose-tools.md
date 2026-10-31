@@ -1,6 +1,6 @@
 # ADR 0020 — Propose-only tools in the CRM MCP server (BP-11, step MCP5)
 
-- **Status:** Proposed (2026-10-31) — waiting for the owner's answers to the five questions in section 5
+- **Status:** Accepted (2026-10-31) with the recommended answers to the five questions in section 5
 - **Date:** 2026-10-31
 - **Deciders:** Project owner
 - **Depends on:** ADR 0014 (approval queue), ADR 0015 (MCP server standard), ADR 0016 (agent registry

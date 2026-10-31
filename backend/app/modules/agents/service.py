@@ -174,12 +174,15 @@ def check_can_call(
     session: Session, tenant_id: uuid.UUID, key: str, limits: Limits, now: datetime
 ) -> EffectiveAgent:
     """Raise unless this agent may call a model now; otherwise say what it may use."""
-    if limits.platform_disabled:
+    agent = _agent(key)
+    # The AI platform switch and the token budget are about language models: a feature that
+    # calls none (the web check) answers only to its own on/off switch.
+    if limits.platform_disabled and agent.uses_model:
         raise AgentUnavailableError()
     state = effective(session, tenant_id, key, limits, now)
     if not state.enabled:
         raise AgentUnavailableError()
-    if state.used_tokens >= state.budget:
+    if agent.uses_model and state.used_tokens >= state.budget:
         raise AgentBudgetReachedError()
     return state
 
@@ -195,7 +198,7 @@ def record_usage(
     now: datetime,
 ) -> UsageResult:
     """Add one model call to the month's total (atomic) and report the first 80 % crossing."""
-    _agent(key)
+    agent = _agent(key)
     month = month_start(now)
     used = repository.add_usage(
         session,
@@ -205,6 +208,8 @@ def record_usage(
         max(0, input_tokens),
         max(0, output_tokens),
     )
+    if not agent.uses_model:
+        return UsageResult(used, False)  # counted as a call; there is no budget to warn about
     setting = repository.get_setting(session, tenant_id, key)
     budget = (
         setting.monthly_token_budget
@@ -262,6 +267,12 @@ def update_settings(
     updates are refused) and must be absent otherwise."""
     tenant_id = _tenant(principal, Permission.AGENT_MANAGE)
     agent = _agent(key)
+    if not agent.uses_model and not (
+        isinstance(monthly_token_budget, _Unset) and isinstance(allowed_tools, _Unset)
+    ):
+        raise InvalidAgentSettingError(
+            "This feature uses no language model: it has no token budget and no tools to choose."
+        )
     if not isinstance(monthly_token_budget, _Unset) and monthly_token_budget is not None:
         if not 1 <= monthly_token_budget <= MAX_TOKENS:
             raise InvalidAgentSettingError(

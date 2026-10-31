@@ -39,6 +39,7 @@ def _read(state: EffectiveAgent) -> AgentRead:
         title=state.agent.title,
         description=state.agent.description,
         owner_role=state.agent.owner_role,
+        uses_model=state.agent.uses_model,
         enabled=state.enabled,
         monthly_token_budget=state.budget,
         budget_is_default=state.budget_is_default,

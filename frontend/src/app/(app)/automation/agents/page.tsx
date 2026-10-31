@@ -52,6 +52,7 @@ export default async function AgentsPage({
                   agent.key,
                   agent.version,
                   agent.all_tools,
+                  agent.uses_model,
                 )}
               />
             )}

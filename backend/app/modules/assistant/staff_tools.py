@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.config import Settings
 from app.core.errors import DomainError, NotFoundError
 from app.core.screening import clean_records
 from app.modules.accounts import api as accounts_api
@@ -22,6 +23,7 @@ from app.modules.approvals import api as approvals_api
 from app.modules.contacts import api as contacts_api
 from app.modules.leads import api as leads_api
 from app.modules.support import api as support_api
+from app.modules.webcheck import api as webcheck_api
 
 MAX_RESULT_CHARS = 4_000
 Outcome = Literal["ok", "not_found", "invalid", "error"]
@@ -95,6 +97,21 @@ Reason = Field(
 )
 
 
+class CheckRegistrationArgs(_Args):
+    record_type: Literal["lead", "account"] = Field(description="What the lookup is about.")
+    record_id: uuid.UUID = Field(description="The lead or account (from search results).")
+    source_key: str = Field(
+        min_length=1,
+        max_length=60,
+        description="Where to look: one of the web check sources named in the instructions.",
+    )
+    query: str = Field(
+        min_length=1,
+        max_length=200,
+        description="The RERA number or the company name to look up. Nothing else.",
+    )
+
+
 class ProposeLeadStatusArgs(_Args):
     lead_id: uuid.UUID = Field(description="The lead UUID (from search_leads).")
     status: Literal["contacted", "qualified", "unqualified"]
@@ -125,6 +142,8 @@ class ProposalBudget:
     expiry_days: int = 7
     pending_limit: int = 20
     sentinel: approvals_api.SentinelLimits | None = None
+    # The application settings, for tools that need them (the web check's switches and limits).
+    settings: Settings | None = None
     made: list[ProposalRef] = field(default_factory=list)
 
 
@@ -136,6 +155,8 @@ class StaffTool:
     handler: Callable[[Session, Principal, _Args], StaffToolResult] | None = None
     # Proposing tools: (kind, target type or None = from the arguments, target id field, payload)
     proposes: Callable[[_Args], tuple[str, str, uuid.UUID, dict[str, Any]]] | None = None
+    # Tools that DO something small for the person (queue a lookup) and need the context.
+    acts: Callable[[Session, Principal, _Args, ProposalBudget], StaffToolResult] | None = None
 
     def definition(self) -> dict[str, Any]:
         return {
@@ -277,6 +298,43 @@ def _propose(
     )
 
 
+def _check_registration(
+    session: Session, principal: Principal, args: _Args, context: ProposalBudget
+) -> StaffToolResult:
+    """Queue a web check as the signed-in person (ADR 0019). Nothing is looked up yet and the
+    model never sees a page: the result appears on the record and the person is told."""
+    assert isinstance(args, CheckRegistrationArgs)  # noqa: S101
+    if context.settings is None:
+        return StaffToolResult("error", _json({"error": "The web check is not available here."}))
+    try:
+        asked = webcheck_api.request_check(
+            session,
+            principal,
+            target_type=args.record_type,
+            target_id=args.record_id,
+            source_key=args.source_key,
+            query=args.query,
+            settings=context.settings,
+        )
+    except DomainError as exc:
+        outcome: Outcome = "not_found" if exc.status_code == 404 else "invalid"
+        return StaffToolResult(outcome, _json({"error": exc.detail}))
+    path = "leads" if args.record_type == "lead" else "accounts"
+    return StaffToolResult(
+        "ok",
+        _json(
+            {
+                "queued": True,
+                "request_id": str(asked.request_id),
+                "note": "The lookup runs in the background. Nothing has been found yet: the "
+                "result will appear on the record and the employee will be notified. Never "
+                "state a result.",
+            }
+        ),
+        f"/{path}/{args.record_id}",
+    )
+
+
 TOOLS: dict[str, StaffTool] = {
     tool.name: tool
     for tool in (
@@ -312,6 +370,14 @@ TOOLS: dict[str, StaffTool] = {
             _get_account,
         ),
         StaffTool(
+            "check_rera",
+            "Queue a lookup of a RERA number or a company on a public registry for a lead or "
+            "account the employee may read. Only when the employee asks. You see no result: it "
+            "appears on the record and the employee is notified.",
+            CheckRegistrationArgs,
+            acts=_check_registration,
+        ),
+        StaffTool(
             "propose_lead_status",
             "PROPOSE changing a lead's status. Creates a proposal a manager must approve; "
             "nothing changes until then. Only when the employee asks for it.",
@@ -334,6 +400,16 @@ TOOLS: dict[str, StaffTool] = {
 }
 
 
+def _act(
+    session: Session, principal: Principal, tool: StaffTool, args: _Args, context: ProposalBudget
+) -> StaffToolResult:
+    assert tool.acts is not None  # noqa: S101
+    try:
+        return tool.acts(session, principal, args, context)
+    except Exception:  # noqa: BLE001 - tool failures are data, never 500s to the chat
+        return StaffToolResult("error", _json({"error": "The tool failed."}))
+
+
 def definitions() -> list[dict[str, Any]]:
     return [tool.definition() for tool in TOOLS.values()]
 
@@ -354,6 +430,8 @@ def execute(
         return StaffToolResult("invalid", _json({"error": "Invalid arguments."}))
     if tool.proposes is not None:
         return _propose(session, principal, tool, args, budget)
+    if tool.acts is not None:
+        return _act(session, principal, tool, args, budget or ProposalBudget())
     if tool.handler is None:
         return StaffToolResult("invalid", _json({"error": "Unknown tool."}))
     try:

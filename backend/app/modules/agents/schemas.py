@@ -19,6 +19,8 @@ class AgentRead(BaseModel):
     title: str
     description: str
     owner_role: str
+    # False for the web check: it counts checks, has no token budget and no tools.
+    uses_model: bool
     enabled: bool
     # What is in force: the organisation's own cap, or the default (budget_is_default).
     monthly_token_budget: int

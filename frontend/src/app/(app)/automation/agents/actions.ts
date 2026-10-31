@@ -21,6 +21,7 @@ export async function updateAgent(
   key: string,
   version: number | null,
   allTools: string[],
+  usesModel: boolean,
   previous: FormState,
   formData: FormData,
 ): Promise<FormState> {
@@ -32,7 +33,8 @@ export async function updateAgent(
     budget: String(formData.get("budget") ?? ""),
     tools_chosen: tools.join(","),
   };
-  const budget = parseBudget(values.budget);
+  // A feature that calls no model has only the switch: the API refuses a budget or tools.
+  const budget = usesModel ? parseBudget(values.budget) : { value: null };
   if ("error" in budget)
     return {
       attempt,
@@ -46,8 +48,12 @@ export async function updateAgent(
       body: JSON.stringify({
         ...(version === null ? {} : { version }),
         enabled: values.enabled === "on",
-        monthly_token_budget: budget.value,
-        allowed_tools: toggledTools(tools, allTools),
+        ...(usesModel
+          ? {
+              monthly_token_budget: budget.value,
+              allowed_tools: toggledTools(tools, allTools),
+            }
+          : {}),
       }),
     });
   } catch (error) {

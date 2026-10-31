@@ -160,10 +160,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **136**
-- Frontend component test files: **28**
-- Playwright end-to-end specs: **27**
+- Backend test files: **137**
+- Frontend component test files: **29**
+- Playwright end-to-end specs: **28**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **65** (21 in `docs/adr/`)
+- Markdown documents under `docs/`: **66** (21 in `docs/adr/`)

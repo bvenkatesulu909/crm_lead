@@ -207,7 +207,10 @@ def test_the_row_records_who_changed_it(ctx: Ctx) -> None:
 
 def test_the_platform_switch_refuses_everything_even_without_settings(ctx: Ctx) -> None:
     off = Limits(platform_disabled=True, default_monthly_tokens=1000)
-    for key in AGENTS:
+    for key, agent in AGENTS.items():
+        if not agent.uses_model:
+            ctx.check(key=key, limits=off)  # the AI switch is about models; the web check has none
+            continue
         with pytest.raises(AgentUnavailableError):
             ctx.check(key=key, limits=off)
     with pytest.raises(AgentUnavailableError):

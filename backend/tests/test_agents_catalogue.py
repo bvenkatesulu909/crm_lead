@@ -23,9 +23,12 @@ def make_settings(**changes: object) -> Settings:
     )
 
 
-def test_the_four_ai_features_are_listed() -> None:
-    expected = {"staff_assistant", "portal_assistant", "public_chat", "knowledge_answers"}
-    assert set(AGENTS) == expected
+def test_the_four_ai_features_and_the_web_check_are_listed() -> None:
+    models = {"staff_assistant", "portal_assistant", "public_chat", "knowledge_answers"}
+    assert {key for key, agent in AGENTS.items() if agent.uses_model} == models
+    # The web check is governed like an agent but calls no language model (ADR 0019).
+    assert set(AGENTS) == models | {"web_check"}
+    assert AGENTS["web_check"].uses_model is False
 
 
 def test_every_key_fits_the_database_rule() -> None:

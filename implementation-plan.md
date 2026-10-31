@@ -372,6 +372,19 @@ at the exit; identity comes only from the token, proven by a test. Design:
 - **VA4** - BP-10 cases, `docs/injection-defences.md`, full runs, pull request.
 
 
+## Phase QA — Qualifier, the lead qualification agent (BP-03)  *(design note proposed 2026-10-30; QA0 done)*
+
+Design: [docs/qualifier.md](docs/qualifier.md). Waits for the owner's answers to its six questions. No code before the design is accepted.
+
+| Step | Content |
+|---|---|
+| QA0 | Design note + this plan (documents only) |
+| QA1 | Qualification procedures: migration, service, admin API, permissions |
+| QA2 | The assessment: `submit_assessment`, validation, mapping to proposals, `lead_assessments`; scripted model |
+| QA3 | Registry entry, limits, audit, metrics, optional automatic run in the worker |
+| QA4 | Screens: lead card with the Qualify button, admin page with a dry run, notifications |
+| QA5 | BP-10 evaluation cases, final docs, Playwright journey, full runs |
+
 ## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 accepted 2026-10-30; WC0, WC1, WC2a, WC2b, WC2c, WC3, WC4 done)*
 
 Accepted 2026-10-30 with the recommended answers to the five questions in ADR 0019.

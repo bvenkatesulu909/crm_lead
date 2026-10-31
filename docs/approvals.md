@@ -94,7 +94,7 @@ The organisation and the person come from the token, never from the body. The ro
 agent `mcp_client` and the verified client in `via_client` (a database check keeps the two
 together); the audit entry `agent_action.proposed` and the proposal read carry it. Each proposal
 counts as one call on the AI agents page (there are no tokens of ours to count). The MCP server's
-three `propose_*` tools come in step MCP5b.
+three `propose_*` tools are in the MCP server (MCP5b, `docs/mcp-tools.md`). On screen (MCP5c) the approval card says "Asked by <name> through an outside AI client (MCP) - application "crm-mcp"" (the verified application, shown as plain text), and the AI agents page has a card "AI clients (MCP)" that counts proposals (no tokens) and starts switched off.
 
 ## Events and notifications
 

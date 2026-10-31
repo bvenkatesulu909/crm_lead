@@ -51,6 +51,11 @@ export function AgentCard({
 }) {
   const state = agentState(agent);
   const headingId = `agent-${agent.key}`;
+  // An agent without a model counts what it did: web checks, or proposals from outside clients.
+  const unit =
+    agent.key === "mcp_client"
+      ? { one: "proposal", plural: "proposals" }
+      : { one: "check", plural: "checks" };
   const shown = Math.min(100, Math.max(0, agent.percent_used));
   return (
     <article aria-labelledby={headingId}>
@@ -70,11 +75,11 @@ export function AgentCard({
         {!agent.uses_model ? (
           <p className="mt-4 text-sm text-slate-700">
             {agent.calls === 0
-              ? "No checks this month"
-              : `${agent.calls} ${agent.calls === 1 ? "check" : "checks"} this month`}
+              ? `No ${unit.plural} this month`
+              : `${agent.calls} ${agent.calls === 1 ? unit.one : unit.plural} this month`}
             <span className="text-xs text-slate-500">
               {" "}
-              - uses no language model, so there is no token budget
+              - uses no language model of ours, so there is no token budget
             </span>
           </p>
         ) : (

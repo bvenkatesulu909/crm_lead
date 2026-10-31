@@ -39,6 +39,7 @@ export function ApprovalStatusBadge({ status }: { status: AgentActionStatus }) {
 
 const AGENT_LABELS: Record<string, string> = {
   staff_assistant: "the staff assistant",
+  mcp_client: "an outside AI client (MCP)",
 };
 
 /**
@@ -104,7 +105,10 @@ export function ApprovalCard({
         </dl>
         <p className="mt-3 text-xs text-slate-500">
           Asked by {nameOf(action.requested_by_user_id)} through{" "}
-          {AGENT_LABELS[action.agent] ?? "an AI feature"} ·{" "}
+          {AGENT_LABELS[action.agent] ?? "an AI feature"}
+          {action.via_client
+            ? ` - application "${action.via_client}"`
+            : ""} ·{" "}
           <time dateTime={action.created_at}>
             {formatDateTime(action.created_at)}
           </time>

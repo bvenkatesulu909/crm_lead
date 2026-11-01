@@ -1,6 +1,6 @@
 # Qualifier - the lead qualification agent (BP-03, Phase QA)
 
-**Status:** design accepted 2026-10-31 (all six recommended answers in section 8). QA1 built 2026-10-31; QA2-QA5 not started.
+**Status:** design accepted 2026-10-31 (all six recommended answers in section 8). QA1 and QA2 built 2026-10-31; QA3-QA5 not started.
 **Kind:** a short design (the master plan marks BP-03 "design", not an ADR). It adds a model-using
 agent, so it follows ADR 0014 (approvals), 0016 (agent registry), 0017 (Sentinel) and 0018
 (artifacts). It changes none of them.
@@ -130,6 +130,37 @@ another organisation's procedure is never used; a link in the model's reasons ->
   characters, at most 4,000 characters together, name up to 100.
 - Audit: `qualifier.procedure_saved`, `qualifier.procedure_deactivated` (version, step count and
   cleaned kinds - not the text).
+
+## 7b. What QA2 built (the assessment, with a scripted model only)
+
+`qualifier_api.assess_lead(session, principal, model, lead_id)`; no endpoint, no screen and no
+registry switch yet (QA3, QA4).
+
+- Order: permission `qualifier:run` -> the active procedure (none: nothing happens and the model is
+  not called) -> the lead, **only if the asker may read it** (else "Lead not found", the model is not
+  called) -> one model call -> strict check of its answer -> at most one proposal -> one record.
+- The model is shown the numbered steps and the lead's name, company, status, source, whether a phone
+  and an e-mail exist (never the values), property type, budget range, location, score and the
+  reasons for the score - cleaned like every record text; a lead whose text looks like an
+  instruction to an AI is flagged in the prompt. It gets ONE tool, `submit_assessment`; the lead
+  id, the organisation and the people never appear in the prompt.
+- Its answer is refused (422 `assessment_invalid`, nothing stored) unless it is exactly one call of
+  that tool with `decision` (one of five), `matched_steps` (existing steps, no repeats), 1-5
+  `reasons` and up to 5 `missing` items, nothing else; `need_info` needs a missing item.
+- A decision becomes at most one proposal through the approvals module, so the Sentinel, the limits,
+  the duplicate check, expiry and "someone else must approve" all apply: qualify / unqualify ->
+  `lead.set_status`; contact_first -> `contacted`, only while the lead is new; need_info ->
+  `activity.create_task` "Ask the buyer for: ..." for the lead's owner; no_change -> nothing. Nothing
+  is proposed when the lead already has that status. `converted` is never proposed.
+- Table `lead_assessments` (migration 0048, forced RLS, insert-only: a trigger refuses UPDATE and
+  DELETE and the application role has no such privilege). It keeps the decision, steps, the reasons
+  (cleaned of links), the missing items, the field NAMES given (never values), the procedure version,
+  the outcome (`proposed`, `no_proposal`, `blocked`) and the proposal's id. A blocked proposal (for
+  example a link in the model's reasons) is audited as `agent_action.blocked` and the assessment is
+  still kept.
+- Not yet: the website-chat summary is not shown to the model; the model is not governed by the agent
+  registry (QA3 adds the switch, budget and limits); no audit entry for the assessment itself, no
+  metrics (QA3).
 
 ## 8. Questions for the owner - answered 2026-10-31: all six as recommended
 

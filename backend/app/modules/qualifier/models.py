@@ -10,9 +10,12 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
+    ForeignKey,
     ForeignKeyConstraint,
+    Identity,
     Index,
     Integer,
     String,
@@ -36,6 +39,7 @@ class QualificationProcedure(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     __tablename__ = "qualification_procedures"
     __table_args__ = (
         UniqueConstraint("tenant_id", "version"),
+        UniqueConstraint("tenant_id", "id"),
         ForeignKeyConstraint(
             ["tenant_id", "created_by_user_id"],
             ["users.tenant_id", "users.id"],
@@ -69,3 +73,59 @@ class QualificationProcedure(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     retired_at: Mapped[datetime | None] = mapped_column(default=None)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+
+
+DECISIONS = ("qualify", "unqualify", "contact_first", "need_info", "no_change")
+OUTCOMES = ("proposed", "no_proposal", "blocked")
+
+
+class LeadAssessment(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
+    """What the Qualifier concluded about one lead (docs/qualifier.md, section 4).
+
+    Insert-only: the database refuses every UPDATE and DELETE. It records the field NAMES the
+    agent was given, never their values (the lead already holds those), and the text it wrote,
+    cleaned of links and markup.
+    """
+
+    __tablename__ = "lead_assessments"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "lead_id"], ["leads.tenant_id", "leads.id"], ondelete="RESTRICT"
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "procedure_id"],
+            ["qualification_procedures.tenant_id", "qualification_procedures.id"],
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "requested_by_user_id"],
+            ["users.tenant_id", "users.id"],
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(f"decision IN {DECISIONS}", name="decision_allowed"),
+        CheckConstraint(f"outcome IN {OUTCOMES}", name="outcome_allowed"),
+        CheckConstraint(
+            "jsonb_typeof(matched_steps) = 'array' AND jsonb_typeof(reasons) = 'array' "
+            "AND jsonb_typeof(missing) = 'array' AND jsonb_typeof(fields_given) = 'array'",
+            name="lists_are_arrays",
+        ),
+        CheckConstraint("(outcome = 'proposed') = (proposal_id IS NOT NULL)", name="proposal_link"),
+        Index("ix_lead_assessments_tenant_id_lead_id", "tenant_id", "lead_id", "seq"),
+    )
+
+    # Newest first: rows written in one transaction share created_at.
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+    created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+    lead_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    procedure_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    procedure_version: Mapped[int] = mapped_column(Integer)
+    requested_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    decision: Mapped[str] = mapped_column(String(20))
+    matched_steps: Mapped[list[int]] = mapped_column(JSONB)
+    reasons: Mapped[list[str]] = mapped_column(JSONB)
+    missing: Mapped[list[str]] = mapped_column(JSONB)
+    fields_given: Mapped[list[str]] = mapped_column(JSONB)
+    outcome: Mapped[str] = mapped_column(String(20))
+    proposal_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("agent_actions.id", ondelete="RESTRICT")
+    )

@@ -37,6 +37,22 @@ class LeadSnapshot:
 
 
 @dataclass(frozen=True)
+class LeadQualifierFacts:
+    """What the Qualifier agent may see of one lead (docs/qualifier.md, section 3).
+
+    Filled in by the leads module, only for a principal who may read the lead. Phone and e-mail
+    are reduced to "present or not": the agent never receives a contact detail. The text fields
+    are typed by people and are screened before they reach a model."""
+
+    lead_id: uuid.UUID
+    tenant_id: uuid.UUID
+    owner_id: uuid.UUID | None
+    status: str
+    fields: dict[str, object]
+    score_reasons: list[str]
+
+
+@dataclass(frozen=True)
 class Recipient:
     """A person the Communication Center may write to (ADR 0012): a lead or a contact.
 

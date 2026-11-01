@@ -1,5 +1,11 @@
 """Public interface of the qualifier module. Other modules import only this."""
 
+from app.modules.qualifier.assess import (
+    AssessmentInvalidError,
+    AssessmentResult,
+    LeadNotFoundError,
+    assess_lead,
+)
 from app.modules.qualifier.service import (
     InvalidProcedureError,
     NoActiveProcedureError,
@@ -13,6 +19,10 @@ from app.modules.qualifier.service import (
 )
 
 __all__ = [
+    "AssessmentInvalidError",
+    "AssessmentResult",
+    "LeadNotFoundError",
+    "assess_lead",
     "InvalidProcedureError",
     "NoActiveProcedureError",
     "ProcedureVersionConflictError",

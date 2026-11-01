@@ -202,7 +202,25 @@ registry switch yet (QA3, QA4).
   and uses tokens. Not rate-limited beyond the token budget.
 - The tests put a scripted model on the app (`app.state.qualifier_model`); otherwise
   `CRM_AI_PROVIDER` decides (deepseek, anthropic, or the demo `fake`).
-- The automatic run for new website leads and the screens (QA4b) are still to come.
+- The automatic run for new website leads is still to come.
+
+## 7e. What QA4b built (the screens)
+
+- **Lead page:** a "Qualifier" card for everyone who may use the Qualifier (`qualifier:run`) and may
+  read the lead: the latest five assessments (decision in words, which steps matched, the reasons,
+  what is missing, how it ended, the procedure version, a link to the proposal) and a **Qualify**
+  button. Success returns to the card with a banner; a switched-off agent, an exhausted budget, a
+  limit or a missing procedure is told in plain words. Nothing changes until a different person
+  approves what it proposed.
+- **Qualifier page** (`/automation/qualifier`, a card on the Automation page): everyone with
+  `qualifier:read` sees the current procedure and the earlier versions; tenant admins also write a
+  new version (name and one step per line), switch the procedure off, and **try it** on one of the
+  latest 50 leads - with the saved steps or with the unsaved text as a draft - to see what the
+  Qualifier would conclude and propose, without proposing or saving anything.
+- **Approvals:** a card made by the Qualifier says "through the Qualifier".
+- Everything a model wrote is shown as plain text (no markup, no links). The browser sends only the
+  lead id, the steps and the version - never the organisation or the person. No new menu entry
+  (the page is reached from the Automation page).
 
 ## 8. Questions for the owner - answered 2026-10-31: all six as recommended
 

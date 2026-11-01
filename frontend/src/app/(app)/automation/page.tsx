@@ -85,6 +85,13 @@ export default async function AutomationPage({
         </div>
         <ButtonLink href="/automation/agents" variant="secondary">Open AI agents</ButtonLink>
       </Card>
+      <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 px-5 py-4" aria-labelledby="qualifier-heading">
+        <div>
+          <h2 id="qualifier-heading" className="text-base font-semibold text-slate-900">Qualifier</h2>
+          <p className="text-sm text-slate-600">Write the steps that decide when a lead is qualified and try them on a lead. The Qualifier only suggests; a different person approves.</p>
+        </div>
+        <ButtonLink href="/automation/qualifier" variant="secondary">Open the Qualifier</ButtonLink>
+      </Card>
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3" aria-labelledby="rules-heading">
           <h2 id="rules-heading" className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">Rules</h2>

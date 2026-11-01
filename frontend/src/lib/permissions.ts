@@ -107,6 +107,13 @@ export const canRunWebCheck = (me: Pick<Me, "permissions">) =>
   hasAny(me, "webcheck:run");
 export const canReadWebCheck = (me: Pick<Me, "permissions">) =>
   hasAny(me, "webcheck:read");
+/** The Qualifier (docs/qualifier.md): ask for an assessment / read the procedure / write it. */
+export const canRunQualifier = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "qualifier:run");
+export const canReadQualifier = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "qualifier:read");
+export const canManageQualifier = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "qualifier:manage");
 /** A record's e-mail history: anyone with any communication permission (the record decides). */
 export const canReadEmailHistory = (me: Pick<Me, "permissions">) =>
   hasAny(
@@ -283,6 +290,9 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "platform:tenant:manage": "Manage organisations on the platform",
   "webcheck:run": "Look up a RERA number or a company on a public registry",
   "webcheck:read": "Read the results of those lookups",
+  "qualifier:run": "Ask the Qualifier to assess a lead",
+  "qualifier:read": "Read the Qualifier's written steps",
+  "qualifier:manage": "Write the Qualifier's steps and try them",
   "tenant:user:read": "View your organisation's users",
   "tenant:user:manage": "Manage your organisation's users",
   "account:read:all": "View all customer accounts",

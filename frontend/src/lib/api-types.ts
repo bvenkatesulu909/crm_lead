@@ -1541,3 +1541,59 @@ export type AssistantProposal = {
   status: string;
   link: string;
 };
+
+
+/** The organisation's written qualification procedure (docs/qualifier.md): one row per version. */
+export type QualificationProcedure = {
+  id: string;
+  version: number;
+  name: string;
+  steps: string[];
+  /** Kinds of text taken out when it was saved (codes only). */
+  cleaned: string[];
+  active: boolean;
+  retired_at: string | null;
+  created_by_user_id: string;
+  created_at: string;
+};
+
+export type QualificationProcedurePage = {
+  items: QualificationProcedure[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+/** What the Qualifier concluded about a lead. The texts were written by a model: plain text only. */
+export type LeadAssessment = {
+  id: string;
+  lead_id: string;
+  procedure_version: number;
+  decision: string;
+  matched_steps: number[];
+  reasons: string[];
+  missing: string[];
+  outcome: string;
+  proposal_id: string | null;
+  proposal_link: string | null;
+  requested_by_user_id: string;
+  created_at: string;
+  blocked_message: string | null;
+};
+
+export type LeadAssessmentPage = {
+  items: LeadAssessment[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+/** The administrators' dry run: nothing was proposed or saved. */
+export type QualifierTrial = {
+  decision: string;
+  matched_steps: number[];
+  reasons: string[];
+  missing: string[];
+  would_propose: string | null;
+  procedure_version: number | null;
+};

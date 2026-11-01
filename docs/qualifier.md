@@ -202,7 +202,7 @@ registry switch yet (QA3, QA4).
   and uses tokens. Not rate-limited beyond the token budget.
 - The tests put a scripted model on the app (`app.state.qualifier_model`); otherwise
   `CRM_AI_PROVIDER` decides (deepseek, anthropic, or the demo `fake`).
-- The automatic run for new website leads is still to come.
+- The automatic run for new website leads is described in 7f.
 
 ## 7e. What QA4b built (the screens)
 
@@ -221,6 +221,30 @@ registry switch yet (QA3, QA4).
 - Everything a model wrote is shown as plain text (no markup, no links). The browser sends only the
   lead id, the steps and the version - never the organisation or the person. No new menu entry
   (the page is reached from the Automation page).
+
+## 7f. The automatic run for new website leads (off by default)
+
+- **Setting:** `CRM_QUALIFIER_AUTO_WEB_LEADS` (default `false`; read when the worker starts, so a
+  change needs the worker restarted). While it is off, the website chat's "lead captured" event
+  finishes without anything running.
+- **What happens when it is on:** the worker hands each `public_chat.lead_captured` event to the
+  Qualifier, which runs the very same assessment as the Qualify button, acting as the organisation's
+  **Automation identity**. The proposal's requester is therefore the Automation identity, so any
+  manager (not only one person) can approve it, and the managers are notified as for every proposal.
+  The Automation identity was given exactly two more permissions for this: `qualifier:run` and
+  `agent_action:propose`.
+- **Every rule still applies:** the agent's switch and monthly token budget (a switched-off Qualifier
+  does nothing), the three limits (note: the Automation identity shares the "20 per person per hour"
+  limit, so a burst of more than 20 website leads in an hour leaves the rest unassessed - a person
+  can still press Qualify), the strict check of the answer, the safety check on the proposal,
+  approval by someone else, the audit (actor: Automation) and the metrics.
+- **Safe to run twice:** a lead that already has an assessment, from this event delivered again or
+  from a person, is skipped - however long ago it was made.
+- **Quiet failures:** no procedure written, switched off, over a budget or a limit, an unusable
+  answer, a lead that cannot be read: the event finishes (only the reason code is logged). A model
+  that is down is retried by the outbox.
+- **Tested** with a scripted model directly on the handler and once through the real worker with the
+  demo model (`CRM_AI_PROVIDER=fake`).
 
 ## 8. Questions for the owner - answered 2026-10-31: all six as recommended
 

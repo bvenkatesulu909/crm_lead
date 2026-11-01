@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **220** operations over **176** paths and **255** schemas.
+- **223** operations over **178** paths and **260** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -28,13 +28,13 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | knowledge | 8 |
 | assistant | 7 |
 | contacts | 7 |
+| qualifier | 7 |
 | workflows | 7 |
 | approvals | 5 |
 | documents | 5 |
 | notifications | 5 |
 | orders | 5 |
 | reports | 5 |
-| qualifier | 4 |
 | agents | 3 |
 | customer relationships | 3 |
 | identity | 3 |
@@ -161,7 +161,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **142**
+- Backend test files: **143**
 - Frontend component test files: **29**
 - Playwright end-to-end specs: **28**
 

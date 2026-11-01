@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.errors import ForbiddenError
-from app.core.records import LeadSnapshot, Recipient, RecordFacts
+from app.core.records import LeadQualifierFacts, LeadSnapshot, Recipient, RecordFacts
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
 from app.modules.leads import repository, service
 from app.modules.leads.metrics import (
@@ -37,6 +37,7 @@ __all__ = [
     "create_lead_from_website",
     "EXPORT",
     "export_table",
+    "qualifier_facts",
     "set_lead_status",
     "assign_lead",
     "lead_facts",
@@ -180,6 +181,37 @@ def lead_snapshot(
     for activity in list(repository.list_activities(session, lead))[:10]:
         texts.append(f"{activity.subject}\n{activity.body or ''}")
     return LeadSnapshot(lead.tenant_id, lead.status, lead.owner_id, texts, lead.version)
+
+
+def qualifier_facts(
+    session: Session, principal: Principal, lead_id: uuid.UUID
+) -> LeadQualifierFacts | None:
+    """The few fields of a lead the Qualifier may see (docs/qualifier.md), or None if this
+    principal may not read the lead. Phone and e-mail are only "present" or "missing"."""
+    lead = repository.get_readable(session, principal, lead_id)
+    if lead is None:
+        return None
+    score = service.lead_score(session, principal, lead_id)
+    name = " ".join(part for part in (lead.first_name, lead.last_name) if part)
+    return LeadQualifierFacts(
+        lead_id=lead.id,
+        tenant_id=lead.tenant_id,
+        owner_id=lead.owner_id,
+        status=lead.status,
+        fields={
+            "name": name,
+            "company": lead.company_name,
+            "source": lead.source,
+            "phone": "present" if lead.phone else "missing",
+            "email": "present" if lead.email else "missing",
+            "property_type": lead.property_type,
+            "budget_min_inr": lead.budget_min_inr,
+            "budget_max_inr": lead.budget_max_inr,
+            "location": lead.location,
+            "score": score.score,
+        },
+        score_reasons=[factor.label for factor in score.factors][:10],
+    )
 
 
 def set_lead_status(

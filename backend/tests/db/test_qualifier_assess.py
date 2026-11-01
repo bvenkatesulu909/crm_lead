@@ -310,8 +310,13 @@ def test_a_link_in_the_reasons_blocks_the_proposal_but_the_assessment_is_kept_cl
 def test_asking_twice_the_second_proposal_is_a_blocked_duplicate(
     acting, db_session, world, ready
 ) -> None:
-    first = assess(acting, "alpha.agent1", says(), ready)
-    second = assess(acting, "alpha.agent1", says(), ready)
+    open_limits = qualifier_api.Limits(per_lead_hour=5, per_user_hour=20, per_tenant_day=300)
+    first = qualifier_api.assess_lead(
+        db_session, acting.who("alpha.agent1"), says(), ready.id, limits=open_limits
+    )
+    second = qualifier_api.assess_lead(
+        db_session, acting.who("alpha.agent1"), says(), ready.id, limits=open_limits
+    )
     assert first.proposal is not None
     assert second.proposal is None and second.assessment.outcome == "blocked"
     assert len(actions(db_session, world)) == 1 and len(assessments(db_session, world)) == 2

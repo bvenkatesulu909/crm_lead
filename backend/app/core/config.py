@@ -175,6 +175,11 @@ class Settings(BaseSettings):
     webcheck_demo: bool = False
     webcheck_per_user_hour: int = Field(default=10, ge=1, le=1_000)
     webcheck_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # The Qualifier (docs/qualifier.md): at most this many assessments of one lead per hour, by
+    # one person per hour, and by one organisation per day.
+    qualifier_per_lead_hour: int = Field(default=1, ge=1, le=100)
+    qualifier_per_user_hour: int = Field(default=20, ge=1, le=1_000)
+    qualifier_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
 
     # Proposals from an outside AI client (ADR 0020): which verified applications may create
     # them (comma separated) and how many one person may make per hour through them.

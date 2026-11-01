@@ -4,8 +4,11 @@ from app.modules.qualifier.assess import (
     AssessmentInvalidError,
     AssessmentResult,
     LeadNotFoundError,
+    Limits,
+    RateLimitedError,
     assess_lead,
 )
+from app.modules.qualifier.llm import model_for
 from app.modules.qualifier.service import (
     InvalidProcedureError,
     NoActiveProcedureError,
@@ -22,6 +25,8 @@ __all__ = [
     "AssessmentInvalidError",
     "AssessmentResult",
     "LeadNotFoundError",
+    "Limits",
+    "RateLimitedError",
     "assess_lead",
     "InvalidProcedureError",
     "NoActiveProcedureError",
@@ -29,6 +34,7 @@ __all__ = [
     "clean_steps",
     "deactivate",
     "find_active",
+    "model_for",
     "get_active",
     "list_versions",
     "save_procedure",

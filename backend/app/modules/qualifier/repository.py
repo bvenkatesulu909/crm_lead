@@ -69,3 +69,18 @@ def count_assessments(
     if user_id is not None:
         statement = statement.where(LeadAssessment.requested_by_user_id == user_id)
     return int(session.scalar(statement) or 0)
+
+
+def list_assessments(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, limit: int, offset: int
+) -> tuple[list[LeadAssessment], int]:
+    where = (LeadAssessment.tenant_id == tenant_id, LeadAssessment.lead_id == lead_id)
+    total = session.scalar(select(func.count()).select_from(LeadAssessment).where(*where))
+    items = session.scalars(
+        select(LeadAssessment)
+        .where(*where)
+        .order_by(LeadAssessment.seq.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(items), int(total or 0)

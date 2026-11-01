@@ -167,3 +167,10 @@ def plan(assessment: Assessment, facts: LeadQualifierFacts, version: int) -> Pla
             payload["assignee_id"] = str(facts.owner_id)
         return Planned("activity.create_task", "lead", payload, reason)
     return None
+
+
+def summary(planned: Planned) -> str:
+    """The proposal in a sentence, for the dry run (the approver sees the real card)."""
+    if planned.kind == "lead.set_status":
+        return f"Change the lead's status to {planned.payload['status']}."
+    return f"Create a follow-up task: {planned.payload['subject']}"

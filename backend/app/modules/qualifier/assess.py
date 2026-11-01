@@ -22,6 +22,7 @@ from app.core.auth.rbac import Permission
 from app.core.config import Settings
 from app.core.errors import DomainError, ForbiddenError, NotFoundError
 from app.core.observability.metrics import QUALIFIER_ASSESSMENTS, QUALIFIER_REFUSALS
+from app.core.records import LeadQualifierFacts
 from app.core.screening import screen
 from app.modules.agents import api as agents_api
 from app.modules.approvals import api as approvals_api
@@ -30,7 +31,7 @@ from app.modules.assistant.api import ChatModel
 from app.modules.leads import api as leads_api
 from app.modules.qualifier import repository, rules
 from app.modules.qualifier.models import LeadAssessment
-from app.modules.qualifier.service import NoActiveProcedureError
+from app.modules.qualifier.service import NoActiveProcedureError, clean_steps
 
 AGENT = "qualifier"
 ASK = "Assess this lead against the numbered steps and call submit_assessment once."
@@ -129,6 +130,40 @@ def _check_limits(
         )
 
 
+def _ask(
+    governed: ChatModel, steps: list[str], facts: LeadQualifierFacts
+) -> tuple[rules.Assessment, list[str]]:
+    """One call of the (governed) model and the strict check of its one tool call."""
+    shown, field_names, suspicious = rules.model_view(facts)
+    reply = governed.reply(
+        system=rules.system_prompt(steps, shown, suspicious),
+        messages=[{"role": "user", "content": ASK}],
+        tools=[rules.submit_tool(len(steps))],
+    )
+    uses = reply.tool_uses
+    if len(uses) != 1 or uses[0].name != rules.TOOL_NAME:
+        raise _refuse(
+            "invalid_answer",
+            AssessmentInvalidError("The assistant did not return exactly one assessment."),
+        )
+    try:
+        return rules.parse_assessment(uses[0].input, len(steps)), field_names
+    except rules.AssessmentRefused as refusal:
+        raise _refuse("invalid_answer", AssessmentInvalidError(str(refusal))) from None
+
+
+def _governed(
+    session: Session, model: ChatModel, tenant_id: uuid.UUID, ai_limits: agents_api.Limits | None
+) -> ChatModel:
+    """The registry gate (ADR 0016): off, over budget or the tool taken away stops it here."""
+    governed: ChatModel = agents_api.governed(
+        model, session, tenant_id, AGENT, ai_limits or agents_api.Limits.default()
+    )
+    if not governed.available:
+        governed.reply(system="", messages=[], tools=[])  # raises "not configured"
+    return governed
+
+
 def assess_lead(
     session: Session,
     principal: Principal,
@@ -156,28 +191,9 @@ def assess_lead(
         raise _refuse("lead_not_found", LeadNotFoundError())
     _check_limits(session, principal, tenant_id, lead_id, limits or Limits.default(), when)
 
-    # The registry gate (ADR 0016): off, over budget or the tool taken away stops it here.
-    governed = agents_api.governed(model, session, tenant_id, AGENT, ai_limits or _default_ai())
-    if not governed.available:
-        governed.reply(system="", messages=[], tools=[])  # raises "not configured"
-
+    governed = _governed(session, model, tenant_id, ai_limits)
     steps = list(procedure.steps)
-    shown, field_names, suspicious = rules.model_view(facts)
-    reply = governed.reply(
-        system=rules.system_prompt(steps, shown, suspicious),
-        messages=[{"role": "user", "content": ASK}],
-        tools=[rules.submit_tool(len(steps))],
-    )
-    uses = reply.tool_uses
-    if len(uses) != 1 or uses[0].name != rules.TOOL_NAME:
-        raise _refuse(
-            "invalid_answer",
-            AssessmentInvalidError("The assistant did not return exactly one assessment."),
-        )
-    try:
-        parsed = rules.parse_assessment(uses[0].input, len(steps))
-    except rules.AssessmentRefused as refusal:
-        raise _refuse("invalid_answer", AssessmentInvalidError(str(refusal))) from None
+    parsed, field_names = _ask(governed, steps, facts)
 
     planned = rules.plan(parsed, facts, procedure.version)
     proposal: AgentAction | None = None
@@ -237,5 +253,62 @@ def assess_lead(
     return AssessmentResult(record, proposal, blocked)
 
 
-def _default_ai() -> agents_api.Limits:
-    return agents_api.Limits.default()
+@dataclass(frozen=True)
+class DryRun:
+    """What the Qualifier WOULD do; nothing was stored or proposed."""
+
+    assessment: rules.Assessment
+    planned: rules.Planned | None
+    # None when the steps were a draft that has not been saved.
+    procedure_version: int | None
+
+
+def try_procedure(
+    session: Session,
+    principal: Principal,
+    model: ChatModel,
+    lead_id: uuid.UUID,
+    *,
+    steps: list[str] | None = None,
+    ai_limits: agents_api.Limits | None = None,
+) -> DryRun:
+    """For an administrator writing the steps: run the Qualifier on one lead and show the
+    assessment, without a proposal, a record or an audit entry. The model call still goes through
+    the registry (switch, token budget). ``steps`` is a draft; without it the active procedure."""
+    if (
+        principal.tenant_id is None
+        or principal.user_type != "staff"
+        or not principal.has_permission(Permission.QUALIFIER_MANAGE)
+    ):
+        raise ForbiddenError("You may not do this.")
+    version: int | None = None
+    if steps is not None:
+        written, _ = clean_steps(steps)
+    else:
+        procedure = repository.get_active(session, principal.tenant_id)
+        if procedure is None:
+            raise _refuse("no_procedure", NoActiveProcedureError())
+        written, version = list(procedure.steps), procedure.version
+    facts = leads_api.qualifier_facts(session, principal, lead_id)
+    if facts is None:
+        raise _refuse("lead_not_found", LeadNotFoundError())
+    governed = _governed(session, model, principal.tenant_id, ai_limits)
+    parsed, _ = _ask(governed, written, facts)
+    return DryRun(parsed, rules.plan(parsed, facts, version or 0), version)
+
+
+def assessments_for_lead(
+    session: Session, principal: Principal, lead_id: uuid.UUID, *, limit: int, offset: int
+) -> tuple[list[LeadAssessment], int]:
+    """The assessments of one lead, newest first - only for someone who may read that lead."""
+    if (
+        principal.tenant_id is None
+        or principal.user_type != "staff"
+        or not principal.has_permission(Permission.QUALIFIER_RUN)
+    ):
+        raise ForbiddenError("You may not do this.")
+    if leads_api.qualifier_facts(session, principal, lead_id) is None:
+        raise LeadNotFoundError()
+    return repository.list_assessments(
+        session, principal.tenant_id, lead_id, limit=limit, offset=offset
+    )

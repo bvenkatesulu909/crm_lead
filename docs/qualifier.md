@@ -186,6 +186,24 @@ registry switch yet (QA3, QA4).
 - **Still to come:** the automatic run for new website leads (off by default, as the Automation
   identity), then the endpoint and screens (QA4), the evaluation cases (QA5).
 
+## 7d. What QA4a built (the API for the screens)
+
+- `POST /api/v1/qualifier/assessments` `{lead_id}` (permission `qualifier:run`): asks for an
+  assessment; 201 with the decision, matched steps, reasons, missing items, outcome, the proposal's
+  id and its link `/approvals/<id>`, and - when the safety check refused the proposal - why. Errors:
+  404 `no_active_qualification_procedure` / `lead_not_found`, 422 `assessment_invalid`, 429
+  `qualifier_rate_limited`, 503 `agent_unavailable` / `agent_budget_reached`. An answer that turned
+  out invalid still keeps the tokens it used on the month's total.
+- `GET /api/v1/qualifier/assessments?lead_id=` (permission `qualifier:run`, and only for a lead the
+  person may read, else 404): the lead's assessments, newest first, paged.
+- `POST /api/v1/qualifier/procedure/try` `{lead_id, steps?}` (administrators only): the dry run - the
+  active steps or an unsaved draft, shown as the decision, reasons and, in words, what would be
+  proposed. No proposal, no record, no audit entry; the model call still goes through the registry
+  and uses tokens. Not rate-limited beyond the token budget.
+- The tests put a scripted model on the app (`app.state.qualifier_model`); otherwise
+  `CRM_AI_PROVIDER` decides (deepseek, anthropic, or the demo `fake`).
+- The automatic run for new website leads and the screens (QA4b) are still to come.
+
 ## 8. Questions for the owner - answered 2026-10-31: all six as recommended
 
 1. **Trigger.** Manual "Qualify" button first; an automatic run on new website leads later, off by

@@ -8,6 +8,7 @@ from app.modules.qualifier.assess import (
     RateLimitedError,
     assess_lead,
 )
+from app.modules.qualifier.auto import event_subscribers
 from app.modules.qualifier.llm import model_for
 from app.modules.qualifier.service import (
     InvalidProcedureError,
@@ -33,6 +34,7 @@ __all__ = [
     "ProcedureVersionConflictError",
     "clean_steps",
     "deactivate",
+    "event_subscribers",
     "find_active",
     "model_for",
     "get_active",

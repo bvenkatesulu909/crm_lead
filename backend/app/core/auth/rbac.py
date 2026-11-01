@@ -328,5 +328,8 @@ AUTOMATION_PERMISSIONS = frozenset(
         _P.QUOTE_READ_ALL,
         _P.TICKET_READ_ALL,
         _P.ORDER_READ_ALL,
+        # The Qualifier's automatic run (docs/qualifier.md): it may only SUGGEST - a manager
+        # approves - so it needs the right to ask for an assessment and to propose.
+        _P.QUALIFIER_RUN, _P.AGENT_ACTION_PROPOSE,
     }
 )  # fmt: skip

@@ -180,6 +180,10 @@ class Settings(BaseSettings):
     qualifier_per_lead_hour: int = Field(default=1, ge=1, le=100)
     qualifier_per_user_hour: int = Field(default=20, ge=1, le=1_000)
     qualifier_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
+    # Assess every new website lead as soon as the chat saves it, as the Automation identity.
+    # Off by default; read when the worker starts. The agent switch, the budget and the limits
+    # above still apply.
+    qualifier_auto_web_leads: bool = False
 
     # Proposals from an outside AI client (ADR 0020): which verified applications may create
     # them (comma separated) and how many one person may make per hour through them.

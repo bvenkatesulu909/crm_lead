@@ -1,11 +1,12 @@
 """Queries of the qualification procedures. All run inside the request's tenant context (RLS)."""
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.modules.qualifier.models import QualificationProcedure
+from app.modules.qualifier.models import LeadAssessment, QualificationProcedure
 
 
 def lock_tenant(session: Session, tenant_id: uuid.UUID) -> None:
@@ -46,3 +47,25 @@ def list_versions(
         .offset(offset)
     )
     return list(items), int(total or 0)
+
+
+def count_assessments(
+    session: Session,
+    tenant_id: uuid.UUID,
+    *,
+    since: datetime,
+    lead_id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+) -> int:
+    """How many assessments of this organisation (optionally of one lead or by one person) were
+    made since ``since``. Counts what was stored: a refused answer is not an assessment."""
+    statement = (
+        select(func.count())
+        .select_from(LeadAssessment)
+        .where(LeadAssessment.tenant_id == tenant_id, LeadAssessment.created_at >= since)
+    )
+    if lead_id is not None:
+        statement = statement.where(LeadAssessment.lead_id == lead_id)
+    if user_id is not None:
+        statement = statement.where(LeadAssessment.requested_by_user_id == user_id)
+    return int(session.scalar(statement) or 0)

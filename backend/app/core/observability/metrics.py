@@ -81,6 +81,19 @@ AI_DROPPED_TOOL_CALLS = Counter(
     registry=REGISTRY,
 )
 
+QUALIFIER_ASSESSMENTS = Counter(
+    "crm_qualifier_assessments_total",
+    "Qualifier assessments by decision and outcome. No tenant label.",
+    ["decision", "outcome"],
+    registry=REGISTRY,
+)
+QUALIFIER_REFUSALS = Counter(
+    "crm_qualifier_refusals_total",
+    "Qualifier requests that produced no assessment, by reason. No tenant label.",
+    ["reason"],
+    registry=REGISTRY,
+)
+
 RAG_SEARCHES = Counter(
     "crm_rag_searches_total",
     "Knowledge searches by outcome.",
@@ -271,6 +284,8 @@ __all__ = [
     "AI_REQUESTS",
     "AI_TOKENS",
     "MetricsMiddleware",
+    "QUALIFIER_ASSESSMENTS",
+    "QUALIFIER_REFUSALS",
     "REGISTRY",
     "RAG_ANSWERS",
     "RAG_SEARCHES",

@@ -372,7 +372,7 @@ at the exit; identity comes only from the token, proven by a test. Design:
 - **VA4** - BP-10 cases, `docs/injection-defences.md`, full runs, pull request.
 
 
-## Phase QA — Qualifier, the lead qualification agent (BP-03)  *(design accepted 2026-10-31; QA0, QA1, QA2 done)*
+## Phase QA — Qualifier, the lead qualification agent (BP-03)  *(design accepted 2026-10-31; QA0, QA1, QA2, QA3 core done)*
 
 Design: [docs/qualifier.md](docs/qualifier.md), accepted 2026-10-31 with the six recommended answers.
 

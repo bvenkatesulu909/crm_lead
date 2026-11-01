@@ -1,6 +1,6 @@
 # Qualifier - the lead qualification agent (BP-03, Phase QA)
 
-**Status:** design accepted 2026-10-31 (all six recommended answers in section 8). QA1 and QA2 built 2026-10-31; QA3-QA5 not started.
+**Status:** design accepted 2026-10-31 (all six recommended answers in section 8). QA1-QA3 built 2026-10-31 (QA3 core; the automatic run is the next small step); QA4-QA5 not started.
 **Kind:** a short design (the master plan marks BP-03 "design", not an ADR). It adds a model-using
 agent, so it follows ADR 0014 (approvals), 0016 (agent registry), 0017 (Sentinel) and 0018
 (artifacts). It changes none of them.
@@ -161,6 +161,30 @@ registry switch yet (QA3, QA4).
 - Not yet: the website-chat summary is not shown to the model; the model is not governed by the agent
   registry (QA3 adds the switch, budget and limits); no audit entry for the assessment itself, no
   metrics (QA3).
+
+## 7c. What QA3 built (the Qualifier is now a governed agent)
+
+- **Registry (ADR 0016):** `qualifier` is an entry of the AI agents page: an organisation's
+  administrator can switch it off, cap its monthly tokens, or take its one tool away; the platform
+  switch `CRM_AI_DISABLED` stops it too. Off or over budget: nothing is asked of the model and nothing
+  is proposed (503 `agent_unavailable` / `agent_budget_reached`, the same words as the other agents).
+  `assess_lead` always wraps the model, so there is no way to call it ungoverned. Without a tool the
+  model cannot report, so the request ends as `assessment_invalid`.
+- **Limits (settings):** `CRM_QUALIFIER_PER_LEAD_HOUR` (1), `CRM_QUALIFIER_PER_USER_HOUR` (20),
+  `CRM_QUALIFIER_PER_TENANT_DAY` (300). They are counted from the stored assessments and checked
+  BEFORE the model is called; over a limit: 429 `qualifier_rate_limited`. A refused answer is not
+  stored, so it does not use up a limit (the token budget still counts what it cost).
+- **Audit:** `qualifier.assessed` on the lead (assessment id, decision, outcome, procedure version,
+  proposal id - never the reasons).
+- **Metrics (no tenant label):** `crm_qualifier_assessments_total{decision,outcome}` and
+  `crm_qualifier_refusals_total{reason}` (`no_procedure`, `lead_not_found`, `lead_limit`,
+  `user_limit`, `tenant_limit`, `invalid_answer`); the agent switch and budget refusals are in
+  `crm_ai_refusals_total{agent="qualifier"}`.
+- **Demo model:** with `CRM_AI_PROVIDER=fake` the Qualifier uses a scripted model (no key; refused in
+  production) with visible rules: no phone -> ask for it; budget of at least 80 lakh -> qualify;
+  below 30 lakh -> unqualify; otherwise call first.
+- **Still to come:** the automatic run for new website leads (off by default, as the Automation
+  identity), then the endpoint and screens (QA4), the evaluation cases (QA5).
 
 ## 8. Questions for the owner - answered 2026-10-31: all six as recommended
 

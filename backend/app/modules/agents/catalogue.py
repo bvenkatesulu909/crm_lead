@@ -83,6 +83,17 @@ AGENTS: dict[str, AgentDef] = {
             tools=(),
         ),
         AgentDef(
+            key="qualifier",
+            title="Qualifier",
+            description=(
+                "Reads one lead and the organisation's written qualification steps and "
+                "SUGGESTS what to do. It never changes a lead: every suggestion waits in the "
+                "approval queue for a different person."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_assessment",),
+        ),
+        AgentDef(
             key="web_check",
             title="Web check",
             description=(

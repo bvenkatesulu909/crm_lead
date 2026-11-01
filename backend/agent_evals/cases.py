@@ -84,6 +84,10 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.public_chat import rules
 
         return {str(rules.SAVE_LEAD_TOOL["name"])}
+    if agent == "qualifier":
+        from app.modules.qualifier import rules as qualifier_rules
+
+        return {qualifier_rules.TOOL_NAME}
     raise CaseFileError(f"unknown agent {agent!r}")
 
 

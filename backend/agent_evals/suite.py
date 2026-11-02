@@ -31,7 +31,7 @@ BACKEND = Path(__file__).resolve().parents[1]
 CASES_DIR = BACKEND / "evals" / "agents"
 RAG_FILE = BACKEND / "evals" / "rag" / "ci_cases.json"
 
-AGENTS = ("staff_assistant", "portal_assistant", "public_chat")
+AGENTS = ("staff_assistant", "portal_assistant", "public_chat", "qualifier")
 CITED = "cited_answers"
 ALL_SUITES = (*AGENTS, CITED)
 
@@ -94,6 +94,8 @@ def run_suite(
                     return play.play_staff(session, world, c, model=model)[0]
                 if name == "portal_assistant":
                     return play.play_portal(session, world, c, model=model)[0]
+                if name == "qualifier":
+                    return play.play_qualifier(session, world, c, model=model)[0]
                 return play.play_public(session, world, c, model=model)[0]
 
             try:
@@ -197,8 +199,11 @@ def estimate_cost(
         def play_one(c: Case = case) -> CaseResult:
             nonlocal calls, chars, reply_chars
             probe = _Probe(ScriptedModel(c.script))
-            ready = substitute(c, world.placeholders(c.persona))
-            if c.agent == "staff_assistant":
+            # The Qualifier sets up its own procedure and leads, so it is played whole.
+            ready = c if c.agent == "qualifier" else substitute(c, world.placeholders(c.persona))
+            if c.agent == "qualifier":
+                play.play_qualifier(session, world, c, model=probe)
+            elif c.agent == "staff_assistant":
                 run_staff_case(session, world.principal(c.persona), ready, model=probe)
             elif c.agent == "portal_assistant":
                 run_portal_case(session, world.principal(c.persona), ready, model=probe)

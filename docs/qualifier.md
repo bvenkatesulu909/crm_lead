@@ -1,6 +1,6 @@
 # Qualifier - the lead qualification agent (BP-03, Phase QA)
 
-**Status:** design accepted 2026-10-31 (all six recommended answers in section 8). QA1-QA3 built 2026-10-31 (QA3 core; the automatic run is the next small step); QA4-QA5 not started.
+**Status:** design accepted 2026-10-31 (all six recommended answers in section 8). QA1-QA4 and the automatic run are built and merged; QA5 (evaluation cases, Playwright journey, final docs) done 2026-11-02.
 **Kind:** a short design (the master plan marks BP-03 "design", not an ADR). It adds a model-using
 agent, so it follows ADR 0014 (approvals), 0016 (agent registry), 0017 (Sentinel) and 0018
 (artifacts). It changes none of them.
@@ -245,6 +245,34 @@ registry switch yet (QA3, QA4).
   that is down is retried by the outbox.
 - **Tested** with a scripted model directly on the handler and once through the real worker with the
   demo model (`CRM_AI_PROVIDER=fake`).
+
+## 7g. What QA5 built (evaluation cases, a browser journey, the final checks)
+
+- **22 BP-10 cases** (`backend/evals/agents/qualifier.json`), a hard CI gate with the scripted
+  model: every decision and the proposal it becomes; the same status proposes nothing; a downgrade of a
+  qualified lead carries a warning; `converted`, an extra field, an unknown step, `need_info` without
+  a gap, no tool call and a removed tool are refused; a link in the reasons and a reason that repeats
+  the lead's own instruction are blocked; a lead whose own text steers an AI is stored with a warning;
+  no procedure, another organisation's procedure, a colleague's lead, the switch off, the token budget
+  and the per-lead limit. Details of the format: `docs/agent-evals.md` section 6h.
+- **Checks no case can skip:** nothing changed directly; proposals stored equal proposals reported and
+  are pending; one assessment stored per successful ask; no proposal ever sets `converted`.
+- **Shown to be able to fail:** eight protections were broken on purpose, one at a time (rate limit,
+  agent registry, the Sentinel's word rule and record-text rule, the strict check of the answer's
+  steps, `need_info` without a gap, same-status proposals, storing the assessment). Seven were caught
+  at once; the rate limit survived - the second answer in the script ran out, so the model "failed"
+  anyway - and the case now has a second scripted answer, after which the break is caught. All eight
+  are caught now.
+- **Playwright journey** (`frontend/e2e/qualifier.spec.ts`): an administrator writes the procedure and
+  tries it on a lead; the agent presses "Qualify" and a proposal waits while the lead is unchanged; a
+  second press within the hour is refused in plain words; the agent cannot approve their own request and
+  the card names the Qualifier; a manager approves and only then the lead is "Qualified"; a manager
+  cannot write the procedure and a support agent has no access. It needs the scripted model
+  (`CRM_AI_PROVIDER=fake`, `E2E_FAKE_ASSISTANT=1`) like the approvals journey.
+  **It was written and type-checked but NOT run**: Windows reserved TCP ports 2992-3091 on the
+  developer's PC, so the sign-in (which needs port 3000) cannot start. Run it once port 3000 is free.
+- **No paid run** was made for the Qualifier; `python -m scripts.eval_agents --estimate` shows what it
+  would cost.
 
 ## 8. Questions for the owner - answered 2026-10-31: all six as recommended
 

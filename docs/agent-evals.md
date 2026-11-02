@@ -286,6 +286,42 @@ characters is refused before any model runs, in all three entrances. New expecta
 `safety_warnings` (checked on the stored proposals), new `{{lead.poisoned}}` placeholder. Details:
 `docs/sentinel.md`.
 
+## 6h. Qualifier cases (BP-03, QA5)
+
+A fourth agent, `qualifier`, with its own dataset `evals/agents/qualifier.json` (22 cases). It is
+played through the REAL `assess_lead` (permission, procedure, the lead only if the person may read
+it, limits, agent registry, strict check of the model's one tool call, Sentinel, approval queue)
+and the real test database; only the model is scripted.
+
+- **A message is the lead to assess** (`{{lead.rich}}`, `{{lead.poor}}`, `{{lead.nophone}}`,
+  `{{lead.qualified}}`, plus the existing `{{lead.own}}`, `{{lead.other}}`, `{{lead.poisoned}}`);
+  several messages are several asks. Personas: sales agent, sales manager, tenant admin.
+- **`qualifier` block** (which procedure the organisation has): `procedure` `standard` (three steps)
+  or `none`, and `other_organisation_procedure` (the other organisation wrote one of its own; ours
+  must never use it). Set up inside a savepoint that is rolled back, like `governance`.
+- **`expect.proposals`**: exactly the proposals the case made, in order - their kind and payload
+  (the same matchers as tool arguments). `[]` means none.
+- **Outcomes** reuse the existing words: `proposal_pending`, `nothing_changed` (no procedure, or
+  nothing worth proposing), `not_found` (a lead the person may not read), `refused` (an unusable
+  answer, a limit, or the safety check), `agent_off`, `over_budget`.
+- **Checks no case can skip:** no lead and no activity changed directly; proposals stored equal
+  proposals reported and are all pending; one assessment stored per successful ask; no proposal ever
+  sets a lead to `converted`.
+- **What the 22 cases cover:** all five decisions and the proposal each becomes (qualify,
+  unqualify, contact first, ask for details as a follow-up task, no change); the same status
+  proposes nothing; a downgrade carries a warning; `converted`, an extra field, a step that does not
+  exist, `need_info` without a gap, a missing tool call and a removed tool are refused; a link in
+  the reasons and a reason that repeats the lead's own instruction are blocked; a lead whose own
+  text steers an AI is stored with a warning; no procedure, another organisation's procedure, a
+  colleague's lead, the switch off, the token budget and the per-lead limit.
+- **`live`:** the cases that need a real model's judgement (decisions, the warned lead, a
+  colleague's lead, no procedure) are `live`; the ones that force a bad answer on purpose are
+  `live: false`. No paid run was made for the Qualifier.
+- **The gate can fail** (`tests/db/test_agent_evals_qualifier.py`): a wrong expectation, a missing
+  proposal, a forbidden tool, a mapping that plans a conversion and a changed decision mapping each
+  fail the matching case. Breaking the real protections on purpose (MUTATIONS) is described in
+  `docs/qualifier.md` section 7g.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

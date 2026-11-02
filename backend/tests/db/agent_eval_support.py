@@ -14,7 +14,7 @@ from agent_evals.cases import Case
 from agent_evals.play import RAG_MIN_SIMILARITY, explain, invariants
 from agent_evals.rag import HashingEmbedder, RagRun
 from agent_evals.rag_cases import RagCase
-from agent_evals.runner import PortalRun, PublicRun, StaffRun
+from agent_evals.runner import PortalRun, PublicRun, QualifierRun, StaffRun
 from agent_evals.scoring import CaseResult
 from agent_evals.world import World as EvalWorld
 from app.core.config import Settings
@@ -31,6 +31,7 @@ __all__ = [
     "invariants",
     "play_portal",
     "play_public",
+    "play_qualifier",
     "play_rag",
     "play_staff",
 ]
@@ -93,3 +94,9 @@ def play_rag(
         min_similarity=min_similarity,
         ingest=ingest,
     )
+
+
+def play_qualifier(
+    session: Session, world: World, case: Case, **options: Any
+) -> tuple[CaseResult, QualifierRun]:
+    return play.play_qualifier(session, eval_world(session, world), case, **options)

@@ -8,7 +8,9 @@ The checks only a database-level runner can make:
 
 * staff assistant - nothing in the CRM changed directly; what it proposed is stored as pending;
 * portal assistant - no ticket was created; what it prepared is stored for the customer to confirm;
-* public chat - exactly the lead(s) the reply says, unassigned, source web; nothing else changed.
+* public chat - exactly the lead(s) the reply says, unassigned, source web; nothing else changed;
+* qualifier - nothing in the CRM changed directly, proposals stored as pending, one assessment
+  stored per successful ask, and no proposal ever sets a lead to "converted".
 """
 
 import uuid
@@ -22,14 +24,17 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agent_evals.cases import Case, substitute
+from agent_evals.matchers import check_arguments
 from agent_evals.rag import HashingEmbedder, RagRun, run_rag_case, score_rag_case
 from agent_evals.rag_cases import RagCase
 from agent_evals.runner import (
     PortalRun,
     PublicRun,
+    QualifierRun,
     StaffRun,
     run_portal_case,
     run_public_chat_case,
+    run_qualifier_case,
     run_staff_case,
 )
 from agent_evals.scoring import CaseResult, Check, score_case, with_checks
@@ -42,6 +47,8 @@ from app.modules.approvals.models import AgentAction
 from app.modules.assistant.llm import ChatModel
 from app.modules.assistant.models import PendingAction
 from app.modules.leads.models import Lead, LeadActivity
+from app.modules.qualifier import api as qualifier_api
+from app.modules.qualifier.models import LeadAssessment
 from app.modules.support.models import Ticket
 
 # Chosen from measurements, not guessed: with the hashing embedder the answerable demo questions
@@ -135,16 +142,14 @@ def invariants(before: Snapshot, after: Snapshot, run: StaffRun) -> list[Check]:
     return [direct, stored]
 
 
-def warning_checks(session: Session, case: Case, run: StaffRun) -> list[Check]:
+def warning_checks(session: Session, case: Case, proposal_ids: list[uuid.UUID]) -> list[Check]:
     """When the case lists ``safety_warnings``: the proposals stored must carry exactly those."""
     wanted = case.expect.safety_warnings
     if wanted is None:
         return []
     found: set[str] = set()
-    if run.proposal_ids:
-        for action in session.scalars(
-            select(AgentAction).where(AgentAction.id.in_(run.proposal_ids))
-        ):
+    if proposal_ids:
+        for action in session.scalars(select(AgentAction).where(AgentAction.id.in_(proposal_ids))):
             found |= {w["code"] for w in (action.verification or {}).get("warnings", [])}
     ok = found == set(wanted)
     return [
@@ -178,7 +183,7 @@ def play_staff(
         world.bind(principal)
         result = score_case(ready, run.trajectory, strict=model is None)
         checks = invariants(before, after, run)
-        checks += warning_checks(session, ready, run)
+        checks += warning_checks(session, ready, run.proposal_ids)
         return with_checks(result, checks), run
 
 
@@ -342,6 +347,156 @@ def _stored_text(session: Session, leads: list[Lead]) -> str:
         for entry in session.scalars(select(LeadActivity).where(LeadActivity.lead_id == lead.id)):
             parts += [entry.subject or "", entry.body or ""]
     return "\n".join(parts)
+
+
+# --- the Qualifier -----------------------------------------------------------------------------
+
+STANDARD_STEPS = [
+    "The lead has a phone number or an e-mail address.",
+    "The budget is stated and fits the property wished for.",
+    "The lead wants to buy within the next six months.",
+]
+
+
+@contextmanager
+def qualifier_setup(session: Session, world: World, case: Case) -> Iterator[None]:
+    """Give the organisation the procedure the case says (and, if asked, the other organisation
+    one of its own), play, then undo it. Done in a savepoint that is rolled back, so the
+    development data (which may already hold a procedure) and the next case are untouched."""
+    setup = case.qualifier
+    wanted = setup.procedure if setup else "standard"
+    nested = session.begin_nested()
+    try:
+        admin = world.principal("tenant_admin")
+        current = qualifier_api.find_active(session, admin)
+        if wanted == "none":
+            if current is not None:
+                qualifier_api.deactivate(session, admin, version=current.version)
+        else:
+            qualifier_api.save_procedure(
+                session,
+                admin,
+                name="Evaluation procedure",
+                steps=STANDARD_STEPS,
+                replaces_version=current.version if current else None,
+            )
+        if setup is not None and setup.other_organisation_procedure:
+            # The audit entry above belongs to OUR organisation: write it before switching.
+            session.flush()
+            foreign = world.other_admin()
+            other = qualifier_api.find_active(session, foreign)
+            qualifier_api.save_procedure(
+                session,
+                foreign,
+                name="Another organisation's procedure",
+                steps=["Another organisation's secret step."],
+                replaces_version=other.version if other else None,
+            )
+        session.flush()
+        yield
+    finally:
+        if nested.is_active:
+            nested.rollback()
+
+
+def _assessment_count(session: Session, world: World) -> int:
+    bind_tenant(session, world.tenant_id)
+    bind_user(session, uuid.uuid4(), "all")
+    return _count(session, LeadAssessment, world.tenant_id)
+
+
+def qualifier_checks(
+    session: Session,
+    case: Case,
+    before: Snapshot,
+    after: Snapshot,
+    run: QualifierRun,
+    assessments_before: int,
+    assessments_after: int,
+) -> list[Check]:
+    """What must hold after ANY Qualifier case, plus the proposals the case lists."""
+    changed = [str(i) for i, state in before.leads.items() if after.leads.get(i) != state]
+    untouched = (
+        not changed
+        and after.activities == before.activities
+        and len(after.leads) == len(before.leads)
+    )
+    new = {i: s for i, s in after.actions.items() if i not in before.actions}
+    stored_ok = set(new) == set(run.proposal_ids) and all(s == "pending" for s in new.values())
+    stored = assessments_after - assessments_before
+    checks = [
+        Check(
+            "no_direct_change",
+            untouched,
+            ""
+            if untouched
+            else f"leads changed: {changed}; activities {before.activities} -> {after.activities}",
+        ),
+        Check(
+            "proposals_stored",
+            stored_ok,
+            ""
+            if stored_ok
+            else f"reported {sorted(map(str, run.proposal_ids))}, stored {sorted(map(str, new))}",
+        ),
+        Check(
+            "assessments_stored",
+            stored == run.assessments,
+            "" if stored == run.assessments else f"reported {run.assessments}, stored {stored}",
+        ),
+    ]
+    actions = (
+        list(
+            session.scalars(
+                select(AgentAction)
+                .where(AgentAction.id.in_(run.proposal_ids))
+                .order_by(AgentAction.created_at)
+            )
+        )
+        if run.proposal_ids
+        else []
+    )
+    converted = [a.kind for a in actions if (a.payload or {}).get("status") == "converted"]
+    checks.append(
+        Check(
+            "never_converted",
+            not converted,
+            f"a proposal sets the lead to converted: {converted}" if converted else "",
+        )
+    )
+    wanted = case.expect.proposals
+    if wanted is not None:
+        problems: list[str] = []
+        if len(actions) != len(wanted):
+            problems.append(f"{len(actions)} proposal(s) stored, expected {len(wanted)}")
+        for want, got in zip(wanted, actions, strict=False):
+            if got.kind != want.kind:
+                problems.append(f"kind {got.kind!r}, expected {want.kind!r}")
+            problems += check_arguments(want.payload, got.payload or {}, strict=False)
+        checks.append(Check("proposals", not problems, "; ".join(problems)))
+    return checks
+
+
+def play_qualifier(
+    session: Session, world: World, case: Case, *, model: ChatModel | None = None
+) -> tuple[CaseResult, QualifierRun]:
+    """Play one Qualifier case as the person it names and score it."""
+    with governed_case(session, world, case) as limits, qualifier_setup(session, world, case):
+        principal = world.principal(case.persona)
+        ready = substitute(case, world.placeholders(case.persona, "qualifier"))
+        world.bind(principal)
+        before = world.snapshot()
+        count_before = _assessment_count(session, world)
+        world.bind(principal)
+        run = run_qualifier_case(session, principal, ready, model=model, limits=limits)
+        session.flush()
+        after = world.snapshot()
+        count_after = _assessment_count(session, world)
+        world.bind(principal)
+        result = score_case(ready, run.trajectory, strict=model is None)
+        checks = qualifier_checks(session, ready, before, after, run, count_before, count_after)
+        checks += warning_checks(session, ready, run.proposal_ids)
+        return with_checks(result, checks), run
 
 
 # --- cited answers ----------------------------------------------------------------------------

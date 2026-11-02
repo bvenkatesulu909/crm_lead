@@ -27,7 +27,7 @@ from pydantic import (
 
 from agent_evals.matchers import MatcherError, compile_matcher
 
-Agent = Literal["staff_assistant", "portal_assistant", "public_chat"]
+Agent = Literal["staff_assistant", "portal_assistant", "public_chat", "qualifier"]
 Persona = Literal[
     "sales_agent", "sales_manager", "tenant_admin", "support_agent", "customer", "visitor"
 ]
@@ -53,6 +53,8 @@ PERSONAS: dict[str, set[str]] = {
     "staff_assistant": {"sales_agent", "sales_manager", "tenant_admin", "support_agent"},
     "portal_assistant": {"customer"},
     "public_chat": {"visitor"},
+    # A support agent has no Qualifier permission, so it is not a persona here.
+    "qualifier": {"sales_agent", "sales_manager", "tenant_admin"},
 }
 # After these outcomes nothing in the CRM has changed (or may only wait for approval): the
 # answer must not claim otherwise.
@@ -138,6 +140,33 @@ class Governance(_Strict):
     platform_disabled: bool = False
 
 
+class QualifierSetup(_Strict):
+    """What the organisation has written for the Qualifier in this case (docs/qualifier.md).
+
+    The standard procedure has three steps, so ``matched_steps`` 1-3 exist in a case. Applied
+    inside a savepoint that is rolled back, like ``governance``."""
+
+    procedure: Literal["standard", "none"] = "standard"
+    # The OTHER organisation has a procedure of its own; ours must never use it.
+    other_organisation_procedure: bool = False
+
+
+class ExpectedProposal(_Strict):
+    """One proposal the case must have made (kind and payload, matchers as for tool arguments)."""
+
+    kind: str = Field(min_length=1, max_length=80)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _matchers_are_valid(self) -> "ExpectedProposal":
+        for name, spec in self.payload.items():
+            try:
+                compile_matcher(spec)
+            except MatcherError as exc:
+                raise ValueError(f"{name}: {exc}") from exc
+        return self
+
+
 class Expect(_Strict):
     tools: list[ExpectedCall] = Field(default_factory=list)
     forbidden_tools: list[str] = Field(default_factory=list)
@@ -157,6 +186,8 @@ class Expect(_Strict):
     # the CRM (the lead's fields and its timeline), after the door cleaned it.
     stored_must_contain: list[str] = Field(default_factory=list)
     stored_must_not_contain: list[str] = Field(default_factory=list)
+    # Qualifier only: exactly the proposals the case made, in order ([] = none). None: not checked.
+    proposals: list[ExpectedProposal] | None = None
 
     @model_validator(mode="after")
     def _warnings_are_warnings(self) -> "Expect":
@@ -189,12 +220,16 @@ class Case(BaseModel):
     description: str = Field(min_length=1, max_length=300)
     agent: Agent
     persona: Persona = Field(alias="as")
+    # For the qualifier each message is the lead to assess (a placeholder such as {{lead.rich}}):
+    # the Qualifier is asked about one lead at a time, it is not a chat.
     messages: list[Message] = Field(min_length=1, max_length=5)
     # False: the case forces a bad call on purpose to see the CRM refuse it, so a real model
     # (which is not expected to make that call) is not run on it. Scripted runs always are.
     live: bool = True
     # How the agent is set up in the registry; absent = the defaults (on, standard budget).
     governance: Governance | None = None
+    # Qualifier only: which procedure the organisation has. Absent = the standard one.
+    qualifier: QualifierSetup | None = None
     script: list[Step] = Field(default_factory=list)
     expect: Expect
 
@@ -209,6 +244,8 @@ class Case(BaseModel):
             self.expect.stored_must_contain or self.expect.stored_must_not_contain
         ):
             raise ValueError("expect.stored_*: only the website chat stores text in the CRM")
+        if self.agent != "qualifier" and (self.qualifier or self.expect.proposals is not None):
+            raise ValueError("qualifier / expect.proposals: only for the qualifier agent")
         real = known_tools(self.agent)
         if self.governance and self.governance.allowed_tools:
             unknown = set(self.governance.allowed_tools) - real

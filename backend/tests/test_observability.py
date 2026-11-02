@@ -67,7 +67,12 @@ def test_ai_token_and_estimated_cost_metrics_are_recorded():
     before = (
         REGISTRY.get_sample_value(
             "crm_ai_tokens_total",
-            {"provider": "anthropic", "model": "test-model", "direction": "input"},
+            {
+                "provider": "anthropic",
+                "model": "test-model",
+                "direction": "input",
+                "agent": "unknown",
+            },
         )
         or 0.0
     )
@@ -83,18 +88,18 @@ def test_ai_token_and_estimated_cost_metrics_are_recorded():
     )
     after = REGISTRY.get_sample_value(
         "crm_ai_tokens_total",
-        {"provider": "anthropic", "model": "test-model", "direction": "input"},
+        {"provider": "anthropic", "model": "test-model", "direction": "input", "agent": "unknown"},
     )
     cost = REGISTRY.get_sample_value(
         "crm_ai_estimated_cost_usd_total",
-        {"provider": "anthropic", "model": "test-model"},
+        {"provider": "anthropic", "model": "test-model", "agent": "unknown"},
     )
     assert after == before + 1000
     assert cost is not None and cost > 0
     assert (
         REGISTRY.get_sample_value(
             "crm_ai_requests_total",
-            {"provider": "anthropic", "model": "test-model", "outcome": "ok"},
+            {"provider": "anthropic", "model": "test-model", "outcome": "ok", "agent": "unknown"},
         )
         or 0
     ) >= 1

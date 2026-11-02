@@ -25,7 +25,7 @@ groups:
           summary: "AI calls are failing or timing out"
           runbook: docs/r6-operations-runbook.md#ai-provider
       - alert: CrmAiCostBudget
-        expr: increase(crm_ai_estimated_cost_usd_total[1h]) > 5
+        expr: sum(increase(crm_ai_estimated_cost_usd_total[1h])) > 5
         for: 10m
         labels: {severity: warning}
         annotations:

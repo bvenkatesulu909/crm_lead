@@ -8,6 +8,9 @@ Rules:
 
 import re
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
@@ -39,27 +42,27 @@ HTTP_DURATION = Histogram(
 
 AI_REQUESTS = Counter(
     "crm_ai_requests_total",
-    "AI model calls by provider, model and outcome.",
-    ["provider", "model", "outcome"],
+    "AI model calls by provider, model, outcome and agent (CRM-111). No tenant label.",
+    ["provider", "model", "outcome", "agent"],
     registry=REGISTRY,
 )
 AI_DURATION = Histogram(
     "crm_ai_request_duration_seconds",
-    "AI model call duration by provider and model.",
-    ["provider", "model"],
+    "AI model call duration by provider, model and agent.",
+    ["provider", "model", "agent"],
     buckets=(0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20, 30, 60, 120),
     registry=REGISTRY,
 )
 AI_TOKENS = Counter(
     "crm_ai_tokens_total",
-    "AI tokens by provider, model and direction (input/output).",
-    ["provider", "model", "direction"],
+    "AI tokens by provider, model, direction (input/output) and agent.",
+    ["provider", "model", "direction", "agent"],
     registry=REGISTRY,
 )
 AI_COST = Counter(
     "crm_ai_estimated_cost_usd_total",
-    "Estimated AI cost in USD (price table from environment; not a bill).",
-    ["provider", "model"],
+    "Estimated AI cost in USD by agent (price table from environment; not a bill).",
+    ["provider", "model", "agent"],
     registry=REGISTRY,
 )
 AI_REFUSALS = Counter(
@@ -190,6 +193,24 @@ class MetricsMiddleware:
             )
 
 
+# Which agent a model call is made for (CRM-111). The agent registry's wrapper sets it around each
+# call; a call nobody wrapped is "unknown". A context variable (not a global) so that two requests
+# on two threads never blame each other's agent. Only a short snake_case name is accepted, so the
+# label stays bounded whatever a caller passes - and it can never carry a tenant, person or text.
+_AGENT: ContextVar[str] = ContextVar("crm_ai_agent", default="unknown")
+_AGENT_NAME = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+
+
+@contextmanager
+def ai_agent(name: str) -> Iterator[None]:
+    """Count the model calls made inside this block for the agent ``name``."""
+    token = _AGENT.set(name if _AGENT_NAME.fullmatch(name) else "unknown")
+    try:
+        yield
+    finally:
+        _AGENT.reset(token)
+
+
 def observe_ai_call(
     *,
     provider: str,
@@ -201,17 +222,22 @@ def observe_ai_call(
     input_price_per_million: float = 0.0,
     output_price_per_million: float = 0.0,
 ) -> None:
-    AI_REQUESTS.labels(provider=provider, model=model, outcome=outcome).inc()
-    AI_DURATION.labels(provider=provider, model=model).observe(seconds)
+    agent = _AGENT.get()
+    AI_REQUESTS.labels(provider=provider, model=model, outcome=outcome, agent=agent).inc()
+    AI_DURATION.labels(provider=provider, model=model, agent=agent).observe(seconds)
     if input_tokens:
-        AI_TOKENS.labels(provider=provider, model=model, direction="input").inc(input_tokens)
+        AI_TOKENS.labels(provider=provider, model=model, direction="input", agent=agent).inc(
+            input_tokens
+        )
     if output_tokens:
-        AI_TOKENS.labels(provider=provider, model=model, direction="output").inc(output_tokens)
+        AI_TOKENS.labels(provider=provider, model=model, direction="output", agent=agent).inc(
+            output_tokens
+        )
     cost = (
         input_tokens * input_price_per_million + output_tokens * output_price_per_million
     ) / 1_000_000
     if cost > 0:
-        AI_COST.labels(provider=provider, model=model).inc(cost)
+        AI_COST.labels(provider=provider, model=model, agent=agent).inc(cost)
 
 
 def refresh_operational_gauges(engine: Engine) -> None:
@@ -289,6 +315,7 @@ __all__ = [
     "REGISTRY",
     "RAG_ANSWERS",
     "RAG_SEARCHES",
+    "ai_agent",
     "metrics_payload",
     "observe_ai_call",
     "refresh_operational_gauges",

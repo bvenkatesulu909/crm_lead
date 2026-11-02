@@ -15,7 +15,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.observability.metrics import AI_DROPPED_TOOL_CALLS, AI_REFUSALS
+from app.core.observability.metrics import AI_DROPPED_TOOL_CALLS, AI_REFUSALS, ai_agent
 from app.modules.agents import service
 from app.modules.agents.service import (
     AgentBudgetReachedError,
@@ -73,7 +73,9 @@ class GovernedModel:
             raise
         allowed = set(state.allowed_tools)
         offered = [tool for tool in tools if tool.get("name") in allowed]
-        reply = self._inner.reply(system=system, messages=messages, tools=offered)
+        # The model counts its own calls (tokens, time, cost); this says for WHICH agent.
+        with ai_agent(self._key):
+            reply = self._inner.reply(system=system, messages=messages, tools=offered)
         result = service.record_usage(
             self._session,
             self._tenant_id,

@@ -1,6 +1,6 @@
 # LLM usage and cost metrics per agent (CRM-111)
 
-**Status:** design accepted 2026-11-02 (all three answers in section 5 as recommended). LM1 and LM2 built 2026-11-02 (sections 7 and 8); LM3 not started.
+**Status:** design accepted 2026-11-02 (all three answers in section 5 as recommended). LM1, LM2 and LM3 built 2026-11-02 (sections 7-9). **CRM-111 complete.**
 **Kind:** a small design, not an ADR: it adds a label and one read-only field. It changes none of
 ADR 0016 (agent registry), 0017 or 0018.
 
@@ -66,7 +66,7 @@ ADR 0016 (agent registry), 0017 or 0018.
 |---|---|
 | LM1 (done) | Context variable in `governed()`, `agent` label in `observe_ai_call`, tests (each agent shows up under its own label; ungoverned = `unknown`; a failed call counts for its agent; no tenant or text in any label) |
 | LM2 (done) | `estimated_cost_usd_this_month` in the agents API + the page, tests |
-| LM3 | Grafana panels, alerts, docs, full runs |
+| LM3 (done) | Grafana panels, alerts, docs, full runs |
 
 ## 7. What LM1 built (2026-11-02)
 
@@ -101,3 +101,27 @@ ADR 0016 (agent registry), 0017 or 0018.
   protections broken on purpose (6 backend, 4 frontend) were all caught; one more break - building the
   decimal from the float instead of its text - cannot be seen at four places of money and is left out
   on purpose.
+
+## 9. What LM3 built (2026-11-02)
+
+- **Grafana** (`crm-lead-operations`): five panels "by agent" - cost per hour, tokens, p95 latency,
+  failed calls, and calls refused before the model (`crm_ai_refusals_total{agent,reason}`: switched
+  off, budget, platform). The old "AI tokens / cost" panel now shows the total cost, not one line per
+  agent.
+- **Alerts:** new `CrmAiAgentFailing` (warning): one agent fails more than 30 % of its model calls for
+  15 minutes, and only when it made at least five calls in that time - so a quiet agent with two
+  failures out of three does not page anyone, while the Qualifier being broken is no longer hidden by
+  the other agents' healthy traffic. Prometheus's own checker (`promtool check rules`) accepts all 11
+  rules.
+- **Runbook:** the alert table, a new section "AI agent" (what the `agent` label values are, what the
+  panels mean, why there is no tenant label and where an administrator finds their own organisation's
+  usage), a rewritten "AI cost" section (one price pair, find the agent, stop the spending without a
+  deployment), and the stale line "DeepSeek is not implemented" is gone.
+- **Tests** (`tests/test_monitoring_files.py`, 92 checks, no Prometheus or Grafana needed): the files
+  parse; panels do not overlap or leave the grid; every metric in every panel and alert exists; every
+  label used belongs to a metric it uses; no expression or AI metric label can name a tenant or a
+  person; every alert links to a runbook section that exists and is in the runbook table; the by-agent
+  panels, the summed cost alert and the new alert (with its traffic guard) exist. Nine protections
+  broken on purpose are all caught. PyYAML is now a pinned dev dependency (it reads `alerts.yml`).
+- **Not done:** the dashboard was not loaded into a running Grafana and no alert was fired for real;
+  only the files were checked.

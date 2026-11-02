@@ -20,7 +20,8 @@ Operational actions for the crm-lead API, worker and RAG pipeline. Alerts link h
 | CrmApiHighErrorRate | >5% 5xx | API logs by `request_id`; readiness 503? DB? |
 | CrmApiSlowRequests | p95 >2 s | DB latency, pgvector HNSW, reranker cold load |
 | CrmAiFailureSpike | AI error/timeout rate | provider status, `crm_ai_requests_total`, API key/quota |
-| CrmAiCostBudget | estimated spend >$5/h | usage by model; check budget/prompt size |
+| CrmAiAgentFailing | one AI agent fails >30 % of its calls for 15 min (at least 5 calls) | which `agent` label; provider status; is the agent switched off or over budget? |
+| CrmAiCostBudget | estimated spend >$5/h (all agents added up) | cost by agent panel; then budget/prompt size |
 | CrmWorkerHeartbeatStale | no heartbeat >120 s | worker process running? logs? DB reachable? |
 | CrmOutboxBacklog | >100 pending jobs | worker alive? slow handlers? DB locks? |
 | CrmJobsDead | job gave up | `outbox_jobs.last_error`/kind; fix cause then requeue |
@@ -39,14 +40,33 @@ Operational actions for the crm-lead API, worker and RAG pipeline. Alerts link h
 3. HNSW growth: check index size/tenant volume before tuning `ef_search`.
 
 ## AI provider {#ai-provider}
-1. `crm_ai_requests_total{outcome!="ok"}` by model; 503 responses mean unconfigured/timeout.
-2. Confirm `CRM_ANTHROPIC_API_KEY` is set in the host's secret store (never in logs/repo).
-3. DeepSeek is **not implemented**; see the gap report decision G-01. Do not point these
-   metrics at a provider that is not deployed.
+1. `crm_ai_requests_total{outcome!="ok"}` by model and by agent; 503 responses mean
+   unconfigured/timeout.
+2. Confirm `CRM_ANTHROPIC_API_KEY` (or `CRM_DEEPSEEK_API_KEY` for DeepSeek) is set in the host's
+   secret store (never in logs/repo).
+3. If only one agent fails, see [AI agent](#ai-agent) below.
+
+## AI agent {#ai-agent}
+Every AI metric (`crm_ai_requests_total`, `crm_ai_request_duration_seconds`, `crm_ai_tokens_total`,
+`crm_ai_estimated_cost_usd_total`) has an `agent` label: `staff_assistant`, `portal_assistant`,
+`public_chat`, `knowledge_answers`, `qualifier` (`unknown` = a call that was not made through the agent
+registry - that should not happen; look at the code that made it).
+1. Open the dashboard row "by agent": cost, tokens, p95 latency, failed calls, refused calls.
+2. Failed calls for one agent only: provider outage for that model, a wrong key for that agent's
+   provider, or a prompt that now exceeds the model's limit. The refusals panel
+   (`crm_ai_refusals_total{agent,reason}`) shows calls that never reached the model (agent switched off,
+   platform switch, budget reached) - those are decisions, not failures.
+3. An administrator sees the same agent on the AI agents page (switch, monthly token budget, tools,
+   tokens used and an estimated cost). There is no tenant label on any metric on purpose: to find out
+   WHICH organisation used the tokens, an administrator looks at that page for their own organisation.
 
 ## AI cost {#ai-cost}
-1. `crm_ai_estimated_cost_usd_total` is an **estimate** from env prices, not a bill.
-2. Check token counts per model and the assistant rate limit; set the budget alert threshold.
+1. `crm_ai_estimated_cost_usd_total` is an **estimate** from env prices, not a bill. One price pair
+   (`CRM_AI_INPUT_PRICE_PER_MILLION`, `CRM_AI_OUTPUT_PRICE_PER_MILLION`) applies to every model.
+2. The panel "AI cost by agent" says which agent spent it. Check that agent's token counts, its
+   rate limits and, for the assistants, the length of the prompt and of the tool results.
+3. To stop the spending without a deployment: switch the agent off (AI agents page) or lower its
+   monthly token budget; the platform switch `CRM_AI_DISABLED` stops all of them.
 
 ## Worker {#worker}
 1. `crm_worker_heartbeat_age_seconds`; if stale, restart the worker service.

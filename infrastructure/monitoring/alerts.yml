@@ -24,6 +24,15 @@ groups:
         annotations:
           summary: "AI calls are failing or timing out"
           runbook: docs/r6-operations-runbook.md#ai-provider
+      - alert: CrmAiAgentFailing
+        # One agent failing most of its calls, with enough traffic to mean something. The overall
+        # CrmAiFailureSpike can stay quiet when only a small agent (say the Qualifier) is broken.
+        expr: (sum by (agent) (rate(crm_ai_requests_total{outcome!="ok"}[15m])) / clamp_min(sum by (agent) (rate(crm_ai_requests_total[15m])), 0.001) > 0.3) and (sum by (agent) (increase(crm_ai_requests_total[15m])) >= 5)
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "An AI agent is failing most of its model calls (see the agent label)"
+          runbook: docs/r6-operations-runbook.md#ai-agent
       - alert: CrmAiCostBudget
         expr: sum(increase(crm_ai_estimated_cost_usd_total[1h])) > 5
         for: 10m

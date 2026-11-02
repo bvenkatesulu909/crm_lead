@@ -1521,6 +1521,8 @@ export type Agent = {
   used_tokens: number;
   calls: number;
   percent_used: number;
+  /** An ESTIMATE in US dollars as text ("0.4200"), not a bill; null: no model or no price. */
+  estimated_cost_usd: string | null;
   /** null until the organisation first changes the agent. */
   version: number | null;
 };
@@ -1541,7 +1543,6 @@ export type AssistantProposal = {
   status: string;
   link: string;
 };
-
 
 /** The organisation's written qualification procedure (docs/qualifier.md): one row per version. */
 export type QualificationProcedure = {

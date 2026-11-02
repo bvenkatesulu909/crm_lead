@@ -15,6 +15,7 @@ from app.core.auth.rbac import Permission
 from app.core.db import get_db_session
 from app.core.errors import problem_responses
 from app.modules.agents import service
+from app.modules.agents.cost import estimate_cost_usd
 from app.modules.agents.schemas import AgentPage, AgentRead, AgentUpdate
 from app.modules.agents.service import UNSET, EffectiveAgent, Limits
 from app.modules.identity.api import require_any_permission
@@ -33,7 +34,8 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def _read(state: EffectiveAgent) -> AgentRead:
+def _read(state: EffectiveAgent, request: Request) -> AgentRead:
+    settings = request.app.state.settings
     return AgentRead(
         key=state.agent.key,
         title=state.agent.title,
@@ -51,6 +53,13 @@ def _read(state: EffectiveAgent) -> AgentRead:
         used_tokens=state.used_tokens,
         calls=state.calls,
         percent_used=state.percent_used,
+        estimated_cost_usd=estimate_cost_usd(
+            state.input_tokens,
+            state.output_tokens,
+            input_price_per_million=settings.ai_input_price_per_million,
+            output_price_per_million=settings.ai_output_price_per_million,
+            uses_model=state.agent.uses_model,
+        ),
         version=state.version,
     )
 
@@ -62,12 +71,12 @@ def _read(state: EffectiveAgent) -> AgentRead:
 )
 def list_agents(principal: Reader, session: Db, request: Request) -> AgentPage:
     states = service.list_agents(session, principal, _limits(request), _now())
-    return AgentPage(items=[_read(state) for state in states])
+    return AgentPage(items=[_read(state, request) for state in states])
 
 
 @router.get("/{key}", summary="One AI agent", responses=problem_responses(401, 403, 404))
 def get_agent(key: str, principal: Reader, session: Db, request: Request) -> AgentRead:
-    return _read(service.get_agent(session, principal, key, _limits(request), _now()))
+    return _read(service.get_agent(session, principal, key, _limits(request), _now()), request)
 
 
 @router.patch(
@@ -93,4 +102,4 @@ def update_agent(
         allowed_tools=data.allowed_tools if "allowed_tools" in sent else UNSET,
     )
     session.commit()
-    return _read(state)
+    return _read(state, request)

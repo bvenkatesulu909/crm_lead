@@ -6,6 +6,7 @@ import {
   AGENT_STATE_LABELS,
   type AgentState,
   agentState,
+  formatCost,
   formatTokens,
 } from "@/lib/agents";
 
@@ -50,6 +51,7 @@ export function AgentCard({
   children?: ReactNode;
 }) {
   const state = agentState(agent);
+  const cost = formatCost(agent.estimated_cost_usd);
   const headingId = `agent-${agent.key}`;
   // An agent without a model counts what it did: web checks, or proposals from outside clients.
   const unit =
@@ -104,6 +106,15 @@ export function AgentCard({
                 <span className="text-slate-500"> (the standard limit)</span>
               )}
             </p>
+            {cost && (
+              <p className="mt-1 text-sm text-slate-700">
+                Estimated cost this month: {cost}
+                <span className="text-xs text-slate-500">
+                  {" "}
+                  (an estimate from one price for all models, not a bill)
+                </span>
+              </p>
+            )}
             <p className="text-xs text-slate-500">
               {agent.calls} {agent.calls === 1 ? "call" : "calls"} -{" "}
               {agent.all_tools.length === 0

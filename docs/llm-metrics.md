@@ -1,6 +1,6 @@
 # LLM usage and cost metrics per agent (CRM-111)
 
-**Status:** design accepted 2026-11-02 (all three answers in section 5 as recommended). LM1 built 2026-11-02 (below); LM2 and LM3 not started.
+**Status:** design accepted 2026-11-02 (all three answers in section 5 as recommended). LM1 and LM2 built 2026-11-02 (sections 7 and 8); LM3 not started.
 **Kind:** a small design, not an ADR: it adds a label and one read-only field. It changes none of
 ADR 0016 (agent registry), 0017 or 0018.
 
@@ -65,7 +65,7 @@ ADR 0016 (agent registry), 0017 or 0018.
 | Step | Content |
 |---|---|
 | LM1 (done) | Context variable in `governed()`, `agent` label in `observe_ai_call`, tests (each agent shows up under its own label; ungoverned = `unknown`; a failed call counts for its agent; no tenant or text in any label) |
-| LM2 | `estimated_cost_usd_this_month` in the agents API + the page, tests |
+| LM2 (done) | `estimated_cost_usd_this_month` in the agents API + the page, tests |
 | LM3 | Grafana panels, alerts, docs, full runs |
 
 ## 7. What LM1 built (2026-11-02)
@@ -82,3 +82,22 @@ ADR 0016 (agent registry), 0017 or 0018.
 - Tests: `tests/test_llm_metrics.py` (pure, 17), `tests/db/test_llm_metrics_governed.py` (10).
   Five protections broken on purpose (no label set by the wrapper, label always `unknown`, name not
   validated, agent not restored, cost under the wrong agent) are all caught.
+
+## 8. What LM2 built (2026-11-02)
+
+- `app/modules/agents/cost.py`: `estimate_cost_usd(input_tokens, output_tokens, prices..., uses_model)`.
+  A `Decimal`, rounded half up to four places; `None` for an agent without a model or when no price is
+  set (so "$0" is never shown by mistake); negative token counts are refused.
+- `GET /api/v1/agents` and `/{key}` have `estimated_cost_usd`, sent as text (`"0.4200"`) so no JSON
+  float can change it. It is worked out when read from the month's stored tokens and the two prices
+  of the server's settings: nothing new is stored, the client can send neither a price nor a cost
+  (an update body that does is refused), and another organisation's usage never counts. Same
+  permissions as the rest of the agents API (tenant admins and sales managers read).
+- The AI agents page shows "Estimated cost this month: about $0.42 (an estimate from one price for all
+  models, not a bill)" under the token bar; "less than $0.01" for tiny amounts, "$0.00" for none, and
+  nothing at all without a price or for the web check. The cents are rounded on the digits of the text,
+  not with floating point.
+- Tests: 11 pure + 8 database tests (backend), 9 component tests (frontend, Vitest 507 in all). Ten
+  protections broken on purpose (6 backend, 4 frontend) were all caught; one more break - building the
+  decimal from the float instead of its text - cannot be seen at four places of money and is left out
+  on purpose.

@@ -87,7 +87,7 @@ Not counted: tokens of a request that fails after the model call and rolls back.
 
 | Endpoint | Who | What |
 |---|---|---|
-| `GET /api/v1/agents` | tenant admins, sales managers | the four agents with switch, budget (and whether it is the default), allowed tools, this month's usage and `percent_used`, `version` |
+| `GET /api/v1/agents` | tenant admins, sales managers | the four agents with switch, budget (and whether it is the default), allowed tools, this month's usage and `percent_used`, `estimated_cost_usd` (an estimate as text, see `docs/llm-metrics.md`), `version` |
 | `GET /api/v1/agents/{key}` | the same | one agent (404 `agent_not_found`) |
 | `PATCH /api/v1/agents/{key}` | tenant admins | `enabled`, `monthly_token_budget` (1 - 10,000,000,000), `allowed_tools`; only the fields sent change, `null` for the budget or the tools means the default; send the `version` you read once the agent has settings (409 `version_conflict` otherwise) |
 

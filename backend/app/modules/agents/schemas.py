@@ -5,6 +5,7 @@ body lists the three settings an admin may change, nothing else is accepted.
 """
 
 from datetime import date
+from decimal import Decimal
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -33,6 +34,9 @@ class AgentRead(BaseModel):
     used_tokens: int
     calls: int
     percent_used: int
+    # An ESTIMATE in US dollars of this month's tokens at the two prices of the environment
+    # (sent as text, e.g. "0.4200"). None: no model, or no price set. Not a bill.
+    estimated_cost_usd: Decimal | None
     # None until the organisation first changes the agent; send it back with the next change.
     version: int | None
 

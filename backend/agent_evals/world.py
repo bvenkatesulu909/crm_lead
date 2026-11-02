@@ -123,6 +123,17 @@ class World:
         """The second sales agent: whose records the first agent must not see."""
         return self._person(self.tenant_id, "staff", Role.SALES_AGENT.value, 1)
 
+    def other_admin(self) -> Principal:
+        """An administrator of the OTHER organisation (cases about a foreign procedure)."""
+        if self.other_tenant_id is None:
+            raise WorldError("this case needs a second organisation")
+        user = self._person(self.other_tenant_id, "staff", Role.TENANT_ADMIN.value)
+        found = identity_api.staff_principal(self.session, user.tenant_id, user.id)
+        if found is None:
+            raise WorldError(f"'{user.email}' is not an active staff member")
+        self.bind(found)
+        return found
+
     def bind(self, principal: Principal) -> None:
         """The database context a request of this person would have (tenant, user, lead scope)."""
         if principal.tenant_id is None or principal.user_id is None:
@@ -172,7 +183,9 @@ class World:
             )
         )
 
-    def _lead(self, owner: User, last_name: str, company: str | None = None) -> uuid.UUID:
+    def _lead(
+        self, owner: User, last_name: str, company: str | None = None, **fields: object
+    ) -> uuid.UUID:
         bind_tenant(self.session, self.tenant_id)
         bind_user(self.session, owner.id, "own")  # the leads rule: a new lead is the owner's
         lead = Lead(
@@ -182,6 +195,7 @@ class World:
             last_name=last_name,
             company_name=company,
             owner_id=owner.id,
+            **fields,
         )
         self.session.add(lead)
         self.session.flush()
@@ -235,8 +249,48 @@ class World:
         self.session.flush()
         return stand_in.id
 
-    def placeholders(self, persona: str) -> dict[str, str]:
-        """What ``{{...}}`` stands for when this persona plays."""
+    def _qualifier_leads(self, acting: User) -> dict[str, str]:
+        """Leads for the Qualifier cases (docs/qualifier.md). Fictional numbers; the Qualifier's
+        scripted model ignores them, but the pipeline reads them, and so does a real model."""
+        phone = "+91 90000 00000"  # fictional
+        return {
+            "lead.rich": str(
+                self._lead(
+                    acting,
+                    "Rich",
+                    "Eval Homes",
+                    phone=phone,
+                    email="rich@example.test",
+                    property_type="apartment",
+                    budget_min_inr=9_000_000,
+                    budget_max_inr=12_000_000,
+                    location="Hyderabad",
+                )
+            ),
+            "lead.poor": str(
+                self._lead(
+                    acting,
+                    "Poor",
+                    "Eval Homes",
+                    phone=phone,
+                    property_type="apartment",
+                    budget_min_inr=1_000_000,
+                    budget_max_inr=1_500_000,
+                    location="Hyderabad",
+                )
+            ),
+            "lead.nophone": str(
+                self._lead(acting, "Nophone", "Eval Homes", email="nophone@example.test")
+            ),
+            # Already qualified: asking for "qualify" again changes nothing, so nothing is proposed.
+            "lead.qualified": str(
+                self._lead(acting, "Done", "Eval Homes", phone=phone, status="qualified")
+            ),
+        }
+
+    def placeholders(self, persona: str, agent: str = "staff_assistant") -> dict[str, str]:
+        """What ``{{...}}`` stands for when this persona plays. ``agent`` adds the records only
+        that agent's cases talk about."""
         if persona in ("visitor", "beta_agent"):
             return {}
         if persona == "customer":
@@ -264,6 +318,8 @@ class World:
             "user.agent2": str(self._mentionable(other, Role.SALES_AGENT)),
             "user.support": str(self._mentionable(support, Role.SUPPORT_AGENT)),
         }
+        if agent == "qualifier":
+            values.update(self._qualifier_leads(acting))
         if persona == "sales_agent":
             values["contact.own"] = str(self._contact(acting, "Own"))
             values["contact.other"] = str(self._contact(other, "Other"))

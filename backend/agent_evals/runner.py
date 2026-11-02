@@ -23,6 +23,7 @@ from agent_evals.cases import CallOutcome, Case, Step
 from agent_evals.scoring import ToolCall, Trajectory
 from app.core.auth.principal import Principal
 from app.core.config import Settings
+from app.core.errors import DomainError
 from app.modules.agents import api as agents_api
 from app.modules.assistant import service as portal_service
 from app.modules.assistant import staff_service, staff_tools
@@ -31,6 +32,7 @@ from app.modules.assistant.service import GuardrailError
 from app.modules.public_chat import service as public_chat_service
 from app.modules.public_chat.rules import RESTING_REPLY
 from app.modules.public_chat.schemas import PublicChatRequest
+from app.modules.qualifier import api as qualifier_api
 
 
 class RunnerError(RuntimeError):
@@ -306,3 +308,113 @@ def run_public_chat_case(
     if answer == RESTING_REPLY:
         outcome = "agent_off"  # the registry stopped it (ADR 0016); the visitor sees one sentence
     return PublicRun(Trajectory(calls, answer, outcome, recorder.asked), lead_saved)
+
+
+# --- the Qualifier (QA5) ------------------------------------------------------------------------
+
+
+class _UseRecorder:
+    """Wraps a model and keeps the tool calls it made. The Qualifier's one tool is never answered
+    in a conversation (nothing is fed back), so the outcome of a call is decided afterwards from
+    what the assessment did with it (see ``run_qualifier_case``)."""
+
+    def __init__(self, inner: ChatModel) -> None:
+        self._inner = inner
+        self.available = bool(getattr(inner, "available", True))
+        self.asked = 0
+        self.uses: list[ToolUse] = []
+
+    def reply(
+        self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
+    ) -> ModelReply:
+        self.asked += 1
+        reply = self._inner.reply(system=system, messages=messages, tools=tools)
+        self.uses.extend(reply.tool_uses)
+        return reply
+
+
+@dataclass(frozen=True)
+class QualifierRun:
+    trajectory: Trajectory
+    proposal_ids: list[uuid.UUID]
+    # Assessments the Qualifier stored (one per successful ask).
+    assessments: int
+
+
+def run_qualifier_case(
+    session: Session,
+    principal: Principal,
+    case: Case,
+    *,
+    model: ChatModel | None = None,
+    limits: agents_api.Limits | None = None,
+    qualifier_limits: qualifier_api.Limits | None = None,
+) -> QualifierRun:
+    """Play a Qualifier case as ``principal``: each message is the id of a lead to assess, in
+    order, through the REAL ``assess_lead`` (permission, procedure, record-level read, limits,
+    registry, strict check, Sentinel, approvals). Placeholders must already be replaced.
+
+    How it ended: something waiting for approval beats everything; otherwise the last ask decides
+    - ``not_found`` (a lead the person may not read), ``agent_off`` / ``over_budget`` (registry),
+    ``refused`` (invalid answer, limit, or the safety check), ``nothing_changed`` (no procedure,
+    or nothing worth proposing)."""
+    if case.agent != "qualifier":
+        raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the qualifier")
+    recorder = _UseRecorder(model if model is not None else ScriptedModel(case.script))
+    # The cases are not about the rate limits (a case that is can say so with two messages for
+    # one lead: the per-lead limit is the real one); the development data may hold assessments.
+    asking = qualifier_limits or qualifier_api.Limits(
+        per_lead_hour=1, per_user_hour=100_000, per_tenant_day=1_000_000
+    )
+    calls: list[ToolCall] = []
+    proposals: list[uuid.UUID] = []
+    assessments = 0
+    answer = ""
+    ended = "nothing_changed"
+    for text in case.messages:
+        try:
+            lead_id = uuid.UUID(text)
+        except ValueError as exc:
+            raise RunnerError(f"case '{case.id}': '{text}' is not a lead id") from exc
+        before = len(recorder.uses)
+        failed: str | None = None
+        try:
+            result = qualifier_api.assess_lead(
+                session, principal, recorder, lead_id, limits=asking, ai_limits=limits
+            )
+        except (agents_api.AgentUnavailableError, agents_api.AgentBudgetReachedError) as exc:
+            answer, ended, failed = exc.detail, registry_outcome(exc), "agent"
+        except qualifier_api.LeadNotFoundError as exc:
+            answer, ended, failed = exc.detail, "not_found", "lead"
+        except qualifier_api.NoActiveProcedureError as exc:
+            answer, ended, failed = exc.detail, "nothing_changed", "procedure"
+        except (qualifier_api.AssessmentInvalidError, qualifier_api.RateLimitedError) as exc:
+            answer, ended, failed = exc.detail, "refused", "answer"
+        except DomainError as exc:  # for example a permission refusal
+            answer, ended, failed = exc.detail, "refused", "other"
+        # A call the Qualifier accepted is "ok"; one it refused (a wrong answer, or a tool the
+        # organisation took away) is "refused". A call that never got as far is still listed.
+        verdict: CallOutcome = "ok" if failed is None else "refused"
+        for use in recorder.uses[before:]:
+            args = dict(use.input) if isinstance(use.input, dict) else {}
+            calls.append(ToolCall(use.name, args, verdict))
+        if failed is not None:
+            continue
+        assessments += 1
+        if result.proposal is not None:
+            proposals.append(result.proposal.id)
+        if result.blocked_message is not None:
+            answer = f"The safety check refused the proposal: {result.blocked_message}"
+            ended = "refused"
+        else:
+            decision = result.assessment.decision
+            waiting = (
+                "A proposal is waiting for approval."
+                if result.proposal
+                else "Nothing needed to be proposed."
+            )
+            answer = f"Decision: {decision}. {waiting} " + " ".join(result.assessment.reasons)
+            ended = "nothing_changed"
+    if proposals:
+        ended = "proposal_pending"
+    return QualifierRun(Trajectory(calls, answer, ended, recorder.asked), proposals, assessments)

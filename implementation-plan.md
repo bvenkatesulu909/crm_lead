@@ -383,7 +383,7 @@ Design: [docs/qualifier.md](docs/qualifier.md), accepted 2026-10-31 with the six
 | QA2 | The assessment: `submit_assessment`, validation, mapping to proposals, `lead_assessments`; scripted model |
 | QA3 | Registry entry, limits, audit, metrics, optional automatic run in the worker |
 | QA4 | Screens: lead card with the Qualify button, admin page with a dry run, notifications |
-| QA5 | BP-10 evaluation cases, final docs, Playwright journey, full runs |
+| QA5 | BP-10 evaluation cases, final docs, Playwright journey, full runs - done 2026-11-02 (journey written, not run) |
 
 ## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 accepted 2026-10-30; WC0, WC1, WC2a, WC2b, WC2c, WC3, WC4 done)*
 

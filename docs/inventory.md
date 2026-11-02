@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-11-01 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-11-02 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -61,7 +61,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Web app (`frontend/src/app`)
 
-- 80 pages and 13 route handlers.
+- 81 pages and 13 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -85,6 +85,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/automation/[id]` | page |
 | `/automation/agents` | page |
 | `/automation/new` | page |
+| `/automation/qualifier` | page |
 | `/chat` | page |
 | `/communications` | page |
 | `/communications/templates` | page |
@@ -161,10 +162,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **143**
-- Frontend component test files: **29**
-- Playwright end-to-end specs: **28**
+- Backend test files: **149**
+- Frontend component test files: **31**
+- Playwright end-to-end specs: **29**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **68** (22 in `docs/adr/`)
+- Markdown documents under `docs/`: **69** (22 in `docs/adr/`)

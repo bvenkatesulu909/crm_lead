@@ -34,6 +34,7 @@ function agent(changes: Partial<Agent> = {}): Agent {
     used_tokens: 0,
     calls: 0,
     percent_used: 0,
+    estimated_cost_usd: null,
     version: null,
     ...changes,
   };

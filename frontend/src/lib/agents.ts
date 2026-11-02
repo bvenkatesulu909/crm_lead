@@ -29,6 +29,29 @@ export function formatTokens(count: number): string {
   return `${count.toLocaleString("en-US")} ${count === 1 ? "token" : "tokens"}`;
 }
 
+/**
+ * The server's estimated cost ("0.4200", dollars as text) in words for the page. The rounding to
+ * whole cents is done on the digits, not with floating point, so 0.015 is 2 cents as everybody
+ * expects. Anything that is not a plain amount gives null (the page then says nothing about money).
+ */
+export function formatCost(value: string | null): string | null {
+  if (value === null || !/^\d+(\.\d+)?$/.test(value)) return null;
+  const [whole, fraction = ""] = value.split(".");
+  const digits = fraction.padEnd(4, "0");
+  const cents =
+    Number(whole) * 100 +
+    Number(digits.slice(0, 2)) +
+    (Number(digits.slice(2, 4)) >= 50 ? 1 : 0);
+  if (cents === 0 && Number(value) === 0) return "$0.00";
+  if (Number(whole) === 0 && Number(digits.slice(0, 2)) === 0)
+    return "less than $0.01";
+  const dollars = (cents / 100).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `about $${dollars}`;
+}
+
 const MAX_BUDGET = 10_000_000_000;
 
 /** An empty box means "use the standard limit" (null); otherwise whole numbers only. */

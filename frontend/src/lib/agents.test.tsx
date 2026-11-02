@@ -9,6 +9,7 @@ import type { Agent, Me } from "@/lib/api-types";
 import {
   agentErrorText,
   agentState,
+  formatCost,
   formatTokens,
   parseBudget,
   toggledTools,
@@ -53,6 +54,7 @@ function agent(changes: Partial<Agent> = {}): Agent {
     used_tokens: 0,
     calls: 0,
     percent_used: 0,
+    estimated_cost_usd: null,
     version: null,
     ...changes,
   };
@@ -318,5 +320,75 @@ describe("AgentSettingsForm", () => {
     render(<AgentCard agent={agent()} />);
     expect(screen.queryByRole("button", { name: /save/i })).toBeNull();
     expect(within(document.body).queryAllByRole("checkbox")).toHaveLength(0);
+  });
+});
+
+describe("formatCost", () => {
+  it("says nothing when there is no honest number", () => {
+    expect(formatCost(null)).toBeNull();
+  });
+
+  it("shows whole cents with an 'about'", () => {
+    expect(formatCost("0.4200")).toBe("about $0.42");
+    expect(formatCost("21.0000")).toBe("about $21.00");
+    expect(formatCost("1234.5600")).toBe("about $1,234.56");
+  });
+
+  it("says zero plainly and tiny amounts as less than a cent", () => {
+    expect(formatCost("0.0000")).toBe("$0.00");
+    expect(formatCost("0.0042")).toBe("less than $0.01");
+    expect(formatCost("0.0099")).toBe("less than $0.01");
+  });
+
+  it("rounds to the nearest cent", () => {
+    expect(formatCost("0.0150")).toBe("about $0.02");
+    expect(formatCost("0.0149")).toBe("about $0.01");
+  });
+
+  it("does not trust text that is not a plain amount", () => {
+    expect(formatCost("abc")).toBeNull();
+    expect(formatCost("")).toBeNull();
+    expect(formatCost("-1.0000")).toBeNull();
+    expect(formatCost("1e9")).toBeNull();
+  });
+});
+
+describe("AgentCard cost", () => {
+  it("shows the estimate with what it is not", () => {
+    render(<AgentCard agent={agent({ estimated_cost_usd: "0.4200" })} />);
+    const line = screen.getByText(/Estimated cost this month/);
+    expect(line).toHaveTextContent("about $0.42");
+    expect(line).toHaveTextContent("estimate");
+    expect(line).toHaveTextContent("not a bill");
+  });
+
+  it("shows nothing about money when there is no price", () => {
+    render(<AgentCard agent={agent({ estimated_cost_usd: null })} />);
+    expect(screen.queryByText(/Estimated cost/)).toBeNull();
+    expect(screen.queryByText(/\$/)).toBeNull();
+  });
+
+  it("shows nothing for the agent that uses no model", () => {
+    render(
+      <AgentCard
+        agent={agent({
+          uses_model: false,
+          estimated_cost_usd: null,
+          all_tools: [],
+          allowed_tools: [],
+        })}
+      />,
+    );
+    expect(screen.queryByText(/Estimated cost/)).toBeNull();
+  });
+
+  it("shows the text as plain text, never as markup", () => {
+    render(
+      <AgentCard
+        agent={agent({ estimated_cost_usd: "<b>9</b>" as unknown as string })}
+      />,
+    );
+    expect(screen.queryByText(/Estimated cost/)).toBeNull();
+    expect(document.querySelector("b")).toBeNull();
   });
 });

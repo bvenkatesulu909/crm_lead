@@ -1,0 +1,54 @@
+# Reverse proxy of the one-server deployment (ADR 0021). Caddy gets and renews the HTTPS
+# certificates by itself, so this file only says which name goes where.
+#
+# The names and the allowed address come from .env (docker-compose.yml passes them in):
+#   API_HOST, LOGIN_HOST, ACME_EMAIL, ADMIN_ALLOWED_IPS.
+
+{
+	# Where Let's Encrypt writes to if a certificate has a problem.
+	email {$ACME_EMAIL}
+}
+
+# Headers every answer carries. HSTS tells browsers to use HTTPS only for the next year.
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+	encode zstd gzip
+}
+
+# --- the API -------------------------------------------------------------------------------
+{$API_HOST} {
+	import security_headers
+
+	# Operational numbers are for the monitoring tools inside the network, never the internet
+	# (they are also token-guarded by the API itself).
+	@metrics path /metrics /metrics/* /api/v1/internal/metrics /api/v1/internal/metrics/*
+	respond @metrics 404
+
+	# The app accepts files up to 20 MB; the rest is the form around the file.
+	request_body {
+		max_size 25MB
+	}
+
+	reverse_proxy api:8000
+}
+
+# --- sign-in (Keycloak) -----------------------------------------------------------------------
+{$LOGIN_HOST} {
+	import security_headers
+
+	# The administration console and the master realm are closed to the internet. Only the
+	# addresses listed in ADMIN_ALLOWED_IPS (default: nobody) may open them - list your own address
+	# only while you need it (README.md). People still sign in to the CRM realm normally.
+	@closed {
+		path /admin* /realms/master*
+		not remote_ip {$ADMIN_ALLOWED_IPS:127.0.0.1}
+	}
+	respond @closed 403
+
+	reverse_proxy keycloak:8080
+}

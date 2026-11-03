@@ -180,6 +180,13 @@ for the old code, and, only if the old code cannot run on the new database, rest
 | `.env.example` | The template; the real `.env` is git-ignored |
 | `bin/make_env.py` | Writes `.env` with fresh random secrets |
 | `bin/check_env.py` | Refuses a placeholder, weak, repeated or development value |
-| `backup/` | The backup service: image, nightly loop, the backup itself |
+| `tls.caddy` | The proxy's certificate settings: empty in production (real Let's Encrypt certificates) |
+| `backup/Dockerfile` | The backup service's image (PostgreSQL 16 client, `age`, the AWS command line) |
+| `backup/backup-loop.sh` | The service's main process: one backup every night at 02:30 UTC, or the command it is given |
+| `backup/backup.sh` | One backup: dump, check, encrypt for your public key, upload, size check |
 | `bin/restore-test.sh` | Restores the newest backup into a scratch database and compares it |
 | `bin/update.sh` | Backup, build, migrate, restart, wait until healthy |
+| `bin/server-check.sh` | Looks at the machine (firewall, SSH, updates, ports, backups, disk); changes nothing |
+| `rehearsal/docker-compose.rehearsal.yml` | **Never for a real server.** Starts the whole stack on a PC |
+| `rehearsal/tls.caddy` | **Never for a real server.** A throwaway certificate authority for the rehearsal |
+| `rehearsal/smoke.sh` | **Never for a real server.** 22 checks through the proxy over HTTPS |

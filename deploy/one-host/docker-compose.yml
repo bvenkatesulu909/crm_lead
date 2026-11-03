@@ -63,6 +63,7 @@ services:
       # Read by postgres/init on the first start only.
       CRM_DB_OWNER_PASSWORD: ${CRM_DB_OWNER_PASSWORD:?run bin/make_env.py}
       CRM_DB_APP_PASSWORD: ${CRM_DB_APP_PASSWORD:?run bin/make_env.py}
+      CRM_DB_BACKUP_PASSWORD: ${CRM_DB_BACKUP_PASSWORD:?run bin/make_env.py}
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?run bin/make_env.py}
     # No "ports": the database is reachable only from the other services of this stack.
     volumes:
@@ -226,11 +227,50 @@ services:
           - ${API_HOST}
           - ${LOGIN_HOST}
 
+  backup:
+    # Nightly dump of both databases (02:30 UTC) with the read-only role, encrypted for the owner's
+    # PUBLIC key and copied to a second bucket. It never holds a key that can decrypt, and it can
+    # add files to the bucket but is not meant to be able to delete them (give it a key without
+    # delete rights; expire old copies with the provider's lifecycle rule).
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    image: crm-lead-backup:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGUSER: crm_backup
+      PGPASSWORD: ${CRM_DB_BACKUP_PASSWORD:?run bin/make_env.py}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:?fill in .env}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:?fill in .env}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-us-east-1}
+      BACKUP_S3_SECURE: ${BACKUP_S3_SECURE:-true}
+      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:?fill in .env}
+      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:?fill in .env}
+      BACKUP_AGE_PUBLIC_KEY: ${BACKUP_AGE_PUBLIC_KEY:?fill in .env}
+    volumes:
+      - backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Unhealthy when no backup succeeded in the last 26 hours (a missed night shows in `docker compose ps`).
+      test: ["CMD-SHELL", "test $$(( $$(date -u +%s) - $$(cat /backups/last_success 2>/dev/null || echo 0) )) -lt 93600"]
+      interval: 5m
+      timeout: 10s
+      retries: 1
+      start_period: 15m
+    mem_limit: 256m
+    logging: *logging
+    networks:
+      - crm
+
 networks:
   crm:
     driver: bridge
 
 volumes:
   postgres_data:
+  backups:
   caddy_data:
   caddy_config:

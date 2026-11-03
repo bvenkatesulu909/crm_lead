@@ -27,8 +27,8 @@ CADDYFILE = FOLDER / "Caddyfile"
 ENV_EXAMPLE = FOLDER / ".env.example"
 INIT = FOLDER / "postgres" / "init"
 
-SERVICES = {"postgres", "migrate", "api", "worker", "keycloak", "caddy"}
-LONG_RUNNING = {"postgres", "api", "worker", "keycloak", "caddy"}
+SERVICES = {"postgres", "migrate", "api", "worker", "keycloak", "caddy", "backup"}
+LONG_RUNNING = {"postgres", "api", "worker", "keycloak", "caddy", "backup"}
 
 
 def load_tool(name: str) -> ModuleType:
@@ -157,7 +157,7 @@ def test_the_migration_job_runs_once_and_does_not_restart() -> None:
     assert services()["migrate"]["restart"] == "no"
 
 
-@pytest.mark.parametrize("name", ["postgres", "keycloak", "caddy", "worker"])
+@pytest.mark.parametrize("name", ["postgres", "keycloak", "caddy", "worker", "backup"])
 def test_services_without_a_built_in_check_declare_one(name: str) -> None:
     assert services()[name]["healthcheck"]["test"]
 
@@ -314,6 +314,7 @@ SECRETS = [
     "POSTGRES_PASSWORD",
     "CRM_DB_OWNER_PASSWORD",
     "CRM_DB_APP_PASSWORD",
+    "CRM_DB_BACKUP_PASSWORD",
     "KEYCLOAK_DB_PASSWORD",
     "KEYCLOAK_ADMIN_PASSWORD",
     "CRM_WEB_CLIENT_SECRET",

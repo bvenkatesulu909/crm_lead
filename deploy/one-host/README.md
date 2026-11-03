@@ -43,7 +43,8 @@ Windows PC stay CMD, as everywhere else in this project.
    ```
 
 4. Open `.env` in an editor and replace every `CHANGE_ME` with the value from your provider
-   (documents bucket, mail account, backup bucket, the **public** backup key that starts with `age1`).
+   (documents bucket, mail account, backup bucket, the **public** backup key that starts with `age1`;
+   see "Backups" below for how to make that key on your own computer).
 5. Check it: `python3 bin/check_env.py .env` - it lists what is still wrong, by name, never a secret.
 6. Start: `docker compose --env-file .env up -d --build`
    (`migrate` brings the database to the latest version first; the API and worker start after it).
@@ -61,9 +62,95 @@ address. To use it: put your own public IP address there (search "what is my IP"
 `docker compose --env-file .env up -d caddy`, do your work, then set it back to `127.0.0.1` and run the
 same command again. List only your own address, only for as long as you need it.
 
+## Backups
+
+Every night at 02:30 UTC the `backup` service dumps both databases (`crm` and `keycloak`) with a
+read-only database role, checks that each dump can be read, keeps it on the server for 14 days and
+copies an **encrypted** version to your backup bucket. A new server makes its first backup at once. If a
+night is missed for more than 26 hours, `docker compose ps` shows the service as `unhealthy`.
+
+**The key pair (once, on your own Windows computer, not on the server).** The server only gets the
+*public* half, so even someone who steals the server cannot read the copies in the bucket.
+
+1. Download `age` for Windows from https://github.com/FiloSottile/age/releases (the `windows-amd64` zip).
+2. In CMD, in the folder where you unzipped it:
+
+   ```bat
+   age-keygen.exe -o backup-key.txt
+   ```
+
+   It prints `Public key: age1...`. Put that line's value into `.env` as `BACKUP_AGE_PUBLIC_KEY`.
+3. Keep `backup-key.txt` safe and **offline** (a password manager plus a printed copy in a safe place).
+   **Without it the encrypted backups can never be opened. Never put it on the server.**
+
+**The bucket.** Use a *second* private bucket, and make its key able to add files but not delete them
+(most providers let you restrict an application key). Set the provider's lifecycle rule to expire copies
+after, say, 30 days.
+
+**Make a backup now** (for example before something risky):
+
+```bash
+docker compose --env-file .env run --rm backup /scripts/backup.sh
+```
+
+## Is the backup any good? (the restore test)
+
+A backup you have never restored is a hope. Run this after the first backup and about once a month:
+
+```bash
+bin/restore-test.sh
+```
+
+It restores the newest dump of each database into a scratch database, compares it with the live one
+(migration level, number of tables and policies, row-level security on every tenant table, pgvector, the
+sign-in realm), prints `RESTORE TEST PASSED` or `FAILED`, and always removes the scratch database. Tick
+"restore tested" in the hardening checklist only when it says PASSED.
+
+## Restoring after a disaster (the server is gone)
+
+1. Rent a new server and set it up as in "The steps on the server", but start only the database:
+   `docker compose --env-file .env up -d postgres`. **Use the old `.env` if you kept a copy** (keep one in
+   your password manager - it is the one file a backup does not contain): then every secret still matches.
+   With a brand-new `.env` it also works, but the restored sign-in database still holds the OLD client
+   secrets, so afterwards reset `crm-web` and `crm-user-admin` in the Keycloak console (Clients →
+   Credentials) to the values in the new `.env`, or Netlify and the API cannot sign people in.
+2. From your own computer, download the newest `crm/...dump.age` and `keycloak/...dump.age` from the
+   backup bucket, and decrypt them with your private key (CMD):
+
+   ```bat
+   age.exe -d -i backup-key.txt -o crm.dump crm-....dump.age
+   age.exe -d -i backup-key.txt -o keycloak.dump keycloak-....dump.age
+   ```
+
+3. Copy `crm.dump` and `keycloak.dump` to the server (`scp`), then restore into the empty databases:
+
+   ```bash
+   docker compose --env-file .env exec -T postgres pg_restore -U postgres -d crm --clean --if-exists --no-owner < crm.dump
+   docker compose --env-file .env exec -T postgres pg_restore -U postgres -d keycloak --clean --if-exists --no-owner < keycloak.dump
+   ```
+
+4. Start everything: `docker compose --env-file .env up -d --build`. Delete the plain `.dump` files from
+   the server and from your computer when you are done.
+
+## Updating
+
+```bash
+git pull && bin/update.sh
+```
+
+It checks `.env`, makes a backup, builds the new images, migrates the database, restarts the services and
+waits until they are healthy. If the backup, the build or the migration fails, **nothing is restarted** and
+the old version keeps running.
+
+## Going back
+
+There is no automatic way back for the *database*: a migration is never edited once applied and is never
+undone. If a new version is bad: `git checkout <the previous tag>`, `docker compose --env-file .env up -d --build`
+for the old code, and, only if the old code cannot run on the new database, restore the backup that
+`update.sh` took in its first step (the steps above).
+
 ## What is deliberately not here yet
 
-- Backups, the restore test and the update script: step OH2.
 - A rehearsal of the whole thing on a PC with a throwaway certificate, and the server hardening
   guide: step OH3.
 - Monitoring on the server (Prometheus/Grafana need memory a small server lacks). Use a free
@@ -79,3 +166,6 @@ same command again. List only your own address, only for as long as you need it.
 | `.env.example` | The template; the real `.env` is git-ignored |
 | `bin/make_env.py` | Writes `.env` with fresh random secrets |
 | `bin/check_env.py` | Refuses a placeholder, weak, repeated or development value |
+| `backup/` | The backup service: image, nightly loop, the backup itself |
+| `bin/restore-test.sh` | Restores the newest backup into a scratch database and compares it |
+| `bin/update.sh` | Backup, build, migrate, restart, wait until healthy |

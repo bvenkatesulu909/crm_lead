@@ -41,6 +41,7 @@ DEVELOPMENT_ONLY: dict[str, Callable[[str], bool]] = {
     "CRM_WEBCHECK_DEMO": lambda v: v.lower() in {"1", "true", "yes", "on"},
     "CRM_DOCS_ENABLED": lambda v: v.lower() in {"1", "true", "yes", "on"},
     "CRM_FILES_S3_SECURE": lambda v: v.lower() in {"0", "false", "no", "off"},
+    "BACKUP_S3_SECURE": lambda v: v.lower() in {"0", "false", "no", "off"},
 }
 
 

@@ -1,6 +1,6 @@
 # ADR 0021 — One-host deployment: API, worker, database and sign-in on one server
 
-- **Status:** Accepted (2026-11-03) with the recommended answers to the questions in section 6. OH0 (this note) and OH1 (the compose files and tools) are done; nothing is deployed.
+- **Status:** Accepted (2026-11-03) with the recommended answers to the questions in section 6. OH0 (this note), OH1 (the compose files and tools) and OH2 (backups, restore test, update) are done; nothing is deployed.
 - **Date:** 2026-11-03
 - **Deciders:** Project owner
 - **Amends:** ADR 0007 (online deployment). It takes the alternative that ADR 0007 listed - "everything
@@ -123,7 +123,7 @@ domain, the bucket and the SMTP provider (all small), and Netlify.
 |---|---|
 | OH0 | This ADR (documents only) |
 | OH1 (done) | `deploy/one-host/`: compose file, Caddyfile, production database init (roles, `crm` + `keycloak`, pgvector), `.env` template, `make-env` and `check-env`; tests on the files; the stack starts locally and `/api/v1/health` answers |
-| OH2 | Backup, `restore-test` and `update` scripts; a restore really performed on this PC and checked |
+| OH2 (done) | Backup, `restore-test` and `update` scripts; a restore really performed on this PC and checked |
 | OH3 | The local rehearsal as a smoke test (HTTPS through Caddy, sign-in page, a protected endpoint answers 401, the worker beats, the latest migration is applied, row-level security audit clean) and the server hardening guide (firewall, SSH keys, updates) |
 | OH4 | Docs: `docs/deployment.md` second path, checklist, README of the folder, CLAUDE.md; full runs |
 
@@ -157,3 +157,43 @@ domain, the bucket and the SMTP provider (all small), and Netlify.
   development stack's; the worker inherited a health check for a port it does not serve.
 - **Not done yet:** the proxy was not started with a certificate (OH3's rehearsal), nothing was tried on
   a real server, no backups yet (OH2).
+
+## 9. What OH2 built and checked (2026-11-03)
+
+- **Backup service** (`deploy/one-host/backup/`, image on the database's own PostgreSQL 16 / Alpine plus
+  `age` and the AWS command line): a nightly loop (02:30 UTC; a server without a good backup in the last
+  day makes one at once; a failed run is repeated every hour) and `backup.sh`. Per database (`crm` and
+  `keycloak`): `pg_dump -Fc`, `pg_restore --list` to prove the dump is readable, encryption to the owner's
+  PUBLIC `age` key, upload to a second bucket, a size check against the bucket, local copies kept 14 days
+  (private files, mode 0600), and only then `last_success`. The service is `unhealthy` after 26 hours
+  without a good backup. Nothing ever deletes from the bucket.
+- **A database role for it:** `crm_backup` - `BYPASSRLS` (it has to see every row; row-level security is
+  forced) and `pg_read_all_data`, nothing else. Checked live: it reads all rows and is refused every
+  insert, update, table, database and role creation. The superuser password is never given to the job.
+- **`bin/restore-test.sh`:** restores the newest dump of both databases into scratch databases, compares
+  them with the live ones (migration level, tables, policies, forced RLS on every tenant table, pgvector,
+  the realm), prints PASSED or FAILED and always removes the scratch databases.
+- **`bin/update.sh`:** checks `.env`, backs up, builds, migrates, restarts, waits until healthy; a failure
+  in the first three steps restarts nothing. No automatic way back for the database (README: "Going back").
+- **Tests:** `backend/tests/test_one_host_backup.py` (21 checks; 162 together with the 141 of OH1) and
+  18 deliberate breaks of the scripts, the role and the settings, all caught (seven needed a sharper test
+  or a better break first - mostly checks that a word in a comment satisfied).
+- **Really run on this PC** (a throwaway project `crm-oh2check`, a throwaway S3 store, fictitious data, its
+  own key pair with the private half kept apart): a backup of 2 organisations and 50 leads; both databases
+  uploaded encrypted with matching sizes; the stored object is unreadable without the key; a stranger's key
+  fails; the private key decrypts it and a restore into an empty database gives the same 2 and 50 rows;
+  `restore-test.sh` PASSED (migration 0048, 64 tables, 60 policies, 0 tenant tables without forced RLS,
+  pgvector, 2 realms) and FAILED with a corrupted dump; a wrong bucket key makes the backup fail with a
+  clear message and leaves the last good backup marker untouched; `update.sh` refuses development settings
+  before doing anything.
+- **Bugs that only the real run could find, now fixed and covered by tests:** `--only-show-errors` is not
+  valid for `aws s3api` (the size check failed); `docker compose run --rm backup /scripts/backup.sh` started
+  a second nightly loop and hung because the image's entrypoint swallowed the command (it would have hung
+  `update.sh` at step 1); Git Bash on Windows rewrote `/backups/...` paths before Docker saw them; a failed
+  run left an encrypted leftover file that nothing removed.
+- **Disaster-recovery caveat found while writing the guide:** a restored sign-in database still holds the
+  OLD client secrets, so keep a copy of `.env` in a password manager (or reset the two client secrets in
+  Keycloak after restoring).
+- **Not done:** `update.sh` was not run through to the end (its settings check, correctly, refuses the
+  plain-HTTP rehearsal store; each step was run on its own); nothing on a real server; the proxy with a
+  certificate and the server hardening guide are OH3.

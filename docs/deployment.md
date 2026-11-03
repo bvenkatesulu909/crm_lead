@@ -1,9 +1,25 @@
-# Deploying the CRM online (ADR 0007)
+# Deploying the CRM online (ADR 0007, ADR 0021)
 
-**Status: prepared, not deployed.** Step D1 (preparation) is done: everything below exists and was
-tested on this computer. Nothing is online yet, no accounts were created and no money was spent.
-Steps D2 (private staging) and D3 (go live) need accounts and decisions that only **you** can make;
-this guide lists them.
+**Status: prepared, not deployed.** Everything below exists and was tested on a PC. Nothing is online
+yet, no accounts were created and no money was spent. Steps D2 (private staging) and D3 (go live) need
+accounts and decisions that only **you** can make; this guide lists them. Rule 6 of CLAUDE.md holds:
+nothing goes online until you say "go live" and the checklist at the end is ticked.
+
+## Two ways to host it
+
+| | **One server** (ADR 0021, CRM-112) | **Managed services** (ADR 0007) |
+|---|---|---|
+| What you rent | One Linux server (2 vCPU, 4 GB RAM, 40 GB disk at least) + a domain | A container host, a managed PostgreSQL, a Keycloak host, ... |
+| Runs on it | Proxy with automatic HTTPS, database + pgvector, migration job, API, worker, Keycloak, nightly backup | The same parts, each on its own host |
+| Web app, files, mail | Netlify, an S3 bucket, an SMTP provider (unchanged) | The same |
+| You look after | The server itself (updates, firewall, disk) - [one-host-hardening.md](one-host-hardening.md) | Several bills and several dashboards |
+| Backups | Built in: nightly, encrypted for a key only you hold, restore tested by a script | Whatever each host offers |
+| Prepared in | [`deploy/one-host/`](../deploy/one-host/README.md) - **recommended** | `backend/Dockerfile`, `Dockerfile.production`, `netlify.toml` (this guide) |
+
+The one-server path was built and rehearsed on a PC (the whole stack behind HTTPS with a throwaway
+certificate authority, a 22-check smoke test that passes, a backup that was really encrypted, restored and
+compared). **It has never run on a real server.** The rest of this guide describes the managed path; where
+the one-server path differs, `deploy/one-host/README.md` is the guide to follow.
 
 ## What runs where
 
@@ -148,6 +164,23 @@ match the formats are enough for a smoke test) before judging the sign-in page.
 6. Run the end-to-end tests against staging (they need test users, so create a separate staging
    realm copy, or test manually with the checklist in `docs/auth.md`).
 
+### D2 on one server (ADR 0021) - needs your server and domain
+
+1. **You:** rent the server and a domain, point `api.…` and `login.…` at the server's address, create two
+   private buckets (documents, backups) and an SMTP account, make the backup key pair on your own PC
+   (`deploy/one-host/README.md`, "Backups").
+2. Harden the server first: [one-host-hardening.md](one-host-hardening.md); `sudo bin/server-check.sh` shows
+   no FAIL.
+3. On the server: `bin/make_env.py`, fill in the `CHANGE_ME` lines, `bin/check_env.py`, then
+   `docker compose --env-file .env up -d --build` (steps and commands: `deploy/one-host/README.md`).
+4. Put the same web-app secret into Netlify (`OIDC_CLIENT_SECRET` = `CRM_WEB_CLIENT_SECRET` in `.env`) and the
+   other values listed above; create the first administrator by hand (step 5 of D2 above).
+5. Make a backup, run `bin/restore-test.sh` and wait for `RESTORE TEST PASSED`. Keep a copy of `.env` in your
+   password manager.
+
+If the server is ever lost: **Restoring after a disaster** in `deploy/one-host/README.md`. To update:
+`git pull && bin/update.sh`. To go back after a bad update: **Going back** in the same file.
+
 ### D3 - go live
 
 Tick **every** item of the checklist below, remove the staging password, announce the address.
@@ -163,6 +196,16 @@ Tick **every** item of the checklist below, remove the staging password, announc
       Backend done 2026-10-23 (all 47 tenant tables, ADR 0009); tick after the migrations are on
       the target database and the Playwright suite has passed against them.
 - [ ] Database backups on, and a **restore tested**; the file bucket versioned or backed up.
+- [ ] *One-server path:*
+  - [x] Only the proxy publishes ports (80 and 443); tested on the files and on the running rehearsal.
+  - [x] The rehearsal smoke test passes on a PC (22 of 22, 2026-11-03).
+  - [ ] Firewall (ufw) on, SSH by key only, no root login, automatic security updates: `sudo bin/server-check.sh`
+        shows **no FAIL** on the real server.
+  - [ ] Backup key pair made on your own PC; the private half is **offline**, never on the server.
+  - [ ] The backup bucket's key can add files but not delete them; a lifecycle rule expires old copies.
+  - [ ] `bin/restore-test.sh` says **RESTORE TEST PASSED** on the real server, with real (not empty) data.
+  - [ ] A copy of the server's `.env` is in your password manager (a backup does not contain it).
+  - [ ] The Keycloak administration console is closed again (`ADMIN_ALLOWED_IPS=127.0.0.1`).
 - [ ] **Upload/PDF sizes verified** on the chosen hosts: Netlify functions limit request and response
       sizes and run time, and our files can be 20 MB. If too small: browser → bucket uploads with
       signed URLs (a small design change, to be done in D1b before staging).
@@ -179,3 +222,8 @@ allowance (a free plan exists and pauses the site when the credits are used up; 
 around $9/month - check Netlify's pricing page). The API, worker, Keycloak and database hosts are
 usually the larger part (roughly several dollars each per month on small plans). A single rented
 server running docker compose is the cheaper alternative if Netlify is not required.
+
+The one-server path (ADR 0021) replaces the API host, worker, Keycloak host and database by one server
+of at least 2 vCPU / 4 GB RAM / 40 GB disk - usually a few to about twenty dollars a month depending on the
+provider (check the provider's price page) - and still needs Netlify, the domain, a documents bucket, a
+backups bucket and an SMTP provider. 8 GB is more comfortable if the knowledge base is used a lot.

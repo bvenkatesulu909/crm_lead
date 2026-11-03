@@ -1,5 +1,6 @@
 """Public interface of the approvals module (ADR 0014). Other modules import only this."""
 
+from app.modules.approvals.metrics import qualifier_suggestions_table
 from app.modules.approvals.sentinel import Limits as SentinelLimits
 from app.modules.approvals.service import (
     LimitReachedError,
@@ -23,5 +24,6 @@ __all__ = [
     "expire_due",
     "propose",
     "propose_external",
+    "qualifier_suggestions_table",
     "requester_of",
 ]

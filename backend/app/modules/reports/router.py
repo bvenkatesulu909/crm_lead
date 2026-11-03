@@ -5,7 +5,7 @@ import uuid
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
@@ -97,6 +97,7 @@ def builder_csv(
 
 @router.get("/{key}", summary="One standard report", responses=problem_responses(404, 422))
 def report(
+    request: Request,
     key: str,
     principal: Me,
     session: Db,
@@ -105,7 +106,13 @@ def report(
     owner_id: Owner = None,
 ) -> ReportOut:
     return service.run_report(
-        session, _staff(principal), key, start=start, end=end, owner_id=owner_id
+        session,
+        _staff(principal),
+        key,
+        start=start,
+        end=end,
+        owner_id=owner_id,
+        settings=request.app.state.settings,
     )
 
 
@@ -116,6 +123,7 @@ def report(
     responses={**problem_responses(404, 422), **CSV},
 )
 def report_csv(
+    request: Request,
     key: str,
     principal: Me,
     session: Db,
@@ -124,6 +132,12 @@ def report_csv(
     owner_id: Owner = None,
 ) -> Response:
     out = service.run_report(
-        session, _staff(principal), key, start=start, end=end, owner_id=owner_id
+        session,
+        _staff(principal),
+        key,
+        start=start,
+        end=end,
+        owner_id=owner_id,
+        settings=request.app.state.settings,
     )
     return _csv(service.to_csv(out.sections), f"{key}-{out.start}-{out.end}")

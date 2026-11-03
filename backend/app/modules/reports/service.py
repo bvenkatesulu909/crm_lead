@@ -20,10 +20,13 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
+from app.core.config import Settings
 from app.core.errors import DomainError, ForbiddenError, NotFoundError
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, Filters, Period, Table
 from app.modules.accounts import api as accounts_api
 from app.modules.activities import api as activities_api
+from app.modules.agents import api as agents_api
+from app.modules.approvals import api as approvals_api
 from app.modules.contacts import api as contacts_api
 from app.modules.identity import api as identity_api
 from app.modules.invoices import api as invoices_api
@@ -57,9 +60,66 @@ class InvalidReportFilterError(DomainError):
     code = "invalid_report_filter"
 
 
+# --- AI cost per saved lead (a composition of three modules' figures) ----------------------
+
+COST_AGENTS = ("public_chat", "qualifier")  # the two AI features that work on a website lead
+
+
+def _months_touched(period: Any) -> list[date]:
+    month = period.start_date.replace(day=1)
+    months: list[date] = []
+    while month <= period.end_date:
+        months.append(month)
+        month = (month + timedelta(days=32)).replace(day=1)
+    return months
+
+
+def _ai_cost_per_lead_table(
+    session: Session, principal: Principal, filters: Filters, settings: Settings
+) -> Table:
+    """AI cost of the website chat and the Qualifier per web lead, one row per whole calendar month
+    the period touches (usage is stored per month, so a shorter window cannot be priced honestly).
+    An estimate in US dollars; blank when no price is configured."""
+    months = _months_touched(filters.period)
+    leads = leads_api.web_leads_by_month(session, principal, months)
+    cost = agents_api.estimated_cost_by_month(session, principal, months, COST_AGENTS, settings)
+    rows: list[dict[str, Cell]] = []
+    for month in months:
+        spent = cost[month]
+        count = leads[month]
+        rows.append(
+            {
+                "month": month,
+                "web_leads": count,
+                "estimated_cost_usd": spent,
+                "cost_per_lead_usd": (
+                    (spent / count).quantize(Decimal("0.0001"))
+                    if spent is not None and count
+                    else None
+                ),
+            }
+        )
+    return Table(
+        "AI cost per web lead (estimate, whole months, US dollars)",
+        (
+            Column("month", "Month", "date"),
+            Column("web_leads", "Web leads", "number"),
+            Column("estimated_cost_usd", "Chat + Qualifier cost", "money"),
+            Column("cost_per_lead_usd", "Cost per lead", "money"),
+        ),
+        rows,
+    )
+
+
 # --- what exists, and who may use it -----------------------------------------------------
 
 Section = tuple[frozenset[Permission], Callable[[Session, Principal, Filters], Table]]
+
+
+# A section that also needs the server's settings (the AI prices come from the environment).
+PricedSection = tuple[
+    frozenset[Permission], Callable[[Session, Principal, Filters, Settings], Table]
+]
 
 
 @dataclass(frozen=True)
@@ -67,6 +127,7 @@ class ReportDef:
     title: str
     description: str
     sections: tuple[Section, ...]
+    priced_sections: tuple[PricedSection, ...] = ()
 
 
 def _any(*permissions: Permission) -> frozenset[Permission]:
@@ -94,7 +155,9 @@ REPORTS: dict[str, ReportDef] = {
         (
             (SALES_ALL, public_chat_api.funnel_table),
             (SALES_ALL, leads_api.web_lead_quality_table),
+            (SALES_ALL, approvals_api.qualifier_suggestions_table),
         ),
+        priced_sections=((_any(P.AGENT_READ), lambda *a: _ai_cost_per_lead_table(*a)),),
     ),
     "revenue": ReportDef(
         "Revenue & quotes",
@@ -161,7 +224,7 @@ def catalogue(principal: Principal) -> ReportCatalogue:
     reports = [
         ReportInfo(key=k, title=r.title, description=r.description)
         for k, r in REPORTS.items()
-        if any(_allowed(principal, perms) for perms, _ in r.sections)
+        if any(_allowed(principal, perms) for perms, _ in (*r.sections, *r.priced_sections))
     ]
     types = [
         RecordTypeInfo(
@@ -296,15 +359,20 @@ def run_report(
     start: date | None,
     end: date | None,
     owner_id: uuid.UUID | None,
+    settings: Settings,
 ) -> ReportOut:
     report = REPORTS.get(key)
     sections = [fn for perms, fn in report.sections if _allowed(principal, perms)] if report else []
-    if report is None or not sections:
+    priced = (
+        [fn for perms, fn in report.priced_sections if _allowed(principal, perms)] if report else []
+    )
+    if report is None or not (sections or priced):
         raise ReportNotFoundError("This report doesn't exist or isn't available to you.")
     _check_owner_filter(principal, owner_id)
     period = period_of(start, end)
     filters = Filters(period=period, owner_id=owner_id)
     tables = [fn(session, principal, filters) for fn in sections]
+    tables += [fn(session, principal, filters, settings) for fn in priced]
     return ReportOut(key=key, title=report.title, start=period.start_date, end=period.end_date,
                      sections=_out(tables, session, principal))  # fmt: skip
 

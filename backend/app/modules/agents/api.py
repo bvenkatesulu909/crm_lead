@@ -2,6 +2,7 @@
 
 from app.modules.agents.catalogue import AGENTS, AgentDef
 from app.modules.agents.governed import GovernedModel, governed
+from app.modules.agents.metrics import estimated_cost_by_month
 from app.modules.agents.service import (
     UNSET,
     AgentBudgetReachedError,
@@ -28,6 +29,7 @@ __all__ = [
     "Limits",
     "UsageResult",
     "check_can_call",
+    "estimated_cost_by_month",
     "effective",
     "governed",
     "get_agent",

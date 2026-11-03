@@ -149,10 +149,24 @@ undone. If a new version is bad: `git checkout <the previous tag>`, `docker comp
 for the old code, and, only if the old code cannot run on the new database, restore the backup that
 `update.sh` took in its first step (the steps above).
 
-## What is deliberately not here yet
+## Hardening the server, and trying it all on a PC first
 
-- A rehearsal of the whole thing on a PC with a throwaway certificate, and the server hardening
-  guide: step OH3.
+- **`docs/one-host-hardening.md`** - firewall, SSH keys, automatic updates, swap, disk, time, the
+  `.env` file, DNS; and `sudo bin/server-check.sh`, which looks at the machine and prints PASS / WARN /
+  FAIL (it changes nothing and prints no secret). Do this before real data goes in.
+- **`rehearsal/`** - the same files started on your PC with a throwaway certificate authority, so the
+  proxy, HTTPS, sign-in and API can be tried together before any server exists:
+
+  ```bash
+  docker compose --env-file REHEARSAL.env -f docker-compose.yml -f rehearsal/docker-compose.rehearsal.yml up -d --build
+  ENV_FILE=REHEARSAL.env rehearsal/smoke.sh
+  ```
+
+  `smoke.sh` prints PASS or FAIL for each check. The rehearsal files say NEVER in their first lines:
+  they are not for a real server.
+
+## What is deliberately not here
+
 - Monitoring on the server (Prometheus/Grafana need memory a small server lacks). Use a free
   external uptime check on `https://api.yourcompany.in/api/v1/health`.
 

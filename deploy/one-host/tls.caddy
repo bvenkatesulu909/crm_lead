@@ -1,0 +1,5 @@
+# Certificate settings of both sites in the Caddyfile (ADR 0021).
+#
+# In production this file says NOTHING on purpose: with no "tls" line, Caddy gets and renews real
+# certificates from Let's Encrypt for the names in the Caddyfile. The local rehearsal
+# (rehearsal/) mounts a different file at the same place; nothing else differs between the two.

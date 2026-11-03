@@ -101,6 +101,12 @@ the platform's own header first - a visitor can add their own `X-Forwarded-For`.
   before the first message (plus the privacy link when configured).
 - The worker deletes conversations without a lead after the retention; conversations with a
   lead stay as the lead's history.
+- **Anonymous daily counters** (`public_chat_daily_stats`, migration 0049): per organisation and UTC day,
+  how many conversations started and how many leads were saved - two numbers, nothing else (no address,
+  token, text or lead id). They exist so the share of chats that end with a lead stays true after the
+  conversations without a lead are deleted ([pilot-report.md](pilot-report.md)). The database lets them only
+  grow and never deletes a row. They count from the day the migration was applied; earlier chats cannot be
+  recovered.
 
 ## Notifications
 

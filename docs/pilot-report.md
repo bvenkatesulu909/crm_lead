@@ -95,10 +95,30 @@ filter by period and download as CSV, under the same access rules as every other
   guard test covers the new table automatically.
 - The development database was upgraded to 0049 (`rls_audit`: no table readable without a tenant context).
 
+## 6b. What PR2a built (2026-11-03)
+
+- `GET /api/v1/reports/chat?start=&end=` (and `/csv`) - a new standard report **"Website chat: from first
+  message to lead"** with two sections, visible only to people who may see the whole organisation's sales
+  figures (sales managers and administrators; agents and support get 404, customers 403). The Reports page
+  already renders any report's sections, so it appears in the list without new screens.
+- **Section 1, from the `public_chat` module:** conversations started and leads saved (summed from the
+  anonymous daily counters over the days of the period, both ends included), the share, how many leads could
+  be timed, and the median and 90th-percentile (nearest rank) seconds from the visitor's first message to the
+  lead - for leads created in the period. Whole-organisation: the sales-rep filter does not narrow it.
+- **Section 2, from the `leads` module:** web leads created in the period; how many have a budget (either
+  end), an area and a property type; how many were reached; the median hours to the first call = the earlier
+  of the first logged call and the first change of status to "contacted" (read from the audit trail's
+  structured entry, not from timeline text); a call logged before the lead existed counts as no wait.
+  Computed under the leads module's own record-level policy.
+- New building block `leads_api.created_at_of` (when each lead was created, only for leads the person may
+  read), so the chat module never touches the leads table.
+- Tests (`tests/db/test_chat_report.py`, 22) and 15 deliberate breaks of the three modules - see the PR.
+
 ## 6. Steps (each stops for review, tests first)
 
 | Step | Content |
 |---|---|
 | PR1 (done) | The counter table (migration, row-level security, counted by the chat service), tests incl. tenant isolation and "no personal data in the table" |
-| PR2 | The figures in each module's `api.py` and the `chat` report in the Reports module (API, CSV, audit), tests incl. access by role, tenant isolation and the definitions |
+| PR2a | The chat funnel (`public_chat`) and the web-lead quality (`leads`) as the first two sections of the `chat` report in the Reports module (API, CSV), tests incl. access by role, tenant isolation, the definitions and "aggregates only" |
+| PR2b | The Qualifier-suggestions section (`approvals`) and the AI-cost section (`agents`, whole months, an estimate) |
 | PR3 | The report page, `docs/reports.md`, the case study's "where this comes from" column |

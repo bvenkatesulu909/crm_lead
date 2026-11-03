@@ -22,10 +22,12 @@ from app.modules.leads.metrics import (
     LeadMetrics,
     OwnerLeadFigures,
     conversion_table,
+    created_at_of,
     follow_ups,
     lead_figures_by_owner,
     lead_metrics,
     recent_lead_activities,
+    web_lead_quality_table,
 )
 from app.modules.leads.models import LEAD_STATUSES, Lead
 from app.modules.leads.policies import readable_leads
@@ -34,6 +36,8 @@ from app.modules.leads.schemas import ActivityCreate, LeadCreate
 
 __all__ = [
     "conversion_table",
+    "created_at_of",
+    "web_lead_quality_table",
     "create_lead_from_website",
     "EXPORT",
     "export_table",

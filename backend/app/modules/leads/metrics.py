@@ -2,12 +2,15 @@
 
 import uuid
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
-from sqlalchemy import ColumnElement, and_, func, select
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.audit import AuditLog
 from app.core.auth.principal import Principal
 from app.core.reporting import ActivityItem, Cell, Column, Filters, Table, percent
 from app.modules.leads.models import USER_ACTIVITY_KINDS, Lead, LeadActivity
@@ -250,4 +253,83 @@ def conversion_table(session: Session, principal: Principal, filters: Filters) -
             Column("conversion_rate", "Conversion %", "percent"),
         ),
         out,
+    )
+
+
+def created_at_of(
+    session: Session, principal: Principal, lead_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, datetime]:
+    """When each of these leads was created - only the leads this person may read."""
+    if not lead_ids:
+        return {}
+    rows = session.execute(
+        select(Lead.id, Lead.created_at).where(readable_leads(principal), Lead.id.in_(lead_ids))
+    ).all()
+    return {lead_id: created for lead_id, created in rows}
+
+
+def web_lead_quality_table(session: Session, principal: Principal, filters: Filters) -> Table:
+    """Leads that came from the website chat in the period: how many arrived with their details,
+    and how long until someone first reached out (docs/pilot-report.md). Aggregates only.
+
+    *Details*: a budget (either end), an area and a property type. *First call*: the earlier of the
+    first logged call and the first change of status to "contacted" (from the audit trail, where the
+    change is stored in structured form). A call logged before the lead existed counts as no wait.
+    """
+    period = filters.period
+    call_at = (
+        select(func.min(LeadActivity.occurred_at))
+        .where(LeadActivity.lead_id == Lead.id, LeadActivity.kind == "call")
+        .scalar_subquery()
+    )
+    contacted_at = (
+        select(func.min(AuditLog.occurred_at))
+        .where(
+            AuditLog.entity_type == "lead",
+            AuditLog.entity_id == Lead.id,
+            AuditLog.action == "lead.status_changed",
+            AuditLog.changes["status"]["new"].astext == "contacted",
+        )
+        .scalar_subquery()
+    )
+    first_contact = func.least(call_at, contacted_at)  # LEAST ignores a missing one
+    wait_hours = func.greatest(func.extract("epoch", first_contact - Lead.created_at), 0) / 3600
+    has_details = and_(
+        or_(Lead.budget_min_inr.is_not(None), Lead.budget_max_inr.is_not(None)),
+        func.length(func.trim(func.coalesce(Lead.location, ""))) > 0,
+        Lead.property_type.is_not(None),
+    )
+    total, detailed, called, median = session.execute(
+        select(
+            func.count(),
+            func.count().filter(has_details),
+            func.count().filter(first_contact.is_not(None)),
+            func.percentile_cont(0.5).within_group(wait_hours).filter(first_contact.is_not(None)),
+        ).where(
+            _scope(principal, filters),
+            Lead.source == "web",
+            Lead.created_at >= period.start,
+            Lead.created_at < period.end,
+        )
+    ).one()
+    return Table(
+        "Web leads: details and time to the first call",
+        (
+            Column("web_leads", "Web leads", "number"),
+            Column("with_details", "With budget, area and type", "number"),
+            Column("with_details_share", "With details %", "percent"),
+            Column("called", "Reached out to", "number"),
+            Column("median_hours_to_first_call", "Median hours to the first call", "number"),
+        ),
+        [
+            {
+                "web_leads": total,
+                "with_details": detailed,
+                "with_details_share": percent(detailed, total),
+                "called": called,
+                "median_hours_to_first_call": (
+                    None if median is None else Decimal(str(median)).quantize(Decimal("0.1"))
+                ),
+            }
+        ],
     )

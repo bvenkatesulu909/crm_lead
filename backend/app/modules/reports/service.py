@@ -29,6 +29,7 @@ from app.modules.identity import api as identity_api
 from app.modules.invoices import api as invoices_api
 from app.modules.leads import api as leads_api
 from app.modules.orders import api as orders_api
+from app.modules.public_chat import api as public_chat_api
 from app.modules.quotes import api as quotes_api
 from app.modules.reports.schemas import (
     ColumnOut,
@@ -73,6 +74,8 @@ def _any(*permissions: Permission) -> frozenset[Permission]:
 
 
 SALES_ALL_OR_OWN = _any(P.DASHBOARD_SALES_ALL, P.DASHBOARD_SALES_OWN)
+# An organisation-wide view (an agent sees only their own leads, so it would be wrong for them).
+SALES_ALL = _any(P.DASHBOARD_SALES_ALL)
 REPORTS: dict[str, ReportDef] = {
     "sales": ReportDef(
         "Sales: win rate",
@@ -83,6 +86,15 @@ REPORTS: dict[str, ReportDef] = {
         "Leads: conversion",
         "Leads created in the period by source, and how many were converted.",
         ((SALES_ALL_OR_OWN, leads_api.conversion_table),),
+    ),
+    "chat": ReportDef(
+        "Website chat: from first message to lead",
+        "Conversations and leads from the website chat, how long visitors took to leave their "
+        "details, how complete the leads are and how long until someone first called.",
+        (
+            (SALES_ALL, public_chat_api.funnel_table),
+            (SALES_ALL, leads_api.web_lead_quality_table),
+        ),
     ),
     "revenue": ReportDef(
         "Revenue & quotes",

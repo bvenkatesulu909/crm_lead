@@ -6,19 +6,23 @@ keyed hash, for the limits. Neither can be turned back into the original.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Date,
+    ForeignKey,
     ForeignKeyConstraint,
     Identity,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -73,3 +77,30 @@ class PublicChatMessage(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=func.clock_timestamp())
     seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+
+
+class PublicChatDailyStat(Base):
+    """Two anonymous numbers per organisation and day (docs/pilot-report.md).
+
+    Conversations that never produced a lead are deleted after a while (privacy), so without
+    this the share of chats that end with a lead could not be told afterwards. It holds no
+    address, token, text or lead id - only how many conversations started and how many leads
+    were saved. The database lets the numbers only grow and never deletes a row.
+    """
+
+    __tablename__ = "public_chat_daily_stats"
+    __table_args__ = (
+        CheckConstraint(
+            "conversations_started >= 0 AND leads_saved >= 0", name="counts_not_negative"
+        ),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("tenants.id", ondelete="RESTRICT"), primary_key=True
+    )
+    day: Mapped[date] = mapped_column(Date, primary_key=True)  # the UTC day
+    conversations_started: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+    leads_saved: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())

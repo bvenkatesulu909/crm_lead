@@ -163,6 +163,7 @@ def _save_lead(
         cleaned_codes=codes,
     )
     session.flush()
+    repository.count_event(session, tenant_id, _now().date(), leads=1)
     # Sales managers hear about it through the worker (notifications, ADR 0006): IDs only.
     publish(
         session,
@@ -215,6 +216,8 @@ def handle_message(
         )
         session.add(conversation)
         session.flush()
+        # Anonymous, and kept after the conversation itself is cleaned up (docs/pilot-report.md).
+        repository.count_event(session, tenant_id, _now().date(), started=1)
 
     session.add(
         PublicChatMessage(

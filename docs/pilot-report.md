@@ -1,6 +1,6 @@
 # The "Website chat" report: measuring the pilot (follow-up of CRM-113)
 
-**Status:** design, waiting for the owner's answers (section 5). Nothing is built yet.
+**Status:** design accepted 2026-11-03 (all four answers in section 5 as recommended). PR1 (the counter) built; PR2 and PR3 not started.
 **Kind:** a short design, not an ADR. It adds one standard report to the Reports module
 ([reports.md](reports.md)) and one small counter table. It changes no accepted ADR.
 
@@ -65,7 +65,7 @@ filter by period and download as CSV, under the same access rules as every other
 - No comparison with the "before" numbers: those come from the client and go into the case study by hand.
 - No dashboard tile, no e-mailed report, no alert.
 
-## 5. Questions for the owner (recommended answers first)
+## 5. Questions for the owner - answered 2026-11-03: all four as recommended
 
 1. **A report in the Reports module** (managers and administrators, CSV, audited), rather than a script only
    you can run? *Recommended: yes* - the client's managers get the same numbers, under the same access rules.
@@ -75,10 +75,30 @@ filter by period and download as CSV, under the same access rules as every other
 3. **"First call" = the earlier of the first logged call and the first change to "contacted"**? *Recommended: yes.*
 4. **AI cost per lead from the monthly estimate** (whole months, labelled an estimate)? *Recommended: yes.*
 
+## 6a. What PR1 built (2026-11-03)
+
+- Table `public_chat_daily_stats` (migration 0049): primary key (organisation, UTC day), the two counters and
+  `updated_at` - nothing that could identify a visitor, a message or a lead. Forced row-level security. Two
+  locks: a trigger that refuses any UPDATE that would lower a counter (it binds every role), and no DELETE or
+  TRUNCATE privilege for the application role.
+- `repository.count_event` adds to the day's row in one `INSERT ... ON CONFLICT DO UPDATE` statement, so two
+  requests at the same moment add up. The chat service calls it when a conversation is created and when its
+  lead is saved (the existing "already saved" early return means once per conversation), inside the request's
+  own transaction. A message refused before any conversation exists, or sent with an unknown token, counts for
+  nothing.
+- Tests (`tests/db/test_public_chat_stats.py`, 15): a conversation counts once however many messages; each
+  new one counts; a lead counts once even when the visitor keeps talking; refused and unknown-token messages
+  count for nothing; the day is the UTC day (checked across midnight); the numbers survive the clean-up that
+  deletes the conversations; the table has exactly the five columns; one organisation never sees another's;
+  two increments add up; counters cannot be lowered, set negative or deleted; the application role has no
+  DELETE or TRUNCATE privilege. Six deliberate breaks of the code were all caught. The row-level-security
+  guard test covers the new table automatically.
+- The development database was upgraded to 0049 (`rls_audit`: no table readable without a tenant context).
+
 ## 6. Steps (each stops for review, tests first)
 
 | Step | Content |
 |---|---|
-| PR1 | The counter table (migration, row-level security, counted by the chat service), tests incl. tenant isolation and "no personal data in the table" |
+| PR1 (done) | The counter table (migration, row-level security, counted by the chat service), tests incl. tenant isolation and "no personal data in the table" |
 | PR2 | The figures in each module's `api.py` and the `chat` report in the Reports module (API, CSV, audit), tests incl. access by role, tenant isolation and the definitions |
 | PR3 | The report page, `docs/reports.md`, the case study's "where this comes from" column |

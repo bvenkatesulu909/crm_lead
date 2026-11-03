@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-11-02 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-11-03 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -50,14 +50,14 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0048**
-- Tables in the current schema: **64**
-- Tables with Row-Level Security: **60** (60 policies)
+- Alembic revision: **0049**
+- Tables in the current schema: **65**
+- Tables with Row-Level Security: **61** (61 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **48**
-- Heads: `0048`
+- Migration files: **49**
+- Heads: `0049`
 
 ## Web app (`frontend/src/app`)
 
@@ -162,10 +162,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **149**
+- Backend test files: **155**
 - Frontend component test files: **31**
 - Playwright end-to-end specs: **29**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **69** (22 in `docs/adr/`)
+- Markdown documents under `docs/`: **72** (23 in `docs/adr/`)

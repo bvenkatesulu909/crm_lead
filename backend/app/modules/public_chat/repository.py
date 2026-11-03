@@ -2,12 +2,17 @@
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.modules.public_chat.models import PublicChatMessage, PublicChatSession
+from app.modules.public_chat.models import (
+    PublicChatDailyStat,
+    PublicChatMessage,
+    PublicChatSession,
+)
 
 
 def find_session(
@@ -137,3 +142,24 @@ def delete_stale(session: Session, tenant_id: uuid.UUID, before: datetime) -> in
         )
     )
     return int(getattr(result, "rowcount", 0) or 0)
+
+
+def count_event(
+    session: Session, tenant_id: uuid.UUID, day: date, *, started: int = 0, leads: int = 0
+) -> None:
+    """Add to the day's anonymous counters in ONE statement, so two requests at the same moment
+    add up instead of one overwriting the other."""
+    stat = insert(PublicChatDailyStat).values(
+        tenant_id=tenant_id, day=day, conversations_started=started, leads_saved=leads
+    )
+    session.execute(
+        stat.on_conflict_do_update(
+            index_elements=[PublicChatDailyStat.tenant_id, PublicChatDailyStat.day],
+            set_={
+                "conversations_started": PublicChatDailyStat.conversations_started
+                + stat.excluded.conversations_started,
+                "leads_saved": PublicChatDailyStat.leads_saved + stat.excluded.leads_saved,
+                "updated_at": func.now(),
+            },
+        )
+    )

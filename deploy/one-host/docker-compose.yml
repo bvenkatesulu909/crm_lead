@@ -1,0 +1,236 @@
+# The CRM on ONE server (ADR 0021): reverse proxy, database, migration job, API, worker, sign-in.
+#
+# Run from this folder, on the server, after `python3 bin/make_env.py ...` and `bin/check_env.py`:
+#     docker compose --env-file .env up -d --build
+# (the backup job is added in step OH2). Nothing here is a development value: every secret is a
+# reference to .env, which is never committed.
+#
+# Who can be reached from the internet: ONLY Caddy, on ports 80 and 443. The database, the sign-in
+# service, the API and the worker live on a private network inside Docker.
+
+# A different project name from the development stack (infrastructure/docker-compose.yml, "crm-lead"),
+# so the two can never share a network or a data volume on one machine.
+name: crm-lead-onehost
+
+x-logging: &logging
+  # Old log lines are dropped, so logs cannot fill the disk.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-api-environment: &api-environment
+  CRM_ENVIRONMENT: production
+  CRM_DOCS_ENABLED: "false"
+  # The restricted role: it may read and write rows but not change tables, and row-level security
+  # applies to it. The schema owner's password is NOT given to the API or the worker.
+  CRM_DATABASE_URL: postgresql+psycopg://crm_app:${CRM_DB_APP_PASSWORD:?run bin/make_env.py}@postgres:5432/crm
+  # The public names reach Caddy inside the network too (see the alias below), so the API fetches
+  # the sign-in keys from the same HTTPS address the browsers use.
+  CRM_OIDC_ISSUER: https://${LOGIN_HOST:?run bin/make_env.py}/realms/crm
+  CRM_OIDC_AUDIENCE: crm-api
+  CRM_CORS_ALLOWED_ORIGINS: ${WEB_URL:?run bin/make_env.py}
+  CRM_WEB_APP_URL: ${WEB_URL}
+  CRM_KEYCLOAK_ADMIN_CLIENT_SECRET: ${CRM_USER_ADMIN_CLIENT_SECRET:?run bin/make_env.py}
+  CRM_METRICS_TOKEN: ${CRM_METRICS_TOKEN:?run bin/make_env.py}
+  CRM_FILES_S3_ENDPOINT: ${CRM_FILES_S3_ENDPOINT:?fill in .env}
+  CRM_FILES_S3_SECURE: "true"
+  CRM_FILES_S3_ACCESS_KEY: ${CRM_FILES_S3_ACCESS_KEY:?fill in .env}
+  CRM_FILES_S3_SECRET_KEY: ${CRM_FILES_S3_SECRET_KEY:?fill in .env}
+  CRM_FILES_S3_BUCKET: ${CRM_FILES_S3_BUCKET:?fill in .env}
+  CRM_SMTP_HOST: ${CRM_SMTP_HOST:?fill in .env}
+  CRM_SMTP_PORT: ${CRM_SMTP_PORT:-587}
+  CRM_SMTP_USERNAME: ${CRM_SMTP_USERNAME:?fill in .env}
+  CRM_SMTP_PASSWORD: ${CRM_SMTP_PASSWORD:?fill in .env}
+  CRM_SMTP_STARTTLS: "true"
+  CRM_MAIL_FROM: CRM <${MAIL_FROM_ADDRESS:?run bin/make_env.py}>
+  CRM_ANTHROPIC_API_KEY: ${CRM_ANTHROPIC_API_KEY:-}
+  CRM_DEEPSEEK_API_KEY: ${CRM_DEEPSEEK_API_KEY:-}
+
+services:
+  postgres:
+    # Our PostgreSQL 16 with pgvector compiled in (ADR 0010) - the same image as development.
+    build:
+      context: ../../infrastructure/postgres
+      dockerfile: Dockerfile
+    image: crm-lead-postgres:16-pgvector-0.8.7
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run bin/make_env.py}
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      # Read by postgres/init on the first start only.
+      CRM_DB_OWNER_PASSWORD: ${CRM_DB_OWNER_PASSWORD:?run bin/make_env.py}
+      CRM_DB_APP_PASSWORD: ${CRM_DB_APP_PASSWORD:?run bin/make_env.py}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?run bin/make_env.py}
+    # No "ports": the database is reachable only from the other services of this stack.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    mem_limit: 768m
+    logging: *logging
+    networks:
+      - crm
+
+  migrate:
+    # One-shot: bring the database to the latest migration, as the schema owner, then stop. If it
+    # fails, the API and the worker do not start (so the old version keeps running on an update).
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    image: crm-lead-backend:production
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    environment:
+      CRM_MIGRATION_DATABASE_URL: postgresql+psycopg://crm_owner:${CRM_DB_OWNER_PASSWORD:?run bin/make_env.py}@postgres:5432/crm
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 512m
+    logging: *logging
+    networks:
+      - crm
+
+  api:
+    image: crm-lead-backend:production
+    restart: unless-stopped
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # The image has its own health check (GET /api/v1/health).
+    mem_limit: 1g
+    logging: *logging
+    networks:
+      - crm
+
+  worker:
+    # The same image, the other command: background jobs, e-mails, schedules.
+    image: crm-lead-backend:production
+    command: ["python", "-m", "app.worker"]
+    restart: unless-stopped
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # The image's own check asks the API's web port, where nothing listens in the worker. The
+      # worker writes a heartbeat row on every round: healthy = one was written in the last 3 min.
+      # It reads with the restricted app role, like the worker itself.
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os, sys, psycopg;
+          url = os.environ['CRM_DATABASE_URL'].replace('postgresql+psycopg', 'postgresql');
+          row = psycopg.connect(url, connect_timeout=5).execute(
+          "select extract(epoch from now() - last_seen) from service_heartbeats where name = 'worker'"
+          ).fetchone();
+          sys.exit(0 if row and row[0] < 180 else 1)
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    mem_limit: 768m
+    logging: *logging
+    networks:
+      - crm
+
+  keycloak:
+    # Sign-in, in production mode behind Caddy, with the realm that has NO users.
+    build:
+      context: ../../infrastructure/keycloak
+      dockerfile: Dockerfile.production
+    image: crm-lead-keycloak:26.4.7-production
+    restart: unless-stopped
+    environment:
+      KC_HOSTNAME: https://${LOGIN_HOST:?run bin/make_env.py}
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-keycloak-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?run bin/make_env.py}
+      KC_HEALTH_ENABLED: "true"
+      # Substituted into the realm file (infrastructure/keycloak/realm-crm-production.json).
+      CRM_WEB_URL: ${WEB_URL}
+      CRM_WEB_CLIENT_SECRET: ${CRM_WEB_CLIENT_SECRET:?run bin/make_env.py}
+      CRM_USER_ADMIN_CLIENT_SECRET: ${CRM_USER_ADMIN_CLIENT_SECRET}
+      SMTP_HOST: ${CRM_SMTP_HOST:?fill in .env}
+      SMTP_PORT: ${CRM_SMTP_PORT:-587}
+      SMTP_FROM: ${MAIL_FROM_ADDRESS}
+      SMTP_USER: ${CRM_SMTP_USERNAME:?fill in .env}
+      SMTP_PASSWORD: ${CRM_SMTP_PASSWORD:?fill in .env}
+      # Leave room for the operating system and the other services.
+      JAVA_OPTS_KC_HEAP: "-XX:MaxRAMPercentage=60"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The image has no curl: bash opens a TCP connection to the management port and checks that
+      # /health/ready reports "UP".
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status": *"UP"' <&3
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    mem_limit: 1g
+    logging: *logging
+    networks:
+      - crm
+
+  caddy:
+    # The only service the internet can reach: ports 80 (certificate checks, redirect) and 443.
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      API_HOST: ${API_HOST}
+      LOGIN_HOST: ${LOGIN_HOST}
+      ACME_EMAIL: ${ACME_EMAIL:?run bin/make_env.py}
+      ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-127.0.0.1}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - keycloak
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:2019/config/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    mem_limit: 128m
+    logging: *logging
+    networks:
+      crm:
+        # Inside the network the public names point at Caddy, so the API can reach the sign-in
+        # service under the very address the browsers (and the tokens) use.
+        aliases:
+          - ${API_HOST}
+          - ${LOGIN_HOST}
+
+networks:
+  crm:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

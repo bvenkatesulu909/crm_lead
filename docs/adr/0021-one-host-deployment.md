@@ -1,6 +1,6 @@
 # ADR 0021 — One-host deployment: API, worker, database and sign-in on one server
 
-- **Status:** Accepted (2026-11-03) with the recommended answers to the questions in section 6. OH0 (this note) is done; nothing else is built yet.
+- **Status:** Accepted (2026-11-03) with the recommended answers to the questions in section 6. OH0 (this note) and OH1 (the compose files and tools) are done; nothing is deployed.
 - **Date:** 2026-11-03
 - **Deciders:** Project owner
 - **Amends:** ADR 0007 (online deployment). It takes the alternative that ADR 0007 listed - "everything
@@ -122,7 +122,38 @@ domain, the bucket and the SMTP provider (all small), and Netlify.
 | Step | Content |
 |---|---|
 | OH0 | This ADR (documents only) |
-| OH1 | `deploy/one-host/`: compose file, Caddyfile, production database init (roles, `crm` + `keycloak`, pgvector), `.env` template, `make-env` and `check-env`; tests on the files; the stack starts locally and `/api/v1/health` answers |
+| OH1 (done) | `deploy/one-host/`: compose file, Caddyfile, production database init (roles, `crm` + `keycloak`, pgvector), `.env` template, `make-env` and `check-env`; tests on the files; the stack starts locally and `/api/v1/health` answers |
 | OH2 | Backup, `restore-test` and `update` scripts; a restore really performed on this PC and checked |
 | OH3 | The local rehearsal as a smoke test (HTTPS through Caddy, sign-in page, a protected endpoint answers 401, the worker beats, the latest migration is applied, row-level security audit clean) and the server hardening guide (firewall, SSH keys, updates) |
 | OH4 | Docs: `docs/deployment.md` second path, checklist, README of the folder, CLAUDE.md; full runs |
+
+## 8. What OH1 built and checked (2026-11-03)
+
+- `deploy/one-host/`: `docker-compose.yml` (project `crm-lead-onehost`, never the development stack's
+  `crm-lead`), `Caddyfile`, `postgres/init/` (roles, the `crm` and `keycloak` databases, pgvector; no
+  test database), `.env.example`, `bin/make_env.py`, `bin/check_env.py`, `README.md`.
+- **Backup design refined:** the server holds only the PUBLIC half of an `age` key
+  (`BACKUP_AGE_PUBLIC_KEY`), so a stolen server cannot read the off-server copies; the private half stays
+  on the owner's computer. The backup job itself is OH2.
+- **Tests** (`backend/tests/test_one_host_files.py`, 131 checks): only Caddy publishes ports (80/443);
+  no privileged service, no host network, no Docker socket; memory limits, log rotation, restart
+  policies and health checks everywhere; the API and the worker get the restricted app role and never
+  the schema owner's password; no secret value in the compose file; every variable the files need is in
+  the template; the admin console closed by default; metrics hidden; uploads limited; the database
+  scripts create no test database and never give the app role `BYPASSRLS`; `make_env` makes long,
+  random, different, URL-safe secrets and writes a private file without printing them; `check_env`
+  refuses missing, short, repeated, word-like, reused and development values, fake or demo settings,
+  open admin addresses, a secret backup key and a backup bucket shared with the documents; and the real
+  `docker compose config` accepts the file with a generated `.env` and refuses it without one. 14
+  deliberate breaks were all caught (one needed a stronger test first).
+- **Really started** on this PC (a throwaway project `crm-oh1check`, fictitious values, no ports
+  published): the database came up from empty with the production scripts; the `migrate` job reached the
+  latest migration (0048) and exited 0; the API is healthy, `ready` reports database and vector OK,
+  protected endpoints answer 401, the API docs answer 404; `crm_app` is neither superuser nor
+  `BYPASSRLS` and is refused when it tries to create a table; all 60 tenant tables have forced row-level
+  security; pgvector 0.8.7 is on; Keycloak became healthy, imported the realm without users and reports
+  the public HTTPS name as its issuer; the worker became healthy through its heartbeat. `caddy validate`
+  accepts the Caddyfile. Found and fixed on the way: the compose project name collided with the
+  development stack's; the worker inherited a health check for a port it does not serve.
+- **Not done yet:** the proxy was not started with a certificate (OH3's rehearsal), nothing was tried on
+  a real server, no backups yet (OH2).

@@ -1,6 +1,6 @@
 # ADR 0021 — One-host deployment: API, worker, database and sign-in on one server
 
-- **Status:** Accepted (2026-11-03) with the recommended answers to the questions in section 6. OH0 (this note), OH1 (the compose files and tools) and OH2 (backups, restore test, update) are done; nothing is deployed.
+- **Status:** Accepted (2026-11-03) with the recommended answers to the questions in section 6. OH0 (this note), OH1 (the compose files and tools), OH2 (backups, restore test, update) and OH3 (the local rehearsal and the hardening guide) are done; nothing is deployed.
 - **Date:** 2026-11-03
 - **Deciders:** Project owner
 - **Amends:** ADR 0007 (online deployment). It takes the alternative that ADR 0007 listed - "everything
@@ -124,7 +124,7 @@ domain, the bucket and the SMTP provider (all small), and Netlify.
 | OH0 | This ADR (documents only) |
 | OH1 (done) | `deploy/one-host/`: compose file, Caddyfile, production database init (roles, `crm` + `keycloak`, pgvector), `.env` template, `make-env` and `check-env`; tests on the files; the stack starts locally and `/api/v1/health` answers |
 | OH2 (done) | Backup, `restore-test` and `update` scripts; a restore really performed on this PC and checked |
-| OH3 | The local rehearsal as a smoke test (HTTPS through Caddy, sign-in page, a protected endpoint answers 401, the worker beats, the latest migration is applied, row-level security audit clean) and the server hardening guide (firewall, SSH keys, updates) |
+| OH3 (done) | The local rehearsal as a smoke test (HTTPS through Caddy, sign-in page, a protected endpoint answers 401, the worker beats, the latest migration is applied, row-level security audit clean) and the server hardening guide (firewall, SSH keys, updates) |
 | OH4 | Docs: `docs/deployment.md` second path, checklist, README of the folder, CLAUDE.md; full runs |
 
 ## 8. What OH1 built and checked (2026-11-03)
@@ -197,3 +197,39 @@ domain, the bucket and the SMTP provider (all small), and Netlify.
 - **Not done:** `update.sh` was not run through to the end (its settings check, correctly, refuses the
   plain-HTTP rehearsal store; each step was run on its own); nothing on a real server; the proxy with a
   certificate and the server hardening guide are OH3.
+
+## 10. What OH3 built and checked (2026-11-03)
+
+- **`deploy/one-host/rehearsal/`**: the REAL compose file plus one override
+  (`docker-compose.rehearsal.yml`) that starts the whole stack on a PC: the proxy publishes on
+  127.0.0.1:8080/8443 only, takes its certificates from a throwaway authority (`tls internal`) and the API
+  and worker trust that authority's public certificate. Production gets its certificate settings from one
+  empty file, `tls.caddy`; the rehearsal mounts its own copy at the same place, so nothing else differs.
+  Every rehearsal file says NEVER / real server in its first lines.
+- **`rehearsal/smoke.sh`**: 22 checks through the proxy over HTTPS, passed on the real stack: http redirects
+  (308); health, database and pgvector ready; a protected page needs a token (401); the API docs and the
+  metrics are not reachable (404); HSTS and `nosniff` sent, no `Server` header; a 27 MB upload refused at the
+  edge (413); the sign-in realm answers with the public https issuer; the Keycloak administration console
+  and the master realm closed (403); **the API reaches the sign-in keys over HTTPS** - a token nobody signed
+  is refused as invalid (401, never 503) - and the script proves the check can tell, by taking the API's
+  trust away on purpose (503) and restoring it (401); the console opens for an allowed address and closes
+  again.
+- **`bin/server-check.sh`** and **`docs/one-host-hardening.md`**: firewall (ufw, and why Docker bypasses it),
+  SSH keys only and no root login, automatic security updates, swap, disk, time, the private `.env`, DNS
+  (CAA), and a script that only LOOKS at the machine and prints PASS / WARN / FAIL (changes nothing, prints
+  no secret). Tried in a bare Ubuntu container: it ran, named every missing item plainly and exited 1; the
+  passing path is unproven until a real server exists.
+- **Tests** (`backend/tests/test_one_host_rehearsal.py`, 30; 193 across the three one-host files):
+  production stays free of anything rehearsal-only; the override marked NEVER, bound to this PC and to other
+  ports, touching only the proxy and the API/worker trust, weakening nothing; the merged compose file checked
+  with the real `docker compose config`; the smoke script's real assertions, their order, and the
+  closed/open/closed sequence of the console; the server check and the guide. 22 deliberate breaks, all
+  caught (three needed a sharper test first).
+- **Found only by running it, now fixed:** the API (an unprivileged user) could not read the proxy's private
+  data volume and crashed in a loop, which showed as 502 - cured by a one-shot helper that copies only the
+  PUBLIC root certificate to a readable volume, not by running the API as root; a missing certificate file
+  crashes the API at start instead of making it answer 503, so the trust is broken by pointing it at the
+  ordinary system certificate list; Windows curl insists on a revocation check a throwaway authority cannot
+  give (`--ssl-no-revoke`; the chain and host name are still verified); Git Bash rewrote container paths.
+- **Not done:** nothing on a real server; `server-check.sh` and the guide's commands were never run on one;
+  OH4 (the second path in `docs/deployment.md`, the checklist, full runs) is still to do.

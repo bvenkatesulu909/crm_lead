@@ -23,6 +23,8 @@
 # --- the API -------------------------------------------------------------------------------
 {$API_HOST} {
 	import security_headers
+	# Real certificates in production; the local rehearsal swaps this file (tls.caddy).
+	import /etc/caddy/tls.caddy
 
 	# Operational numbers are for the monitoring tools inside the network, never the internet
 	# (they are also token-guarded by the API itself).
@@ -40,6 +42,8 @@
 # --- sign-in (Keycloak) -----------------------------------------------------------------------
 {$LOGIN_HOST} {
 	import security_headers
+	# Real certificates in production; the local rehearsal swaps this file (tls.caddy).
+	import /etc/caddy/tls.caddy
 
 	# The administration console and the master realm are closed to the internet. Only the
 	# addresses listed in ADMIN_ALLOWED_IPS (default: nobody) may open them - list your own address

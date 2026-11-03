@@ -1,0 +1,6 @@
+# REHEARSAL ONLY - NEVER mount this on a real server (ADR 0021, step OH3).
+#
+# Replaces the empty ../tls.caddy: Caddy makes its own throwaway certificate authority and signs the
+# names with it. Browsers and tools only trust those certificates if they are given its root
+# certificate (smoke.sh does that), which is exactly why a real server must not use this.
+tls internal

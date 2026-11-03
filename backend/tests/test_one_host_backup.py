@@ -66,7 +66,9 @@ def test_the_scripts_exist() -> None:
 def test_every_script_stops_at_the_first_error_and_has_valid_syntax(script: Path) -> None:
     text = script.read_text(encoding="utf-8")
     assert text.startswith(("#!/bin/sh\n", "#!/bin/bash\n")), script.name
-    assert re.search(r"^set -eu(o pipefail)?$", text, flags=re.M), script.name
+    # server-check.sh must report EVERY problem, so it is the one script without `-e`.
+    stops = r"^set -uo pipefail$" if script.name == "server-check.sh" else r"^set -eu(o pipefail)?$"
+    assert re.search(stops, text, flags=re.M), script.name
     bash = working_bash()
     if bash is None:
         pytest.skip("no working bash on this machine")

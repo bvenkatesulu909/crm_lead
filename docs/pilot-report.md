@@ -1,6 +1,6 @@
 # The "Website chat" report: measuring the pilot (follow-up of CRM-113)
 
-**Status:** design accepted 2026-11-03 (all four answers in section 5 as recommended). PR1 (the counter) built; PR2 and PR3 not started.
+**Status:** design accepted 2026-11-03 (all four answers in section 5 as recommended). PR1 (the counter), PR2a, PR2b (the report) and PR3 (docs) built.
 **Kind:** a short design, not an ADR. It adds one standard report to the Reports module
 ([reports.md](reports.md)) and one small counter table. It changes no accepted ADR.
 
@@ -135,4 +135,4 @@ filter by period and download as CSV, under the same access rules as every other
 | PR1 (done) | The counter table (migration, row-level security, counted by the chat service), tests incl. tenant isolation and "no personal data in the table" |
 | PR2a | The chat funnel (`public_chat`) and the web-lead quality (`leads`) as the first two sections of the `chat` report in the Reports module (API, CSV), tests incl. access by role, tenant isolation, the definitions and "aggregates only" |
 | PR2b | The Qualifier-suggestions section (`approvals`) and the AI-cost section (`agents`, whole months, an estimate) |
-| PR3 | The report page, `docs/reports.md`, the case study's "where this comes from" column |
+| PR3 (done) | The report page needs no new screen (the Reports page shows any report's sections); `docs/reports.md`; the case study's "where this number comes from" column |

@@ -33,3 +33,4 @@ Rules:
 | [0019](0019-live-web-check-rera-and-company.md) | Live web check of a RERA number or a company (BP-15) | Accepted |
 | [0020](0020-mcp-propose-tools.md) | Propose-only tools in the CRM MCP server (BP-11, step MCP5) | Accepted |
 | [0021](0021-one-host-deployment.md) | One-host deployment: API, worker, database and sign-in on one server (CRM-112; amends 0007) | Accepted |
+| [0022](0022-lead-agent-langgraph.md) | An optional lead agent built with LangGraph (CRM-114) | Proposed |

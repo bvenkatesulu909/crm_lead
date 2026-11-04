@@ -94,6 +94,18 @@ AGENTS: dict[str, AgentDef] = {
             tools=("submit_assessment",),
         ),
         AgentDef(
+            key="lead_agent",
+            title="Lead agent",
+            description=(
+                "Looks at one lead and SUGGESTS whether its status should change. It never "
+                "changes a lead: every suggestion waits in the approval queue for a different "
+                "person. Off until an administrator switches it on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_suggestion",),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="web_check",
             title="Web check",
             description=(

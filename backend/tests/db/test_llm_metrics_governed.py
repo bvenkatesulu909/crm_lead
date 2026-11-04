@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 from app.core.observability.metrics import REGISTRY, metrics_payload, observe_ai_call
+from app.modules.agents import api as agents_api
 from app.modules.agents.catalogue import AGENTS
 from app.modules.agents.governed import governed
 from app.modules.agents.service import AgentUnavailableError, Limits
@@ -63,11 +64,16 @@ def requests(agent: str, outcome: str = "ok") -> float:
 
 
 def gate(ctx: Ctx, model: Metered, key: str) -> Any:
-    ctx.who("alpha.admin")
+    principal = ctx.who("alpha.admin")
+    if not AGENTS[key].default_enabled:
+        # An agent that starts switched off (ADR 0022) must be switched on before it can be called.
+        agents_api.update_settings(
+            ctx.session, principal, key, limits=LIMITS, now=NOW, enabled=True
+        )
     return governed(model, ctx.session, ctx.alpha, key, LIMITS, clock=lambda: NOW)
 
 
-def test_the_catalogue_has_the_five_model_agents() -> None:
+def test_the_catalogue_has_the_six_model_agents() -> None:
     # The web check uses no model and the MCP client's model runs outside the CRM.
     assert set(MODEL_AGENTS) == {
         "staff_assistant",
@@ -75,6 +81,7 @@ def test_the_catalogue_has_the_five_model_agents() -> None:
         "public_chat",
         "knowledge_answers",
         "qualifier",
+        "lead_agent",
     }
 
 

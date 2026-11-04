@@ -50,3 +50,5 @@ opentelemetry-instrumentation-fastapi==0.66b1
 opentelemetry-instrumentation-sqlalchemy==0.66b1
 opentelemetry-instrumentation-httpx==0.66b1
 faster-whisper>=1.1.0
+# Agent graphs (ADR 0022): the optional lead agent. Imported by app/modules/lead_agent only.
+langgraph==1.2.19

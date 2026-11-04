@@ -41,6 +41,7 @@ const AGENT_LABELS: Record<string, string> = {
   staff_assistant: "the staff assistant",
   mcp_client: "an outside AI client (MCP)",
   qualifier: "the Qualifier",
+  lead_agent: "the lead agent",
 };
 
 /**

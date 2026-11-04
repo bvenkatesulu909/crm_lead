@@ -30,6 +30,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "public_chat",
         "knowledge_answers",
         "qualifier",
+        "lead_agent",
     }
     assert {key for key, agent in AGENTS.items() if agent.uses_model} == models
     # The web check is governed like an agent but calls no language model (ADR 0019).
@@ -40,7 +41,11 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
     mcp = AGENTS["mcp_client"]
     assert (mcp.uses_model, mcp.platform_switch, mcp.default_enabled) == (False, True, False)
     assert AGENTS["web_check"].platform_switch is False
-    assert all(a.default_enabled for key, a in AGENTS.items() if key != "mcp_client")
+    # The outside client and the optional lead agent start OFF (ADR 0020, ADR 0022).
+    assert not AGENTS["lead_agent"].default_enabled
+    assert all(
+        a.default_enabled for key, a in AGENTS.items() if key not in ("mcp_client", "lead_agent")
+    )
 
 
 def test_every_key_fits_the_database_rule() -> None:

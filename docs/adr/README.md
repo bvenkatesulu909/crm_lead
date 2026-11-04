@@ -19,7 +19,7 @@ Rules:
 | [0005](0005-file-storage-outbox-worker.md) | S3 file storage (SeaweedFS), outbox + worker, e-mailed quote PDFs | Accepted |
 | [0006](0006-domain-events-notifications-workflows.md) | Domain events, notifications and workflow rules | Accepted |
 | [0007](0007-online-deployment.md) | Online deployment (Netlify for the web app, hosting for the rest) | Accepted |
-| [0008](0008-teams-visibility.md) | Teams and team-scoped visibility | Proposed |
+| [0008](0008-teams-visibility.md) | Teams and team-scoped visibility | Accepted |
 | [0009](0009-row-level-security.md) | PostgreSQL Row-Level Security as defence in depth | Accepted (staged) |
 | [0010](0010-knowledge-search-pgvector-embeddings.md) | Knowledge search: pgvector image, embedding model and index | Accepted |
 | [0011](0011-chunking-and-hybrid-search.md) | Chunking and hybrid search: starting settings | Accepted |

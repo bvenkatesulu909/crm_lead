@@ -1,6 +1,7 @@
 # ADR 0022 — An optional lead agent built with LangGraph (CRM-114)
 
-- **Status:** Proposed (2026-11-04) — waiting for the owner's answers in section 5
+- **Status:** Accepted (2026-11-04): the owner confirmed the reading of the ticket and said to proceed; the
+  recommended answers to section 5 apply (build LA1 only, then decide after the pilot; LangGraph behind one module; off by default)
 - **Date:** 2026-11-04
 - **Deciders:** Project owner
 - **Depends on:** ADR 0014 (approval queue), ADR 0016 (agent registry), ADR 0017/0018 (Sentinel and

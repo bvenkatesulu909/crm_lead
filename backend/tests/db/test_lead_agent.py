@@ -137,6 +137,7 @@ def test_it_stores_one_pending_proposal_and_changes_nothing(acting, db_session, 
 
 def test_every_run_is_audited_with_codes_and_ids_only(acting, db_session, world, on) -> None:
     result = run(acting, "alpha.agent1", says(reason="SECRET reason text"), on)
+    assert result.proposal is not None
     (entry,) = audits(db_session, world)
     assert entry.entity_id == on.id
     assert entry.changes == {"outcome": "proposed", "proposal_id": str(result.proposal.id)}

@@ -45,14 +45,17 @@ passes. This shows the system *works*, not that it *paid off*.
 
 **What the pilot must show [TO FILL - leave blank until real data exists]:**
 
-| Measure | Before (client) | After (system) |
-|---|---|---|
-| First message to a saved lead | [TO FILL] | [TO FILL] |
-| Chats that end with a lead | [TO FILL] | [TO FILL] |
-| Leads with budget and area filled in | [TO FILL] | [TO FILL] |
-| New lead to first call | [TO FILL] | [TO FILL] |
-| Suggestions approved vs. rejected | - | [TO FILL] |
-| Estimated AI cost per saved lead | - | [TO FILL] |
+| Measure | Before (client) | After (system) | Where the "after" number comes from |
+|---|---|---|---|
+| First message to a saved lead | [TO FILL] | [TO FILL] | Reports -> "Website chat", section 1: median seconds from the first message to the lead |
+| Chats that end with a lead | [TO FILL] | [TO FILL] | Section 1: conversations started, leads saved, the share |
+| Leads with budget and area filled in | [TO FILL] | [TO FILL] | Section 2: web leads "with budget, area and type" and the share |
+| New lead to first call | [TO FILL] | [TO FILL] | Section 2: median hours to the first call |
+| Suggestions approved vs. rejected | - | [TO FILL] | Section 3: approved, rejected, the approved share of those decided |
+| Estimated AI cost per saved lead | - | [TO FILL] | Section 4: cost per lead for each whole month (an estimate, not a bill) |
+
+Take the "after" numbers from the report for the pilot dates (the same page has a CSV download). Definitions:
+`docs/pilot-report.md`.
 
 Client quote, if given: [TO FILL - with their written OK].
 
@@ -76,9 +79,9 @@ Client quote, if given: [TO FILL - with their written OK].
    `docs/deployment.md`). Plan two to four weeks of real use and write down the client's **"before" numbers
    first** (how long the first reply takes today, enquiries a week): they cannot be recovered afterwards.
 4. **The "after" numbers come from the system:** chats and leads carry timestamps, the approval queue records
-   approved and rejected suggestions, and the AI agents page shows an estimated cost. I can add a small
-   read-only report that prints these for a date range so the table is filled from data - say so and I will
-   propose it as its own step.
+   approved and rejected suggestions, and the AI agents page shows an estimated cost. All of it is printed by
+   the read-only report Reports -> "Website chat: from first message to lead" for a date range (managers and
+   administrators; CSV available) - fill the table from that page, never from memory.
 5. **Never include a buyer's real name, phone number or message.**
 6. Replace every **[TO FILL]**, delete the **[verified]** tags and this list, and read the page aloud: if a
    sentence is not something the client would sign, change it.

@@ -80,7 +80,7 @@ class RunResult:
     blocked_message: str | None = None
 
 
-def _count_runs(
+def count_runs(
     session: Session, tenant_id: uuid.UUID, since: datetime, lead_id: uuid.UUID | None = None
 ) -> int:
     query = select(func.count()).where(
@@ -96,9 +96,9 @@ def _count_runs(
 def _check_limits(
     session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, limits: Limits, now: datetime
 ) -> None:
-    if _count_runs(session, tenant_id, now - timedelta(hours=1), lead_id) >= limits.per_lead_hour:
+    if count_runs(session, tenant_id, now - timedelta(hours=1), lead_id) >= limits.per_lead_hour:
         raise RateLimitedError("This lead was looked at a moment ago. Try again in an hour.")
-    if _count_runs(session, tenant_id, now - timedelta(days=1)) >= limits.per_tenant_day:
+    if count_runs(session, tenant_id, now - timedelta(days=1)) >= limits.per_tenant_day:
         raise RateLimitedError("Your organisation reached its daily limit for the lead agent.")
 
 

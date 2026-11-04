@@ -1,5 +1,6 @@
 """Public interface of the lead_agent module (ADR 0022)."""
 
+from app.modules.lead_agent.auto import event_subscribers
 from app.modules.lead_agent.graph import Plan, Ports, Result, StepLimitError, run
 from app.modules.lead_agent.service import (
     LeadNotFoundError,
@@ -20,6 +21,7 @@ __all__ = [
     "RunResult",
     "StepLimitError",
     "SuggestionInvalidError",
+    "event_subscribers",
     "run",
     "run_lead_agent",
 ]

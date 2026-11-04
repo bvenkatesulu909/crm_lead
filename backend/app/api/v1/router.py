@@ -27,6 +27,7 @@ from app.modules.invoices.router import portal_router as portal_invoices_router
 from app.modules.invoices.router import router as invoices_router
 from app.modules.knowledge.router import portal_router as portal_knowledge_router
 from app.modules.knowledge.router import router as knowledge_router
+from app.modules.lead_agent.router import router as lead_agent_router
 from app.modules.leads.router import router as leads_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.orders.router import portal_router as portal_orders_router
@@ -69,6 +70,7 @@ api_router.include_router(approvals_router)
 api_router.include_router(agents_router)
 api_router.include_router(webcheck_router)
 api_router.include_router(qualifier_router)
+api_router.include_router(lead_agent_router)
 api_router.include_router(workflows_router)
 api_router.include_router(reports_router)
 api_router.include_router(leads_router)

@@ -58,7 +58,7 @@ Rules that do not change (they are the point of the existing ADRs):
 | Step | Content |
 |---|---|
 | LA1 | Add `langgraph` pinned in `requirements.txt` (one module imports it); the graph with a **scripted model**: nodes read → decide → propose; run-state is plain data; tests incl. step limit, no direct write, tenant isolation, role denial, ID tampering |
-| LA2 | Registry entry `lead_agent` (off by default), `governed()` around the model, Sentinel on the proposal, limits, audit, metrics |
+| LA2 (done 2026-11-04) | Registry entry `lead_agent` (off by default), migration 0050 (the agent name is allowed in proposals), `governed()` around the model, one tool `submit_suggestion` (a status change, never `converted`), Sentinel on the proposal, limits `CRM_LEAD_AGENT_PER_LEAD_HOUR` / `_PER_TENANT_DAY`, audit `lead_agent.ran`. No endpoint or screen yet (LA4) |
 | LA3 | The web-check and duplicate-check nodes (read-only), cleaned text only |
 | LA4 | Trigger: a button on the lead page (same as "Qualify") and, off by default, automatic for new website leads |
 | LA5 | BP-10 evaluation cases, docs, a full run |

@@ -36,6 +36,7 @@ from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
+from app.modules.lead_agent import api as lead_agent_api
 from app.modules.notifications import api as notifications_api
 from app.modules.public_chat import api as public_chat_api
 from app.modules.qualifier import api as qualifier_api
@@ -78,6 +79,7 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
                 notifications_api.event_subscribers(),
                 workflows_api.event_subscribers(services.settings.workflow_actions_per_hour),
                 qualifier_api.event_subscribers(services.settings),
+                lead_agent_api.event_subscribers(services.settings),
             )
         ),
     }

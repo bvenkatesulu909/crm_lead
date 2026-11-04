@@ -6,6 +6,7 @@ import { ActivityPanel } from "@/components/activity-panel";
 import { ChatTranscriptCard } from "@/components/chat-transcript-card";
 import { EmailCard } from "@/components/email-card";
 import { RecordProposals } from "@/components/record-proposals";
+import { LeadAgentSection } from "@/components/lead-agent-section";
 import { QualifierCard } from "@/components/qualifier-card";
 import { WebCheckCard } from "@/components/webcheck-card";
 import { LeadScoreCard } from "@/components/lead-score";
@@ -50,7 +51,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const DONE: Record<string, string> = {
   "email-sent": "The e-mail is on its way. Its status is shown under E-mails.",
-  assessed: "The Qualifier assessed the lead. Any suggestion is waiting for approval.",
+  assessed:
+    "The Qualifier assessed the lead. Any suggestion is waiting for approval.",
+  "lead-agent-proposed":
+    "The lead agent made a suggestion. It is waiting for a different person to approve it.",
+  "lead-agent-nothing":
+    "The lead agent looked at the lead and suggests no change.",
+  "lead-agent-blocked":
+    "The lead agent made a suggestion, but the safety check refused it, so nothing was created.",
   "webcheck-queued":
     "The web check was queued. The result appears under Web check and you get a notification.",
   "email-logged": "The received e-mail was saved in the history.",
@@ -143,7 +151,10 @@ export default async function LeadPage({
     ["E-mail", lead.email ?? "—"],
     ["Phone", lead.phone ?? "—"],
     ["Source", lead.source ? SOURCE_LABELS[lead.source] : "—"],
-    ["Property type", lead.property_type ? PROPERTY_TYPE_LABELS[lead.property_type] : "—"],
+    [
+      "Property type",
+      lead.property_type ? PROPERTY_TYPE_LABELS[lead.property_type] : "—",
+    ],
     ["Budget", formatBudget(lead.budget_min_inr, lead.budget_max_inr)],
     ["Location", lead.location ?? "—"],
     ["Owner", nameOf(lead.owner_id)],
@@ -276,8 +287,14 @@ export default async function LeadPage({
           />
           <RecordProposals me={me} targetId={lead.id} />
           <QualifierCard me={me} leadId={lead.id} />
+          <LeadAgentSection me={me} leadId={lead.id} />
           <WebCheckCard me={me} record={{ type: "lead", id: lead.id }} />
-          <EmailCard me={me} record={{ type: "lead", id: lead.id }} person={{ email: lead.email }} personLabel={name} />
+          <EmailCard
+            me={me}
+            record={{ type: "lead", id: lead.id }}
+            person={{ email: lead.email }}
+            personLabel={name}
+          />
         </div>
 
         <div className="space-y-6">

@@ -183,6 +183,10 @@ class Settings(BaseSettings):
     # The optional lead agent (ADR 0022): how often it may run.
     lead_agent_per_lead_hour: int = Field(default=1, ge=1, le=100)
     lead_agent_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # Let the lead agent look at every new website lead as the Automation identity. Off by default;
+    # read when the worker starts. The agent's own switch (also off by default), budget and limits
+    # still apply.
+    lead_agent_auto_web_leads: bool = False
     # Assess every new website lead as soon as the chat saves it, as the Automation identity.
     # Off by default; read when the worker starts. The agent switch, the budget and the limits
     # above still apply.

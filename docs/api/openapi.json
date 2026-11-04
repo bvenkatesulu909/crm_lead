@@ -13073,68 +13073,20 @@
         "title": "RuleUpdate",
         "type": "object"
       },
-      "RunRead": {
+      "RunCreate": {
+        "additionalProperties": false,
+        "description": "Ask the lead agent to look at one lead. The person and the organisation come from the\ntoken; nothing else is accepted.",
         "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
+          "lead_id": {
             "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Message"
-          },
-          "record_id": {
-            "format": "uuid",
-            "title": "Record Id",
-            "type": "string"
-          },
-          "record_label": {
-            "title": "Record Label",
-            "type": "string"
-          },
-          "record_type": {
-            "title": "Record Type",
-            "type": "string"
-          },
-          "rule_id": {
-            "format": "uuid",
-            "title": "Rule Id",
-            "type": "string"
-          },
-          "rule_name": {
-            "default": "",
-            "title": "Rule Name",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
+            "title": "Lead Id",
             "type": "string"
           }
         },
         "required": [
-          "id",
-          "rule_id",
-          "record_type",
-          "record_id",
-          "record_label",
-          "status",
-          "message",
-          "created_at"
+          "lead_id"
         ],
-        "title": "RunRead",
+        "title": "RunCreate",
         "type": "object"
       },
       "SafetyWarning": {
@@ -15469,6 +15421,56 @@
         "title": "ActivityRead",
         "type": "object"
       },
+      "app__modules__lead_agent__schemas__RunRead": {
+        "properties": {
+          "blocked_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Message"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
+          "proposal_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Link"
+          }
+        },
+        "required": [
+          "outcome",
+          "proposal_id",
+          "proposal_link",
+          "blocked_message"
+        ],
+        "title": "RunRead",
+        "type": "object"
+      },
       "app__modules__leads__schemas__ActivityCreate": {
         "additionalProperties": false,
         "properties": {
@@ -15619,6 +15621,70 @@
           "version"
         ],
         "title": "Reopen",
+        "type": "object"
+      },
+      "app__modules__workflows__schemas__RunRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "record_id": {
+            "format": "uuid",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "record_label": {
+            "title": "Record Label",
+            "type": "string"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          },
+          "rule_id": {
+            "format": "uuid",
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "rule_name": {
+            "default": "",
+            "title": "Rule Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "rule_id",
+          "record_type",
+          "record_id",
+          "record_label",
+          "status",
+          "message",
+          "created_at"
+        ],
+        "title": "RunRead",
         "type": "object"
       }
     },
@@ -23654,6 +23720,103 @@
         "summary": "Search the knowledge base (meaning + keyword search, RRF-fused)",
         "tags": [
           "knowledge"
+        ]
+      }
+    },
+    "/api/v1/lead-agent/runs": {
+      "post": {
+        "description": "Needs a lead you may read and the agent switched on by an administrator. The result may be a proposal in the approval queue (nothing changes until a different person approves it) or no suggestion. Off, over budget or over a limit: 503 / 429 with nothing proposed.",
+        "operationId": "create_run_api_v1_lead_agent_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__modules__lead_agent__schemas__RunRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask the lead agent to look at one lead; it suggests, a different person decides",
+        "tags": [
+          "lead-agent"
         ]
       }
     },
@@ -35901,7 +36064,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/RunRead"
+                    "$ref": "#/components/schemas/app__modules__workflows__schemas__RunRead"
                   },
                   "title": "Response List Runs Api V1 Workflows Runs Get",
                   "type": "array"

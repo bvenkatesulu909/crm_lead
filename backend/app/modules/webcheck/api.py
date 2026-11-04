@@ -9,6 +9,7 @@ from app.modules.webcheck import service
 
 CHECK_JOB = service.CHECK_JOB
 delete_expired = service.delete_expired
+evidence_summary = service.evidence_summary
 request_check = service.request_check
 offered_sources = service.offered_sources
 
@@ -16,6 +17,7 @@ __all__ = [
     "CHECK_JOB",
     "check_job_handler",
     "delete_expired",
+    "evidence_summary",
     "offered_sources",
     "request_check",
 ]

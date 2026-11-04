@@ -1,6 +1,6 @@
 """The lead agent as a small LangGraph graph (ADR 0022, step LA1).
 
-    read ─► decide ─► (nothing to do? stop) ─► propose ─► end
+    read ─► web evidence ─► duplicate check ─► decide ─► (nothing to do? stop) ─► propose ─► end
 
 The graph itself owns no data and no model: it is given three functions (``Ports``) and only decides
 the ORDER, the stopping and the step limit. The last step can only call ``propose`` - there is no
@@ -17,7 +17,7 @@ from langgraph.graph import END, START, StateGraph
 
 from app.core.errors import DomainError
 
-DEFAULT_MAX_STEPS = 6  # read, decide, propose need 3; the rest is slack for LA3's extra checks
+DEFAULT_MAX_STEPS = 8  # the five steps need 5; the rest is slack
 
 
 class StepLimitError(DomainError):
@@ -41,12 +41,18 @@ class Ports:
     wiring (LA2) gives ones that go through the module APIs, the registry and the Sentinel."""
 
     read: Callable[[], Any | None]  # the lead's facts, or None if the asker may not see it
-    decide: Callable[[Any], Plan | None]  # facts -> a plan, or None for "nothing to suggest"
+    # Two READ-ONLY looks at the lead (LA3): the web evidence already on file and how many other
+    # leads share its contact details. Each returns plain data for the model to read.
+    web_evidence: Callable[[Any], Any]
+    duplicates: Callable[[Any], Any]
+    # (facts, extra context) -> a plan, or None for "nothing to suggest"
+    decide: Callable[[Any, dict[str, Any]], Plan | None]
     propose: Callable[[Plan], Any]  # stores a PENDING proposal; never changes the lead
 
 
 class State(TypedDict, total=False):
     facts: Any
+    context: dict[str, Any]
     plan: Plan | None
     proposal: Any
     outcome: str
@@ -64,8 +70,18 @@ def build(ports: Ports) -> Any:
         facts = ports.read()
         return {"facts": facts} if facts is not None else {"outcome": "lead_not_found"}
 
+    def web_check(state: State) -> State:
+        return {"context": {"web_evidence": ports.web_evidence(state["facts"])}}
+
+    def duplicate_check(state: State) -> State:
+        context = {
+            **state["context"],
+            "other_leads_with_same_contact": ports.duplicates(state["facts"]),
+        }
+        return {"context": context}
+
     def decide(state: State) -> State:
-        plan = ports.decide(state["facts"])
+        plan = ports.decide(state["facts"], state["context"])
         return {"plan": plan} if plan is not None else {"outcome": "no_suggestion"}
 
     def propose(state: State) -> State:
@@ -75,17 +91,21 @@ def build(ports: Ports) -> Any:
         return {"proposal": ports.propose(plan), "outcome": "proposed"}
 
     def after_read(state: State) -> str:
-        return "stop" if state.get("outcome") else "decide"
+        return "stop" if state.get("outcome") else "web_check"
 
     def after_decide(state: State) -> str:
         return "stop" if state.get("outcome") else "propose"
 
     graph = StateGraph(State)
     graph.add_node("read", read)
+    graph.add_node("web_check", web_check)
+    graph.add_node("duplicate_check", duplicate_check)
     graph.add_node("decide", decide)
     graph.add_node("propose", propose)
     graph.add_edge(START, "read")
-    graph.add_conditional_edges("read", after_read, {"stop": END, "decide": "decide"})
+    graph.add_conditional_edges("read", after_read, {"stop": END, "web_check": "web_check"})
+    graph.add_edge("web_check", "duplicate_check")
+    graph.add_edge("duplicate_check", "decide")
     graph.add_conditional_edges("decide", after_decide, {"stop": END, "propose": "propose"})
     graph.add_edge("propose", END)
     return graph.compile()

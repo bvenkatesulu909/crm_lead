@@ -59,7 +59,7 @@ Rules that do not change (they are the point of the existing ADRs):
 |---|---|
 | LA1 | Add `langgraph` pinned in `requirements.txt` (one module imports it); the graph with a **scripted model**: nodes read → decide → propose; run-state is plain data; tests incl. step limit, no direct write, tenant isolation, role denial, ID tampering |
 | LA2 (done 2026-11-04) | Registry entry `lead_agent` (off by default), migration 0050 (the agent name is allowed in proposals), `governed()` around the model, one tool `submit_suggestion` (a status change, never `converted`), Sentinel on the proposal, limits `CRM_LEAD_AGENT_PER_LEAD_HOUR` / `_PER_TENANT_DAY`, audit `lead_agent.ran`. No endpoint or screen yet (LA4) |
-| LA3 | The web-check and duplicate-check nodes (read-only), cleaned text only |
+| LA3 (done 2026-11-04) | Two read-only steps between read and decide: the web evidence already on file (`webcheck_api.evidence_summary`: source, verdict, status, valid-until of the newest three; never the excerpt or the query; it never starts a check) and a duplicate count (`leads_api.duplicate_count`: how many other leads the asker may read share the e-mail or phone; a number only). Both are cleaned like all record text before the model sees them |
 | LA4 | Trigger: a button on the lead page (same as "Qualify") and, off by default, automatic for new website leads |
 | LA5 | BP-10 evaluation cases, docs, a full run |
 

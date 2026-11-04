@@ -16,6 +16,7 @@ from app.core.errors import ForbiddenError
 from app.core.records import LeadQualifierFacts, LeadSnapshot, Recipient, RecordFacts
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
 from app.modules.leads import repository, service
+from app.modules.leads.checks import duplicate_count
 from app.modules.leads.metrics import (
     FollowUp,
     FollowUps,
@@ -37,6 +38,7 @@ from app.modules.leads.schemas import ActivityCreate, LeadCreate
 
 __all__ = [
     "conversion_table",
+    "duplicate_count",
     "created_at_of",
     "web_lead_quality_table",
     "web_leads_by_month",

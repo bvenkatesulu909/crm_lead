@@ -10,6 +10,7 @@ It only ever PROPOSES: a different person approves in the approval queue. Servic
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -26,6 +27,7 @@ from app.modules.approvals.models import AgentAction
 from app.modules.assistant.api import ChatModel
 from app.modules.lead_agent import graph, rules
 from app.modules.leads import api as leads_api
+from app.modules.webcheck import api as webcheck_api
 
 AGENT = "lead_agent"
 AUDIT_ACTION = "lead_agent.ran"
@@ -139,8 +141,14 @@ def run_lead_agent(
     def read() -> LeadQualifierFacts | None:
         return leads_api.qualifier_facts(session, principal, lead_id)
 
-    def decide(facts: LeadQualifierFacts) -> graph.Plan | None:
-        shown, _names, suspicious = rules.model_view(facts)
+    def web_evidence(facts: LeadQualifierFacts) -> list[dict[str, str | None]]:
+        return webcheck_api.evidence_summary(session, principal, "lead", lead_id)
+
+    def duplicates(facts: LeadQualifierFacts) -> int:
+        return leads_api.duplicate_count(session, principal, lead_id) or 0
+
+    def decide(facts: LeadQualifierFacts, context: dict[str, Any]) -> graph.Plan | None:
+        shown, _names, suspicious = rules.model_view(facts, context)
         reply = governed.reply(
             system=rules.system_prompt(shown, suspicious),
             messages=[{"role": "user", "content": ASK}],
@@ -172,7 +180,7 @@ def run_lead_agent(
             blocked.append(refusal.detail)
             return None
 
-    result = graph.run(graph.Ports(read, decide, propose))
+    result = graph.run(graph.Ports(read, web_evidence, duplicates, decide, propose))
     if result.outcome == "lead_not_found":
         raise LeadNotFoundError()
     outcome = "blocked" if blocked else result.outcome

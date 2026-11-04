@@ -395,6 +395,31 @@ def list_evidence(
     return repository.list_for_target(session, tenant_id, target_type, target_id, LIST_LIMIT)
 
 
+SUMMARY_ROWS = 3
+
+
+def evidence_summary(
+    session: Session, principal: Principal, target_type: str, target_id: uuid.UUID
+) -> list[dict[str, str | None]]:
+    """The newest few checks about a record as short, already cleaned facts (source, verdict,
+    status, valid-until) for the lead agent. Read-only: it never starts a check and never shows
+    the page excerpt or the query. A person who may not read the evidence, or the record, gets an
+    empty list (not an error): the agent simply has no web evidence to look at."""
+    try:
+        rows = list_evidence(session, principal, target_type, target_id)
+    except DomainError:
+        return []
+    return [
+        {
+            "source": row.source_key,
+            "verdict": row.verdict,
+            "status": row.status,
+            "valid_until": row.valid_until.isoformat() if row.valid_until else None,
+        }
+        for row in rows[:SUMMARY_ROWS]
+    ]
+
+
 def delete_expired(session: Session, now: datetime, *, tenant_id: uuid.UUID) -> int:
     """Delete evidence older than the retention (the worker, once a minute, per organisation)."""
     return repository.delete_older_than(session, tenant_id, now - RETENTION)

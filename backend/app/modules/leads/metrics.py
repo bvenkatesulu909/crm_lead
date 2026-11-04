@@ -4,7 +4,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import ColumnElement, and_, func, or_, select
@@ -333,3 +333,28 @@ def web_lead_quality_table(session: Session, principal: Principal, filters: Filt
             }
         ],
     )
+
+
+def web_leads_by_month(
+    session: Session, principal: Principal, months: Sequence[date]
+) -> dict[date, int]:
+    """Web leads created in each whole UTC calendar month (``months`` are first days), under the
+    leads module's own record policy. Months without a lead are present with 0."""
+    if not months:
+        return {}
+    first = min(months)
+    last = max(months)
+    end = datetime(last.year + (last.month == 12), last.month % 12 + 1, 1, tzinfo=UTC)
+    month = func.date_trunc("month", func.timezone("UTC", Lead.created_at))
+    rows = session.execute(
+        select(month, func.count())
+        .where(
+            readable_leads(principal),
+            Lead.source == "web",
+            Lead.created_at >= datetime(first.year, first.month, 1, tzinfo=UTC),
+            Lead.created_at < end,
+        )
+        .group_by(month)
+    ).all()
+    found = {m.date(): n for m, n in rows}
+    return {m: found.get(m, 0) for m in months}

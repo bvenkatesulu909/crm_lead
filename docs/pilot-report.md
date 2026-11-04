@@ -114,6 +114,20 @@ filter by period and download as CSV, under the same access rules as every other
   read), so the chat module never touches the leads table.
 - Tests (`tests/db/test_chat_report.py`, 22) and 15 deliberate breaks of the three modules - see the PR.
 
+## 6c. What PR2b built (2026-11-03)
+
+- **Section 3, from the `approvals` module:** suggestions the Qualifier made in the period (by when they were
+  made), by outcome; the approved share counts only what a person decided (approved / (approved + rejected));
+  median minutes from the suggestion to a decision. No lead, person or reason text.
+- **Section 4, from the `agents` and `leads` modules, composed by `reports`:** per whole calendar month the
+  period touches - web leads of the month, the estimated cost of the `public_chat` and `qualifier` agents
+  (tokens of `agent_usage` times the environment prices) and the cost per lead. Usage is stored per month, so a
+  shorter window cannot be priced honestly. Blank, never zero, when no price is configured. Only people with
+  `agent:read` (managers, administrators) see it.
+- The report endpoints now pass the server's settings to the report (the prices come from the environment only).
+- Tests: `tests/db/test_chat_report_ai.py` (17); 13 deliberate breaks, 12 caught - the survivor drops the
+  tenant filter of the usage query, which row-level security enforces anyway.
+
 ## 6. Steps (each stops for review, tests first)
 
 | Step | Content |

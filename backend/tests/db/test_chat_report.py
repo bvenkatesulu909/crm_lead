@@ -156,7 +156,7 @@ def report(api, auth, who: str = "alpha.manager", **params: str) -> dict[str, An
 @pytest.mark.parametrize("who", ["alpha.manager", "alpha.admin"])
 def test_managers_and_administrators_open_it(api, auth, world, who: str) -> None:
     body = report(api, auth, who)
-    assert body["key"] == "chat" and len(body["sections"]) == 2
+    assert body["key"] == "chat" and len(body["sections"]) == 4
 
 
 @pytest.mark.parametrize("who", ["alpha.agent1", "alpha.support"])

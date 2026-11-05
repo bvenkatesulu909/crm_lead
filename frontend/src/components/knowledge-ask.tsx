@@ -7,6 +7,9 @@ import type { KnowledgeAnswerResponse } from "@/lib/api-types";
 import {
   initialAskState,
   initialFeedbackState,
+  LIVE_CHECK_LINE,
+  refusalHint,
+  splitLiveCheck,
   type AskState,
   type FeedbackState,
 } from "@/lib/knowledge";
@@ -20,7 +23,10 @@ export function KnowledgeAsk({
   feedbackAction,
 }: {
   action: (state: AskState, formData: FormData) => Promise<AskState>;
-  feedbackAction?: (state: FeedbackState, formData: FormData) => Promise<FeedbackState>;
+  feedbackAction?: (
+    state: FeedbackState,
+    formData: FormData,
+  ) => Promise<FeedbackState>;
 }) {
   const [state, formAction, pending] = useActionState(action, initialAskState);
 
@@ -28,10 +34,16 @@ export function KnowledgeAsk({
     <div className="space-y-5">
       <form action={formAction} className="space-y-3">
         {state.error && (
-          <ErrorAlert title="The question could not be answered" error={state.error} />
+          <ErrorAlert
+            title="The question could not be answered"
+            error={state.error}
+          />
         )}
         <div>
-          <label htmlFor="ask-question" className="text-sm font-medium text-slate-700">
+          <label
+            htmlFor="ask-question"
+            className="text-sm font-medium text-slate-700"
+          >
             Your question
           </label>
           <textarea
@@ -51,22 +63,38 @@ export function KnowledgeAsk({
             Answers come only from indexed documents and cite their passages.
           </p>
         </div>
-        <button type="submit" disabled={pending} className={buttonClass("primary")}>
+        <button
+          type="submit"
+          disabled={pending}
+          className={buttonClass("primary")}
+        >
           {pending ? "Searching and answering…" : "Ask the knowledge base"}
         </button>
       </form>
-      {state.answer && <AnswerView answer={state.answer} feedbackAction={feedbackAction} />}
+      {state.answer && (
+        <AnswerView answer={state.answer} feedbackAction={feedbackAction} />
+      )}
     </div>
   );
 }
 
-function AnswerView({
+/** One answer: the text, why it was refused (if it was), the "not a live check" note and the
+ * exact passages used. Everything here is plain text. */
+export function AnswerView({
   answer,
   feedbackAction,
 }: {
   answer: KnowledgeAnswerResponse;
-  feedbackAction?: (state: FeedbackState, formData: FormData) => Promise<FeedbackState>;
+  feedbackAction?: (
+    state: FeedbackState,
+    formData: FormData,
+  ) => Promise<FeedbackState>;
 }) {
+  const { text, liveCheck } = splitLiveCheck(answer.answer);
+  // Older answers (before the reason existed) still get the general hint when not enough.
+  const hint = refusalHint(
+    answer.refusal_reason ?? (answer.enough ? null : "not_found"),
+  );
   return (
     <div className="space-y-4">
       <div
@@ -77,7 +105,7 @@ function AnswerView({
             : "rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
         }
       >
-        <p className="whitespace-pre-line">{answer.answer}</p>
+        <p className="whitespace-pre-line">{text}</p>
         {answer.grounded && (
           <p className="mt-2 text-xs text-emerald-800">
             Grounded in {answer.sources.length} source
@@ -85,12 +113,16 @@ function AnswerView({
             {answer.citations.map((n) => `[${n}]`).join(", ")}
           </p>
         )}
-        {!answer.enough && (
-          <p className="mt-2 text-xs">
-            Nothing in the knowledge base was close enough; try different words or ask a colleague.
-          </p>
-        )}
+        {hint && <p className="mt-2 text-xs">{hint}</p>}
       </div>
+      {liveCheck && (
+        <p
+          role="note"
+          className="rounded-md border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900"
+        >
+          {LIVE_CHECK_LINE}
+        </p>
+      )}
       {feedbackAction && answer.query_id && (
         <AnswerFeedback queryId={answer.query_id} action={feedbackAction} />
       )}
@@ -99,16 +131,23 @@ function AnswerView({
           <h3 className="text-sm font-semibold text-slate-900">Sources used</h3>
           <ol className="mt-2 space-y-3">
             {answer.sources.map((source, index) => (
-              <li key={source.chunk_id} className="rounded-md bg-slate-50 p-3 text-sm ring-1 ring-slate-200">
+              <li
+                key={source.chunk_id}
+                className="rounded-md bg-slate-50 p-3 text-sm ring-1 ring-slate-200"
+              >
                 <p className="font-medium text-slate-900">
                   [{index + 1}] {source.document_title}
                   {source.heading_path ? ` - ${source.heading_path}` : ""}
                   {source.page_from !== null && (
-                    <span className="ml-1 font-normal text-slate-500">p. {source.page_from}</span>
+                    <span className="ml-1 font-normal text-slate-500">
+                      p. {source.page_from}
+                    </span>
                   )}
                 </p>
                 <p className="mt-1 whitespace-pre-line text-slate-600">
-                  {source.text.length > 400 ? source.text.slice(0, 400) + "…" : source.text}
+                  {source.text.length > 400
+                    ? source.text.slice(0, 400) + "…"
+                    : source.text}
                 </p>
               </li>
             ))}
@@ -126,7 +165,10 @@ function AnswerFeedback({
   queryId: string;
   action: (state: FeedbackState, formData: FormData) => Promise<FeedbackState>;
 }) {
-  const [state, formAction, pending] = useActionState(action, initialFeedbackState);
+  const [state, formAction, pending] = useActionState(
+    action,
+    initialFeedbackState,
+  );
 
   if (state.done) {
     return (
@@ -136,14 +178,31 @@ function AnswerFeedback({
     );
   }
   return (
-    <form action={formAction} className="flex flex-wrap items-center gap-2 text-xs">
+    <form
+      action={formAction}
+      className="flex flex-wrap items-center gap-2 text-xs"
+    >
       <input type="hidden" name="query_id" value={queryId} />
-      {state.error && <ErrorAlert title="Feedback could not be saved" error={state.error} />}
+      {state.error && (
+        <ErrorAlert title="Feedback could not be saved" error={state.error} />
+      )}
       <span className="text-slate-600">Was this helpful?</span>
-      <button type="submit" name="helpful" value="true" disabled={pending} className="rounded-md bg-white px-2.5 py-1 ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+      <button
+        type="submit"
+        name="helpful"
+        value="true"
+        disabled={pending}
+        className="rounded-md bg-white px-2.5 py-1 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
+      >
         Helpful
       </button>
-      <button type="submit" name="helpful" value="false" disabled={pending} className="rounded-md bg-white px-2.5 py-1 ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+      <button
+        type="submit"
+        name="helpful"
+        value="false"
+        disabled={pending}
+        className="rounded-md bg-white px-2.5 py-1 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
+      >
         Not helpful
       </button>
     </form>

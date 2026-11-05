@@ -1,6 +1,6 @@
 # Brochures and cited RERA answers (CRM-115 / BP-08)
 
-**Status:** design accepted 2026-11-05 with the five recommended answers (section 5). BR1-BR4 to follow, each stopping for review.
+**Status:** design accepted 2026-11-05 with the five recommended answers (section 5). **Built: BR1-BR4 done 2026-11-05.**
 **Kind:** a short design note (the master plan marks BP-08 "design", not an ADR). It builds on the
 knowledge module (RAG R1-R5, docs/rag-knowledge-base.md) and the BP-10 evaluation harness. It
 changes no ADR. The public website chat stays as ADR 0013 says: it can only save a lead.
@@ -86,7 +86,7 @@ test proves it with the seeded brochures. If PostgreSQL's text search splits a n
 | BR1 (done 2026-11-05) | The seed script + tests (idempotent, both organisations, visibility as written, the replaced version archived, numbers all `DEMO-`) |
 | BR2 (done 2026-11-05) | The three gate checks, the fixed "not a live check" line, refusal codes and metrics; tests first (pure rules + the real pipeline against the test database, incl. tenant isolation, a customer asking about an internal price, ID tampering is not applicable: no IDs in a question) |
 | BR3 (done 2026-11-05) | BP-10 cases in `evals/rag/ci_cases.json`: a number on file is cited; an unknown number is refused with no model call; an invented number, a wrong price and an old price are refused; a customer never sees the internal price; another organisation's brochure never appears; deliberate breaks of each check must fail a case |
-| BR4 | Screens: the answer's sources already link to the document - add the "not a live check" line and plain words for the new refusals; docs (`docs/rag-knowledge-base.md`, this note); a Playwright check on the existing knowledge journey |
+| BR4 (done 2026-11-05) | Screens: the answer's sources already link to the document - add the "not a live check" line and plain words for the new refusals; docs (`docs/rag-knowledge-base.md`, this note); a Playwright check on the existing knowledge journey |
 
 No database migration is planned (no new tables or columns).
 
@@ -137,3 +137,30 @@ No database migration is planned (no new tables or columns).
    answers (ADR 0013); property answers there would need their own ADR.
 5. **Fictional numbers with a `DEMO-` prefix?** *Recommended:* yes, so nothing in the demo can look
    like a real registration.
+
+### What BR4 built (2026-11-05)
+
+- The answer API (`/knowledge/answer`, `/portal/knowledge/answer`) returns `refusal_reason`: a
+  code, `null` when answered (`not_found`, `ungrounded`, `rera_not_found`, `rera_not_cited`,
+  `price_not_cited`).
+- The answer box (staff "Knowledge" page and portal "Help & policies") words each reason: an
+  unknown number says "check the number" and that a live registry check is a separate step (Web
+  check on the lead or account page); a refused number or price says the answer was not shown and to
+  open the brochure itself. Before, every refusal said "nothing was close enough".
+- The fixed "not a live check of the RERA registry" line is shown as its own note under the
+  answer. A backend test checks that the web app's copy of the sentence matches the backend's.
+- Browser journey `frontend/e2e/knowledge-rera.spec.ts`: staff and a portal customer ask about an
+  unknown number and see the plain refusal, with no sources and no model call.
+
+## 6. How to try it on this PC
+
+Windows CMD, in `backend` with the virtual environment active:
+
+```bat
+python -m scripts.seed_brochures_demo
+```
+
+Then sign in to the web app as a sales agent, open **Knowledge** and ask, for example, "What does
+DEMO-P02400000003 cost?" (answered from the Skyline Towers brochure, with the fixed line) or "Is
+DEMO-P02499999999 registered?" (refused before any model call). A real answer needs the AI
+provider configured; the refusal does not.

@@ -260,3 +260,19 @@ def test_staff_can_draft_a_ticket_reply_from_customer_scope(api, auth, files, db
     body = draft.json()
     assert body["draft"]
     assert [source["document_title"] for source in body["sources"]] == ["Warranty for account one"]
+
+
+def test_portal_says_why_an_internal_only_rera_number_is_refused(api, auth, files, db_session):
+    """CRM-115 BR4: the number is only in an internal document, so for a customer it is not on
+    file - the reason says so, and nothing internal is used."""
+    document = upload(
+        api,
+        auth,
+        title="Internal note",
+        text="Fictional. Floor price for DEMO-P02400000001 is 79 lakh rupees.",
+        visibility="internal",
+    )
+    ingest(files, db_session, document["id"])
+    response = ok(ask(api, auth, "Price of DEMO-P02400000001?"), 200)
+    assert response["refusal_reason"] == "rera_not_found" and response["sources"] == []
+    assert "79" not in response["answer"]

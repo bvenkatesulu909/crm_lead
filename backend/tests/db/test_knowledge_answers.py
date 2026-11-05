@@ -308,3 +308,50 @@ def test_each_staff_question_is_logged_once(api, auth, files, model, db_session,
     )
     assert logged == 1
     assert db_session.get(RagQuery, response["query_id"]) is not None
+
+
+# --- the refusal reason reaches the screen (CRM-115 / BP-08, step BR4) --------------------------
+
+
+def test_a_good_answer_has_no_refusal_reason(api, auth, files, model, db_session):
+    document = upload(
+        api, auth, title="Returns policy", data=b"# Returns\n\nRefunds are paid within 14 days."
+    )
+    ingest(files, db_session, document["id"])
+    response = ok(ask(api, auth, "How long do refunds take?"), 200)
+    assert response["refusal_reason"] is None
+
+
+def test_nothing_close_enough_says_not_found(api, auth, files, model, db_session):
+    response = ok(ask(api, auth, "What is the weather on Mars?"), 200)
+    assert response["refusal_reason"] == "not_found" and model.calls == []
+
+
+def test_an_unknown_rera_number_says_so_without_the_model(api, auth, files, model, db_session):
+    response = ok(ask(api, auth, "Is DEMO-P02499999999 registered?"), 200)
+    assert response["refusal_reason"] == "rera_not_found" and model.calls == []
+    assert "DEMO-P02499999999" in response["answer"]
+
+
+def test_an_answer_with_an_unsupported_number_says_why(api, auth, files, model, db_session):
+    document = upload(
+        api,
+        auth,
+        title="Skyline brochure",
+        data=b"# Skyline\n\nFictional. RERA DEMO-P02400000003. From 78 lakh rupees.",
+    )
+    ingest(files, db_session, document["id"])
+    model.answer = "Skyline is DEMO-P02400000009 [1]."
+    response = ok(ask(api, auth, "What is DEMO-P02400000003?"), 200)
+    assert response["refusal_reason"] == "rera_not_cited"
+    assert "DEMO-P02400000009" not in response["answer"]
+
+
+def test_the_screen_knows_the_exact_fixed_line() -> None:
+    """The web app shows the fixed line as a separate note; its copy must match ours exactly."""
+    from pathlib import Path
+
+    from app.modules.knowledge.answers import LIVE_CHECK_LINE
+
+    web = Path(__file__).resolve().parents[3] / "frontend" / "src" / "lib" / "knowledge.ts"
+    assert LIVE_CHECK_LINE in web.read_text(encoding="utf-8")

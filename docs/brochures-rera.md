@@ -83,12 +83,23 @@ test proves it with the seeded brochures. If PostgreSQL's text search splits a n
 | Step | Content |
 |---|---|
 | BR0 | This note (documents only) |
-| BR1 | The seed script + tests (idempotent, both organisations, visibility as written, the replaced version archived, numbers all `DEMO-`) |
+| BR1 (done 2026-11-05) | The seed script + tests (idempotent, both organisations, visibility as written, the replaced version archived, numbers all `DEMO-`) |
 | BR2 | The three gate checks, the fixed "not a live check" line, refusal codes and metrics; tests first (pure rules + the real pipeline against the test database, incl. tenant isolation, a customer asking about an internal price, ID tampering is not applicable: no IDs in a question) |
 | BR3 | BP-10 cases in `evals/rag/ci_cases.json`: a number on file is cited; an unknown number is refused with no model call; an invented number, a wrong price and an old price are refused; a customer never sees the internal price; another organisation's brochure never appears; deliberate breaks of each check must fail a case |
 | BR4 | Screens: the answer's sources already link to the document - add the "not a live check" line and plain words for the new refusals; docs (`docs/rag-knowledge-base.md`, this note); a Playwright check on the existing knowledge journey |
 
 No database migration is planned (no new tables or columns).
+
+### What BR1 found
+
+- `python -m scripts.seed_brochures_demo` on the development data added 6 brochures to
+  `alpha-demo` (Skyline Towers as version 2, version 1 archived) and 1 to `beta-demo`; run again,
+  it added nothing.
+- **Exact numbers are not found reliably by meaning alone.** With the real embedding model and the
+  normal threshold, "What is the RERA number of Lakeview Residences?" found the Lakeview brochure,
+  but "DEMO-P02400000003 price" ranked the *internal price sheet* first, not the Skyline brochure
+  that carries that number. (In the tests, with the stand-in embedder, full-text search found the
+  number.) So BR2 adds the exact-number lookup of section 3c rather than leaving it optional.
 
 ## 5. Questions for the owner (recommended answer first)
 

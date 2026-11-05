@@ -55,6 +55,7 @@ Corrections to the PDF that apply everywhere:
 | CRM-103 / Task 1 | Failing settings test via PR, then protect `main` | **Done 2026-11-05.** Test fixed (PR #7); `main` protected (O2) | — |
 | CRM-107 / Task 3 | RLS on core tables (target 7 of 47) | **Done 2026-10-31 (PR #51).** Forced RLS on `accounts`, `contacts`, `lead_activities`, `lead_assignments` since migration 0033, more than asked: 50 of 50 tables. The old probe passed on empty tables, so a new test seeds rows for two organisations and checks each sees only its own; removing RLS from any one of the four makes it fail | — |
 | CRM-108 | Agent evals harness | **Met by BP-10, checked 2026-10-31.** `python -m scripts.eval_agents --provider fake --suite public_chat`: 17 of 17 website-chat cases passed (16 use `save_lead`), each printed PASS/FAIL; 0 forbidden-tool violations, 0 false "done" claims. CI writes the scorecard to the job summary. See `docs/agent-evals.md` | — |
+| CRM-109 | AI clients (MCP) can only propose | **Done 2026-11-05.** Code merged (MCP5a-d, PRs #54, #56); screen recording made by the owner following `docs/crm-109-recording-script.md` (the video is kept by the owner, not in this public repository) | — |
 | **CRM-104 / Task 2** | Approved chatbot with real-estate lead capture | **Done 2026-10-25** (BP-01, PR #17) | — |
 
 ## 3. Order of all objects

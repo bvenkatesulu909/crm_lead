@@ -1,6 +1,6 @@
 # Brochures and cited RERA answers (CRM-115 / BP-08)
 
-**Status:** design, waiting for the owner's review (2026-11-05). Documents only - no code yet.
+**Status:** design accepted 2026-11-05 with the five recommended answers (section 5). BR1-BR4 to follow, each stopping for review.
 **Kind:** a short design note (the master plan marks BP-08 "design", not an ADR). It builds on the
 knowledge module (RAG R1-R5, docs/rag-knowledge-base.md) and the BP-10 evaluation harness. It
 changes no ADR. The public website chat stays as ADR 0013 says: it can only save a lead.

@@ -186,23 +186,8 @@ def answer_knowledge(
         ],
     )
     session.commit()
-    query_id = service.record_rag_query(
-        session,
-        principal,
-        surface="staff_answer",
-        question=body.question,
-        answer=outcome.answer,
-        sources=[
-            {"document": source.document_title, "heading": source.heading_path}
-            for source in outcome.sources
-        ],
-    )
-    session.commit()
     RAG_SEARCH_DURATION.labels(stage="answer").observe(time.perf_counter() - started)
-    answer_outcome = (
-        "answered" if outcome.grounded else "ungrounded" if outcome.model_used else "refused"
-    )
-    RAG_ANSWERS.labels(outcome=answer_outcome).inc()
+    RAG_ANSWERS.labels(outcome=answers.metric_outcome(outcome)).inc()
     return KnowledgeAnswerResponse(
         query_id=query_id,
         answer=outcome.answer,
@@ -332,10 +317,7 @@ def portal_answer_knowledge(
     )
     session.commit()
     RAG_SEARCH_DURATION.labels(stage="portal_answer").observe(time.perf_counter() - started)
-    answer_outcome = (
-        "answered" if outcome.grounded else "ungrounded" if outcome.model_used else "refused"
-    )
-    RAG_ANSWERS.labels(outcome=answer_outcome).inc()
+    RAG_ANSWERS.labels(outcome=answers.metric_outcome(outcome)).inc()
     return KnowledgeAnswerResponse(
         query_id=query_id,
         answer=outcome.answer,

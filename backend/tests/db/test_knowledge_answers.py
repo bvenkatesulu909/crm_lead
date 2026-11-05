@@ -286,3 +286,25 @@ def test_feedback_records_and_updates_one_vote(api, auth, files, model, db_sessi
     bind_tenant(db_session, world.users["alpha.admin"].tenant_id)
     votes = db_session.scalars(select(RagFeedback)).all()
     assert len(votes) == 1 and votes[0].helpful is False
+
+
+def test_each_staff_question_is_logged_once(api, auth, files, model, db_session, world):
+    """Bug found in CRM-115 BR2: the staff answer endpoint saved every question twice."""
+    from sqlalchemy import func, select
+
+    from app.core.db import bind_tenant
+    from app.modules.knowledge.models import RagQuery
+
+    document = upload(
+        api, auth, title="Returns policy", data=b"# Returns\n\nRefunds are paid within 14 days."
+    )
+    ingest(files, db_session, document["id"])
+    response = ok(ask(api, auth, "How long do refunds take?"), 200)
+
+    tenant_id = world.users["alpha.agent1"].tenant_id
+    bind_tenant(db_session, tenant_id)
+    logged = db_session.scalar(
+        select(func.count()).select_from(RagQuery).where(RagQuery.tenant_id == tenant_id)
+    )
+    assert logged == 1
+    assert db_session.get(RagQuery, response["query_id"]) is not None

@@ -59,7 +59,7 @@ Three checks, added after the existing citation check:
 | Check | When | What happens |
 |---|---|---|
 | **Asked number not on file** | The question contains a RERA-shaped number and no retrieved chunk contains it | Refused **before** any model call: "I couldn't find RERA number X in the documents I can see." |
-| **Every RERA number is quoted from a cited source** | The answer contains a RERA-shaped number | Each one must appear, character for character (ignoring case, spaces and dashes), in a source the answer **cites**. Otherwise the whole answer is refused. |
+| **Every RERA number is quoted from a cited source** | The answer contains a RERA-shaped number | Each one must appear, character for character (ignoring case and dashes; a number typed with spaces inside reads as separate words and is not recognised as one number), in a source the answer **cites**. Otherwise the whole answer is refused. |
 | **Every price is quoted from a cited source** | The answer contains a rupee amount (₹, Rs, lakh, crore) | Each amount, normalised to whole rupees ("1.2 Cr", "120 lakh" and "₹1,20,00,000" are the same; a small backend reader like the one the lead form already has in `frontend/src/lib/format.ts`), must appear in a cited source. Otherwise refused. |
 
 - A refusal never shows the model's text (it might contain the invented number).
@@ -84,7 +84,7 @@ test proves it with the seeded brochures. If PostgreSQL's text search splits a n
 |---|---|
 | BR0 | This note (documents only) |
 | BR1 (done 2026-11-05) | The seed script + tests (idempotent, both organisations, visibility as written, the replaced version archived, numbers all `DEMO-`) |
-| BR2 | The three gate checks, the fixed "not a live check" line, refusal codes and metrics; tests first (pure rules + the real pipeline against the test database, incl. tenant isolation, a customer asking about an internal price, ID tampering is not applicable: no IDs in a question) |
+| BR2 (done 2026-11-05) | The three gate checks, the fixed "not a live check" line, refusal codes and metrics; tests first (pure rules + the real pipeline against the test database, incl. tenant isolation, a customer asking about an internal price, ID tampering is not applicable: no IDs in a question) |
 | BR3 | BP-10 cases in `evals/rag/ci_cases.json`: a number on file is cited; an unknown number is refused with no model call; an invented number, a wrong price and an old price are refused; a customer never sees the internal price; another organisation's brochure never appears; deliberate breaks of each check must fail a case |
 | BR4 | Screens: the answer's sources already link to the document - add the "not a live check" line and plain words for the new refusals; docs (`docs/rag-knowledge-base.md`, this note); a Playwright check on the existing knowledge journey |
 
@@ -100,6 +100,28 @@ No database migration is planned (no new tables or columns).
   but "DEMO-P02400000003 price" ranked the *internal price sheet* first, not the Skyline brochure
   that carries that number. (In the tests, with the stand-in embedder, full-text search found the
   number.) So BR2 adds the exact-number lookup of section 3c rather than leaving it optional.
+
+### What BR2 built and found (2026-11-05)
+
+- `app/modules/knowledge/numbers.py` (pure): what a RERA number looks like (a letter, at least six
+  digits, registry separators; never an id, a date, a phone number or a price), whole-number
+  matching (`...0001` is not `...00012`), rupee amounts in whole rupees, and `unsupported()`.
+- `retrieval.chunks_with_number` and `retrieval.document_chunks`: the literal lookups, under the
+  same permission conditions as the search (tenant, indexed, not archived, visibility, the
+  customer's accounts). The number is a bound parameter; LIKE's wildcards are escaped.
+- **A brochure's number and its prices are in different sections.** The first version gave the
+  model only the section with the number, so it never saw the prices. Now, when a question names
+  a number, the model also gets the other sections of that brochure (at most 3 sources in all).
+- The answer pipeline refuses (`reason`) with `rera_not_found` before any model call, or with
+  `rera_not_cited` / `price_not_cited` after it (the model's text is never shown); an answer that
+  names a RERA number ends with the fixed "not a live check" line. The person's own amounts in the
+  question may be repeated back to them.
+- `crm_rag_answers_total` counts the three new outcomes.
+- **Bug fixed on the way:** the staff answer endpoint saved every question twice in the question
+  log (`rag_queries`); a failing test came first.
+- On the development data, with the real embedding model, the lookup finds the Skyline brochure
+  for `DEMO-P02400000003` (with its price section), the Lakeview brochure for
+  `demo-p0240-0000001`, and nothing for an unknown number.
 
 ## 5. Questions for the owner (recommended answer first)
 

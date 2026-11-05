@@ -112,7 +112,8 @@ RAG_SEARCH_DURATION = Histogram(
 )
 RAG_ANSWERS = Counter(
     "crm_rag_answers_total",
-    "Knowledge answers by outcome (answered/refused/ungrounded/unavailable).",
+    "Knowledge answers by outcome (answered/refused/ungrounded/unavailable, and the RERA/price "
+    "gate: rera_not_found/rera_not_cited/price_not_cited).",
     ["outcome"],
     registry=REGISTRY,
 )

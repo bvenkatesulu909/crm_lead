@@ -356,6 +356,29 @@ database; only the model is scripted.
 - **The gate can fail** (`tests/db/test_agent_evals_lead_agent.py`): a wrong expectation, a missing
   proposal, a forbidden tool and a plan that converts a lead each fail the matching case.
 
+## 6j. Brochure and RERA cases (CRM-115 / BP-08, step BR3)
+
+Nine cases added to `evals/rag/ci_cases.json` (23 in all). The fictional brochures of
+`scripts/seed_brochures_demo.py` (the current edition of each) are part of the corpus of both
+organisations. Format additions:
+
+- **Outcomes** `rera_not_found` (the model is never called), `rera_not_cited` and
+  `price_not_cited` (the model was called; its text is never shown).
+- **`{cites:Title}`** cites every section of that document the pipeline gave; `{cite:Title -
+  section}` cites one section. A brochure's RERA number and its prices are in different sections.
+- **`expect.live_check_line`**: the answer must (true) or must not (false) end with the fixed
+  "not a live check of the RERA registry" line. That line is the pipeline's, so it is left out of
+  the answer metrics.
+- What the cases cover: a number answered with its cited price and the fixed line; an unknown
+  number and another organisation's number refused before the model; an invented number, the
+  replaced 2025 price and a price cited from the wrong section refused; a customer asking for
+  the floor price gets only the public brochure; a project without a number; the person's own
+  budget repeated back.
+- The "close enough" threshold test now leaves out questions that name a RERA number: the exact
+  lookup answers those whatever their similarity.
+- The gate can fail (`tests/db/test_agent_evals_rag.py`): with the number check, the exact lookup or
+  the fixed line switched off, the matching cases fail.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

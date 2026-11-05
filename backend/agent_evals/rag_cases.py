@@ -13,10 +13,23 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-RagOutcome = Literal["answered", "not_found", "ungrounded"]
+RagOutcome = Literal[
+    "answered",
+    "not_found",
+    "ungrounded",
+    # The RERA / price gate (CRM-115 / BP-08): a number nobody may see (before the model), a RERA
+    # number or a price the cited sources do not contain (after it).
+    "rera_not_found",
+    "rera_not_cited",
+    "price_not_cited",
+]
+NO_MODEL_OUTCOMES = ("not_found", "rera_not_found")
 RagPersona = Literal["sales_agent", "sales_manager", "customer", "beta_agent"]
 
 CITE = re.compile(r"\{cite:([^{}]*)\}")
+# "{cites:Title}" cites EVERY section of that document the pipeline gave (a brochure's number and
+# its prices are in different sections).
+CITES = re.compile(r"\{cites:([^{}]*)\}")
 
 
 class RagCaseFileError(ValueError):
@@ -40,6 +53,9 @@ class RagExpect(_Strict):
     # What the existing answer metrics must say. "fail" marks a negative control: an answer that
     # follows a poisoned instruction, which the metrics have to catch.
     score: Literal["pass", "fail"] = "pass"
+    # True: the answer must end with the fixed "not a live check of the RERA registry" line;
+    # False: it must not. Absent: not checked.
+    live_check_line: bool | None = None
 
     @model_validator(mode="after")
     def _consistent(self) -> "RagExpect":
@@ -49,13 +65,14 @@ class RagExpect(_Strict):
             or self.forbidden_facts
             or self.injection
             or self.score != "pass"
+            or self.live_check_line is not None
         ):
             raise ValueError(
                 f"{self.outcome}: nothing is cited or scored when the pipeline refuses to answer"
             )
-        if self.outcome == "not_found" and self.model_called:
-            raise ValueError("not_found: the model is never called when nothing is found")
-        if self.outcome != "not_found" and not self.model_called:
+        if self.outcome in NO_MODEL_OUTCOMES and self.model_called:
+            raise ValueError(f"{self.outcome}: the model is never called when nothing is found")
+        if self.outcome not in NO_MODEL_OUTCOMES and not self.model_called:
             raise ValueError(f"{self.outcome}: the model must have been called")
         return self
 
@@ -76,10 +93,12 @@ class RagCase(BaseModel):
 
     @model_validator(mode="after")
     def _citations_are_well_formed(self) -> "RagCase":
-        marks = self.answer.count("{cite:")
-        found = [title for title in CITE.findall(self.answer)]
+        marks = self.answer.count("{cite:") + self.answer.count("{cites:")
+        found = [*CITE.findall(self.answer), *CITES.findall(self.answer)]
         if marks != len(found) or any(not title.strip() for title in found):
-            raise ValueError("answer: write citations as {cite:Document title}")
+            raise ValueError(
+                "answer: write citations as {cite:Document title} or {cites:Document title}"
+            )
         return self
 
 

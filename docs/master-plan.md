@@ -41,7 +41,7 @@ Corrections to the PDF that apply everywhere:
 | # | Item (PDF reference) | Status | Needed before |
 |---|---|---|---|
 | O1 | **CRM-101 / T0.1:** role check in Keycloak | **Done 2026-10-30.** Read-only check of all 142 realm users, direct and inherited roles, no groups: no agent holds `sales_manager` or `tenant_admin`. Role mapping pages of `alpha.agent1` and `alpha.agent2` captured in the admin console: only `sales_agent`, nothing inherited | Closed CRM-101 |
-| O2 | **CRM-103 / T1.2:** protect `main` on GitHub (Settings → Branches: require a PR and passing CI) | Open (GitHub says "Branch not protected") | Next PR |
+| O2 | **CRM-103 / T1.2:** protect `main` on GitHub (Settings → Branches: require a PR and passing CI) | **Done 2026-11-05.** `main` requires a pull request and the `backend`, `frontend` and `mcp-server` checks, also for admins; no force-push, no deletion. A direct test push was refused (GH013) | — |
 | O5 | **T2.2:** choose a host for the API (ADR 0007) so Netlify can reach it | Open | Live demo |
 | O6 | Keep Docker Desktop + `docker compose up -d` running for database tests (T0.2, T3.1) | Done today | Every object |
 | O7 | Career work: resume v1, LinkedIn/Naukri text, 10 applications and 5 referral messages a day, job tracker, interview stories, 33 target employers (referral steps F.1–F.7) | Owner's own | — |
@@ -52,10 +52,10 @@ Corrections to the PDF that apply everywhere:
 |---|---|---|---|
 | CRM-101 / Task 0 | One agent sees another agent's leads | **Closed 2026-10-30 (owner's go-ahead).** Code: RLS on leads (tenant + owner), role boundary tests. Database: 58 tables protected, 0 unprotected tenant tables, the app role cannot bypass RLS. Tests: 2 RLS lead tests and 18 API-level lead isolation tests pass. Browser: agent 1's Leads list does not show agent 2's lead, and its address answers "Page not found". Keycloak: see O1 | — |
 | CRM-102 | The fix for CRM-101 | Done (PR #1) | — |
-| CRM-103 / Task 1 | Failing settings test via PR, then protect `main` | Test fixed (PR #7) | O2 |
+| CRM-103 / Task 1 | Failing settings test via PR, then protect `main` | **Done 2026-11-05.** Test fixed (PR #7); `main` protected (O2) | — |
 | CRM-107 / Task 3 | RLS on core tables (target 7 of 47) | **Done 2026-10-31 (PR #51).** Forced RLS on `accounts`, `contacts`, `lead_activities`, `lead_assignments` since migration 0033, more than asked: 50 of 50 tables. The old probe passed on empty tables, so a new test seeds rows for two organisations and checks each sees only its own; removing RLS from any one of the four makes it fail | — |
 | CRM-108 | Agent evals harness | **Met by BP-10, checked 2026-10-31.** `python -m scripts.eval_agents --provider fake --suite public_chat`: 17 of 17 website-chat cases passed (16 use `save_lead`), each printed PASS/FAIL; 0 forbidden-tool violations, 0 false "done" claims. CI writes the scorecard to the job summary. See `docs/agent-evals.md` | — |
-| **CRM-104 / Task 2** | Approved chatbot with real-estate lead capture | Not started | = object **BP-01** below |
+| **CRM-104 / Task 2** | Approved chatbot with real-estate lead capture | **Done 2026-10-25** (BP-01, PR #17) | — |
 
 ## 3. Order of all objects
 

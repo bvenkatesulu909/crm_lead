@@ -25,6 +25,7 @@ from app.core.ai.embeddings import Embedder
 from app.core.auth.principal import Principal
 from app.core.config import Settings
 from app.core.errors import DomainError
+from app.modules.knowledge import numbers
 from app.modules.knowledge.models import KnowledgeChunk, KnowledgeDocument
 
 logger = logging.getLogger(__name__)
@@ -303,3 +304,96 @@ def search(
         or (best_similarity is not None and best_similarity >= min_similarity)
     )
     return SearchOutcome(cleaned, ranked, best_similarity, min_similarity, enough)
+
+
+def chunks_with_number(
+    session: Session,
+    principal: Principal,
+    number: str,
+    *,
+    limit: int = 3,
+    account_ids: Sequence[uuid.UUID] | None = None,
+) -> list[SearchHit]:
+    """Chunks that contain this exact RERA-shaped number (CRM-115 / BP-08, BR2).
+
+    Meaning search does not find exact numbers reliably (BR1 measured it), so a number in the
+    question is also looked up literally. The same permission conditions as the search apply; the
+    database narrows the rows (case, spaces and dashes ignored) and Python confirms the whole
+    number, so "...0001" never matches "...00012"."""
+    if principal.tenant_id is None:
+        return []
+    wanted = numbers.normalise(number)
+    if not wanted:
+        return []
+    # The pattern is a bound parameter, never SQL text; LIKE's own wildcards are escaped.
+    escaped = wanted.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{escaped}%"
+    squeezed = func.upper(func.regexp_replace(KnowledgeChunk.text, r"[\s\-]", "", "g"))
+    rows = session.execute(
+        _literal_select()
+        .where(*_conditions(principal, account_ids), squeezed.like(pattern, escape="\\"))
+        .order_by(KnowledgeDocument.title, KnowledgeChunk.chunk_no, KnowledgeChunk.id)
+        .limit(limit * 5)
+    ).all()
+    hits = [_literal_hit(row) for row in rows if numbers.contains_number(row[2], number)]
+    return hits[:limit]
+
+
+def document_chunks(
+    session: Session,
+    principal: Principal,
+    document_id: uuid.UUID,
+    *,
+    limit: int,
+    account_ids: Sequence[uuid.UUID] | None = None,
+) -> list[SearchHit]:
+    """The other sections of a document the person may read, in reading order (CRM-115, BR2).
+
+    A brochure's RERA number and its prices are usually in different sections; when a question
+    names the number, the model is given the rest of that brochure too."""
+    if principal.tenant_id is None:
+        return []
+    rows = session.execute(
+        _literal_select()
+        .where(*_conditions(principal, account_ids), KnowledgeChunk.document_id == document_id)
+        .order_by(KnowledgeChunk.chunk_no, KnowledgeChunk.id)
+        .limit(limit)
+    ).all()
+    return [_literal_hit(row) for row in rows]
+
+
+def _literal_select() -> Any:
+    return select(
+        KnowledgeChunk.id,
+        KnowledgeChunk.document_id,
+        KnowledgeChunk.text,
+        KnowledgeChunk.blocks,
+        KnowledgeChunk.heading_path,
+        KnowledgeChunk.page_from,
+        KnowledgeChunk.page_to,
+        KnowledgeChunk.visibility,
+        KnowledgeDocument.title,
+        KnowledgeDocument.file_name,
+    ).join(
+        KnowledgeDocument,
+        (KnowledgeDocument.tenant_id == KnowledgeChunk.tenant_id)
+        & (KnowledgeDocument.id == KnowledgeChunk.document_id),
+    )
+
+
+def _literal_hit(row: Any) -> SearchHit:
+    return SearchHit(
+        chunk_id=row[0],
+        document_id=row[1],
+        text=row[2],
+        blocks=row[3],
+        heading_path=row[4],
+        page_from=row[5],
+        page_to=row[6],
+        visibility=row[7],
+        document_title=row[8],
+        file_name=row[9],
+        similarity=None,
+        keyword_rank=None,
+        score=1.0,
+    )

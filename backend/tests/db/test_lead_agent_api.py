@@ -25,7 +25,7 @@ from app.modules.leads.models import Lead
 from tests.db.conftest import forget_request_user
 from tests.db.test_approvals import add_lead, alpha
 from tests.db.test_lead_agent import says
-from tests.db.test_qualifier_assess import ScriptedModel, lead_with_details
+from tests.db.test_qualifier_assess import STEPS, ScriptedModel, lead_with_details
 from tests.db.test_qualifier_governed import make_settings
 from tests.db.test_quotes_api import Headers, World, api, auth, code_of, ok, world
 
@@ -50,10 +50,33 @@ def ask(api: Any, auth: Headers, who: str, lead_id: Any) -> Any:
     return api.post(URL, json={"lead_id": str(lead_id)}, headers=auth(who))
 
 
+def write_steps(api: Any, auth: Headers) -> None:
+    """The organisation's qualification steps, which the lead agent judges a lead by."""
+    current = api.get("/api/v1/qualifier/procedure", headers=auth("alpha.admin"))
+    body: dict[str, Any] = {"name": "Hyderabad buyers", "steps": STEPS}
+    if current.status_code == 200:
+        body["replaces_version"] = current.json()["version"]
+    ok(api.put("/api/v1/qualifier/procedure", json=body, headers=auth("alpha.admin")), 201)
+
+
 @pytest.fixture
 def ready(api, auth, world, db_session) -> Lead:
     switch_on(api, auth)
+    write_steps(api, auth)
     return lead_with_details(db_session, world)
+
+
+def test_without_written_steps_it_is_404_and_the_model_is_not_asked(
+    api, auth, world, db_session
+) -> None:
+    switch_on(api, auth)
+    lead = lead_with_details(db_session, world)
+    model = use(api, says("qualified"))
+    assert code_of(ask(api, auth, "alpha.agent1", lead.id)) == (
+        404,
+        "no_active_qualification_procedure",
+    )
+    assert model.calls == []
 
 
 # --- asking ------------------------------------------------------------------------------------
@@ -226,6 +249,16 @@ def test_a_lead_a_person_already_asked_about_is_skipped(
 
 def test_a_switched_off_agent_does_nothing_quietly(api, auth, world, db_session) -> None:
     lead = lead_with_details(db_session, world)  # the agent was never switched on
+    model = says("qualified")
+    deliver(db_session, world, model, lead)
+    assert model.calls == [] and proposals(db_session, world) == []
+
+
+def test_without_written_steps_the_trigger_does_nothing_quietly(
+    api, auth, world, db_session
+) -> None:
+    switch_on(api, auth)
+    lead = lead_with_details(db_session, world)
     model = says("qualified")
     deliver(db_session, world, model, lead)
     assert model.calls == [] and proposals(db_session, world) == []

@@ -324,7 +324,7 @@ and the real test database; only the model is scripted.
 
 ## 6i. Lead agent cases (CRM-114, ADR 0022, step LA5)
 
-A fifth agent, `lead_agent`, with its own dataset `evals/agents/lead_agent.json` (18 cases). It is
+A fifth agent, `lead_agent`, with its own dataset `evals/agents/lead_agent.json` (20 cases). It is
 played through the REAL `run_lead_agent` - permission, the lead only if the person may read it,
 limits, agent registry, the LangGraph graph with its two read-only looks (web evidence, duplicate
 count), the strict check of the model's one tool call, Sentinel, approval queue - and the real test
@@ -335,6 +335,10 @@ database; only the model is scripted.
 - **The agent starts switched OFF** in the registry, so a case without `governance` is played with
   it switched ON (the way an organisation that uses it has it); `governance: {"enabled": false}`
   tests the switch itself.
+- **The organisation's written steps:** the lead agent judges by the Qualifier's procedure, so
+  every case plays with the six `LEAD_AGENT_STEPS` (`agent_evals/play.py`) unless its `qualifier`
+  block says otherwise (`{"procedure": "none"}`, `other_organisation_procedure`), applied in a
+  savepoint that is rolled back.
 - **`expect.proposals`** works as for the Qualifier.
 - **Checks no case can skip:** no lead and no activity changed directly; proposals stored equal
   proposals reported and are all pending; every finished run is audited once (`lead_agent.ran`); no
@@ -344,9 +348,11 @@ database; only the model is scripted.
   `converted`, an extra field, two answers, no tool call and a removed tool are refused; a link in
   the reason and a reason that repeats the lead's own instruction are blocked; a lead whose own text
   steers an AI is stored with a warning; a colleague's lead, the switch off, the token budget and the
-  per-lead limit.
-- **`live`:** 8 cases (the suggestions, the warned lead, a colleague's lead) may be played by a real
-  model; the 10 that force a bad answer are `live: false`. No paid run was made for the lead agent.
+  per-lead limit; no steps written and another organisation's steps (the model is never asked).
+- **`live`:** 7 cases (the suggestions, the same status, a colleague's lead, no steps) may be played
+  by a real model; the 13 that force a bad or scripted-only answer are `live: false` ("none" for a
+  lead the steps qualify, and "contacted" for the warned lead without contact details, became
+  scripted-only once the steps existed). Real-model runs: docs/lead-agent.md section 7.
 - **The gate can fail** (`tests/db/test_agent_evals_lead_agent.py`): a wrong expectation, a missing
   proposal, a forbidden tool and a plan that converts a lead each fail the matching case.
 

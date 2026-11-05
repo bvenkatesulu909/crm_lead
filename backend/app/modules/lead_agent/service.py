@@ -1,7 +1,8 @@
 """Asking the lead agent to look at one lead (ADR 0022, step LA2).
 
     permission ─► limits ─► graph:
-        read (only a lead the asker may read) ─► governed model (switch, budget, tool filter)
+        read (only a lead the asker may read) ─► registry ─► the organisation's written steps
+        ─► governed model (switch, budget, tool filter)
         ─► strict check ─► ONE proposal (approvals + Sentinel) ─► audit
 
 It only ever PROPOSES: a different person approves in the approval queue. Services never commit.
@@ -27,6 +28,7 @@ from app.modules.approvals.models import AgentAction
 from app.modules.assistant.api import ChatModel
 from app.modules.lead_agent import graph, rules
 from app.modules.leads import api as leads_api
+from app.modules.qualifier import api as qualifier_api
 from app.modules.webcheck import api as webcheck_api
 
 AGENT = "lead_agent"
@@ -138,6 +140,19 @@ def run_lead_agent(
     governed = _governed(session, model, tenant_id, ai_limits)
     blocked: list[str] = []
 
+    def written_steps() -> list[str]:
+        # The lead agent judges by the steps the organisation wrote for the Qualifier. None
+        # written (or the procedure retired): refused before the model, nothing stored, nothing
+        # counted. Looked up after the lead, so an unreadable lead is "not found" either way, and
+        # after the registry, so a switched-off agent says so rather than asking for steps.
+        agents_api.check_can_call(
+            session, tenant_id, AGENT, ai_limits or agents_api.Limits.default(), when
+        )
+        procedure = qualifier_api.find_active(session, principal)
+        if procedure is None:
+            raise qualifier_api.NoActiveProcedureError()
+        return list(procedure.steps)
+
     def read() -> LeadQualifierFacts | None:
         return leads_api.qualifier_facts(session, principal, lead_id)
 
@@ -148,9 +163,10 @@ def run_lead_agent(
         return leads_api.duplicate_count(session, principal, lead_id) or 0
 
     def decide(facts: LeadQualifierFacts, context: dict[str, Any]) -> graph.Plan | None:
+        steps = written_steps()
         shown, _names, suspicious = rules.model_view(facts, context)
         reply = governed.reply(
-            system=rules.system_prompt(shown, suspicious),
+            system=rules.system_prompt(steps, shown, suspicious),
             messages=[{"role": "user", "content": ASK}],
             tools=[rules.submit_tool()],
         )

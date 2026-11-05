@@ -11,6 +11,9 @@ const ERROR_TEXTS: Record<string, string> = {
     "The lead agent is switched off. An administrator can switch it on under AI agents.",
   agent_budget_reached: "The lead agent has reached its limit for this month.",
   assistant_unavailable: "The assistant is not available right now.",
+  // The lead agent judges a lead by the organisation's written qualification steps.
+  no_active_qualification_procedure:
+    "The lead agent judges leads by your organisation's qualification steps, and none have been written yet. An administrator can write them under Automation -> Qualifier.",
 };
 
 /** A code from the API in plain words; the API's own text when it has no special wording (a

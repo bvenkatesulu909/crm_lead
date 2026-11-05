@@ -4,7 +4,8 @@ import { USERS, login, requireCredentials, uniqueName } from "./helpers";
 
 /**
  * The lead agent (CRM-114, ADR 0022, docs/lead-agent.md), end to end with the SCRIPTED model: an
- * administrator switches it on, a sales agent presses "Ask the lead agent" on a new lead, the agent
+ * administrator writes the qualification steps (the lead agent judges by them) and switches it on,
+ * a sales agent presses "Ask the lead agent" on a new lead, the agent
  * only SUGGESTS (a proposal waits), a second ask within the hour is refused, a manager approves and
  * only then does the lead change; switched off again, the button says so. Creates clearly
  * fictional "E2eLeadAgent…" leads and leaves the agent switched off, as it starts.
@@ -43,6 +44,22 @@ async function switchLeadAgent(page: Page, on: boolean) {
   }
 }
 
+/** The organisation's qualification steps, saved as a new version (as the Qualifier journey does).
+ * The scripted model does not read them, but without any the lead agent refuses to run. */
+async function writeSteps(page: Page) {
+  await page.goto("/automation/qualifier");
+  await page.getByLabel("Name", { exact: true }).fill("E2e lead agent steps");
+  await page
+    .getByRole("textbox", { name: "Steps" })
+    .fill(
+      "The lead has a phone number.\nIf a new lead has a phone number, call it first.",
+    );
+  await page.getByRole("button", { name: "Save as a new version" }).click();
+  await expect(
+    page.getByText("The procedure was saved as a new version."),
+  ).toBeVisible();
+}
+
 /** A sales agent creates a new lead with a phone number: the scripted agent suggests a call. */
 async function newLead(page: Page) {
   const lastName = uniqueName("E2eLeadAgent");
@@ -62,7 +79,8 @@ test("an admin switches it on, the lead agent suggests, a manager decides", asyn
   browser,
 }) => {
   test.setTimeout(240_000);
-  const admin = await signedIn(browser, USERS.admin, "/automation/agents");
+  const admin = await signedIn(browser, USERS.admin, "/automation/qualifier");
+  await writeSteps(admin);
   await switchLeadAgent(admin, true);
   try {
     const agent = await signedIn(browser, USERS.agent1, "/leads/new");

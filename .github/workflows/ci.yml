@@ -19,7 +19,7 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    # The suite takes 13-18 minutes; a slow runner went past 20 four times in a row (2026-11-05).
+    # The suite takes 13-18 minutes; a slow runner went past 20 on three pull requests (2026-11-05).
     timeout-minutes: 30
 
     # A temporary PostgreSQL 16 for the database tests (real PostgreSQL, as the project requires).

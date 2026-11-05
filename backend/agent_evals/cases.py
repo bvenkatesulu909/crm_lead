@@ -27,7 +27,7 @@ from pydantic import (
 
 from agent_evals.matchers import MatcherError, compile_matcher
 
-Agent = Literal["staff_assistant", "portal_assistant", "public_chat", "qualifier"]
+Agent = Literal["staff_assistant", "portal_assistant", "public_chat", "qualifier", "lead_agent"]
 Persona = Literal[
     "sales_agent", "sales_manager", "tenant_admin", "support_agent", "customer", "visitor"
 ]
@@ -55,6 +55,8 @@ PERSONAS: dict[str, set[str]] = {
     "public_chat": {"visitor"},
     # A support agent has no Qualifier permission, so it is not a persona here.
     "qualifier": {"sales_agent", "sales_manager", "tenant_admin"},
+    # The same people as the Qualifier may ask the lead agent (ADR 0022).
+    "lead_agent": {"sales_agent", "sales_manager", "tenant_admin"},
 }
 # After these outcomes nothing in the CRM has changed (or may only wait for approval): the
 # answer must not claim otherwise.
@@ -90,6 +92,10 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.qualifier import rules as qualifier_rules
 
         return {qualifier_rules.TOOL_NAME}
+    if agent == "lead_agent":
+        from app.modules.lead_agent import rules as lead_agent_rules
+
+        return {lead_agent_rules.TOOL_NAME}
     raise CaseFileError(f"unknown agent {agent!r}")
 
 
@@ -186,7 +192,8 @@ class Expect(_Strict):
     # the CRM (the lead's fields and its timeline), after the door cleaned it.
     stored_must_contain: list[str] = Field(default_factory=list)
     stored_must_not_contain: list[str] = Field(default_factory=list)
-    # Qualifier only: exactly the proposals the case made, in order ([] = none). None: not checked.
+    # Qualifier and lead agent only: exactly the proposals the case made, in order ([] = none).
+    # None: not checked.
     proposals: list[ExpectedProposal] | None = None
 
     @model_validator(mode="after")
@@ -244,8 +251,10 @@ class Case(BaseModel):
             self.expect.stored_must_contain or self.expect.stored_must_not_contain
         ):
             raise ValueError("expect.stored_*: only the website chat stores text in the CRM")
-        if self.agent != "qualifier" and (self.qualifier or self.expect.proposals is not None):
-            raise ValueError("qualifier / expect.proposals: only for the qualifier agent")
+        if self.agent != "qualifier" and self.qualifier:
+            raise ValueError("qualifier: only for the qualifier agent")
+        if self.agent not in ("qualifier", "lead_agent") and self.expect.proposals is not None:
+            raise ValueError("expect.proposals: only for the qualifier and the lead agent")
         real = known_tools(self.agent)
         if self.governance and self.governance.allowed_tools:
             unknown = set(self.governance.allowed_tools) - real

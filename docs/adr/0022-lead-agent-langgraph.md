@@ -61,7 +61,7 @@ Rules that do not change (they are the point of the existing ADRs):
 | LA2 (done 2026-11-04) | Registry entry `lead_agent` (off by default), migration 0050 (the agent name is allowed in proposals), `governed()` around the model, one tool `submit_suggestion` (a status change, never `converted`), Sentinel on the proposal, limits `CRM_LEAD_AGENT_PER_LEAD_HOUR` / `_PER_TENANT_DAY`, audit `lead_agent.ran`. No endpoint or screen yet (LA4) |
 | LA3 (done 2026-11-04) | Two read-only steps between read and decide: the web evidence already on file (`webcheck_api.evidence_summary`: source, verdict, status, valid-until of the newest three; never the excerpt or the query; it never starts a check) and a duplicate count (`leads_api.duplicate_count`: how many other leads the asker may read share the e-mail or phone; a number only). Both are cleaned like all record text before the model sees them |
 | LA4 (done 2026-11-04) | `POST /api/v1/lead-agent/runs` (body: the lead id only; same people as the Qualifier; 201 with outcome, proposal link, the safety check's words), a "Lead agent" card with an "Ask the lead agent" button on the lead page, and `CRM_LEAD_AGENT_AUTO_WEB_LEADS` (off by default): the worker runs the same service for every new website lead as the Automation identity, once per lead. A scripted model for `CRM_AI_PROVIDER=fake` |
-| LA5 | BP-10 evaluation cases, docs, a full run |
+| LA5 (done 2026-11-05) | 18 BP-10 cases in `backend/evals/agents/lead_agent.json`, played through the real `run_lead_agent` (`tests/db/test_agent_evals_lead_agent.py`, a hard CI gate); `docs/lead-agent.md`; the agent is listed in `docs/agents.md` |
 
 ## 5. Questions for the owner (recommended answer first)
 

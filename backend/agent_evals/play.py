@@ -23,15 +23,17 @@ from pydantic import SecretStr
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from agent_evals.cases import Case, substitute
+from agent_evals.cases import Case, Governance, substitute
 from agent_evals.matchers import check_arguments
 from agent_evals.rag import HashingEmbedder, RagRun, run_rag_case, score_rag_case
 from agent_evals.rag_cases import RagCase
 from agent_evals.runner import (
+    LeadAgentRun,
     PortalRun,
     PublicRun,
     QualifierRun,
     StaffRun,
+    run_lead_agent_case,
     run_portal_case,
     run_public_chat_case,
     run_qualifier_case,
@@ -39,6 +41,7 @@ from agent_evals.runner import (
 )
 from agent_evals.scoring import CaseResult, Check, score_case, with_checks
 from agent_evals.world import Snapshot, World
+from app.core.audit import AuditLog
 from app.core.auth.principal import Principal
 from app.core.config import Settings
 from app.core.db import bind_tenant, bind_user
@@ -495,6 +498,129 @@ def play_qualifier(
         world.bind(principal)
         result = score_case(ready, run.trajectory, strict=model is None)
         checks = qualifier_checks(session, ready, before, after, run, count_before, count_after)
+        checks += warning_checks(session, ready, run.proposal_ids)
+        return with_checks(result, checks), run
+
+
+# --- the lead agent (ADR 0022) ----------------------------------------------------------------
+
+LEAD_AGENT_RAN = "lead_agent.ran"
+
+
+def _run_count(session: Session, world: World) -> int:
+    bind_tenant(session, world.tenant_id)
+    count = session.scalar(
+        select(func.count())
+        .select_from(AuditLog)
+        .where(AuditLog.tenant_id == world.tenant_id, AuditLog.action == LEAD_AGENT_RAN)
+    )
+    return int(count or 0)
+
+
+def _proposal_checks(session: Session, case: Case, proposal_ids: list[uuid.UUID]) -> list[Check]:
+    """Never "converted", plus exactly the proposals the case lists (if it lists them)."""
+    actions = (
+        list(
+            session.scalars(
+                select(AgentAction)
+                .where(AgentAction.id.in_(proposal_ids))
+                .order_by(AgentAction.created_at)
+            )
+        )
+        if proposal_ids
+        else []
+    )
+    converted = [a.kind for a in actions if (a.payload or {}).get("status") == "converted"]
+    checks = [
+        Check(
+            "never_converted",
+            not converted,
+            f"a proposal sets the lead to converted: {converted}" if converted else "",
+        )
+    ]
+    wanted = case.expect.proposals
+    if wanted is not None:
+        problems: list[str] = []
+        if len(actions) != len(wanted):
+            problems.append(f"{len(actions)} proposal(s) stored, expected {len(wanted)}")
+        for want, got in zip(wanted, actions, strict=False):
+            if got.kind != want.kind:
+                problems.append(f"kind {got.kind!r}, expected {want.kind!r}")
+            problems += check_arguments(want.payload, got.payload or {}, strict=False)
+        checks.append(Check("proposals", not problems, "; ".join(problems)))
+    return checks
+
+
+def lead_agent_checks(
+    session: Session,
+    case: Case,
+    before: Snapshot,
+    after: Snapshot,
+    run: LeadAgentRun,
+    runs_before: int,
+    runs_after: int,
+) -> list[Check]:
+    """What must hold after ANY lead-agent case: nothing changed directly, every proposal it
+    reported is stored and pending (and nothing else), every finished run is audited once, never
+    "converted" - plus the proposals the case lists."""
+    changed = [str(i) for i, state in before.leads.items() if after.leads.get(i) != state]
+    untouched = (
+        not changed
+        and after.activities == before.activities
+        and len(after.leads) == len(before.leads)
+    )
+    new = {i: s for i, s in after.actions.items() if i not in before.actions}
+    stored_ok = set(new) == set(run.proposal_ids) and all(s == "pending" for s in new.values())
+    audited = runs_after - runs_before
+    return [
+        Check(
+            "no_direct_change",
+            untouched,
+            ""
+            if untouched
+            else f"leads changed: {changed}; activities {before.activities} -> {after.activities}",
+        ),
+        Check(
+            "proposals_stored",
+            stored_ok,
+            ""
+            if stored_ok
+            else f"reported {sorted(map(str, run.proposal_ids))}, stored {sorted(map(str, new))}",
+        ),
+        Check(
+            "runs_audited",
+            audited == run.runs,
+            "" if audited == run.runs else f"reported {run.runs} run(s), audited {audited}",
+        ),
+        *_proposal_checks(session, case, run.proposal_ids),
+    ]
+
+
+def play_lead_agent(
+    session: Session, world: World, case: Case, *, model: ChatModel | None = None
+) -> tuple[CaseResult, LeadAgentRun]:
+    """Play one lead-agent case as the person it names and score it. The agent starts switched
+    OFF in the registry (ADR 0022), so a case without ``governance`` plays it switched ON - the
+    way an organisation that uses it has it; a case that is about the switch says so."""
+    setup = (
+        case
+        if case.governance is not None
+        else case.model_copy(update={"governance": Governance()})
+    )
+    with governed_case(session, world, setup) as limits:
+        principal = world.principal(case.persona)
+        ready = substitute(case, world.placeholders(case.persona, "lead_agent"))
+        world.bind(principal)
+        before = world.snapshot()
+        runs_before = _run_count(session, world)
+        world.bind(principal)
+        run = run_lead_agent_case(session, principal, ready, model=model, limits=limits)
+        session.flush()
+        after = world.snapshot()
+        runs_after = _run_count(session, world)
+        world.bind(principal)
+        result = score_case(ready, run.trajectory, strict=model is None)
+        checks = lead_agent_checks(session, ready, before, after, run, runs_before, runs_after)
         checks += warning_checks(session, ready, run.proposal_ids)
         return with_checks(result, checks), run
 

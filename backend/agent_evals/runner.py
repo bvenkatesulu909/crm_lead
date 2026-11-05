@@ -29,6 +29,7 @@ from app.modules.assistant import service as portal_service
 from app.modules.assistant import staff_service, staff_tools
 from app.modules.assistant.llm import ChatModel, ModelReply, ToolUse
 from app.modules.assistant.service import GuardrailError
+from app.modules.lead_agent import api as lead_agent_api
 from app.modules.public_chat import service as public_chat_service
 from app.modules.public_chat.rules import RESTING_REPLY
 from app.modules.public_chat.schemas import PublicChatRequest
@@ -418,3 +419,81 @@ def run_qualifier_case(
     if proposals:
         ended = "proposal_pending"
     return QualifierRun(Trajectory(calls, answer, ended, recorder.asked), proposals, assessments)
+
+
+# --- the lead agent (ADR 0022, step LA5) --------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class LeadAgentRun:
+    trajectory: Trajectory
+    proposal_ids: list[uuid.UUID]
+    # Runs the agent finished (each one is audited as "lead_agent.ran").
+    runs: int
+
+
+def run_lead_agent_case(
+    session: Session,
+    principal: Principal,
+    case: Case,
+    *,
+    model: ChatModel | None = None,
+    limits: agents_api.Limits | None = None,
+    agent_limits: lead_agent_api.Limits | None = None,
+) -> LeadAgentRun:
+    """Play a lead-agent case as ``principal``: each message is the id of a lead to look at, in
+    order, through the REAL ``run_lead_agent`` (permission, record-level read, limits, registry,
+    the graph and its read-only looks, strict check, Sentinel, approvals). Placeholders must
+    already be replaced.
+
+    How it ended: something waiting for approval beats everything; otherwise the last ask decides
+    - ``not_found``, ``agent_off`` / ``over_budget``, ``refused`` (invalid answer, limit, the
+    safety check or a permission), ``nothing_changed`` (nothing worth suggesting)."""
+    if case.agent != "lead_agent":
+        raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the lead agent")
+    recorder = _UseRecorder(model if model is not None else ScriptedModel(case.script))
+    # As for the Qualifier: the per-lead limit is the real one; the daily one is not the subject.
+    asking = agent_limits or lead_agent_api.Limits(per_lead_hour=1, per_tenant_day=1_000_000)
+    calls: list[ToolCall] = []
+    proposals: list[uuid.UUID] = []
+    runs = 0
+    answer = ""
+    ended = "nothing_changed"
+    for text in case.messages:
+        try:
+            lead_id = uuid.UUID(text)
+        except ValueError as exc:
+            raise RunnerError(f"case '{case.id}': '{text}' is not a lead id") from exc
+        before = len(recorder.uses)
+        failed = True
+        try:
+            result = lead_agent_api.run_lead_agent(
+                session, principal, recorder, lead_id, limits=asking, ai_limits=limits
+            )
+            failed = False
+        except (agents_api.AgentUnavailableError, agents_api.AgentBudgetReachedError) as exc:
+            answer, ended = exc.detail, registry_outcome(exc)
+        except lead_agent_api.LeadNotFoundError as exc:
+            answer, ended = exc.detail, "not_found"
+        except DomainError as exc:  # an invalid answer, a limit, a permission
+            answer, ended = exc.detail, "refused"
+        verdict: CallOutcome = "refused" if failed else "ok"
+        for use in recorder.uses[before:]:
+            args = dict(use.input) if isinstance(use.input, dict) else {}
+            calls.append(ToolCall(use.name, args, verdict))
+        if failed:
+            continue
+        runs += 1
+        if result.proposal is not None:
+            proposals.append(result.proposal.id)
+        if result.blocked_message is not None:
+            answer = f"The safety check refused the suggestion: {result.blocked_message}"
+            ended = "refused"
+        elif result.proposal is not None:
+            answer = "A suggestion is waiting for approval. Nothing has changed yet."
+            ended = "nothing_changed"
+        else:
+            answer, ended = "The lead agent suggests no change.", "nothing_changed"
+    if proposals:
+        ended = "proposal_pending"
+    return LeadAgentRun(Trajectory(calls, answer, ended, recorder.asked), proposals, runs)

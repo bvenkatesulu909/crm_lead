@@ -278,3 +278,14 @@ def test_a_blocked_proposal_is_audited_by_the_approvals_module(
         select(AuditLog).where(AuditLog.action == "agent_action.blocked")
     ).all()
     assert len(blocked) == 1
+
+
+def test_the_per_lead_limit_holds_even_without_autoflush(acting, db_session, on) -> None:
+    """The limit counts the audit rows of earlier runs; a caller whose session does not flush on
+    its own (the evaluation command line, a worker) must still be limited (a bug found in LA5)."""
+    with db_session.no_autoflush:
+        run(acting, "alpha.agent1", says("none", "Nothing."), on, limits=lead_agent.Limits(1, 100))
+        model = says()
+        with pytest.raises(lead_agent.RateLimitedError):
+            run(acting, "alpha.agent1", model, on, limits=lead_agent.Limits(1, 100))
+    assert model.calls == []

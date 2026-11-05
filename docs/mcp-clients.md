@@ -153,6 +153,9 @@ through an outside AI client).
 To try the tools against another API (for example a second copy on port 8001), set
 `CRM_MCP_API_URL=http://localhost:8001/api/v1`; `uv run pytest` honours it for the live tests too.
 
+A step-by-step script for recording this as a short demo video (CRM-109):
+[docs/crm-109-recording-script.md](crm-109-recording-script.md).
+
 ## Check the server by itself (no IDE)
 
 These two checks need no sign-in:

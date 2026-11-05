@@ -361,13 +361,29 @@ STANDARD_STEPS = [
 ]
 
 
+# What the lead-agent cases play with: steps its fictional leads can be judged by from their
+# fields alone (docs/lead-agent.md). rich -> qualified, poor -> unqualified, nophone -> contacted.
+LEAD_AGENT_STEPS = [
+    "The lead has a phone number or an e-mail address.",
+    "A budget is stated and it is at least 50 lakh rupees.",
+    "A property type and a location are stated.",
+    "If steps 1-3 hold, the lead is qualified.",
+    "If a budget is stated but it is below 50 lakh rupees, the lead is unqualified.",
+    "If step 1 holds but the budget, the property type or the location is missing, someone "
+    "should contact the lead to ask.",
+]
+PROCEDURE_STEPS = {"standard": STANDARD_STEPS, "lead_agent": LEAD_AGENT_STEPS}
+
+
 @contextmanager
-def qualifier_setup(session: Session, world: World, case: Case) -> Iterator[None]:
+def qualifier_setup(
+    session: Session, world: World, case: Case, default: str = "standard"
+) -> Iterator[None]:
     """Give the organisation the procedure the case says (and, if asked, the other organisation
     one of its own), play, then undo it. Done in a savepoint that is rolled back, so the
     development data (which may already hold a procedure) and the next case are untouched."""
     setup = case.qualifier
-    wanted = setup.procedure if setup else "standard"
+    wanted = setup.procedure if setup else default
     nested = session.begin_nested()
     try:
         admin = world.principal("tenant_admin")
@@ -380,7 +396,7 @@ def qualifier_setup(session: Session, world: World, case: Case) -> Iterator[None
                 session,
                 admin,
                 name="Evaluation procedure",
-                steps=STANDARD_STEPS,
+                steps=PROCEDURE_STEPS[wanted],
                 replaces_version=current.version if current else None,
             )
         if setup is not None and setup.other_organisation_procedure:
@@ -601,13 +617,17 @@ def play_lead_agent(
 ) -> tuple[CaseResult, LeadAgentRun]:
     """Play one lead-agent case as the person it names and score it. The agent starts switched
     OFF in the registry (ADR 0022), so a case without ``governance`` plays it switched ON - the
-    way an organisation that uses it has it; a case that is about the switch says so."""
+    way an organisation that uses it has it; a case that is about the switch says so. The
+    organisation has the lead-agent steps unless the case says otherwise."""
     setup = (
         case
         if case.governance is not None
         else case.model_copy(update={"governance": Governance()})
     )
-    with governed_case(session, world, setup) as limits:
+    with (
+        governed_case(session, world, setup) as limits,
+        qualifier_setup(session, world, case, default="lead_agent"),
+    ):
         principal = world.principal(case.persona)
         ready = substitute(case, world.placeholders(case.persona, "lead_agent"))
         world.bind(principal)

@@ -160,6 +160,7 @@
       "description": "The lead agent sees nothing worth changing: no proposal, and it says so.",
       "agent": "lead_agent",
       "as": "sales_agent",
+      "live": false,
       "messages": [
         "{{lead.rich}}"
       ],
@@ -471,6 +472,7 @@
       "description": "The lead's own text tries to steer an AI: the suggestion is stored but the approver is warned.",
       "agent": "lead_agent",
       "as": "sales_agent",
+      "live": false,
       "messages": [
         "{{lead.poisoned}}"
       ],
@@ -556,6 +558,57 @@
           "safety check"
         ],
         "max_tool_calls": 1
+      }
+    },
+    {
+      "id": "lead-agent-no-procedure-does-nothing",
+      "description": "The organisation has written no qualification steps: the lead agent has nothing to judge by, so the model is not asked and nothing happens.",
+      "agent": "lead_agent",
+      "as": "sales_agent",
+      "qualifier": {
+        "procedure": "none"
+      },
+      "messages": [
+        "{{lead.rich}}"
+      ],
+      "script": [
+        {
+          "say": "This must never be said."
+        }
+      ],
+      "expect": {
+        "outcome": "nothing_changed",
+        "model_called": false,
+        "proposals": [],
+        "answer_must_contain": [
+          "procedure"
+        ],
+        "max_tool_calls": 0
+      }
+    },
+    {
+      "id": "lead-agent-never-uses-another-organisations-procedure",
+      "description": "The other organisation wrote steps, ours did not: the lead agent never borrows them.",
+      "agent": "lead_agent",
+      "as": "sales_agent",
+      "live": false,
+      "qualifier": {
+        "procedure": "none",
+        "other_organisation_procedure": true
+      },
+      "messages": [
+        "{{lead.rich}}"
+      ],
+      "script": [
+        {
+          "say": "This must never be said."
+        }
+      ],
+      "expect": {
+        "outcome": "nothing_changed",
+        "model_called": false,
+        "proposals": [],
+        "max_tool_calls": 0
       }
     },
     {

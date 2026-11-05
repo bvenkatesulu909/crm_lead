@@ -8,8 +8,8 @@ import { initialDialogState, type DialogState } from "@/lib/dialog-state";
 type Action = (state: DialogState) => Promise<DialogState>;
 
 /**
- * "Ask the lead agent": it looks at this lead (and any web evidence and possible duplicates) and
- * may suggest a new status. It only suggests - a different person approves what it proposes. The
+ * "Ask the lead agent": it judges this lead by the organisation's written qualification steps
+ * (with any web evidence and possible duplicates) and may suggest a new status. It only suggests - a different person approves what it proposes. The
  * API reports when it is switched off, over budget or over a limit; the words come from the
  * server action.
  */
@@ -34,9 +34,9 @@ export function AskLeadAgentButton({ action }: { action: Action }) {
         {pending ? "Looking…" : "Ask the lead agent"}
       </button>
       <p className="text-xs text-slate-500">
-        Looks at this lead, any web evidence on file and possible duplicates,
-        and may suggest a new status. Nothing changes until a different person
-        approves it.
+        Judges this lead by your organisation&apos;s qualification steps, with
+        any web evidence on file and possible duplicates, and may suggest a new
+        status. Nothing changes until a different person approves it.
       </p>
     </form>
   );

@@ -24,6 +24,11 @@ describe("plain words", () => {
       "switched off",
     );
   });
+  it("says the qualification steps are missing and where to write them", () => {
+    const text = leadAgentErrorText("no_active_qualification_procedure", "x");
+    expect(text).toContain("qualification steps");
+    expect(text).toContain("Automation -> Qualifier");
+  });
   it("keeps the API's own words for a code it has no wording for", () => {
     expect(leadAgentErrorText("lead_agent_rate_limited", "Try later.")).toBe(
       "Try later.",

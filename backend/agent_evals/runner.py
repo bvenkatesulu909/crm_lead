@@ -448,7 +448,8 @@ def run_lead_agent_case(
 
     How it ended: something waiting for approval beats everything; otherwise the last ask decides
     - ``not_found``, ``agent_off`` / ``over_budget``, ``refused`` (invalid answer, limit, the
-    safety check or a permission), ``nothing_changed`` (nothing worth suggesting)."""
+    safety check or a permission), ``nothing_changed`` (nothing worth suggesting, or no
+    qualification steps written)."""
     if case.agent != "lead_agent":
         raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the lead agent")
     recorder = _UseRecorder(model if model is not None else ScriptedModel(case.script))
@@ -475,6 +476,8 @@ def run_lead_agent_case(
             answer, ended = exc.detail, registry_outcome(exc)
         except lead_agent_api.LeadNotFoundError as exc:
             answer, ended = exc.detail, "not_found"
+        except qualifier_api.NoActiveProcedureError as exc:
+            answer, ended = exc.detail, "nothing_changed"  # no steps written: nothing to judge by
         except DomainError as exc:  # an invalid answer, a limit, a permission
             answer, ended = exc.detail, "refused"
         verdict: CallOutcome = "refused" if failed else "ok"

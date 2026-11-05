@@ -22,8 +22,16 @@ from app.modules.approvals.models import AgentAction
 from app.modules.assistant.api import ToolUse
 from app.modules.lead_agent import api as lead_agent
 from app.modules.leads.models import Lead
+from app.modules.qualifier.api import NoActiveProcedureError
 from tests.db.test_approvals import Acting, acting, add_lead, alpha
-from tests.db.test_qualifier_assess import EMAIL, PHONE, ScriptedModel, lead_with_details
+from tests.db.test_qualifier_assess import (
+    EMAIL,
+    PHONE,
+    STEPS,
+    ScriptedModel,
+    lead_with_details,
+    write_procedure,
+)
 from tests.db.test_quotes_api import World, world
 
 KEY = "lead_agent"
@@ -81,9 +89,16 @@ def lead(acting: Acting, db_session: Session, world: World) -> Lead:
     return lead_with_details(db_session, world)
 
 
+def switch_on(acting: Acting) -> None:
+    """Switched on in the registry, and the organisation has written its qualification steps -
+    the lead agent judges a lead by them (docs/lead-agent.md)."""
+    configure(acting, enabled=True)
+    write_procedure(acting)
+
+
 @pytest.fixture
 def on(acting: Acting, lead: Lead) -> Lead:
-    configure(acting, enabled=True)
+    switch_on(acting)
     return lead
 
 
@@ -199,6 +214,57 @@ def test_a_link_in_the_reason_is_stopped_by_the_sentinel(acting, db_session, wor
     assert proposals(db_session, world) == []
     db_session.refresh(on)
     assert on.status == "new"
+
+
+# --- it judges by the organisation's written steps ------------------------------------------
+
+
+def test_the_model_is_shown_the_numbered_steps_as_data(acting, on) -> None:
+    model = says()
+    run(acting, "alpha.agent1", model, on)
+    shown = model.calls[0]["system"]
+    for number, step in enumerate(STEPS, start=1):
+        assert f"{number}. {step}" in shown
+    assert "steps" in shown.lower() and "not instructions" in shown
+
+
+def test_without_written_steps_the_model_is_not_asked_and_nothing_is_stored(
+    acting, db_session, world, lead
+) -> None:
+    configure(acting, enabled=True)  # switched on, but no procedure written
+    model = says()
+    with pytest.raises(NoActiveProcedureError):
+        run(acting, "alpha.agent1", model, lead)
+    assert model.calls == []
+    assert proposals(db_session, world) == [] and audits(db_session, world) == []
+
+
+def test_a_retired_procedure_counts_as_none(acting, db_session, world, on) -> None:
+    from app.modules.qualifier import api as qualifier_api
+
+    admin = acting.who("alpha.admin")
+    current = qualifier_api.get_active(acting.session, admin)
+    qualifier_api.deactivate(acting.session, admin, version=current.version)
+    acting.session.flush()
+    model = says()
+    with pytest.raises(NoActiveProcedureError):
+        run(acting, "alpha.agent1", model, on)
+    assert model.calls == []
+
+
+def test_another_organisations_steps_are_never_used(acting, db_session, world, lead) -> None:
+    configure(acting, enabled=True)
+    write_procedure(acting, "beta.admin", ["Another organisation's secret step."])
+    model = says()
+    with pytest.raises(NoActiveProcedureError):
+        run(acting, "alpha.agent1", model, lead)
+    assert model.calls == []
+
+
+def test_switched_off_wins_over_a_missing_procedure(acting, lead) -> None:
+    """An administrator who has not switched it on is told that first."""
+    with pytest.raises(AgentUnavailableError):
+        run(acting, "alpha.agent1", says(), lead)
 
 
 # --- who may use it, and on which leads -------------------------------------------------------

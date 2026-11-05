@@ -149,10 +149,12 @@ class Governance(_Strict):
 class QualifierSetup(_Strict):
     """What the organisation has written for the Qualifier in this case (docs/qualifier.md).
 
-    The standard procedure has three steps, so ``matched_steps`` 1-3 exist in a case. Applied
-    inside a savepoint that is rolled back, like ``governance``."""
+    The standard procedure has three steps, so ``matched_steps`` 1-3 exist in a case. The lead
+    agent, which judges a lead by the same written steps, plays with ``lead_agent`` steps that its
+    fictional leads can be judged by. Applied inside a savepoint that is rolled back, like
+    ``governance``."""
 
-    procedure: Literal["standard", "none"] = "standard"
+    procedure: Literal["standard", "lead_agent", "none"] = "standard"
     # The OTHER organisation has a procedure of its own; ours must never use it.
     other_organisation_procedure: bool = False
 
@@ -235,7 +237,8 @@ class Case(BaseModel):
     live: bool = True
     # How the agent is set up in the registry; absent = the defaults (on, standard budget).
     governance: Governance | None = None
-    # Qualifier only: which procedure the organisation has. Absent = the standard one.
+    # Qualifier and lead agent: which procedure the organisation has. Absent = the standard one
+    # (the Qualifier) or the lead-agent steps (the lead agent).
     qualifier: QualifierSetup | None = None
     script: list[Step] = Field(default_factory=list)
     expect: Expect
@@ -251,8 +254,8 @@ class Case(BaseModel):
             self.expect.stored_must_contain or self.expect.stored_must_not_contain
         ):
             raise ValueError("expect.stored_*: only the website chat stores text in the CRM")
-        if self.agent != "qualifier" and self.qualifier:
-            raise ValueError("qualifier: only for the qualifier agent")
+        if self.agent not in ("qualifier", "lead_agent") and self.qualifier:
+            raise ValueError("qualifier: only for the qualifier and the lead agent")
         if self.agent not in ("qualifier", "lead_agent") and self.expect.proposals is not None:
             raise ValueError("expect.proposals: only for the qualifier and the lead agent")
         real = known_tools(self.agent)

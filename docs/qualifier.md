@@ -4,6 +4,8 @@
 **Kind:** a short design (the master plan marks BP-03 "design", not an ADR). It adds a model-using
 agent, so it follows ADR 0014 (approvals), 0016 (agent registry), 0017 (Sentinel) and 0018
 (artifacts). It changes none of them.
+**Shared steps (2026-11-05):** the optional lead agent (CRM-114, docs/lead-agent.md) judges leads by
+the same written steps; with no active procedure it refuses to run, like the Qualifier.
 
 ## 1. What it is, in plain words
 

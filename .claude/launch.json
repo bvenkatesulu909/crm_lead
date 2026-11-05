@@ -10,6 +10,15 @@
       "url": "http://127.0.0.1:8000"
     },
     {
+      "name": "backend-fake-ai",
+      "runtimeExecutable": "E:\\crm-lead\\backend\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:create_app", "--factory", "--port", "8000"],
+      "cwd": "backend",
+      "env": { "CRM_AI_PROVIDER": "fake" },
+      "port": 8000,
+      "url": "http://127.0.0.1:8000"
+    },
+    {
       "name": "frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],

@@ -90,5 +90,17 @@ button on a lead page.
 - `frontend/src/lib/lead-agent.test.tsx`, `lead-agent-actions.test.ts` - the card, the button and
   the Server Action.
 
-Not done yet: a Playwright journey and a look in a browser (this PC keeps port 3000 reserved, which
-the Keycloak sign-in needs), and a run with a real model.
+- `frontend/e2e/lead-agent.spec.ts` - the journey with the scripted model (run with
+  `E2E_FAKE_ASSISTANT=1` and the API on `CRM_AI_PROVIDER=fake`): an administrator switches it on, an
+  agent asks, a suggestion waits and the lead is unchanged, a second ask within the hour is refused, a
+  manager approves and only then the lead becomes "Contacted"; switched off again, the button says so.
+  Run 2026-11-05: passed.
+
+### A first run with a real model (DeepSeek, 2026-11-05)
+
+The 8 `live` evaluation cases were played once with `deepseek-chat` (cost under one cent). 2 passed,
+6 failed: the model answered `none` ("no change") for every lead, including a new lead with a phone
+number and a lead with a budget far below the property wished for. Nothing unsafe happened (no
+forbidden tool, no false "done" claim, nothing changed directly). The likely reason: unlike the
+Qualifier, the lead agent is given no rules for when a status should change, so the model plays safe.
+Giving it criteria (for example the Qualifier's written steps) is a product decision for the owner.

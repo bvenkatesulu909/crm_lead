@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from agent_evals.rag import HashingEmbedder
 from agent_evals.rag_cases import RagCase, load_rag_cases, rag_dataset_hash
 from agent_evals.scoring import CaseResult, build_scorecard
-from app.modules.knowledge import answers, retrieval
+from app.modules.knowledge import answers, numbers, retrieval
 from tests.db.agent_eval_support import (
     RAG_MIN_SIMILARITY,
     best_similarity,
@@ -70,11 +70,14 @@ def test_the_threshold_sits_between_answerable_and_unanswerable_questions(
 ) -> None:
     # The "close enough" threshold was chosen from these numbers. If a new case or a changed
     # document moves them, this test says so before the cases start failing for a muddy reason.
+    # Questions that name a RERA number are answered through the exact-number lookup
+    # (CRM-115), whatever their similarity, so they say nothing about the threshold.
     embedder = HashingEmbedder()
     ingest_corpus(db_session, world, embedder)
-    scores = {case.id: best_similarity(db_session, world, case, embedder) for case in RAG}
-    answerable = [s for c in RAG if c.expect.outcome != "not_found" and (s := scores[c.id])]
-    unanswerable = [scores[c.id] for c in RAG if c.expect.outcome == "not_found"]
+    by_meaning = [c for c in RAG if not numbers.rera_numbers(c.question)]
+    scores = {case.id: best_similarity(db_session, world, case, embedder) for case in by_meaning}
+    answerable = [s for c in by_meaning if c.expect.outcome != "not_found" and (s := scores[c.id])]
+    unanswerable = [scores[c.id] for c in by_meaning if c.expect.outcome == "not_found"]
     assert min(answerable) >= RAG_MIN_SIMILARITY + 0.05, scores
     assert max(unanswerable) <= RAG_MIN_SIMILARITY - 0.05, scores
 
@@ -127,3 +130,46 @@ def test_an_answer_that_names_the_wrong_document_is_caught(
     )
     result, _ = play_rag(db_session, world, case)
     assert result.passed is False
+
+
+# --- the RERA / price gate can fail too (CRM-115 / BP-08, BR3) ---------------------------------
+
+
+def test_without_the_number_check_an_invented_number_would_be_shown(
+    db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(numbers, "unsupported", lambda answer, cited, question: None)
+    for case_id in ("rag-rera-invented-number-refused", "rag-old-price-refused"):
+        result, _ = play_rag(db_session, world, BY_ID[case_id])
+        assert result.passed is False, case_id
+        assert "outcome" in explain(result)
+
+
+def test_without_the_exact_lookup_an_unknown_number_would_reach_the_model(
+    db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(retrieval, "chunks_with_number", lambda *a, **k: [])
+    result, _ = play_rag(db_session, world, BY_ID["rag-rera-number-cited-with-price"])
+    assert result.passed is False
+
+
+def test_without_the_fixed_line_the_case_fails(
+    db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(numbers, "mentions_rera", lambda text: False)
+    result, _ = play_rag(db_session, world, BY_ID["rag-rera-number-cited-with-price"])
+    assert result.passed is False
+    assert "live_check_line" in explain(result)
+
+
+def test_citing_only_the_number_section_is_not_enough(db_session: Session, world: World) -> None:
+    """The control for rag-price-from-an-uncited-source-refused: the same answer citing the
+    whole brochure passes, so the refusal really is about WHICH section was cited."""
+    case = variant(
+        "rag-price-from-an-uncited-source-refused",
+        answer="Skyline Towers (DEMO-P02400000003) starts at ₹78 lakh "
+        "{cites:Skyline Towers brochure}.",
+        **{"expect.outcome": "answered", "expect.cited_documents": ["Skyline Towers brochure"]},
+    )
+    result, _ = play_rag(db_session, world, case)
+    assert result.passed, explain(result)

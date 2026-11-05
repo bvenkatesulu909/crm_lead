@@ -25,6 +25,7 @@ from agent_evals.rag import (
 )
 from agent_evals.rag_cases import (
     CITE,
+    CITES,
     RagCase,
     RagCaseFileError,
     load_rag_cases,
@@ -321,7 +322,7 @@ def test_the_real_cited_answer_file_is_well_formed() -> None:
     assert any(c.expect.score == "fail" for c in cases)  # a negative control for the metrics
     for c in cases:
         if c.expect.outcome == "answered" and c.live:
-            assert "{cite:" in c.answer, c.id  # a good answer cites its source
+            assert "{cite:" in c.answer or "{cites:" in c.answer, c.id  # it cites its source
 
 
 def test_document_titles_in_the_cases_exist_in_the_demo_documents() -> None:
@@ -333,7 +334,84 @@ def test_document_titles_in_the_cases_exist_in_the_demo_documents() -> None:
 
     titles = {t for t, _, _ in [*DEMO_DOCUMENTS, *PORTAL_DOCUMENTS, *BETA_DOCUMENTS]}
     titles.add("TEST ONLY - poisoned document")
+    from scripts.seed_brochures_demo import ALPHA_BROCHURES, BETA_BROCHURES
+
+    titles |= {b.title for b in [*ALPHA_BROCHURES, *BETA_BROCHURES]}
     for c in load_rag_cases(REAL_FILE):
         named = {*c.expect.cited_documents, *c.expect.forbidden_documents}
-        named |= {t.strip() for t in CITE.findall(c.answer)}
+        # "{cite:Title - section}" names one section of a document: the title is what must exist.
+        cited = [*CITE.findall(c.answer), *CITES.findall(c.answer)]
+        named |= {
+            t.strip().split(" - ")[0] if t.strip() not in titles else t.strip() for t in cited
+        }
         assert named <= titles, (c.id, named - titles)
+
+
+# --- brochures and the RERA / price gate (CRM-115 / BP-08, step BR3) ----------------------------
+
+
+def test_cites_cites_every_section_of_a_document() -> None:
+    prompt = (
+        "Sources:\n[1] Skyline Towers brochure - Skyline Towers > Project\nT\n\n"
+        "[2] Other - x\nT\n\n[3] Skyline Towers brochure - Skyline Towers > Homes and prices\nT"
+    )
+    assert resolve_citations("From ₹78 lakh {cites:Skyline Towers brochure}.", prompt) == (
+        "From ₹78 lakh [1][3]."
+    )
+    assert resolve_citations("x {cites:Nowhere}.", "Sources:\n[1] A\nT") == "x [99]."
+
+
+@pytest.mark.parametrize(
+    ("reason", "word"),
+    [
+        ("rera_not_found", "rera_not_found"),
+        ("rera_not_cited", "rera_not_cited"),
+        ("price_not_cited", "price_not_cited"),
+    ],
+)
+def test_the_gates_refusals_have_their_own_outcome(reason: str, word: str) -> None:
+    called = reason != "rera_not_found"
+    refused = AnswerOutcome("No.", [], None, False, called, False, [], reason)
+    assert outcome_of(refused) == word
+
+
+def test_a_gate_refusal_case_must_say_whether_the_model_ran(tmp_path: Path) -> None:
+    case = copy.deepcopy(GOOD)
+    case["expect"] = {"outcome": "rera_not_found", "model_called": True}
+    write(tmp_path, case)
+    with pytest.raises(RagCaseFileError, match="model"):
+        load_rag_cases(tmp_path / "cases.json")
+    case["expect"] = {"outcome": "price_not_cited", "model_called": False}
+    write(tmp_path, case)
+    with pytest.raises(RagCaseFileError, match="model"):
+        load_rag_cases(tmp_path / "cases.json")
+
+
+def test_the_fixed_line_is_checked_and_not_held_against_the_model() -> None:
+    from app.modules.knowledge.answers import LIVE_CHECK_LINE
+
+    raw = copy.deepcopy(GOOD)
+    raw["expect"]["live_check_line"] = True
+    case = RagCase.model_validate(raw)
+    text = "A damaged item may be returned within 14 days of delivery [1]."
+    sources = [source("Returns policy", "A damaged item may be returned within 14 days.")]
+    with_line = answered(f"{text}\n\n{LIVE_CHECK_LINE}", sources)
+    assert score_rag_case(case, with_line, model_calls=1).passed
+    without = score_rag_case(case, answered(text, sources), model_calls=1)
+    assert not without.passed and "live_check_line" in str(without.checks)
+
+
+def test_brochure_titles_in_the_cases_exist_in_the_brochure_seed() -> None:
+    from scripts.seed_brochures_demo import ALPHA_BROCHURES, BETA_BROCHURES
+
+    brochures = {b.title for b in [*ALPHA_BROCHURES, *BETA_BROCHURES]}
+    for c in load_rag_cases(REAL_FILE):
+        named = {t.strip() for t in CITES.findall(c.answer)}
+        assert named <= brochures, (c.id, named - brochures)
+    assert sum(bool(numbers_in(c.question)) for c in load_rag_cases(REAL_FILE)) >= 5
+
+
+def numbers_in(text: str) -> list[str]:
+    from app.modules.knowledge.numbers import rera_numbers
+
+    return rera_numbers(text)

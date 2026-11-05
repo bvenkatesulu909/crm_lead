@@ -18,7 +18,7 @@ from typing import Any
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from agent_evals.rag_cases import CITE, RagCase
+from agent_evals.rag_cases import CITE, CITES, RagCase
 from agent_evals.scoring import CaseResult, Check
 from app.core.auth.principal import Principal
 from app.core.config import Settings
@@ -99,7 +99,14 @@ def resolve_citations(answer: str, prompt: str) -> str:
         picked = (exact or prefixed or [MISSING_CITATION])[0]
         return f"[{picked}]"
 
-    return CITE.sub(number_for, answer)
+    def numbers_for(found: re.Match[str]) -> str:
+        title = found.group(1).strip()
+        every = [
+            n for n, line in sources.items() if line == title or line.startswith(title + " - ")
+        ]
+        return "".join(f"[{n}]" for n in sorted(every)) or f"[{MISSING_CITATION}]"
+
+    return CITES.sub(numbers_for, CITE.sub(number_for, answer))
 
 
 class ScriptedAnswerModel:
@@ -219,6 +226,8 @@ def run_rag_case(
 
 def outcome_of(outcome: AnswerOutcome) -> str:
     """The pipeline's result in the words of a case."""
+    if outcome.reason in answers.GATE_REASONS:
+        return outcome.reason
     if not outcome.model_used:
         return "not_found"
     return "answered" if outcome.grounded else "ungrounded"
@@ -263,9 +272,23 @@ def score_rag_case(case: RagCase, outcome: AnswerOutcome, *, model_calls: int) -
                 "forbidden_documents", not leaked, f"among the sources: {leaked}" if leaked else ""
             )
         )
+    answer = outcome.answer
+    if answer.endswith(answers.LIVE_CHECK_LINE):
+        # The fixed line is the pipeline's, not the model's: it is checked on its own and kept out
+        # of the answer metrics (it carries no citation on purpose).
+        answer = answer[: -len(answers.LIVE_CHECK_LINE)].rstrip()
+    if expect.live_check_line is not None:
+        has_line = outcome.answer.endswith(answers.LIVE_CHECK_LINE)
+        checks.append(
+            Check(
+                "live_check_line",
+                has_line == expect.live_check_line,
+                "" if has_line == expect.live_check_line else f"fixed line present: {has_line}",
+            )
+        )
     if expect.outcome == "answered":
         scored = score_answer(
-            outcome.answer,
+            answer,
             [source.text for source in outcome.sources],
             expected_facts=expect.expected_facts,
             forbidden_facts=expect.forbidden_facts,

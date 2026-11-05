@@ -14,7 +14,7 @@ The checks only a database-level runner can make:
 """
 
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
@@ -653,8 +653,10 @@ def rag_settings(world: World, min_similarity: float = RAG_MIN_SIMILARITY) -> Se
 
 
 def ingest_corpus(session: Session, world: World, embedder: HashingEmbedder) -> None:
-    """The fictional demo documents of both organisations (as scripts/seed_knowledge_demo.py)."""
+    """The fictional demo documents of both organisations (as scripts/seed_knowledge_demo.py) and
+    the fictional brochures (scripts/seed_brochures_demo.py, the current edition of each)."""
     from agent_evals.rag import ingest_documents
+    from scripts.seed_brochures_demo import ALPHA_BROCHURES, BETA_BROCHURES
     from scripts.seed_knowledge_demo import (
         BETA_DOCUMENTS,
         DEMO_DOCUMENTS,
@@ -671,6 +673,7 @@ def ingest_corpus(session: Session, world: World, embedder: HashingEmbedder) -> 
             *((t, f, x, "internal") for t, f, x in DEMO_DOCUMENTS),
             *((t, f, x, "customer_visible") for t, f, x in PORTAL_DOCUMENTS),
             ("TEST ONLY - poisoned document", "test-poisoned.md", POISONED, "internal"),
+            *_current_editions(ALPHA_BROCHURES),
         ],
     )
     if world.other_tenant_id is not None:
@@ -679,8 +682,19 @@ def ingest_corpus(session: Session, world: World, embedder: HashingEmbedder) -> 
             session,
             embedder,
             world.other_tenant_id,
-            [(t, f, x, "internal") for t, f, x in BETA_DOCUMENTS],
+            [
+                *((t, f, x, "internal") for t, f, x in BETA_DOCUMENTS),
+                *_current_editions(BETA_BROCHURES),
+            ],
         )
+
+
+def _current_editions(brochures: Sequence[Any]) -> list[tuple[str, str, str, str]]:
+    """(title, file name, text, visibility) of every brochure no newer edition replaces."""
+    replaced = {b.replaces for b in brochures if b.replaces}
+    return [
+        (b.title, b.file_name, b.text, b.visibility) for b in brochures if b.key not in replaced
+    ]
 
 
 def _rag_principal(world: World, persona: str) -> tuple[Principal, list[uuid.UUID] | None]:

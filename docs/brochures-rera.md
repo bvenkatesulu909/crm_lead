@@ -85,7 +85,7 @@ test proves it with the seeded brochures. If PostgreSQL's text search splits a n
 | BR0 | This note (documents only) |
 | BR1 (done 2026-11-05) | The seed script + tests (idempotent, both organisations, visibility as written, the replaced version archived, numbers all `DEMO-`) |
 | BR2 (done 2026-11-05) | The three gate checks, the fixed "not a live check" line, refusal codes and metrics; tests first (pure rules + the real pipeline against the test database, incl. tenant isolation, a customer asking about an internal price, ID tampering is not applicable: no IDs in a question) |
-| BR3 | BP-10 cases in `evals/rag/ci_cases.json`: a number on file is cited; an unknown number is refused with no model call; an invented number, a wrong price and an old price are refused; a customer never sees the internal price; another organisation's brochure never appears; deliberate breaks of each check must fail a case |
+| BR3 (done 2026-11-05) | BP-10 cases in `evals/rag/ci_cases.json`: a number on file is cited; an unknown number is refused with no model call; an invented number, a wrong price and an old price are refused; a customer never sees the internal price; another organisation's brochure never appears; deliberate breaks of each check must fail a case |
 | BR4 | Screens: the answer's sources already link to the document - add the "not a live check" line and plain words for the new refusals; docs (`docs/rag-knowledge-base.md`, this note); a Playwright check on the existing knowledge journey |
 
 No database migration is planned (no new tables or columns).

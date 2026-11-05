@@ -318,7 +318,7 @@ class World:
             "user.agent2": str(self._mentionable(other, Role.SALES_AGENT)),
             "user.support": str(self._mentionable(support, Role.SUPPORT_AGENT)),
         }
-        if agent == "qualifier":
+        if agent in ("qualifier", "lead_agent"):
             values.update(self._qualifier_leads(acting))
         if persona == "sales_agent":
             values["contact.own"] = str(self._contact(acting, "Own"))

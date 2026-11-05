@@ -194,4 +194,7 @@ def run_lead_agent(
         entity_id=lead_id,
         changes={"outcome": outcome, "proposal_id": str(proposal.id) if proposal else None},
     )
+    # The limits count these audit rows: write it now, so a second run in the same session sees
+    # it even when the session does not flush on its own (the worker, the evaluation command).
+    session.flush()
     return RunResult(outcome, proposal, blocked[0] if blocked else None)

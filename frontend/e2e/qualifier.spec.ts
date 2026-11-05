@@ -60,7 +60,7 @@ test("an administrator writes the procedure, the Qualifier suggests, a manager d
   const admin = await signedIn(browser, USERS.admin, "/automation/qualifier");
   await admin.getByLabel("Name", { exact: true }).fill("E2e procedure");
   await admin
-    .getByLabel("Steps")
+    .getByRole("textbox", { name: "Steps" })
     .fill(
       "The lead has a phone number.\nThe budget is stated and fits the property.",
     );
@@ -68,7 +68,9 @@ test("an administrator writes the procedure, the Qualifier suggests, a manager d
   await expect(
     admin.getByText("The procedure was saved as a new version."),
   ).toBeVisible();
-  await expect(admin.getByText("The budget is stated and fits")).toBeVisible();
+  await expect(
+    admin.getByText("The budget is stated and fits").first(),
+  ).toBeVisible();
 
   const trial = admin.getByRole("form", { name: "Try the procedure" });
   await trial.getByLabel("Lead").selectOption({ label: lead.lastName });

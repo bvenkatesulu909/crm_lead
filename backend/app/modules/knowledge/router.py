@@ -208,6 +208,7 @@ def answer_knowledge(
         model_used=outcome.model_used,
         grounded=outcome.grounded,
         citations=outcome.citations,
+        refusal_reason=outcome.reason,
     )
 
 
@@ -338,6 +339,7 @@ def portal_answer_knowledge(
         model_used=outcome.model_used,
         grounded=outcome.grounded,
         citations=outcome.citations,
+        refusal_reason=outcome.reason,
     )
 
 

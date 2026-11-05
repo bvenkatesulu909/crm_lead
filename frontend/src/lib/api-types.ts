@@ -1283,6 +1283,9 @@ export type KnowledgeAnswerResponse = {
   model_used: boolean;
   grounded: boolean;
   citations: number[];
+  /** Why it was refused (null when answered): not_found, ungrounded, rera_not_found,
+   * rera_not_cited, price_not_cited (CRM-115). */
+  refusal_reason: string | null;
 };
 
 // --- Contracts and renewals (docs/contracts.md) ----------------------------------------------

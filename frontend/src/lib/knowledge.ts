@@ -69,3 +69,45 @@ export const initialAskState: AskState = {
   answer: null,
   error: null,
 };
+
+// --- The RERA / price refusal gate (CRM-115 / BP-08, docs/brochures-rera.md) ------------------
+
+/** The backend adds this exact sentence to every answer that names a RERA number. A backend test
+ * checks that this copy matches, so the screen can show it as its own note. */
+export const LIVE_CHECK_LINE =
+  "This is what the cited documents say; it is not a live check of the RERA registry.";
+
+/** The answer without the fixed line, and whether the line was there (only at the very end). */
+export function splitLiveCheck(answer: string): {
+  text: string;
+  liveCheck: boolean;
+} {
+  if (!answer.endsWith(LIVE_CHECK_LINE))
+    return { text: answer, liveCheck: false };
+  return {
+    text: answer.slice(0, -LIVE_CHECK_LINE.length).trimEnd(),
+    liveCheck: true,
+  };
+}
+
+const REFUSAL_HINTS: Record<string, string> = {
+  not_found:
+    "Nothing in the knowledge base was close enough; try different words or ask a colleague.",
+  ungrounded:
+    "The assistant's answer was not fully supported by the documents, so it is not shown.",
+  rera_not_found:
+    "No document you can see contains that RERA number. Check the number; a live check of the registry is a separate step (Web check on the lead or account page).",
+  rera_not_cited:
+    "The assistant's answer gave a RERA number that is not in the documents it cited, so it is not shown. Open the brochure itself.",
+  price_not_cited:
+    "The assistant's answer gave a price that is not in the documents it cited, so it is not shown. Open the brochure itself.",
+};
+
+/** Why an answer was refused, in plain words; null for an answer. */
+export function refusalHint(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+  return (
+    REFUSAL_HINTS[reason] ??
+    "The question could not be answered from the documents."
+  );
+}

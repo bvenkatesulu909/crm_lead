@@ -6110,6 +6110,17 @@
             ],
             "title": "Query Id"
           },
+          "refusal_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Reason"
+          },
           "sources": {
             "items": {
               "$ref": "#/components/schemas/KnowledgeAnswerSource"

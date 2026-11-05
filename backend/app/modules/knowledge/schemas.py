@@ -58,6 +58,9 @@ class KnowledgeAnswerResponse(BaseModel):
     # R5 evaluation signals: the answer's citations were checked against the given sources.
     grounded: bool
     citations: list[int]
+    # Why the answer was refused, as a code (None when answered): not_found, ungrounded,
+    # rera_not_found, rera_not_cited, price_not_cited (CRM-115). The screen words it.
+    refusal_reason: str | None = None
 
 
 class KnowledgeSearchHit(BaseModel):

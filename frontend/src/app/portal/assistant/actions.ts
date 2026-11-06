@@ -48,6 +48,8 @@ export async function sendMessage(
           text,
           ...(conversationId ? { conversation_id: conversationId } : {}),
         }),
+        // An AI model can take longer than the default 10 s API timeout (free models often do).
+        signal: AbortSignal.timeout(60_000),
       },
     );
   } catch (error) {

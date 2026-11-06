@@ -15,8 +15,13 @@ export async function askStaffAssistant(
   };
   const fieldErrors: StaffAssistantState["fieldErrors"] = {};
   if (values.question.length < 3) fieldErrors.question = "Ask a question.";
-   if (Object.keys(fieldErrors).length > 0)
-    return { ...initialStaffAssistantState, attempt: previous.attempt + 1, values, fieldErrors };
+  if (Object.keys(fieldErrors).length > 0)
+    return {
+      ...initialStaffAssistantState,
+      attempt: previous.attempt + 1,
+      values,
+      fieldErrors,
+    };
   try {
     const result = await apiFetch<{
       answer: string;
@@ -25,6 +30,8 @@ export async function askStaffAssistant(
     }>("/assistant/ask", {
       method: "POST",
       body: JSON.stringify({ question: values.question }),
+      // An AI model can take longer than the default 10 s API timeout (free models often do).
+      signal: AbortSignal.timeout(60_000),
     });
     return {
       attempt: previous.attempt + 1,

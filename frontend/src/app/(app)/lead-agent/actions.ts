@@ -24,6 +24,8 @@ export async function askLeadAgent(
     const run = await apiFetch<{ outcome: string }>("/lead-agent/runs", {
       method: "POST",
       body: JSON.stringify({ lead_id: leadId }),
+      // An AI model can take longer than the default 10 s API timeout (free models often do).
+      signal: AbortSignal.timeout(60_000),
     });
     outcome = run.outcome;
   } catch (error) {

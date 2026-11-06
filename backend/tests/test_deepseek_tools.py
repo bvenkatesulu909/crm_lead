@@ -249,3 +249,43 @@ def test_an_unexpected_answer_shape_gives_an_empty_reply_not_a_crash() -> None:
         system="s", messages=[{"role": "user", "content": "x"}], tools=[SAVE_LEAD]
     )
     assert reply.text == "" and reply.tool_uses == []
+
+
+def settings_with_fallbacks(value: str) -> Settings:
+    return Settings(
+        _env_file=None,
+        database_url=UNREACHABLE_DATABASE_URL,
+        oidc_issuer=TEST_ISSUER,
+        ai_provider="deepseek",
+        deepseek_api_key=SecretStr("test-key-not-real"),
+        deepseek_base_url="https://openrouter.ai/api/v1",
+        deepseek_model="google/gemma-4-31b-it:free",
+        deepseek_fallback_models=value,
+    )
+
+
+def test_without_fallbacks_no_models_list_is_sent() -> None:
+    http = FakeHttp(text_answer("hi"))
+    model(http).reply(system="s", messages=[{"role": "user", "content": "hi"}], tools=[])
+    assert "models" not in http.requests[0]["json"]
+
+
+def test_fallback_models_are_sent_in_order_after_the_first_model() -> None:
+    http = FakeHttp(text_answer("hi"))
+    settings = settings_with_fallbacks(" nvidia/a:free , google/b:free ")
+    DeepSeekChatModel(settings, http_post=http).reply(
+        system="s", messages=[{"role": "user", "content": "hi"}], tools=[SAVE_LEAD]
+    )
+    sent = http.requests[0]["json"]
+    assert sent["model"] == "google/gemma-4-31b-it:free"
+    assert sent["models"] == ["google/gemma-4-31b-it:free", "nvidia/a:free", "google/b:free"]
+    assert http.requests[0]["url"] == "https://openrouter.ai/api/v1/chat/completions"
+
+
+@pytest.mark.parametrize(
+    "bad",
+    ["a:free,b:free,c:free,d:free", "ok:free, has space", "https://evil.example/x", "x;rm"],
+)
+def test_fallback_models_must_be_at_most_three_plain_names(bad: str) -> None:
+    with pytest.raises(ValueError, match="deepseek_fallback_models"):
+        settings_with_fallbacks(bad)

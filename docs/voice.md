@@ -25,9 +25,14 @@ Both require a valid Keycloak bearer token for a staff or customer principal.
 |---|---|---|
 | `POST /api/v1/voice/transcribe` | multipart `file` (audio/webm, wav, mpeg, mp4, ogg) | `{ "text": "..." }` |
 | `POST /api/v1/voice/speak` | `{ "text": "..." }` (≤2000 chars) | `audio/mpeg` |
+| `GET /api/v1/voice/status` | - | `{ enabled, browser_engine, server_engine, minutes_used, minutes_budget }` |
 
 Controls:
 
+- **agent registry entry `voice`** (ADR 0023): off by default per organisation; off → 503
+  `voice_off` before the speech service is called; the month's estimated minutes
+  (`CRM_VOICE_MONTHLY_MINUTES`, 300) used up → 503 `voice_budget_reached`. Only the estimated
+  seconds are counted - never the audio or the words;
 - upload limit `CRM_VOICE_MAX_UPLOAD_BYTES` (default 10 MiB);
 - unsupported/empty/oversized audio → **503 `voice_unavailable`**;
 - TTS text is passed through the assistant **output guardrail** before synthesis;
@@ -55,10 +60,11 @@ failure mapping, provider absent without key. Uses `httpx.MockTransport`; no pai
 
 ## Current UI integration
 
-The portal assistant and ticket reply dictation currently use **browser speech**. Wiring the
-UI to these server endpoints (MediaRecorder upload + audio playback) is the remaining step;
-until then the server gateway is available to API clients and voice-enabled frontends but is
-not the default UI path.
+- The **voice conversation** with the staff assistant uses these endpoints when a key (or the
+  local engine) is configured, otherwise the browser's own speech - see
+  [voice-conversation.md](voice-conversation.md) (ADR 0023).
+- The **Mic** buttons (portal assistant, staff one-off question) record and call `/transcribe`;
+  on 503 (no key, or voice switched off) they fall back to the browser's own speech recognition.
 
 ## ElevenLabs adapter
 

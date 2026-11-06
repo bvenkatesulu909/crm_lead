@@ -219,3 +219,17 @@ def test_the_backup_is_unhealthy_when_a_night_has_been_missed() -> None:
 def test_the_backup_settings_cannot_be_turned_to_plain_http() -> None:
     assert problems(filled(fresh()) + "BACKUP_S3_SECURE=false\n")
     assert problems(filled(fresh()) + "BACKUP_S3_SECURE=true\n") == []
+
+
+def test_the_backup_upload_works_with_google_cloud_storage() -> None:
+    # Found on the first real server (2026-11-06): AWS CLI 2.23+ sends a new kind of checksum by
+    # default, which Google Cloud Storage's S3 interface refuses ("SignatureDoesNotMatch ...
+    # Invalid argument"). Asking for checksums only "when required" works there and on AWS,
+    # Backblaze and MinIO alike.
+    backup = code(script_text("backup.sh"))
+    assert re.search(r"^AWS_REQUEST_CHECKSUM_CALCULATION=when_required$", backup, flags=re.M)
+    assert re.search(r"^AWS_RESPONSE_CHECKSUM_VALIDATION=when_required$", backup, flags=re.M)
+    exported = re.search(r"^export (.+)$", backup, flags=re.M)
+    assert exported is not None
+    for name in ("AWS_REQUEST_CHECKSUM_CALCULATION", "AWS_RESPONSE_CHECKSUM_VALIDATION"):
+        assert name in exported.group(1).split(), name

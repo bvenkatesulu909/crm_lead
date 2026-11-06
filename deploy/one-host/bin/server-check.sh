@@ -7,8 +7,8 @@
 # made on this machine says so instead of passing. It reports every problem and does not stop at the
 # first one, so it has no `set -e`.
 #
-# Written for Ubuntu LTS. It was NOT run on a real server (none exists yet); the checks that need
-# one are marked as such in docs/one-host-hardening.md.
+# Written for Ubuntu LTS. First run on a real server on 2026-11-06 (Google Cloud, Ubuntu 24.04);
+# that run found the migrate-line bug fixed below.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -84,13 +84,15 @@ fi
 
 echo "The services"
 if have docker && [ -f "$ENV_FILE" ]; then
-  states=$(dc ps -a --format '{{.Service}} {{.State}} {{.Health}} {{.ExitCode}}' 2> /dev/null || true)
+  # '|' between the fields: a job without a health check (migrate) has an EMPTY Health, and
+  # splitting on spaces would move its exit code one field to the left.
+  states=$(dc ps -a --format '{{.Service}}|{{.State}}|{{.Health}}|{{.ExitCode}}' 2> /dev/null || true)
   if [ -z "$states" ]; then
     warn "the stack is not running here"
   else
-    bad=$(printf '%s\n' "$states" | awk '$1 != "migrate" && ($2 != "running" || $3 == "unhealthy" || $3 == "starting") {print $1}' | tr '\n' ' ')
+    bad=$(printf '%s\n' "$states" | awk -F'|' '$1 != "migrate" && ($2 != "running" || $3 == "unhealthy" || $3 == "starting") {print $1}' | tr '\n' ' ')
     if [ -z "$bad" ]; then pass "every service is running and healthy"; else fail "not running or not healthy: $bad"; fi
-    printf '%s\n' "$states" | awk '$1 == "migrate" && $2 == "exited" && $4 == "0" {found=1} END {exit !found}' && pass "the migration job finished with exit code 0" || fail "the migration job did not finish cleanly"
+    printf '%s\n' "$states" | awk -F'|' '$1 == "migrate" && $2 == "exited" && $4 == "0" {found=1} END {exit !found}' && pass "the migration job finished with exit code 0" || fail "the migration job did not finish cleanly"
   fi
   last=$(dc exec -T backup cat /backups/last_success 2> /dev/null | tr -d '\r' || true)
   if [ -n "$last" ]; then

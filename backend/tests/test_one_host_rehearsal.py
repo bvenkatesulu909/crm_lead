@@ -311,6 +311,67 @@ def test_the_server_check_changes_nothing_and_prints_no_secret() -> None:
     )
 
 
+FAKE_DOCKER = r"""#!/bin/bash
+# Stands in for docker on a server: answers `compose ... ps -a --format F` with the services of a
+# healthy stack, filling each {{.Field}} of F the way docker does (an empty Health for a job
+# without a health check, such as migrate).
+if [[ " $* " == *" ps "* ]]; then
+  format=""
+  while [ $# -gt 0 ]; do [ "$1" = "--format" ] && format="$2"; shift; done
+  while IFS=, read -r service state health exitcode; do
+    line="${format//\{\{.Service\}\}/$service}"
+    line="${line//\{\{.State\}\}/$state}"
+    line="${line//\{\{.Health\}\}/$health}"
+    line="${line//\{\{.ExitCode\}\}/$exitcode}"
+    printf '%s\n' "$line"
+  done <<'ROWS'
+api,running,healthy,0
+caddy,running,healthy,0
+migrate,exited,,0
+postgres,running,healthy,0
+ROWS
+fi
+exit 0
+"""
+
+
+def run_server_check_against_a_healthy_stack(tmp_path: Path) -> str:
+    bash = working_bash()
+    if bash is None:
+        pytest.skip("no bash on this machine")
+    folder = tmp_path / "one-host"
+    (folder / "bin").mkdir(parents=True)
+    (folder / "bin" / "server-check.sh").write_text(script_text_of(SERVER_CHECK), encoding="utf-8")
+    (folder / ".env").write_text("X=1\n", encoding="utf-8")
+    fakes = tmp_path / "fakes"
+    fakes.mkdir()
+    docker = fakes / "docker"
+    docker.write_text(FAKE_DOCKER, encoding="utf-8", newline="\n")
+    docker.chmod(0o755)
+    script = (folder / "bin" / "server-check.sh").as_posix()
+    fake_dir = fakes.as_posix()
+    if re.match(r"^[A-Za-z]:/", fake_dir):  # Git Bash on Windows: "C:/x" would split PATH at ":"
+        fake_dir = f"/{fake_dir[0].lower()}{fake_dir[2:]}"
+    result = subprocess.run(
+        [bash, "-c", f'PATH="{fake_dir}:$PATH" bash "{script}"'],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    return result.stdout
+
+
+def test_the_server_check_accepts_a_finished_migration_job_without_a_health_check(
+    tmp_path: Path,
+) -> None:
+    # Found on the first real server (2026-11-06): docker prints an EMPTY Health for `migrate`, so
+    # splitting the line on spaces moved its exit code one field to the left and a clean migration
+    # was reported as "did not finish cleanly".
+    out = run_server_check_against_a_healthy_stack(tmp_path)
+    assert "PASS  the migration job finished with exit code 0" in out, out
+    assert "PASS  every service is running and healthy" in out, out
+
+
 def test_the_hardening_guide_covers_the_whole_list() -> None:
     text = HARDENING.read_text(encoding="utf-8")
     for heading in (

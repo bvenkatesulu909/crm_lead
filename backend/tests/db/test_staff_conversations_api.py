@@ -7,7 +7,7 @@ manager, manager2, agent1, agent2, support, customers; beta: admin, agent).
 
 import json
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -44,7 +44,7 @@ class Streaming:
 
     def stream_reply(
         self, *, system: str, messages: list[dict[str, Any]], tools: list[Any]
-    ) -> Iterator[str]:
+    ) -> Generator[str, None, ModelReply]:
         self.calls.append({"system": system, "messages": [dict(m) for m in messages]})
         answer = self.answers.pop(0) if self.answers else (["Done."], [])
         if isinstance(answer, Exception):

@@ -209,7 +209,13 @@ def test_the_platform_switch_refuses_everything_even_without_settings(ctx: Ctx) 
     off = Limits(platform_disabled=True, default_monthly_tokens=1000)
     for key, agent in AGENTS.items():
         if not agent.platform_switch:
-            ctx.check(key=key, limits=off)  # the web check calls no model and no AI acts for it
+            # The web check calls no model and no AI acts for it: the platform switch does not
+            # apply. An agent that is off by default (voice) answers to its own switch instead.
+            if agent.default_enabled:
+                ctx.check(key=key, limits=off)
+            else:
+                with pytest.raises(AgentUnavailableError):
+                    ctx.check(key=key, limits=Limits(False, 1000))
             continue
         with pytest.raises(AgentUnavailableError):
             ctx.check(key=key, limits=off)

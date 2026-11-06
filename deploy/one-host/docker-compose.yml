@@ -49,6 +49,19 @@ x-api-environment: &api-environment
   CRM_MAIL_FROM: CRM <${MAIL_FROM_ADDRESS:?run bin/make_env.py}>
   CRM_ANTHROPIC_API_KEY: ${CRM_ANTHROPIC_API_KEY:-}
   CRM_DEEPSEEK_API_KEY: ${CRM_DEEPSEEK_API_KEY:-}
+  # Which model answers (assistant, Qualifier, lead agent) and, for the OpenAI-compatible provider,
+  # where: DeepSeek by default, or any compatible service such as OpenRouter. "fake" is refused.
+  CRM_AI_PROVIDER: ${CRM_AI_PROVIDER:-anthropic}
+  CRM_DEEPSEEK_BASE_URL: ${CRM_DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+  CRM_DEEPSEEK_MODEL: ${CRM_DEEPSEEK_MODEL:-deepseek-chat}
+  # For the estimated cost on the AI agents page (US dollars per million tokens; 0 = no estimate).
+  CRM_AI_INPUT_PRICE_PER_MILLION: ${CRM_AI_INPUT_PRICE_PER_MILLION:-0}
+  CRM_AI_OUTPUT_PRICE_PER_MILLION: ${CRM_AI_OUTPUT_PRICE_PER_MILLION:-0}
+  # Public website chat (ADR 0013): off unless BOTH the organisation and the key are set. The same
+  # key goes into Netlify as PUBLIC_CHAT_SERVER_KEY; visitors' browsers never see it.
+  CRM_PUBLIC_CHAT_TENANT_SLUG: ${CRM_PUBLIC_CHAT_TENANT_SLUG:-}
+  CRM_PUBLIC_CHAT_SERVER_KEY: ${CRM_PUBLIC_CHAT_SERVER_KEY:-}
+  CRM_PUBLIC_CHAT_PROVIDER: ${CRM_PUBLIC_CHAT_PROVIDER:-deepseek}
 
 services:
   postgres:

@@ -56,15 +56,24 @@ def test_the_deployment_guide_has_the_one_server_path_and_its_checklist() -> Non
         "ADMIN_ALLOWED_IPS=127.0.0.1",
     ):
         assert item in text, item
-    assert "has never run on a real server" in text, "the guide must not pretend it was tried"
-    assert re.search(r"- \[ \] .*restore-test\.sh.*RESTORE TEST PASSED", text), "checklist line"
-    assert re.search(r"- \[ \] .*server-check\.sh", text), "checklist line for the server check"
+    # Since 2026-11-06 the path runs on a real (staging) server. The guide must say when, and the
+    # ticked lines must say when they were checked, so a tick never stands without evidence.
+    assert "First real server: 2026-11-06" in text, "the guide must say when it first ran for real"
+    assert 'not "go live"' in text, "staging must not be presented as live"
+    restore = re.search(r"- \[x\] .*restore-test\.sh.*RESTORE TEST PASSED.*\n\s+\(2026-", text)
+    assert restore, "the restore-test line is ticked only with the date it passed"
+    server_check = re.search(r"- \[x\] .*server-check\.sh(.*\n)?.*0 FAIL", text)
+    assert server_check, "the server check is ticked only with its result"
+    # Lines nobody has checked yet stay open.
+    assert re.search(r"- \[ \] A copy of the server's `\.env` is in your password manager", text)
 
 
-def test_the_guides_say_honestly_that_nothing_was_tried_on_a_real_server() -> None:
+def test_the_guides_say_honestly_where_the_one_server_path_stands() -> None:
+    # Staging on a real server since 2026-11-06; neither guide may call it live.
     for guide in (FOLDER / "README.md", ROOT / "docs" / "one-host-hardening.md"):
         text = guide.read_text(encoding="utf-8").lower()
-        assert "not deployed" in text or "never done on a real server" in text, guide.name
+        assert "2026-11-06" in text and "staging" in text, guide.name
+        assert "is live" not in text and "went live" not in text, guide.name
 
 
 def test_the_adr_index_lists_the_decision_as_accepted() -> None:

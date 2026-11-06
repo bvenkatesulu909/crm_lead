@@ -1,6 +1,7 @@
 # Hardening the one server (ADR 0021, step OH3)
 
-**Status: written and rehearsed on a PC, never done on a real server.** There is no server yet. The
+**Status: done on the first real server on 2026-11-06** (staging, Google Cloud): `bin/server-check.sh`
+shows 0 FAIL / 0 WARN there. The
 commands below are for a fresh **Ubuntu LTS** server and are the usual ones; read each before you run
 it, and check the result with `bin/server-check.sh` (last section). Do this **before** real data goes in
 and before you say "go live" (CLAUDE.md rule 6). The tick-list is in [deployment.md](deployment.md).

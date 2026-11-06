@@ -448,7 +448,7 @@ Accepted 2026-10-31 with the recommended answers to the five questions in ADR 00
 - Integration credentials encrypted at rest and never logged.
 - Definition of Done checklist complete.
 
-## Phase 20 — AI Chatbot & Voice Assistant (Module 16)  *(20a text chat in the portal done — see docs/assistant.md; 20b knowledge base (pgvector) designed in docs/rag-knowledge-base.md + proposed ADR 0010, not built; 20c voice pending)*
+## Phase 20 — AI Chatbot & Voice Assistant (Module 16)  *(20a text chat in the portal done — see docs/assistant.md; 20b knowledge base (pgvector) designed in docs/rag-knowledge-base.md + proposed ADR 0010, not built; 20c voice: designed in ADR 0023 (proposed), see Phase VM)*
 
 **Acceptance criteria**
 - Chat UI in staff app; assistant answers questions and performs actions only via permission-checked tools acting as the current user.
@@ -456,6 +456,46 @@ Accepted 2026-10-31 with the recommended answers to the five questions in ADR 00
 - Tests: assistant cannot read another tenant's or unauthorized record even if asked to; prompt-injection text inside a record does not trigger actions.
 - Voice input/output works in a supported browser.
 - Provider API key from env var only.
+
+## Phase VM — Live voice mode for the staff AI Assistant (Phase 20c)  *(ADR 0023 proposed 2026-11-06; waiting for the owner's answers; nothing built)*
+
+Goal: press one button, speak, hear the answer, keep talking turn by turn. Each step stops for review and starts
+with failing tests. Order matters: the delay is mostly the model, so streaming and memory come first.
+
+- **VM0 — design** *(this step)*: ADR 0023 (three options compared: browser speech, server speech, realtime model) and this plan. Documents only.
+- **VM1 — streaming answers with memory** (backend + typed assistant): table `assistant_conversation_turns`
+  (new migration, forced RLS, owner-only, deleted after 24 h by the worker; last 6 turns to the model, as
+  screened data); `POST /api/v1/assistant/conversations` and `.../{id}/turns` answering sentence by sentence
+  (Server-Sent Events) through a Next.js route handler (no token in the browser); streaming in the model
+  client (OpenRouter/DeepSeek `stream: true`, Anthropic); each sentence cleaned (`sanitise_output` + ADR 0018)
+  before it leaves the API; the existing `POST /assistant/ask` unchanged. Tests: happy path, validation, tenant
+  isolation, another person's conversation (404), tampered conversation id, role denial, a link split across
+  two pieces is still removed, proposals still only proposals, registry switch/budget still refuse.
+- **VM2 — voice screen, browser engine**: "Start voice conversation" on the assistant page; loop listen
+  (Web Speech API, `en-IN`) → send → speak each sentence (`speechSynthesis`) → listen again; Stop; transcript
+  on screen; status words; fixed "One moment, I'm looking that up." during tool rounds; clear message where the
+  browser cannot listen (Firefox). New registry entry `voice` (no model, off by default). Consent text corrected
+  per engine. Tests: Vitest with a fake speech engine (loop, stop, errors, no listening while speaking).
+- **VM3 — server engine**: the same screen with the existing `voice/` provider (`CRM_VOICE_*`), speech per
+  sentence, seconds of audio counted against the `voice` minutes budget (503 when over or switched off),
+  setting `CRM_VOICE_BROWSER_ENGINE` to forbid the browser engine. Tests: metering, budget, switch, provider
+  down → clear message, no audio stored or logged.
+- **VM4 — interrupting and silence detection**: stop speaking when the person starts talking; end a turn
+  after ~0.8 s of silence (Web Audio level meter for the server engine); echo cancellation. Tests: component
+  tests with simulated levels; a manual check on Chrome, iPhone Safari and Firefox (written down, not claimed
+  as automated).
+- **VM5 — evaluation, journey, measurements, docs**: BP-10 cases for voice-shaped questions (short answers,
+  follow-up questions using memory, no "done" claim); Playwright journey with injected transcripts;
+  first-sentence delay measured on staging with the free model (and one fast paid model if the owner agrees);
+  `docs/voice.md`; inventory and OpenAPI refreshed.
+
+**Acceptance criteria**
+- One press starts a spoken conversation; the person hears the first sentence of each answer while the rest is still being written.
+- A follow-up question ("and the second one?") is answered from the conversation's memory.
+- Tokens never reach the browser; the `staff_assistant` and `voice` registry switches, budgets and `CRM_AI_DISABLED` stop it.
+- Nothing changes in the CRM by voice except proposals, which still need another person's approval.
+- Audio is never stored; which outside company hears it is written in the consent text for the engine in use.
+- Realtime speech-to-speech is out of scope (needs its own ADR).
 
 ## Phase 21 — Hardening & release readiness (local)
 

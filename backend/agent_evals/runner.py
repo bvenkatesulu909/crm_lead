@@ -26,7 +26,7 @@ from app.core.config import Settings
 from app.core.errors import DomainError
 from app.modules.agents import api as agents_api
 from app.modules.assistant import service as portal_service
-from app.modules.assistant import staff_service, staff_tools
+from app.modules.assistant import staff_conversations, staff_service, staff_tools
 from app.modules.assistant.llm import ChatModel, ModelReply, ToolUse
 from app.modules.assistant.service import GuardrailError
 from app.modules.lead_agent import api as lead_agent_api
@@ -175,17 +175,27 @@ def run_staff_case(
     ``model`` is a real model; without one the case's script plays."""
     if case.agent != "staff_assistant":
         raise RunnerError(f"case '{case.id}' is for the {case.agent}, not the staff assistant")
-    if len(case.messages) != 1:
-        raise RunnerError(f"case '{case.id}': the staff assistant answers one question at a time")
     recorder = RecordingModel(
         model if model is not None else ScriptedModel(case.script),
         drop_unanswered=case.governance is not None,
     )
-    budget = staff_tools.ProposalBudget(expiry_days=expiry_days, pending_limit=pending_limit)
     try:
-        answer, _ticket, _links, proposals = staff_service.answer(
-            session, principal, recorder, question=case.messages[0], budget=budget, limits=limits
-        )
+        if len(case.messages) == 1 and case.mode == "text":
+            budget = staff_tools.ProposalBudget(
+                expiry_days=expiry_days, pending_limit=pending_limit
+            )
+            answer, _ticket, _links, proposals = staff_service.answer(
+                session,
+                principal,
+                recorder,
+                question=case.messages[0],
+                budget=budget,
+                limits=limits,
+            )
+        else:
+            answer, proposals = _staff_conversation(
+                session, principal, case, recorder, expiry_days, pending_limit, limits
+            )
     except GuardrailError as exc:
         # Stopped before any model ran: the person is told why, nothing is called.
         return StaffRun(Trajectory([], exc.detail, "refused", recorder.asked), [])
@@ -195,6 +205,49 @@ def run_staff_case(
     calls = recorder.calls
     outcome = conversation_outcome(calls, len(proposals))
     return StaffRun(Trajectory(calls, answer, outcome, recorder.asked), [p.id for p in proposals])
+
+
+def _staff_conversation(
+    session: Session,
+    principal: Principal,
+    case: Case,
+    model: ChatModel,
+    expiry_days: int,
+    pending_limit: int,
+    limits: agents_api.Limits | None,
+) -> tuple[str, list[staff_tools.ProposalRef]]:
+    """Several questions of one remembered conversation, each answer streamed (ADR 0023) - the
+    path of ``POST /assistant/conversations/{id}/turns``. Returns the last answer and every
+    proposal of the conversation."""
+    conversation = staff_conversations.start(session, principal)
+    answer = ""
+    proposals: list[staff_tools.ProposalRef] = []
+    for text in case.messages:
+        # A new budget per question, as the API gives each turn.
+        budget = staff_tools.ProposalBudget(expiry_days=expiry_days, pending_limit=pending_limit)
+        prepared = staff_service.prepare(
+            session,
+            principal,
+            model,
+            question=text,
+            history=staff_conversations.history(session, conversation),
+            voice=case.mode == "voice",
+            budget=budget,
+            limits=limits,
+            precheck=True,
+        )
+        finished: staff_service.Finished | None = None
+        for event in staff_service.run(session, principal, prepared, stream=True):
+            if isinstance(event, staff_service.Finished):
+                finished = event
+        if finished is None:  # pragma: no cover - run() always finishes
+            raise RunnerError(f"case '{case.id}': the answer did not finish")
+        staff_conversations.record(
+            session, conversation, question=prepared.question, answer=finished.answer
+        )
+        answer = finished.answer
+        proposals.extend(finished.proposals)
+    return answer, proposals
 
 
 # --- the customer portal assistant (EV3) ----------------------------------------------------------

@@ -230,6 +230,9 @@ Tick **every** item of the checklist below, remove the staging password, announc
       sizes and run time, and our files can be 20 MB. If too small: browser → bucket uploads with
       signed URLs (a small design change, to be done in D1b before staging).
 - [ ] Rate limiting and security headers at the edge; logs checked for personal data.
+- [ ] Voice (ADR 0023): `CRM_VOICE_BROWSER_ENGINE=false` once real customers' data is spoken (otherwise
+  Google/Apple/Microsoft hear the audio); a speech key (`CRM_VOICE_API_KEY`) only if the owner accepts that
+  vendor; the `voice` agent stays off until an administrator switches it on.
 - [ ] Dependency and image scan (`docker-skills:scan` / Trivy) with no high findings.
 - [ ] Phase 21 hardening list in `implementation-plan.md` completed.
 - [ ] Monthly cost understood (Netlify credits plan + API host + database + Keycloak host + bucket +

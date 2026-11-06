@@ -98,7 +98,11 @@ export function AssistantConversation({
 }: {
   voice: VoiceStatus | null;
 }) {
-  const [turns, setTurns] = useState<VoiceTurn[]>([]);
+  // Turns before the current voice session, and the session's own turns (the loop owns those).
+  const [earlier, setEarlier] = useState<VoiceTurn[]>([]);
+  const [live, setLive] = useState<VoiceTurn[]>([]);
+  const liveRef = useRef<VoiceTurn[]>([]);
+  const turns = [...earlier, ...live];
   const [state, setState] = useState<VoiceState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
@@ -124,7 +128,14 @@ export function AssistantConversation({
       })
     : null;
 
-  useEffect(() => () => endVoice(), []);
+  // Leaving the page ends the conversation and releases the microphone.
+  useEffect(
+    () => () => {
+      loop.current?.stop();
+      engines.current?.stream?.getTracks().forEach((track) => track.stop());
+    },
+    [],
+  );
 
   // While the assistant speaks, a person who starts talking can cut it off (needs headphones on
   // most laptops: the speakers would otherwise trigger it).
@@ -175,20 +186,20 @@ export function AssistantConversation({
     setTyped("");
     const answer: VoiceTurn = { role: "assistant", text: "" };
     const before: VoiceTurn[] = [
-      ...turns,
+      ...earlier,
       { role: "user", text: question, final: true },
     ];
-    setTurns([...before, answer]);
+    setEarlier([...before, answer]);
     try {
       const done = await ask(question, "text", (event) => {
         if (event.type === "sentence") {
           answer.text = answer.text
             ? `${answer.text} ${event.text}`
             : event.text;
-          setTurns([...before, { ...answer }]);
+          setEarlier([...before, { ...answer }]);
         }
       });
-      setTurns([
+      setEarlier([
         ...before,
         {
           role: "assistant",
@@ -198,7 +209,7 @@ export function AssistantConversation({
         },
       ]);
     } catch (problem) {
-      setTurns(before);
+      setEarlier(before);
       setTyped(question);
       const code =
         problem instanceof StreamError ? problem.code : "assistant_unavailable";
@@ -223,21 +234,16 @@ export function AssistantConversation({
       return;
     }
     const { listener, speaker } = engines.current;
-    let voiceTurnsSet = new Set<VoiceTurn>();
     const instance = new VoiceConversation(
       listener,
       speaker,
       (question, onEvent) => ask(question, "voice", onEvent),
       {
         onState: setState,
-        onTurns: (voiceTurns) =>
-          setTurns((current) => {
-            // Typed turns before this voice session stay; the session's own turns follow.
-            const typedBefore = current.filter((t) => !voiceTurnsSet.has(t));
-            const next = [...typedBefore, ...voiceTurns];
-            voiceTurnsSet = new Set(voiceTurns);
-            return next;
-          }),
+        onTurns: (voiceTurns) => {
+          liveRef.current = voiceTurns;
+          setLive(voiceTurns);
+        },
         onError: showError,
       },
     );
@@ -260,6 +266,13 @@ export function AssistantConversation({
   function endVoice() {
     loop.current?.stop();
     loop.current = null;
+    // The session's turns join the earlier ones (a typed question can follow).
+    const finished = liveRef.current;
+    liveRef.current = [];
+    if (finished.length) {
+      setEarlier((current) => [...current, ...finished]);
+      setLive([]);
+    }
     engines.current?.stream?.getTracks().forEach((track) => track.stop());
     engines.current = null;
   }
@@ -267,7 +280,8 @@ export function AssistantConversation({
   function newConversation() {
     endVoice();
     conversationId.current = null;
-    setTurns([]);
+    setEarlier([]);
+    setLive([]);
     setError(null);
   }
 
@@ -335,7 +349,7 @@ export function AssistantConversation({
         }}
       >
         <label htmlFor="conversation-question" className="sr-only">
-          Your question
+          Message to the assistant
         </label>
         <input
           id="conversation-question"

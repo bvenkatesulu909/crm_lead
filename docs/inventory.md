@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-11-03 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-11-06 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **223** operations over **178** paths and **260** schemas.
+- **228** operations over **183** paths and **266** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -19,6 +19,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | catalogue | 11 |
 | communications | 11 |
 | user administration | 11 |
+| assistant | 10 |
 | opportunities | 10 |
 | accounts | 9 |
 | contracts | 9 |
@@ -26,7 +27,6 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | activities | 8 |
 | invoices | 8 |
 | knowledge | 8 |
-| assistant | 7 |
 | contacts | 7 |
 | qualifier | 7 |
 | workflows | 7 |
@@ -39,29 +39,30 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | customer relationships | 3 |
 | identity | 3 |
 | portal access | 3 |
+| voice | 3 |
 | webcheck | 3 |
 | health | 2 |
 | onboarding | 2 |
 | portal-knowledge | 2 |
 | public chat | 2 |
-| voice | 2 |
 | dashboard | 1 |
+| lead-agent | 1 |
 | platform | 1 |
 
 ## Database (live)
 
-- Alembic revision: **0049**
-- Tables in the current schema: **65**
-- Tables with Row-Level Security: **61** (61 policies)
+- Alembic revision: **0051**
+- Tables in the current schema: **67**
+- Tables with Row-Level Security: **63** (63 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **49**
-- Heads: `0049`
+- Migration files: **51**
+- Heads: `0051`
 
 ## Web app (`frontend/src/app`)
 
-- 81 pages and 13 route handlers.
+- 81 pages and 15 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -81,6 +82,8 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/approvals` | page |
 | `/approvals/[id]` | page |
 | `/assistant` | page |
+| `/assistant/conversations` | route handler |
+| `/assistant/conversations/[id]/turns` | route handler |
 | `/automation` | page |
 | `/automation/[id]` | page |
 | `/automation/agents` | page |
@@ -162,10 +165,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **155**
-- Frontend component test files: **31**
-- Playwright end-to-end specs: **29**
+- Backend test files: **171**
+- Frontend component test files: **36**
+- Playwright end-to-end specs: **32**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **72** (23 in `docs/adr/`)
+- Markdown documents under `docs/`: **79** (25 in `docs/adr/`)

@@ -1,3 +1,5 @@
+import { StrictMode } from "react";
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -66,7 +68,7 @@ describe("talking with the assistant", () => {
     const user = userEvent.setup();
     render(<AssistantConversation voice={null} />);
     await user.type(
-      screen.getByLabelText("Your question"),
+      screen.getByLabelText("Message to the assistant"),
       "Mark Asha as contacted{Enter}",
     );
     expect(
@@ -95,7 +97,10 @@ describe("talking with the assistant", () => {
     );
     const user = userEvent.setup();
     const { container } = render(<AssistantConversation voice={null} />);
-    await user.type(screen.getByLabelText("Your question"), "hi{Enter}");
+    await user.type(
+      screen.getByLabelText("Message to the assistant"),
+      "hi{Enter}",
+    );
     expect(await screen.findByText(/onerror/)).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
   });
@@ -107,11 +112,16 @@ describe("talking with the assistant", () => {
     });
     const user = userEvent.setup();
     render(<AssistantConversation voice={null} />);
-    await user.type(screen.getByLabelText("Your question"), "hello{Enter}");
+    await user.type(
+      screen.getByLabelText("Message to the assistant"),
+      "hello{Enter}",
+    );
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "switched off for your organisation",
     );
-    expect(screen.getByLabelText("Your question")).toHaveValue("hello");
+    expect(screen.getByLabelText("Message to the assistant")).toHaveValue(
+      "hello",
+    );
   });
 
   it("an error in the middle of the stream drops the half answer", async () => {
@@ -123,7 +133,10 @@ describe("talking with the assistant", () => {
     );
     const user = userEvent.setup();
     render(<AssistantConversation voice={null} />);
-    await user.type(screen.getByLabelText("Your question"), "hello{Enter}");
+    await user.type(
+      screen.getByLabelText("Message to the assistant"),
+      "hello{Enter}",
+    );
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "could not answer",
     );
@@ -161,5 +174,48 @@ describe("talking with the assistant", () => {
     expect(
       screen.getByRole("button", { name: "Allow microphone and start" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("a voice session", () => {
+  it("shows each spoken turn once, also in React's strict mode", async () => {
+    vi.stubEnv("NEXT_PUBLIC_VOICE_TEST_ENGINE", "1");
+    (window as Window & { __crmVoiceScript?: string[] }).__crmVoiceScript = [
+      "Hello there",
+    ];
+    mockApi(
+      sse(
+        ["sentence", { text: "Hi, how can I help?" }],
+        [
+          "done",
+          {
+            answer: "Hi, how can I help?",
+            ticket_id: "t",
+            links: [],
+            proposals: [],
+          },
+        ],
+      ),
+    );
+    const user = userEvent.setup();
+    render(
+      <StrictMode>
+        <AssistantConversation voice={on} />
+      </StrictMode>,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Allow microphone and start" }),
+    );
+    // After the answer, two silent turns end the session.
+    expect(
+      await screen.findByText(/I didn't hear anything/, {}, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Hello there")).toHaveLength(1);
+    expect(screen.getAllByText("Hi, how can I help?")).toHaveLength(1);
+    // A typed question afterwards continues below the spoken turns.
+    expect(
+      screen.getByRole("button", { name: "Start voice conversation" }),
+    ).toBeInTheDocument();
+    vi.unstubAllEnvs();
   });
 });

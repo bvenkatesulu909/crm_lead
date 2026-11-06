@@ -1,6 +1,6 @@
 # ADR 0021 — One-host deployment: API, worker, database and sign-in on one server
 
-- **Status:** Accepted (2026-11-03) with the recommended answers to the questions in section 6. OH0 (this note), OH1 (the compose files and tools), OH2 (backups, restore test, update) and OH3 (the local rehearsal and the hardening guide) are done; nothing is deployed.
+- **Status:** Accepted (2026-11-03) with the recommended answers to the questions in section 6. OH0 (this note), OH1 (the compose files and tools), OH2 (backups, restore test, update) and OH3 (the local rehearsal and the hardening guide) are done, and OH4 (docs). **First real server 2026-11-06** (D2 staging on Google Cloud; see `docs/deployment.md`, "First real server"): CRM-112 is complete. Not "go live".
 - **Date:** 2026-11-03
 - **Deciders:** Project owner
 - **Amends:** ADR 0007 (online deployment). It takes the alternative that ADR 0007 listed - "everything
@@ -233,3 +233,6 @@ domain, the bucket and the SMTP provider (all small), and Netlify.
   give (`--ssl-no-revoke`; the chain and host name are still verified); Git Bash rewrote container paths.
 - **Not done:** nothing on a real server; `server-check.sh` and the guide's commands were never run on one;
   OH4 (the second path in `docs/deployment.md`, the checklist, full runs) is still to do.
+- **Later (2026-11-06):** both were run on the first real server (D2 staging): `server-check.sh` 0 FAIL /
+  0 WARN and `restore-test.sh` PASSED with real rows; three faults only a real server showed were fixed
+  (PRs #94 and #95).

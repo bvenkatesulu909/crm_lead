@@ -1,8 +1,9 @@
 # The CRM on one server (ADR 0021)
 
-**Status: prepared and tested on a PC, NOT deployed.** Nothing here has been run on a real server,
-no account was created and no money was spent. CLAUDE.md rule 6 still holds: nothing goes online
-until you say "go live" and the hardening checklist in `docs/deployment.md` is ticked.
+**Status: running as STAGING on a real server since 2026-11-06** (Google Cloud, Mumbai; see
+`docs/deployment.md`, "First real server"). It is not live: only the owner can open the web app, and
+CLAUDE.md rule 6 still holds - nothing is open to real customers until you say "go live" and the
+hardening checklist in `docs/deployment.md` is ticked.
 
 One Linux server runs everything except the web app (Netlify), your documents (an S3 bucket) and
 your mail (an SMTP provider):

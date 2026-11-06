@@ -18,8 +18,26 @@ nothing goes online until you say "go live" and the checklist at the end is tick
 
 The one-server path was built and rehearsed on a PC (the whole stack behind HTTPS with a throwaway
 certificate authority, a 22-check smoke test that passes, a backup that was really encrypted, restored and
-compared). **It has never run on a real server.** The rest of this guide describes the managed path; where
-the one-server path differs, `deploy/one-host/README.md` is the guide to follow.
+compared). **First real server: 2026-11-06** (staging, see below). The rest of this guide describes the
+managed path; where the one-server path differs, `deploy/one-host/README.md` is the guide to follow.
+
+### First real server (staging, 2026-11-06)
+
+D2 staging runs on one Google Cloud VM (e2-medium, Ubuntu 24.04, Mumbai) with the web app on Netlify,
+documents and backups in two private Google Cloud Storage buckets (S3 interoperability keys) and mail
+through Brevo. What was checked on the real server:
+
+- the stack is healthy (API, worker, Keycloak, PostgreSQL with pgvector 0.8.7, proxy, backup); the
+  database is at the latest migration; `/api/v1/health/ready` answers 200 over Let's Encrypt HTTPS;
+- `sudo bin/server-check.sh`: 0 FAIL, 0 WARN;
+- an encrypted backup of both databases reached the backup bucket, and `bin/restore-test.sh` said
+  **RESTORE TEST PASSED** with real rows (2 organisations, 1,000 accounts, 1,000 contacts, 301 leads);
+- the Keycloak administration console answers 403 from outside (`ADMIN_ALLOWED_IPS=127.0.0.1`).
+
+Found only on the real server and fixed: backups to Google Cloud Storage (AWS CLI checksums, PR #94),
+the server check's reading of the finished migration job (PR #94), and creating organisations (the
+API's Keycloak admin calls and the realm's robot account, PR #95). It is **staging, not "go live"**:
+Netlify visitor protection is on and the rest of the checklist below is still open.
 
 ## What runs where
 
@@ -199,13 +217,15 @@ Tick **every** item of the checklist below, remove the staging password, announc
 - [ ] *One-server path:*
   - [x] Only the proxy publishes ports (80 and 443); tested on the files and on the running rehearsal.
   - [x] The rehearsal smoke test passes on a PC (22 of 22, 2026-11-03).
-  - [ ] Firewall (ufw) on, SSH by key only, no root login, automatic security updates: `sudo bin/server-check.sh`
-        shows **no FAIL** on the real server.
-  - [ ] Backup key pair made on your own PC; the private half is **offline**, never on the server.
-  - [ ] The backup bucket's key can add files but not delete them; a lifecycle rule expires old copies.
-  - [ ] `bin/restore-test.sh` says **RESTORE TEST PASSED** on the real server, with real (not empty) data.
+  - [x] Firewall (ufw) on, SSH by key only, no root login, automatic security updates: `sudo bin/server-check.sh`
+        shows **no FAIL** on the real server (0 FAIL / 0 WARN, 2026-11-06).
+  - [x] Backup key pair made on your own PC; the private half is **offline**, never on the server (2026-11-06).
+  - [x] The backup bucket's key can add files but not delete them; a lifecycle rule expires old copies
+        (`crm-backup`: object creator + viewer only; delete after 30 days; 2026-11-06).
+  - [x] `bin/restore-test.sh` says **RESTORE TEST PASSED** on the real server, with real (not empty) data
+        (2026-11-06: 1,000 accounts, 1,000 contacts, 301 leads restored).
   - [ ] A copy of the server's `.env` is in your password manager (a backup does not contain it).
-  - [ ] The Keycloak administration console is closed again (`ADMIN_ALLOWED_IPS=127.0.0.1`).
+  - [x] The Keycloak administration console is closed again (`ADMIN_ALLOWED_IPS=127.0.0.1`; 403 from outside, 2026-11-06).
 - [ ] **Upload/PDF sizes verified** on the chosen hosts: Netlify functions limit request and response
       sizes and run time, and our files can be 20 MB. If too small: browser → bucket uploads with
       signed URLs (a small design change, to be done in D1b before staging).

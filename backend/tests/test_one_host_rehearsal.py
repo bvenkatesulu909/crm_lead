@@ -87,8 +87,11 @@ def test_the_production_compose_file_mounts_the_production_tls_file() -> None:
 
 def test_nothing_rehearsal_only_is_in_the_production_compose_file() -> None:
     text = COMPOSE.read_text(encoding="utf-8")
+    # Keycloak's own port inside the stack (keycloak:8080) is fine; the rehearsal's published
+    # 8080 on the PC is not.
+    checked = text.replace("http://keycloak:8080", "")
     for word in ("rehearsal", "8443", "8080", "SSL_CERT_FILE", "tls internal"):
-        assert word not in text, word
+        assert word not in checked, word
     assert not re.search(r"127\.0\.0\.1:\d+:\d+", text), "a port published on this PC only"
 
 

@@ -567,3 +567,10 @@ def test_docker_compose_refuses_to_start_without_the_env_file() -> None:
         env={"PATH": __import__("os").environ["PATH"]},
     )
     assert result.returncode != 0
+
+
+def test_the_api_and_worker_send_keycloak_admin_calls_inside_the_stack() -> None:
+    # The proxy closes https://login.../admin* to the internet; through it the API's admin calls
+    # (creating an organisation's first administrator) got 403 on the first real server.
+    for name in ("api", "worker"):
+        assert environment_of(name).get("CRM_IDENTITY_ADMIN_URL") == "http://keycloak:8080", name

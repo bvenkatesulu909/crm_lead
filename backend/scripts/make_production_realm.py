@@ -4,8 +4,9 @@
     python -m scripts.make_production_realm --check   fail if that file is out of date
 
 What changes compared with realm-crm.json (development):
-- **No users.** The 11 test identities and their shared development password do not exist online.
-  The first administrator is created by hand (docs/deployment.md).
+- **No people.** The 11 test identities and their shared development password do not exist online.
+  The first administrator is created by hand (docs/deployment.md). Only robot (service) accounts
+  stay, without passwords, because they carry their client's rights (the API's user management).
 - HTTPS is required for every request (``sslRequired: all``).
 - Addresses and mail settings are ${PLACEHOLDERS} that Keycloak fills in from environment
   variables on the first start, so no real address or password is stored in this repository.
@@ -28,7 +29,15 @@ LOCAL_ONLY = {"crm-mcp"}
 
 def build(development: dict[str, Any]) -> dict[str, Any]:
     realm: dict[str, Any] = json.loads(json.dumps(development))  # deep copy
-    realm.pop("users", None)
+    # Only robot (service) accounts stay: they have no password and carry the rights of their
+    # client - without service-account-crm-user-admin the API cannot create users (403).
+    robots = [
+        u
+        for u in realm.pop("users", [])
+        if u.get("serviceAccountClientId") and u["serviceAccountClientId"] not in LOCAL_ONLY
+    ]
+    if robots:
+        realm["users"] = robots
     realm["displayName"] = "crm-lead"
     realm["sslRequired"] = "all"
     realm["registrationAllowed"] = False

@@ -25,7 +25,10 @@ def test_the_file_is_generated_from_the_development_realm() -> None:
 def test_no_test_users_no_local_addresses_no_literal_secrets() -> None:
     text = realm.TARGET.read_text(encoding="utf-8")
     data = production()
-    assert "users" not in data  # the 11 development identities are not shipped
+    # The 11 development identities are not shipped; only robot (service) accounts are.
+    for user in data.get("users", []):
+        assert user.get("serviceAccountClientId"), user.get("username")
+        assert "credentials" not in user and "email" not in user, user.get("username")
     for forbidden in ("localhost", "127.0.0.1", "mailpit", "example.test", "(local development)"):
         assert forbidden not in text, f"{forbidden!r} found in the production realm"
     assert not SECRET_LIKE.search(text), "a literal secret/password/value is in the realm file"
@@ -55,3 +58,17 @@ def test_clients_keep_their_roles_and_only_the_web_address_is_a_placeholder() ->
     assert {r["name"] for r in data["roles"]["realm"]} == {
         "super_admin", "tenant_admin", "sales_manager", "sales_agent", "support_agent", "customer",
     }  # fmt: skip
+
+
+def test_the_api_robot_keeps_its_right_to_manage_users() -> None:
+    # Found on the first real server (2026-11-06): the realm shipped without the service account
+    # of crm-user-admin, so Keycloak answered 403 when a super admin created an organisation.
+    robots = {u["username"]: u for u in production().get("users", [])}
+    robot = robots.get("service-account-crm-user-admin")
+    assert robot is not None, "the API's admin robot is missing from the production realm"
+    assert robot["serviceAccountClientId"] == "crm-user-admin"
+    assert set(robot["clientRoles"]["realm-management"]) >= {
+        "manage-users",
+        "view-users",
+        "query-users",
+    }

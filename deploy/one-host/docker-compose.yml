@@ -32,6 +32,9 @@ x-api-environment: &api-environment
   CRM_CORS_ALLOWED_ORIGINS: ${WEB_URL:?run bin/make_env.py}
   CRM_WEB_APP_URL: ${WEB_URL}
   CRM_KEYCLOAK_ADMIN_CLIENT_SECRET: ${CRM_USER_ADMIN_CLIENT_SECRET:?run bin/make_env.py}
+  # Admin calls go to Keycloak inside the stack: the proxy closes https://login.../admin* to the
+  # internet, so the public address would answer 403 (found on the first real server).
+  CRM_IDENTITY_ADMIN_URL: http://keycloak:8080
   CRM_METRICS_TOKEN: ${CRM_METRICS_TOKEN:?run bin/make_env.py}
   CRM_FILES_S3_ENDPOINT: ${CRM_FILES_S3_ENDPOINT:?fill in .env}
   CRM_FILES_S3_SECURE: "true"

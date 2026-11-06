@@ -284,8 +284,8 @@ def test_fallback_models_are_sent_in_order_after_the_first_model() -> None:
 
 @pytest.mark.parametrize(
     "bad",
-    ["a:free,b:free,c:free,d:free", "ok:free, has space", "https://evil.example/x", "x;rm"],
+    ["a:free,b:free,c:free", "ok:free, has space", "https://evil.example/x", "x;rm"],
 )
-def test_fallback_models_must_be_at_most_three_plain_names(bad: str) -> None:
+def test_fallback_models_must_be_at_most_two_plain_names(bad: str) -> None:
     with pytest.raises(ValueError, match="deepseek_fallback_models"):
         settings_with_fallbacks(bad)

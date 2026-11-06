@@ -54,7 +54,7 @@ x-api-environment: &api-environment
   CRM_AI_PROVIDER: ${CRM_AI_PROVIDER:-anthropic}
   CRM_DEEPSEEK_BASE_URL: ${CRM_DEEPSEEK_BASE_URL:-https://api.deepseek.com}
   CRM_DEEPSEEK_MODEL: ${CRM_DEEPSEEK_MODEL:-deepseek-chat}
-  # OpenRouter only: up to 3 comma-separated models tried in order when the first one fails.
+  # OpenRouter only: up to 2 comma-separated models tried in order when the first one fails.
   CRM_DEEPSEEK_FALLBACK_MODELS: ${CRM_DEEPSEEK_FALLBACK_MODELS:-}
   # For the estimated cost on the AI agents page (US dollars per million tokens; 0 = no estimate).
   CRM_AI_INPUT_PRICE_PER_MILLION: ${CRM_AI_INPUT_PRICE_PER_MILLION:-0}

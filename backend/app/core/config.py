@@ -100,7 +100,7 @@ class Settings(BaseSettings):
     deepseek_api_key: SecretStr | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
-    # Optional, for OpenRouter: up to 3 more model names (comma-separated) tried in order when the
+    # Optional, for OpenRouter: up to 2 more model names (comma-separated) tried in order when the
     # first one is down, rate-limited or refuses. Sent as OpenRouter's "models" list; empty = off.
     # Plain DeepSeek does not know the list, so leave it empty there.
     deepseek_fallback_models: str = Field(default="", max_length=400)
@@ -345,8 +345,8 @@ class Settings(BaseSettings):
     @classmethod
     def _fallback_models_are_names(cls, value: str) -> str:
         names = [n.strip() for n in value.split(",") if n.strip()]
-        if len(names) > 3:
-            raise ValueError("deepseek_fallback_models: at most 3 fallback models.")
+        if len(names) > 2:  # OpenRouter allows 3 models in all (main + 2)
+            raise ValueError("deepseek_fallback_models: at most 2 (OpenRouter takes 3 in all).")
         for name in names:
             if len(name) > 100 or not _MODEL_NAME.fullmatch(name):
                 raise ValueError(f"deepseek_fallback_models: {name!r} is not a model name.")

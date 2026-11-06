@@ -50,6 +50,8 @@ export async function qualifyLead(
     await apiFetch("/qualifier/assessments", {
       method: "POST",
       body: JSON.stringify({ lead_id: leadId }),
+      // An AI model can take longer than the default 10 s API timeout (free models often do).
+      signal: AbortSignal.timeout(60_000),
     });
   } catch (error) {
     return failure(previous, error);
@@ -130,6 +132,8 @@ export async function tryProcedure(
         lead_id: leadId,
         ...(useDraft && draft.length > 0 ? { steps: draft } : {}),
       }),
+      // An AI model can take longer than the default 10 s API timeout (free models often do).
+      signal: AbortSignal.timeout(60_000),
     });
     return {
       attempt: previous.attempt + 1,

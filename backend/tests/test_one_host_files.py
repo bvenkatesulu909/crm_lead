@@ -218,6 +218,21 @@ def test_the_api_runs_in_production_mode_with_the_docs_off() -> None:
         assert env["CRM_OIDC_ISSUER"].startswith("https://")
 
 
+def test_the_ai_and_website_chat_settings_reach_the_api_and_the_worker() -> None:
+    # Found on the first real server: only the keys were passed, so the provider, the model and the
+    # website chat could not be chosen in .env at all.
+    for name in ("api", "worker"):
+        env = environment_of(name)
+        assert env["CRM_AI_PROVIDER"] == "${CRM_AI_PROVIDER:-anthropic}"
+        assert env["CRM_DEEPSEEK_BASE_URL"].endswith(":-https://api.deepseek.com}")
+        assert env["CRM_DEEPSEEK_MODEL"] == "${CRM_DEEPSEEK_MODEL:-deepseek-chat}"
+        assert env["CRM_DEEPSEEK_FALLBACK_MODELS"] == "${CRM_DEEPSEEK_FALLBACK_MODELS:-}"
+        # The website chat stays off unless the owner sets both values.
+        assert env["CRM_PUBLIC_CHAT_TENANT_SLUG"] == "${CRM_PUBLIC_CHAT_TENANT_SLUG:-}"
+        assert env["CRM_PUBLIC_CHAT_SERVER_KEY"] == "${CRM_PUBLIC_CHAT_SERVER_KEY:-}"
+        assert "fake" not in env["CRM_AI_PROVIDER"] + env["CRM_PUBLIC_CHAT_PROVIDER"]
+
+
 def test_the_compose_file_holds_no_secret_values_only_references() -> None:
     secretish = re.compile(r"(PASSWORD|SECRET|TOKEN|KEY)", re.I)
     for name in SERVICES:

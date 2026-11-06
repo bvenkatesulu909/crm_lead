@@ -161,6 +161,7 @@ class DeepSeekChatModel:
         self._api_key = settings.deepseek_api_key.get_secret_value()
         self._base_url = settings.deepseek_base_url.rstrip("/")
         self._model = settings.deepseek_model
+        self._fallbacks = settings.deepseek_fallback_model_list
         self._timeout = settings.assistant_timeout_seconds
         self._max_tokens = settings.assistant_max_tokens
         self._input_price = settings.ai_input_price_per_million
@@ -178,6 +179,9 @@ class DeepSeekChatModel:
         }
         if tools:
             payload["tools"] = [_openai_tool(t) for t in tools]
+        if self._fallbacks:
+            # OpenRouter tries these in order when the first model fails or is rate-limited.
+            payload["models"] = [self._model, *self._fallbacks]
 
         started = time.perf_counter()
         try:

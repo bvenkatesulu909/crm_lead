@@ -23,6 +23,14 @@ const BAR: Record<AgentState, string> = {
   limit: "bg-red-500",
 };
 
+/** Voice counts estimated SECONDS of server speech in its two counters (ADR 0023). */
+export function voiceUsage(seconds: number): string {
+  if (seconds <= 0)
+    return "No server speech this month (the browser's own speech is not counted)";
+  const minutes = Math.ceil(seconds / 60);
+  return `About ${minutes} ${minutes === 1 ? "minute" : "minutes"} of server speech this month`;
+}
+
 /** The state as a word (never colour alone). */
 export function AgentStateBadge({ agent }: { agent: Agent }) {
   const state = agentState(agent);
@@ -76,9 +84,11 @@ export function AgentCard({
         </div>
         {!agent.uses_model ? (
           <p className="mt-4 text-sm text-slate-700">
-            {agent.calls === 0
-              ? `No ${unit.plural} this month`
-              : `${agent.calls} ${agent.calls === 1 ? unit.one : unit.plural} this month`}
+            {agent.key === "voice"
+              ? voiceUsage(agent.input_tokens + agent.output_tokens)
+              : agent.calls === 0
+                ? `No ${unit.plural} this month`
+                : `${agent.calls} ${agent.calls === 1 ? unit.one : unit.plural} this month`}
             <span className="text-xs text-slate-500">
               {" "}
               - uses no language model of ours, so there is no token budget

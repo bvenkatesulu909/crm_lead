@@ -38,7 +38,13 @@ class FakeStaffModel:
         if isinstance(last, list):  # the results of the tool call we made
             results = [part for part in last if part.get("type") == "tool_result"]
             return ModelReply(REFUSED if any(r.get("is_error") for r in results) else WAITING)
-        found = _REQUEST.search(str(messages[0]["content"]))
+        # The newest question (earlier turns of a conversation come first, ADR 0023).
+        questions = [
+            m["content"]
+            for m in messages
+            if m.get("role") == "user" and isinstance(m.get("content"), str)
+        ]
+        found = _REQUEST.search(str(questions[-1] if questions else ""))
         if found is None:
             return ModelReply(HELP)
         return ModelReply(

@@ -13,6 +13,7 @@ from app.modules.activities import models as activities_models
 from app.modules.agents import models as agents_models
 from app.modules.approvals import models as approvals_models
 from app.modules.assistant import models as assistant_models
+from app.modules.assistant import staff_models as staff_assistant_models
 from app.modules.catalog import models as catalog_models
 from app.modules.communications import models as communications_models
 from app.modules.contacts import models as contacts_models
@@ -57,6 +58,7 @@ __all__ = [
     "qualifier_models",
     "quotes_models",
     "sales_models",
+    "staff_assistant_models",
     "support_models",
     "webcheck_models",
     "workflows_models",

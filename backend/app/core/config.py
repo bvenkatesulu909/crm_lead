@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     # and everything else keeps working.
     keycloak_admin_client_id: str = "crm-user-admin"
     keycloak_admin_client_secret: SecretStr | None = None
+    # Where the API sends its Keycloak ADMIN calls (create users, roles, set-password e-mails), e.g.
+    # http://keycloak:8080 inside the one-server stack, whose proxy closes /admin to the internet
+    # (ADR 0021). Empty = the host of oidc_issuer. Tokens always come from oidc_issuer.
+    identity_admin_url: str | None = None
     # Where invited people land after setting their password (the web app's login page).
     web_app_url: str = "http://localhost:3000"
     # Lifetime of set-your-password links sent by e-mail.
@@ -236,6 +240,24 @@ class Settings(BaseSettings):
             raise ValueError("oidc_issuer must be an absolute URL without a trailing slash.")
         return value
 
+    @field_validator("identity_admin_url")
+    @classmethod
+    def _validate_identity_admin_url(cls, value: str | None) -> str | None:
+        if not value:
+            return None
+        parts = urlsplit(value)
+        if (
+            parts.scheme not in ("http", "https")
+            or not parts.netloc
+            or parts.path
+            or parts.query
+            or parts.fragment
+        ):
+            raise ValueError(
+                "identity_admin_url must be http(s)://host[:port] with nothing after it."
+            )
+        return value
+
     @model_validator(mode="after")
     def _production_requires_https(self) -> "Settings":
         if self.environment == "production" and not self.oidc_issuer.startswith("https://"):
@@ -277,8 +299,9 @@ class Settings(BaseSettings):
 
     @property
     def keycloak_base_url(self) -> str:
-        """http://host:port of Keycloak, derived from the issuer (".../realms/<realm>")."""
-        return self.oidc_issuer.split("/realms/")[0]
+        """http://host:port of Keycloak for admin calls: identity_admin_url when set, else the
+        issuer's host (".../realms/<realm>")."""
+        return self.identity_admin_url or self.oidc_issuer.split("/realms/")[0]
 
     @property
     def keycloak_realm(self) -> str:

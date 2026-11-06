@@ -155,5 +155,19 @@
     "user": "${SMTP_USER}",
     "password": "${SMTP_PASSWORD}"
   },
-  "actionTokenGeneratedByAdminLifespan": 259200
+  "actionTokenGeneratedByAdminLifespan": 259200,
+  "users": [
+    {
+      "username": "service-account-crm-user-admin",
+      "enabled": true,
+      "serviceAccountClientId": "crm-user-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users"
+        ]
+      }
+    }
+  ]
 }

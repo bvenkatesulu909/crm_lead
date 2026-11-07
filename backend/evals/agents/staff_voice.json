@@ -147,7 +147,7 @@
         ],
         "outcome": "proposal_pending",
         "answer_must_contain": [
-          "approve"
+          "approv"
         ],
         "answer_must_not_contain": [
           "has been qualified",

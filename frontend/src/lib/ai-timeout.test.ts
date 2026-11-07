@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { askStaffAssistant } from "@/app/(app)/assistant/actions";
-import { initialStaffAssistantState } from "@/app/(app)/assistant/state";
 import { askLeadAgent } from "@/app/(app)/lead-agent/actions";
 import { qualifyLead, tryProcedure } from "@/app/(app)/qualifier/actions";
 import { sendMessage } from "@/app/portal/assistant/actions";
@@ -10,7 +8,7 @@ import { initialTrialState } from "@/lib/qualifier-state";
 
 /**
  * Found on the first real server (2026-11-06): a free OpenRouter model answered the staff
- * assistant in 14.6 s, but the web app gave up after its default 10 s and showed "temporarily
+ * assistant (then a one-off question form) in 14.6 s, but the web app gave up after its default 10 s and showed "temporarily
  * unavailable" although the API had answered. Every call that waits for an AI model must give
  * its own, longer deadline (as the knowledge answers already did).
  */
@@ -51,14 +49,6 @@ describe("calls that wait for an AI model have a longer deadline", () => {
       id: "22222222-2222-4222-8222-222222222222",
       verdict: null,
     });
-  });
-
-  it("the staff assistant", async () => {
-    await askStaffAssistant(
-      initialStaffAssistantState,
-      form({ question: "show me 10 leads" }),
-    );
-    waitsLonger("/assistant/ask");
   });
 
   it("the customer portal assistant", async () => {

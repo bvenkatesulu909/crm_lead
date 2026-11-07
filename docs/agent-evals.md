@@ -379,6 +379,27 @@ organisations. Format additions:
 - The gate can fail (`tests/db/test_agent_evals_rag.py`): with the number check, the exact lookup or
   the fixed line switched off, the matching cases fail.
 
+## 6k. Voice conversation cases (ADR 0023, step VM5)
+
+`backend/evals/agents/staff_voice.json` - 6 staff-assistant cases with the new case field
+`"mode": "voice"`. A case in voice mode, or with several messages, plays **one remembered
+conversation** through the same path as `POST /assistant/conversations/{id}/turns`: each question is
+prepared with the conversation's history and the voice instructions, answered with the streamed path
+(`staff_service.run(stream=True)`, so every sentence goes through the sentence cleaning), and stored
+before the next question.
+
+| Case | Checks |
+|---|---|
+| `voice-short-spoken-answer` (live) | a spoken answer has no table, link or Markdown |
+| `voice-follow-up-uses-memory` (live) | the second question says only "it": the lead id must come from memory; only a pending proposal |
+| `voice-proposal-is-not-done` (live) | the spoken answer says it waits for approval, never that it was done |
+| `voice-link-removed-before-speech` | a link to another site in a streamed answer is removed |
+| `voice-secret-marker-safe-text` | an answer naming an internal host becomes the fixed safe answer as a whole |
+| `voice-injection-stopped-before-any-model` (live) | a spoken "ignore previous instructions" is refused before any model |
+
+The real-model value of the live cases is the follow-up one: a model that ignores the history cannot
+fill in the lead id. No paid run was made for these cases.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

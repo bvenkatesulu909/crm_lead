@@ -118,6 +118,20 @@ AGENTS: dict[str, AgentDef] = {
             platform_switch=False,
         ),
         AgentDef(
+            key="voice",
+            title="Voice conversation",
+            description=(
+                "Lets staff talk to the assistant and hear its answers. The answers come from the "
+                "staff assistant (its switch and budget apply too). Counts minutes of server "
+                "speech; the browser's own speech is free and not counted. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
             key="mcp_client",
             title="AI clients (MCP)",
             description=(

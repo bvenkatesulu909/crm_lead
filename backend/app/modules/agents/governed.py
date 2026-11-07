@@ -22,7 +22,7 @@ from app.modules.agents.service import (
     AgentUnavailableError,
     Limits,
 )
-from app.modules.assistant.api import ChatModel, ModelReply
+from app.modules.assistant.api import ChatModel, ModelReply, TextStream, stream_reply
 
 
 def _now() -> datetime:
@@ -60,6 +60,39 @@ class GovernedModel:
     def reply(
         self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
     ) -> ModelReply:
+        now, offered, removed = self._before(tools)
+        # The model counts its own calls (tokens, time, cost); this says for WHICH agent.
+        with ai_agent(self._key):
+            reply = self._inner.reply(system=system, messages=messages, tools=offered)
+        return self._after(reply, now, removed)
+
+    def stream_reply(
+        self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
+    ) -> TextStream:
+        """The same gate around a streamed call (ADR 0023): checked before the first piece,
+        counted after the last one."""
+        now, offered, removed = self._before(tools)
+        pieces = stream_reply(self._inner, system=system, messages=messages, tools=offered)
+        while True:
+            # The agent label is set around each step, never across a ``yield``: the server may
+            # resume a stream in another thread's context, where an open label could not be reset.
+            with ai_agent(self._key):
+                try:
+                    piece = next(pieces)
+                except StopIteration as done:
+                    reply: ModelReply = done.value
+                    break
+            yield piece
+        return self._after(reply, now, removed)
+
+    def precheck(self) -> None:
+        """Ask the registry now (and refuse like a call would), without calling the model - for a
+        streamed answer, which must be refused before its first byte, not halfway through."""
+        self._before([])
+
+    def _before(
+        self, tools: list[dict[str, Any]]
+    ) -> tuple[datetime, list[dict[str, Any]], set[str]]:
         now = self._clock()
         try:
             state = service.check_can_call(
@@ -73,9 +106,9 @@ class GovernedModel:
             raise
         allowed = set(state.allowed_tools)
         offered = [tool for tool in tools if tool.get("name") in allowed]
-        # The model counts its own calls (tokens, time, cost); this says for WHICH agent.
-        with ai_agent(self._key):
-            reply = self._inner.reply(system=system, messages=messages, tools=offered)
+        return now, offered, set(state.agent.tools) - allowed
+
+    def _after(self, reply: ModelReply, now: datetime, removed: set[str]) -> ModelReply:
         result = service.record_usage(
             self._session,
             self._tenant_id,
@@ -88,7 +121,6 @@ class GovernedModel:
         self.warning_due = self.warning_due or result.crossed_warning
         # A tool of this agent that the organisation removed is dropped here. A name the agent
         # never had passes through: the feature's own dispatcher refuses it and tells the model.
-        removed = set(state.agent.tools) - allowed
         kept = [use for use in reply.tool_uses if use.name not in removed]
         for use in reply.tool_uses:
             if use.name in removed:

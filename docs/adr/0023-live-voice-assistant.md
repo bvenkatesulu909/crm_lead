@@ -1,6 +1,7 @@
 # ADR 0023 — Live voice mode for the staff AI Assistant (Phase 20c)
 
-- **Status:** Proposed (2026-11-06) — nothing is built until the owner answers section 8
+- **Status:** Accepted (2026-11-06): the owner answered "complete" to the recommendation list
+  (VM1-VM5), so the recommended answers of section 8 apply. Built the same day - see section 9
 - **Date:** 2026-11-06
 - **Deciders:** Project owner
 - **Depends on:** ADR 0003 (AI assistant foundations), ADR 0014 (approval queue), ADR 0016 (agent registry,
@@ -157,8 +158,10 @@ Build **one voice mode with two interchangeable speech engines**, and fix the re
    - **conversation memory on the server**: a new table `assistant_conversation_turns` (`tenant_id`, `user_id`,
      conversation id, role, cleaned text, created_at; forced RLS; only the owner of the conversation can read
      it; the last 6 turns go to the model; deleted after 24 hours by the worker). The browser never sends the
-     history (a person could otherwise forge an "assistant said" turn). Earlier turns are put into the prompt
-     as *data*, screened like record text (ADR 0018).
+     history (a person could otherwise forge an "assistant said" turn). Earlier turns go back to the model as
+     its earlier messages - they come only from the server's own store and were screened (questions) or
+     cleaned (answers) when they were stored; the prompt tells the model to read records again, never to
+     repeat a fact only because an earlier answer said it.
 2. **Voice mode screen (VM2) with the browser engine (a)** for the staging demo: one button **"Start voice
    conversation"**, then the loop *listen → send → speak sentence by sentence → listen again*, a big **Stop**
    button, the written transcript on screen, plain status words ("Listening…", "Thinking…", "Speaking…"),
@@ -231,3 +234,21 @@ measured delays on staging, docs.
    go-live checklist) so organisations with real data use the server engine.
 8. **Language?** — *Recommended:* English (India), `en-IN`, first; Hindi/Telugu later as a setting, after
    checking which engines support them well.
+
+## 9. What was built (2026-11-06)
+
+| Step | Where | Notes |
+|---|---|---|
+| VM1 | `assistant/staff_conversations.py`, `staff_models.py` (migration 0051), `sentences.py`, `staff_router.py`, `llm.py` (`stream_reply`), `agents/governed.py` | Two tables (forced RLS), 3 endpoints, SSE events `sentence` / `working` / `done` / `error`; OpenAI-compatible and Anthropic streaming; `/assistant/ask` unchanged |
+| VM2 | `frontend/src/components/assistant-conversation.tsx`, `src/lib/voice/` | One card for typing and talking; browser engine; privacy note per engine; registry entry `voice` (off by default) and `GET /voice/status` |
+| VM3 | `voice/service.py`, `voice/router.py`, `ServerListener` / `ServerSpeaker` | Server engine preferred when configured; estimated seconds metered, `CRM_VOICE_MONTHLY_MINUTES`; `CRM_VOICE_BROWSER_ENGINE` |
+| VM4 | `src/lib/voice/detectors.ts`, `conversation.ts` | Silence ends a server-engine turn (~0.8 s); **Skip** always; interrupting by speaking is an opt-in box (server engine, best with headphones) because laptop speakers can trigger it |
+| VM5 | `evals/agents/staff_voice.json`, `e2e/voice-conversation.spec.ts`, `scripts/measure_voice_latency.py`, `docs/voice-conversation.md` | 6 evaluation cases; browser journey with a scripted speech engine; the delay script |
+
+Decided while building (inside the accepted answers): the memory is replayed as real earlier messages (see
+section 5); a streamed answer that trips a secret marker becomes the fixed safe answer as a whole; an
+interrupted answer still finishes on the server and is remembered; the next question waits for it.
+
+**Not done here:** the delay measurement on **staging** - it needs this code on the server ("update the
+server") and then `python -m scripts.measure_voice_latency --live` there; no real-microphone check on an iPhone
+or with laptop speakers (only Chrome-family behaviour is covered, through the scripted engine).

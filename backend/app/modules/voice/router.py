@@ -1,18 +1,24 @@
-"""Authenticated server-side STT/TTS gateway (/api/v1/voice)."""
+"""Authenticated server-side STT/TTS gateway (/api/v1/voice), governed by the ``voice`` entry of
+the agent registry (ADR 0023): switch per organisation, monthly minutes, nothing stored."""
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
+from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.config import Settings
+from app.core.db import get_db_session
 from app.core.errors import DomainError, problem_responses
 from app.modules.assistant.guardrails import sanitise_output
 from app.modules.identity.dependencies import get_principal
+from app.modules.voice import service
 from app.modules.voice.provider import SpeechProvider, SpeechProviderError
-from app.modules.voice.schemas import SpeechRequest, TranscriptionRead
+from app.modules.voice.schemas import SpeechRequest, TranscriptionRead, VoiceStatusRead
 
 Audio = Annotated[UploadFile, File()]
 Me = Annotated[Principal, Depends(get_principal)]
+Db = Annotated[Session, Depends(get_db_session)]
 
 ALLOWED_AUDIO = {
     "audio/webm",
@@ -44,15 +50,32 @@ def _require_person(principal: Principal) -> None:
         raise VoiceUnavailableError("The voice service is for staff and customers.")
 
 
+@router.get("/status", summary="Whether voice is offered here, and with which engines")
+def status(request: Request, principal: Me, session: Db) -> VoiceStatusRead:
+    _require_person(principal)
+    settings: Settings = request.app.state.settings
+    provider: SpeechProvider | None = request.app.state.speech_provider
+    current = service.state(session, principal, settings)
+    return VoiceStatusRead(
+        enabled=current.enabled,
+        browser_engine=settings.voice_browser_engine,
+        server_engine=bool(provider is not None and provider.available),
+        minutes_used=current.seconds_used // 60,
+        minutes_budget=current.seconds_budget // 60,
+    )
+
+
 @router.post("/transcribe", summary="Transcribe recorded speech to text")
 async def transcribe(
     request: Request,
     principal: Me,
+    session: Db,
     file: Audio,
 ) -> TranscriptionRead:
     _require_person(principal)
+    settings: Settings = request.app.state.settings
     provider = _provider(request)
-    settings = request.app.state.settings
+    service.check(session, principal, settings)
     if file.content_type not in ALLOWED_AUDIO:
         raise VoiceUnavailableError("Unsupported audio format.")
     data = await file.read(settings.voice_max_upload_bytes + 1)
@@ -66,6 +89,9 @@ async def transcribe(
         )
     except SpeechProviderError as exc:
         raise VoiceUnavailableError(str(exc)) from exc
+    # Only the (estimated) length is kept - never the audio or the words.
+    service.record(session, principal, heard=service.seconds_heard(len(data)))
+    session.commit()
     return TranscriptionRead(text=text)
 
 
@@ -75,14 +101,18 @@ async def transcribe(
     response_class=Response,
     responses={200: {"content": {"audio/mpeg": {}}}},
 )
-async def speak(request: Request, principal: Me, body: SpeechRequest) -> Response:
+async def speak(request: Request, principal: Me, session: Db, body: SpeechRequest) -> Response:
     _require_person(principal)
+    settings: Settings = request.app.state.settings
     provider = _provider(request)
+    service.check(session, principal, settings)
     text = sanitise_output(body.text)
     try:
         speech = await provider.synthesize(text)
     except SpeechProviderError as exc:
         raise VoiceUnavailableError(str(exc)) from exc
+    service.record(session, principal, spoken=service.seconds_spoken(text))
+    session.commit()
     return Response(
         content=speech.audio,
         media_type=speech.media_type,

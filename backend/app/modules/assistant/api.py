@@ -7,28 +7,35 @@ guardrails; it keeps its own conversations and tools.
 from typing import Literal
 
 from app.core.config import Settings
-from app.modules.assistant import guardrails
+from app.modules.assistant import guardrails, staff_conversations
 from app.modules.assistant.llm import (
     AssistantUnavailableError,
     ChatModel,
     ClaudeChatModel,
     DeepSeekChatModel,
     ModelReply,
+    TextStream,
     ToolUse,
     UnconfiguredChatModel,
+    stream_reply,
 )
 
 __all__ = [
     "AssistantUnavailableError",
     "ChatModel",
     "ModelReply",
+    "TextStream",
     "ToolUse",
     "chat_model_for",
+    "delete_stale_staff_conversations",
     "inspect_input",
     "sanitise_output",
+    "stream_reply",
 ]
 
 inspect_input = guardrails.inspect_input
+# The worker's clean-up of quiet staff assistant conversations (ADR 0023).
+delete_stale_staff_conversations = staff_conversations.delete_stale
 sanitise_output = guardrails.sanitise_output
 
 

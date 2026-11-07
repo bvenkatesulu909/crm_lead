@@ -232,6 +232,9 @@ class Case(BaseModel):
     # For the qualifier each message is the lead to assess (a placeholder such as {{lead.rich}}):
     # the Qualifier is asked about one lead at a time, it is not a chat.
     messages: list[Message] = Field(min_length=1, max_length=5)
+    # Staff assistant (ADR 0023): "voice" asks for a short answer to be read aloud. Several
+    # messages, or voice, play one remembered conversation with streamed answers.
+    mode: Literal["text", "voice"] = "text"
     # False: the case forces a bad call on purpose to see the CRM refuse it, so a real model
     # (which is not expected to make that call) is not run on it. Scripted runs always are.
     live: bool = True
@@ -254,6 +257,8 @@ class Case(BaseModel):
             self.expect.stored_must_contain or self.expect.stored_must_not_contain
         ):
             raise ValueError("expect.stored_*: only the website chat stores text in the CRM")
+        if self.mode == "voice" and self.agent != "staff_assistant":
+            raise ValueError("mode: voice is only for the staff assistant")
         if self.agent not in ("qualifier", "lead_agent") and self.qualifier:
             raise ValueError("qualifier: only for the qualifier and the lead agent")
         if self.agent not in ("qualifier", "lead_agent") and self.expect.proposals is not None:

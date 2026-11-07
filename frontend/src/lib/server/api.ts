@@ -116,3 +116,41 @@ export async function apiFile(path: string): Promise<ApiFile> {
 
 /** The signed-in user, loaded once per request (React `cache`). */
 export const getMe = cache(() => apiFetch<Me>("/me"));
+
+/**
+ * Sends a JSON body to the API with the user's token and hands back the RAW response, for a
+ * route handler that passes a stream (Server-Sent Events) on to the browser without reading it
+ * first (ADR 0023). The token stays here; the browser only sees the stream.
+ */
+export async function apiStream(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const config = serverConfig();
+  const session = await decryptSession(
+    (await cookies()).get(SESSION_COOKIE)?.value,
+    config.SESSION_SECRET,
+  );
+  if (!session)
+    return Response.json({ detail: "Not signed in." }, { status: 401 });
+  try {
+    return await fetch(`${config.API_BASE_URL}${path}`, {
+      method: "POST",
+      headers: {
+        Accept: "text/event-stream, application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.accessToken}`,
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      // A slow free model plus tool rounds can take a while; the browser can stop it earlier.
+      signal: signal ?? AbortSignal.timeout(120_000),
+    });
+  } catch {
+    return Response.json(
+      { detail: "API unreachable", code: "api_unreachable" },
+      { status: 503 },
+    );
+  }
+}

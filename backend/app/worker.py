@@ -32,6 +32,7 @@ from app.core.outbox import DeadJobHandler, JobHandler, run_next_job
 from app.core.storage import FileStore, build_file_store
 from app.modules.activities import api as activities_api
 from app.modules.approvals import api as approvals_api
+from app.modules.assistant import api as assistant_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.identity.models import Tenant
@@ -110,6 +111,7 @@ def run_schedules(
     count = 0
     limit = settings.workflow_actions_per_hour if settings else 500
     retention = settings.public_chat_retention_days if settings else 30
+    staff_hours = settings.staff_conversation_retention_hours if settings else 24
     for tenant_id in tenant_ids:
         # Each tenant's scheduled work runs in its own transaction with app.tenant_id set.
         with session_factory() as session, session.begin():
@@ -125,6 +127,12 @@ def run_schedules(
                 bind_tenant(session, tenant_id)
                 count += public_chat_api.delete_stale_conversations(
                     session, now, tenant_id=tenant_id, retention_days=retention
+                )
+            # Staff assistant conversations quiet for a day (ADR 0023): deleted with their turns.
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += assistant_api.delete_stale_staff_conversations(
+                    session, now, tenant_id=tenant_id, retention_hours=staff_hours
                 )
             # Web check evidence older than the retention (ADR 0019): deleted.
             with session_factory() as session, session.begin():

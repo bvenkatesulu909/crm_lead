@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     assistant_max_tool_rounds: int = Field(default=6, ge=1, le=20)
     assistant_messages_per_hour: int = Field(default=30, ge=1, le=1000)
     assistant_timeout_seconds: float = Field(default=60, gt=0, le=300)
+    # Staff assistant conversations (ADR 0023) are deleted after this many quiet hours.
+    staff_conversation_retention_hours: int = Field(default=24, ge=1, le=24 * 30)
     # DeepSeek (OpenAI-compatible API). Key stays in the environment; never logged or committed.
     deepseek_api_key: SecretStr | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
@@ -128,6 +130,11 @@ class Settings(BaseSettings):
     voice_tts_model: str = "gpt-4o-mini-tts"
     voice_tts_voice: str = "alloy"
     voice_max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
+    # Voice conversation (ADR 0023). The browser engine lets Google/Apple/Microsoft hear the audio:
+    # fine for fictional demo data, switched OFF before real customers' data (go-live checklist).
+    voice_browser_engine: bool = True
+    # Server speech minutes per organisation per month (estimated; the registry entry "voice").
+    voice_monthly_minutes: int = Field(default=300, ge=1, le=1_000_000)
 
     # Knowledge-base embeddings (ADR 0010). A local ONNX model (fastembed) - text never leaves
     # the machine for indexing. Changing the model later means re-embedding every chunk.

@@ -448,7 +448,7 @@ Accepted 2026-10-31 with the recommended answers to the five questions in ADR 00
 - Integration credentials encrypted at rest and never logged.
 - Definition of Done checklist complete.
 
-## Phase 20 — AI Chatbot & Voice Assistant (Module 16)  *(20a text chat in the portal done — see docs/assistant.md; 20b knowledge base (pgvector) designed in docs/rag-knowledge-base.md + proposed ADR 0010, not built; 20c voice: designed in ADR 0023 (proposed), see Phase VM)*
+## Phase 20 — AI Chatbot & Voice Assistant (Module 16)  *(20a text chat in the portal done — see docs/assistant.md; 20b knowledge base (pgvector) designed in docs/rag-knowledge-base.md + proposed ADR 0010, not built; 20c voice: ADR 0023, built as Phase VM)*
 
 **Acceptance criteria**
 - Chat UI in staff app; assistant answers questions and performs actions only via permission-checked tools acting as the current user.
@@ -457,7 +457,7 @@ Accepted 2026-10-31 with the recommended answers to the five questions in ADR 00
 - Voice input/output works in a supported browser.
 - Provider API key from env var only.
 
-## Phase VM — Live voice mode for the staff AI Assistant (Phase 20c)  *(ADR 0023 proposed 2026-11-06; waiting for the owner's answers; nothing built)*
+## Phase VM — Live voice mode for the staff AI Assistant (Phase 20c)  *(ADR 0023 accepted 2026-11-06 with the recommended answers; VM1-VM5 built 2026-11-06 - see docs/voice-conversation.md; the staging delay measurement waits for a server update)*
 
 Goal: press one button, speak, hear the answer, keep talking turn by turn. Each step stops for review and starts
 with failing tests. Order matters: the delay is mostly the model, so streaming and memory come first.

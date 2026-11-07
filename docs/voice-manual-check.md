@@ -26,6 +26,22 @@ audio to the browser maker (Google, Apple or Microsoft) - never test with real c
 | 7 | Tap **Stop**. | Microphone indicator in Safari disappears. | |
 | 8 | Lock the phone and unlock it mid-conversation. | The page recovers or says clearly that it stopped; no stuck "listening". | |
 
+## A2. Android phone, Chrome
+
+Chrome on Android uses Google's speech recognition and needs a data connection.
+
+| # | Do this | You should see / hear | Pass? |
+|---|---|---|---|
+| 1 | Open the page in Chrome, tap **Start voice conversation**. | Chrome asks for the microphone; you allow it. A "listening" state shows. | |
+| 2 | Say: "Give me one short tip for my first call with a new lead." | Your words appear, the answer streams and is spoken sentence by sentence. | |
+| 3 | Time it: end of your sentence to the first spoken word. | Under about 5 seconds usually. | |
+| 4 | Tap **Skip** while it speaks. | Speech stops at once; it listens again. | |
+| 5 | Say: "Mark one of my leads as contacted." | A **proposal** that waits for approval; nothing changed. | |
+| 6 | Switch to another app and back during a conversation. | The page recovers or says clearly that it stopped. | |
+| 7 | Tap **Stop**. | The microphone indicator in the status bar disappears. | |
+
+If the phone is on silent, the browser voice can be muted: raise the media volume (not the ringer).
+
 ## B. Laptop with speakers (echo)
 
 The assistant's voice coming out of the speakers can be heard by the microphone.
@@ -43,7 +59,7 @@ Repeat A2, A4 and A6 in Chrome. Chrome's speech recognition needs an internet co
 
 ## Write down
 
-- Device, browser and version.
+- Device (laptop / Android / iPhone), browser and version.
 - For every row that failed: what happened, and any message on screen.
 - The time to the first spoken word (A3).
 

@@ -125,3 +125,30 @@ model configured in `backend\.env`). A faster paid model is the real fix - an ow
 
 Not covered by automated tests: real microphones, real browser voices, echo on laptop speakers.
 Those were checked by hand only where this page says so.
+
+## 7. Results so far on a real model and on staging
+
+**Delay on staging (2026-11-07)** - `python -m scripts.measure_voice_latency --live --runs 3` on the
+server, free OpenRouter model `google/gemma-4-31b-it:free`, 9 answers: median 2.3 s to the first
+sentence and 2.6 s for the whole answer; typical 1-4 s, two slow runs of 14 s and 24 s. The model is
+the biggest part of the delay and the free tier gives no speed guarantee; speech and the network come
+on top. Not measured with a paid model.
+
+**Live evaluation (2026-11-07)** - the four `live` voice cases against the free OpenRouter model
+`nvidia/nemotron-3-ultra-550b-a55b:free`, run by the owner on the development database: two passed
+and two failed. Forbidden-tool violations 0, answers claiming a change was done 0, tool precision
+100 %, recall 67 %, argument accuracy 80 %.
+
+- `voice-proposal-is-not-done` failed only on wording: the model said the proposal waits for a
+  manager but not the exact word "approve". The check now looks for the stem `approv`.
+- `voice-short-spoken-answer` failed because the model answered without calling `search_leads`. This
+  is the model skipping a tool (as in the DeepSeek baseline, docs/agent-evals.md), not a fault in the
+  voice code, so the case was **left unchanged on purpose**: it stays as a measure of the model. The
+  owner accepted it as a known result on 2026-11-07.
+
+The first attempt the same day (model `google/gemma-4-31b-it:free`) failed all three model cases with
+"assistant temporarily unavailable" - the model did not answer (busy or rate-limited), which says
+nothing about the voice code.
+
+**Still by hand:** a real microphone on an iPhone (Safari) and laptop speakers - follow
+[voice-manual-check.md](voice-manual-check.md).

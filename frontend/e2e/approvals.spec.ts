@@ -61,9 +61,9 @@ async function askForStatus(
 ) {
   await page.goto("/assistant");
   await page
-    .getByLabel("Question")
+    .getByLabel("Message to the assistant")
     .fill(`Please mark lead ${leadId} as ${status} because ${because}`);
-  await page.getByRole("button", { name: "Ask assistant" }).click();
+  await page.getByRole("button", { name: "Send" }).click();
   const waiting = page.getByRole("region", { name: "Waiting for approval" });
   await expect(waiting).toBeVisible();
   await expect(waiting).toContainText("Nothing has changed yet");

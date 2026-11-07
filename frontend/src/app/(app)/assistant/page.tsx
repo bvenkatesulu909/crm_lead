@@ -4,8 +4,6 @@ import { AssistantConversation } from "@/components/assistant-conversation";
 import { apiFetch } from "@/lib/server/api";
 import type { VoiceStatus } from "@/lib/voice/choose";
 
-import { StaffAssistantForm } from "./assistant-form";
-
 export const metadata: Metadata = { title: "AI Assistant" };
 
 export default async function AssistantPage() {
@@ -24,12 +22,6 @@ export default async function AssistantPage() {
       </p>
       <div className="space-y-6">
         <AssistantConversation voice={voice} />
-        <section>
-          <h2 className="mb-3 text-base font-semibold text-slate-900">
-            One-off question
-          </h2>
-          <StaffAssistantForm />
-        </section>
       </div>
     </>
   );

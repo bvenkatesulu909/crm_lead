@@ -1,6 +1,6 @@
 # ADR 0024 — Deal desk: several AI reviewers on one deal, plus parallel account research (CRM-114)
 
-- **Status:** Proposed (2026-11-08). Nothing is built until the owner answers section 6.
+- **Status:** Accepted (2026-11-08) with the recommended answers to all eight questions in section 6
 - **Date:** 2026-11-08
 - **Deciders:** Project owner
 - **Depends on:** ADR 0014 (approval queue), ADR 0016 (agent registry, budgets, kill switch),
@@ -166,6 +166,14 @@ only, as for the other agents.
 - **Q7 - Keeping reviews and briefs.** **Recommended: 12 months, insert-only**, like web evidence.
 - **Q8 - Default.** **Recommended: both off by default** in the agent registry; a tenant
   administrator switches them on.
+
+### Decision (2026-11-08)
+
+The owner accepted every recommended answer: Q1 the reading as written; Q2 pricing, account and
+momentum reviewers; Q3 follow-up tasks on the deal only, at most 2; Q4 A (3 reviewers + desk lead);
+Q5 evidence on file only, no new web checks; Q6 deal owner, sales managers and tenant administrators
+for the deal desk, anyone who may read the account for research; Q7 12 months, insert-only; Q8 both
+off by default.
 
 ## 7. What this does not change
 

@@ -3,8 +3,9 @@
 
 Only the language model is scripted. Everything else is real: the fact sheets read as the asker,
 the agent registry (on by default; an administrator can switch it off), the limits, the approval
-queue and its Sentinel, the stored review (insert-only), the audit and the token count. Happy path, role denial, record-level denial,
-tenant isolation, ID tampering, refused answers, a blocked proposal and the limits.
+queue and its Sentinel, the stored review (insert-only), the audit and the token count. Happy
+path, role denial, record-level denial, tenant isolation, ID tampering, refused answers, a blocked
+proposal and the limits.
 """
 
 import json

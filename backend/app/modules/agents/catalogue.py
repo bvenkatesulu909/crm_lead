@@ -111,11 +111,11 @@ AGENTS: dict[str, AgentDef] = {
             description=(
                 "Three AI reviewers look at one deal at the same time (pricing, account, "
                 "momentum) and a desk lead writes a short brief. It may SUGGEST at most two "
-                "follow-up tasks; they wait in the approval queue. Off until switched on."
+                "follow-up tasks; they wait in the approval queue. On for every organisation "
+                "unless an administrator switches it off (owner's decision, 2026-11-08)."
             ),
             owner_role="tenant_admin",
             tools=("submit_findings", "submit_brief"),
-            default_enabled=False,
         ),
         AgentDef(
             key="web_check",

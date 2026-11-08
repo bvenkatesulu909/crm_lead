@@ -13,7 +13,7 @@ sites), AG3 (API, audit, events, notifications) and AG4 (the admin page).
 | `public_chat` | talks to website visitors, saves a lead on request | 1 |
 | `knowledge_answers` | answers from the knowledge base with sources | 0 |
 | `lead_agent` | looks at one lead (and its web evidence and possible duplicates) and SUGGESTS a status; **off by default** (docs/lead-agent.md) | 1 (`submit_suggestion`) |
-| `deal_desk` | three reviewers (pricing, account, momentum) look at one deal in parallel, a desk lead writes a brief and SUGGESTS at most two follow-up tasks on the deal; **off by default** (ADR 0024) | 2 (`submit_findings`, `submit_brief`) |
+| `deal_desk` | three reviewers (pricing, account, momentum) look at one deal in parallel, a desk lead writes a brief and SUGGESTS at most two follow-up tasks on the deal; **on by default** - an administrator can switch it off (ADR 0024, owner's decision 2026-11-08) | 2 (`submit_findings`, `submit_brief`) |
 | `qualifier` | reads one lead and the organisation's written steps and SUGGESTS what to do (docs/qualifier.md); one tool, `submit_assessment` | 1 (`submit_assessment`) |
 | `web_check` | looks up a RERA number or a company on a public registry (ADR 0019) - **uses no model** | 0 |
 | `mcp_client` | lets an outside AI client (Claude Code, Cursor ...) suggest changes through the MCP server (ADR 0020) - **uses no model of ours, off until switched on** | 0 |

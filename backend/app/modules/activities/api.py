@@ -249,9 +249,10 @@ def create_task(
     lead_id: uuid.UUID | None,
     account_id: uuid.UUID | None,
     contact_id: uuid.UUID | None = None,
+    opportunity_id: uuid.UUID | None = None,
 ) -> uuid.UUID:
     """Create an open task with the activities module's own checks (links, assignee, audit).
-    Linked to one record: the lead if given, else the contact, else the account."""
+    Linked to one record: the lead if given, else the deal, else the contact, else the account."""
     activity = service.create_activity(
         session,
         principal,
@@ -261,8 +262,13 @@ def create_task(
             due_at=due_at,
             assignee_id=assignee_id,
             lead_id=lead_id,
-            contact_id=contact_id if lead_id is None else None,
-            account_id=account_id if lead_id is None and contact_id is None else None,
+            opportunity_id=opportunity_id if lead_id is None else None,
+            contact_id=contact_id if lead_id is None and opportunity_id is None else None,
+            account_id=(
+                account_id
+                if lead_id is None and opportunity_id is None and contact_id is None
+                else None
+            ),
         ),
     )
     return activity.id

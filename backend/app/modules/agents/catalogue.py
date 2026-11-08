@@ -106,6 +106,18 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="deal_desk",
+            title="Deal desk",
+            description=(
+                "Three AI reviewers look at one deal at the same time (pricing, account, "
+                "momentum) and a desk lead writes a short brief. It may SUGGEST at most two "
+                "follow-up tasks; they wait in the approval queue. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_findings", "submit_brief"),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="web_check",
             title="Web check",
             description=(

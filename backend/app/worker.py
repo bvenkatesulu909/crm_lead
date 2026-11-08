@@ -35,6 +35,7 @@ from app.modules.approvals import api as approvals_api
 from app.modules.assistant import api as assistant_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
+from app.modules.deal_desk import api as deal_desk_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
 from app.modules.lead_agent import api as lead_agent_api
@@ -138,6 +139,10 @@ def run_schedules(
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += webcheck_api.delete_expired(session, now, tenant_id=tenant_id)
+            # Deal reviews older than the retention (ADR 0024): deleted.
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += deal_desk_api.delete_expired(session, now, tenant_id=tenant_id)
             # AI proposals nobody decided on in time (ADR 0014): expired, requester told.
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)

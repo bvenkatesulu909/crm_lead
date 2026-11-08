@@ -30,6 +30,7 @@ from app.modules.sales.policies import readable_opportunities
 __all__ = [
     "DealFacts",
     "deal_facts",
+    "opportunity_name",
     "win_loss_table",
     "EXPORT",
     "export_table",
@@ -147,6 +148,12 @@ def deal_facts(session: Session, principal: Principal, opp_id: uuid.UUID) -> Dea
         stage_entered_at=entered or deal.created_at,
         other_open_deals=others or 0,
     )
+
+
+def opportunity_name(session: Session, principal: Principal, opp_id: uuid.UUID) -> str | None:
+    """The deal's name for someone who may read it, else None."""
+    deal = repository.get_readable(session, principal, opp_id)
+    return deal.name if deal is not None else None
 
 
 def is_readable_opportunity(session: Session, principal: Principal, opp_id: uuid.UUID) -> bool:

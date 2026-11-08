@@ -441,6 +441,21 @@ Accepted 2026-10-31 with the recommended answers to the five questions in ADR 00
 | MCP5c | Provenance on the approval card, entry on the AI agents page |
 | MCP5d | Live tests, docs, full runs |
 
+## Phase DD — Deal desk and parallel account research (CRM-114)  *(ADR 0024 proposed 2026-11-08; waits for the owner's answers - nothing built)*
+
+The newer CRM-114 title asks for a multi-agent deal desk and parallel account research; ADR 0022's
+lead agent (built from an older title) stays as it is. Details and the eight questions: ADR 0024.
+
+| Step | Content |
+|---|---|
+| DD0 | ADR 0024 + this plan (documents only) |
+| DD1 | Fact sheets for the three reviewers, built by code through each module's `api.py`; permission, tenant, record-level and ID-tampering tests |
+| DD2 | The graph (parallel reviewers, desk lead, citation and answer checks), registry entry `deal_desk` (off), migration, limits, audit |
+| DD3 | API and the "Review this deal" card; scripted model |
+| DD4 | Account research: four gatherers, writer, `account_briefs`, registry entry `account_research` (off), API and the account card |
+| DD5 | BP-10 cases and a Playwright journey |
+| DD6 | `docs/deal-desk.md`, one real-model run (owner's yes), full runs |
+
 ## Phase 19 — External Integrations (Module 17)  *(CRM MCP server: ADR 0015, steps MCP0-MCP6; MCP1 done 2026-10-26)*
 
 **Acceptance criteria**

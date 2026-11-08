@@ -23,7 +23,7 @@ from pydantic import SecretStr
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from agent_evals.cases import Case, Governance, substitute
+from agent_evals.cases import Case, Governance, WebcheckSetup, substitute
 from agent_evals.matchers import check_arguments
 from agent_evals.rag import HashingEmbedder, RagRun, run_rag_case, score_rag_case
 from agent_evals.rag_cases import RagCase
@@ -45,6 +45,7 @@ from app.core.audit import AuditLog
 from app.core.auth.principal import Principal
 from app.core.config import Settings
 from app.core.db import bind_tenant, bind_user
+from app.core.outbox import Job, OutboxJob
 from app.modules.agents import api as agents_api
 from app.modules.approvals.models import AgentAction
 from app.modules.assistant.llm import ChatModel
@@ -53,6 +54,8 @@ from app.modules.leads.models import Lead, LeadActivity
 from app.modules.qualifier import api as qualifier_api
 from app.modules.qualifier.models import LeadAssessment
 from app.modules.support.models import Ticket
+from app.modules.webcheck import api as webcheck_api
+from app.modules.webcheck.models import WebEvidence
 
 # Chosen from measurements, not guessed: with the hashing embedder the answerable demo questions
 # score 0.32 - 0.76 and the unanswerable ones 0.00 - 0.18 (docs/agent-evals.md, section 6d).
@@ -164,6 +167,125 @@ def warning_checks(session: Session, case: Case, proposal_ids: list[uuid.UUID]) 
     ]
 
 
+# Generous limits so a case never trips over checks earlier cases (or people) asked for: the
+# limits themselves are covered by the web check's own tests.
+_WEBCHECK_LIMIT = 10_000
+
+
+@contextmanager
+def webcheck_case(
+    session: Session, world: World, setup: WebcheckSetup | None
+) -> Iterator[Settings | None]:
+    """Set the web check up the way the case says (ADR 0019), play, then undo it (savepoint).
+    Yields the settings to play with, or None for a case without a ``webcheck`` setup."""
+    if setup is None:
+        yield None
+        return
+    nested = session.begin_nested()
+    try:
+        if not setup.enabled:
+            limits, now = agents_api.Limits.default(), datetime.now(UTC)
+            admin = world.principal("tenant_admin")
+            world.bind(admin)
+            current = agents_api.effective(session, world.tenant_id, WEBCHECK_AGENT, limits, now)
+            agents_api.update_settings(
+                session,
+                admin,
+                WEBCHECK_AGENT,
+                limits=limits,
+                now=now,
+                version=current.version,
+                enabled=False,
+            )
+        yield world.settings.model_copy(
+            update={
+                "webcheck_demo": setup.sources == "demo",
+                "webcheck_sources": "",
+                "webcheck_disabled": setup.platform_disabled,
+                "webcheck_per_user_hour": _WEBCHECK_LIMIT,
+                "webcheck_per_tenant_day": _WEBCHECK_LIMIT,
+            }
+        )
+    finally:
+        if nested.is_active:
+            nested.rollback()
+
+
+WEBCHECK_AGENT = "web_check"
+
+
+def _webcheck_jobs(session: Session, world: World) -> list[OutboxJob]:
+    bind_tenant(session, world.tenant_id)
+    statement = (
+        select(OutboxJob)
+        .where(OutboxJob.tenant_id == world.tenant_id, OutboxJob.kind == webcheck_api.CHECK_JOB)
+        .order_by(OutboxJob.created_at)
+    )
+    return list(session.scalars(statement))
+
+
+def webcheck_checks(
+    session: Session,
+    world: World,
+    case: Case,
+    settings: Settings | None,
+    before: set[uuid.UUID],
+) -> list[Check]:
+    """What a ``webcheck`` case expects of the lookups it queued and of their stored evidence.
+    The queued lookups run against the demo registry first when the case asks for it."""
+    if settings is None or case.webcheck is None:
+        return []
+    new = [job for job in _webcheck_jobs(session, world) if job.id not in before]
+    checks: list[Check] = []
+    wanted = case.expect.webchecks_queued
+    if wanted is not None:
+        ok = len(new) == wanted
+        checks.append(
+            Check("webchecks_queued", ok, "" if ok else f"{len(new)} queued, expected {wanted}")
+        )
+    if not case.webcheck.run_jobs:
+        return checks
+    handle = webcheck_api.check_job_handler(settings)
+    for job in new:
+        handle(session, Job(job.id, job.tenant_id, job.kind, dict(job.payload), 1))
+    session.flush()
+    bind_tenant(session, world.tenant_id)
+    requests = [uuid.UUID(str(job.payload["request_id"])) for job in new]
+    rows = list(session.scalars(select(WebEvidence).where(WebEvidence.request_id.in_(requests))))
+    expected = case.expect.evidence
+    if expected is None:
+        return checks
+    verdicts = sorted(row.verdict for row in rows)
+    ok = verdicts == sorted(expected.verdicts)
+    checks.append(
+        Check(
+            "evidence_verdicts",
+            ok,
+            "" if ok else f"stored {verdicts}, expected {sorted(expected.verdicts)}",
+        )
+    )
+    stored = " ".join(
+        " ".join(filter(None, (row.registered_name, row.status, row.excerpt, row.final_url)))
+        for row in rows
+    )
+    leaked = [text for text in expected.must_not_contain if text in stored]
+    checks.append(
+        Check(
+            "evidence_clean", not leaked, "" if not leaked else f"stored evidence contains {leaked}"
+        )
+    )
+    reported = {code for row in rows for code in row.cleaned}
+    missing = sorted(set(expected.cleaned) - reported)
+    checks.append(
+        Check(
+            "evidence_cleaning_reported",
+            not missing,
+            "" if not missing else f"not reported: {missing} (reported {sorted(reported)})",
+        )
+    )
+    return checks
+
+
 def play_staff(
     session: Session,
     world: World,
@@ -174,19 +296,27 @@ def play_staff(
 ) -> tuple[CaseResult, StaffRun]:
     """Play one staff-assistant case and score it. Without ``model`` the case's script plays
     (strict scoring); with a real one the scoring is lenient about extra calls."""
-    with governed_case(session, world, case) as limits:
+    with (
+        governed_case(session, world, case) as limits,
+        webcheck_case(session, world, case.webcheck) as settings,
+    ):
         principal = world.principal(case.persona)
         ready = substitute(case, world.placeholders(case.persona))
+        jobs_before = {job.id for job in _webcheck_jobs(session, world)} if settings else set()
         world.bind(principal)
         before = world.snapshot()
         world.bind(principal)
-        run = run_staff_case(session, principal, ready, model=model, limits=limits, **options)
+        run = run_staff_case(
+            session, principal, ready, model=model, limits=limits, settings=settings, **options
+        )
         session.flush()
         after = world.snapshot()
         world.bind(principal)
         result = score_case(ready, run.trajectory, strict=model is None)
         checks = invariants(before, after, run)
         checks += warning_checks(session, ready, run.proposal_ids)
+        checks += webcheck_checks(session, world, ready, settings, jobs_before)
+        world.bind(principal)
         return with_checks(result, checks), run
 
 

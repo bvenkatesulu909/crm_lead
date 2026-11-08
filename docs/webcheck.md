@@ -124,6 +124,10 @@ is then switched on per deployment in `CRM_WEBCHECK_SOURCES`. Version 1 ships wi
 - `tests/db/test_webcheck.py` - requests, record-level denial, tenant isolation, limits, the worker
   job, the insert-only table and retention.
 - `tests/db/test_webcheck_api.py` - the API and the notification.
+- `backend/evals/agents/staff_webcheck.json` - 9 evaluation cases for the assistant's `check_rera`
+  tool: a poisoned registry page, an internal address, a blocked source, the switches, a colleague's
+  lead (docs/agent-evals.md, section 6l). `tests/db/test_agent_evals_webcheck.py` breaks the
+  protections on purpose and expects a case to fail.
 - `frontend/src/lib/webcheck.test.tsx` - words, form and evidence list.
 - `frontend/e2e/webcheck.spec.ts` - the journey in a real browser. Set `CRM_WEBCHECK_DEMO=true` for
   the API and the worker and `E2E_WEBCHECK_DEMO=1` for the test. The test agent asks for several

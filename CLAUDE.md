@@ -670,6 +670,7 @@ Full inventory and the plan for the remaining work: [docs/gap-analysis.md](docs/
     `assistant`, `approvals`, `agents` 7 passed, 1 skipped; 9 deliberate backend breaks and 6 web breaks caught (one needed a
     sharper test). **Not done:** the delay measurement on staging (needs the server updated first), a real microphone check on
     iPhone/Safari or with laptop speakers, a paid model run of the voice cases. Before go-live set `CRM_VOICE_BROWSER_ENGINE=false`.
+- **Deal desk and parallel account research (CRM-114, ADR 0024)** - 2026-11-08, branch `docs/adr-0024-deal-desk`: ADR 0024 + Phase DD plan, documents only; **accepted 2026-11-08 with all eight recommended answers**. The newer CRM-114 title ("Multi-agent deal desk, plus parallel account research") differs from the one ADR 0022 was built from; the lead agent stays.
 - **Next planned, in order (owner, 2026-10-25):** BP-10 (design waiting for review), BP-11 (rest of
   AI Track A1), then AI Track A2 starting with BP-14 (agent registry, budgets, kill switch; needs
   an ADR), A3, A4, Marketing (Phase 16), Integrations (Phase 19). Teams come before the features

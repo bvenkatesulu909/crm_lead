@@ -1,7 +1,9 @@
 """Public interface of the quotes module. Other modules (and the worker) import only from here."""
 
 import uuid
+from dataclasses import dataclass
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
@@ -23,6 +25,8 @@ from app.modules.quotes.repository import QuoteFilters
 from app.modules.quotes.schemas import PortalQuoteRead, PortalQuoteSummary
 
 __all__ = [
+    "DealQuote",
+    "deal_quotes",
     "quote_table",
     "EXPORT",
     "export_table",
@@ -88,6 +92,51 @@ def email_failed_handler() -> DeadJobHandler:
         service.email_failed(session, job.tenant_id, _uuid(job, "quote_id"), error)
 
     return handle
+
+
+@dataclass(frozen=True)
+class DealQuote:
+    """A quote of one deal as the deal desk (ADR 0024) reads it. Figures and codes only: never
+    the internal or customer notes."""
+
+    id: uuid.UUID
+    label: str  # "QT-0007 rev 2"
+    status: str
+    currency: str
+    total: Decimal
+    max_discount_percent: Decimal
+    # The organisation's discount limit above which a manager must approve.
+    approval_limit_percent: Decimal
+    valid_until: date
+
+
+DEAL_QUOTES_LIMIT = 10
+
+
+def deal_quotes(session: Session, principal: Principal, opp_id: uuid.UUID) -> list[DealQuote]:
+    """The newest quotes of a deal that this person may read (others are left out, silently)."""
+    rows = session.scalars(
+        select(Quote)
+        .where(Quote.opportunity_id == opp_id, readable_quotes(principal))
+        .order_by(Quote.created_at.desc())
+        .limit(DEAL_QUOTES_LIMIT)
+    ).all()
+    if not rows:
+        return []
+    limit = service.approval_limit(session, rows[0].tenant_id)
+    return [
+        DealQuote(
+            id=q.id,
+            label=service.number_label(q),
+            status=q.status,
+            currency=q.currency,
+            total=q.total,
+            max_discount_percent=q.max_discount_percent,
+            approval_limit_percent=limit,
+            valid_until=q.valid_until,
+        )
+        for q in rows
+    ]
 
 
 def quote_brief(

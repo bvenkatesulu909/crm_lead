@@ -1,3 +1,5 @@
-"""Public interface of the relationships module (nothing is needed by other modules yet)."""
+"""Public interface of the relationships module. Other modules import only from here."""
 
-__all__: list[str] = []
+from app.modules.relationships.service import account_health
+
+__all__ = ["account_health"]

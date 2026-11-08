@@ -159,6 +159,32 @@ class QualifierSetup(_Strict):
     other_organisation_procedure: bool = False
 
 
+class WebcheckSetup(_Strict):
+    """How the web check (ADR 0019) is set up for a staff-assistant case. Without it the
+    assistant plays with no web check settings at all, as before. Applied inside the case's
+    savepoint, so nothing leaks into the next case."""
+
+    # "demo": the fictional demo registry is switched on; "none": no source is switched on.
+    sources: Literal["demo", "none"] = "demo"
+    # The organisation's switch in the agent registry (entry "web_check").
+    enabled: bool = True
+    # The platform switch CRM_WEBCHECK_DISABLED.
+    platform_disabled: bool = False
+    # After the conversation, run the lookups it queued against the demo registry (the real
+    # fetcher and parser; only the network is replaced), so the stored evidence can be checked.
+    run_jobs: bool = False
+
+
+class ExpectedEvidence(_Strict):
+    """What the lookups a case queued must have stored (``webcheck.run_jobs``)."""
+
+    verdicts: list[Literal["found", "not_found", "unclear", "error"]] = Field(min_length=1)
+    # Texts that must never reach the stored evidence (the page's links, pictures, hidden text).
+    must_not_contain: list[str] = Field(default_factory=list)
+    # Kinds of finding the cleaning must have reported (e.g. "link", "instruction_phrase").
+    cleaned: list[str] = Field(default_factory=list)
+
+
 class ExpectedProposal(_Strict):
     """One proposal the case must have made (kind and payload, matchers as for tool arguments)."""
 
@@ -197,6 +223,10 @@ class Expect(_Strict):
     # Qualifier and lead agent only: exactly the proposals the case made, in order ([] = none).
     # None: not checked.
     proposals: list[ExpectedProposal] | None = None
+    # Staff assistant with ``webcheck`` only: how many web checks the conversation queued, and
+    # what their stored evidence must look like. None: not checked.
+    webchecks_queued: int | None = Field(default=None, ge=0, le=5)
+    evidence: ExpectedEvidence | None = None
 
     @model_validator(mode="after")
     def _warnings_are_warnings(self) -> "Expect":
@@ -243,6 +273,8 @@ class Case(BaseModel):
     # Qualifier and lead agent: which procedure the organisation has. Absent = the standard one
     # (the Qualifier) or the lead-agent steps (the lead agent).
     qualifier: QualifierSetup | None = None
+    # Staff assistant: how the web check is set up (ADR 0019). Absent = no web check settings.
+    webcheck: WebcheckSetup | None = None
     script: list[Step] = Field(default_factory=list)
     expect: Expect
 
@@ -263,6 +295,14 @@ class Case(BaseModel):
             raise ValueError("qualifier: only for the qualifier and the lead agent")
         if self.agent not in ("qualifier", "lead_agent") and self.expect.proposals is not None:
             raise ValueError("expect.proposals: only for the qualifier and the lead agent")
+        if self.webcheck is not None and self.agent != "staff_assistant":
+            raise ValueError("webcheck: only the staff assistant can ask for a web check")
+        if self.webcheck is None and (
+            self.expect.webchecks_queued is not None or self.expect.evidence is not None
+        ):
+            raise ValueError("expect.webchecks_queued / evidence: the case needs a webcheck setup")
+        if self.expect.evidence is not None and not (self.webcheck and self.webcheck.run_jobs):
+            raise ValueError("expect.evidence: set webcheck.run_jobs so the lookups run")
         real = known_tools(self.agent)
         if self.governance and self.governance.allowed_tools:
             unknown = set(self.governance.allowed_tools) - real

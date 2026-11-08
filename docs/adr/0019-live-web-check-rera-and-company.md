@@ -99,7 +99,7 @@ model: it appears on the same page, counts checks instead of tokens, and the sta
 | WC2 | Module `webcheck`: migration 0045 (`web_evidence`, forced RLS, insert-only), source catalogue with the fake source, parsers, service, worker job, API, audit, events, retention job |
 | WC3 | Registry entry (no model), staff assistant tool `check_rera` (arguments: source key and query only), limits |
 | WC4 | Screens: "Check" button and an Evidence card on lead and account pages, plain-text excerpts, notification |
-| WC5 | BP-10 cases (injection text in a fake page, internal address refused, blocked source, off switch), `docs/webcheck.md`, Playwright journey, full runs |
+| WC5 | BP-10 cases (injection text in a fake page, internal address refused, blocked source, off switch), `docs/webcheck.md`, Playwright journey, full runs - done 2026-11-08 |
 
 ## 5. Questions for the owner
 

@@ -169,6 +169,7 @@ def run_staff_case(
     pending_limit: int = 20,
     model: ChatModel | None = None,
     limits: agents_api.Limits | None = None,
+    settings: Settings | None = None,
 ) -> StaffRun:
     """Play a staff-assistant case as ``principal``. The case must already have its
     placeholders replaced. The session stays uncommitted: the caller decides what to keep.
@@ -182,7 +183,7 @@ def run_staff_case(
     try:
         if len(case.messages) == 1 and case.mode == "text":
             budget = staff_tools.ProposalBudget(
-                expiry_days=expiry_days, pending_limit=pending_limit
+                expiry_days=expiry_days, pending_limit=pending_limit, settings=settings
             )
             answer, _ticket, _links, proposals = staff_service.answer(
                 session,
@@ -194,7 +195,7 @@ def run_staff_case(
             )
         else:
             answer, proposals = _staff_conversation(
-                session, principal, case, recorder, expiry_days, pending_limit, limits
+                session, principal, case, recorder, expiry_days, pending_limit, limits, settings
             )
     except GuardrailError as exc:
         # Stopped before any model ran: the person is told why, nothing is called.
@@ -215,6 +216,7 @@ def _staff_conversation(
     expiry_days: int,
     pending_limit: int,
     limits: agents_api.Limits | None,
+    settings: Settings | None = None,
 ) -> tuple[str, list[staff_tools.ProposalRef]]:
     """Several questions of one remembered conversation, each answer streamed (ADR 0023) - the
     path of ``POST /assistant/conversations/{id}/turns``. Returns the last answer and every
@@ -224,7 +226,9 @@ def _staff_conversation(
     proposals: list[staff_tools.ProposalRef] = []
     for text in case.messages:
         # A new budget per question, as the API gives each turn.
-        budget = staff_tools.ProposalBudget(expiry_days=expiry_days, pending_limit=pending_limit)
+        budget = staff_tools.ProposalBudget(
+            expiry_days=expiry_days, pending_limit=pending_limit, settings=settings
+        )
         prepared = staff_service.prepare(
             session,
             principal,

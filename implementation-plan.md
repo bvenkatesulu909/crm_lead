@@ -385,7 +385,7 @@ Design: [docs/qualifier.md](docs/qualifier.md), accepted 2026-10-31 with the six
 | QA4 | Screens: lead card with the Qualify button, admin page with a dry run, notifications |
 | QA5 | BP-10 evaluation cases, final docs, Playwright journey, full runs - done 2026-11-02 (journey written, not run) |
 
-## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 accepted 2026-10-30; WC0, WC1, WC2a, WC2b, WC2c, WC3, WC4 done)*
+## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 accepted 2026-10-30; WC0-WC5 done - phase complete 2026-11-08)*
 
 Accepted 2026-10-30 with the recommended answers to the five questions in ADR 0019.
 
@@ -398,7 +398,7 @@ Accepted 2026-10-30 with the recommended answers to the five questions in ADR 00
 | WC2c | `webcheck` API: `POST /webcheck/checks`, `GET /webcheck/evidence`, schemas, OpenAPI, inventory |
 | WC3 | Agent registry entry (no model), staff assistant tool `check_rera`, limits |
 | WC4 | Screens: Check button and Evidence card on lead and account pages |
-| WC5 | BP-10 cases, `docs/webcheck.md`, Playwright journey, full runs |
+| WC5 | BP-10 cases, `docs/webcheck.md`, Playwright journey, full runs (done 2026-11-08) |
 ## Phase 16 — Marketing Management (Module 7)
 
 **Acceptance criteria**

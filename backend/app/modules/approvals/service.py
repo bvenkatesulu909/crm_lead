@@ -32,6 +32,7 @@ from app.modules.approvals.models import AGENTS, REASON_MAX, AgentAction
 from app.modules.contacts import api as contacts_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
+from app.modules.sales import api as sales_api
 
 ENTITY = "agent_action"
 logger = logging.getLogger(__name__)
@@ -184,6 +185,8 @@ def _visible(
         return accounts_api.is_readable_account(session, principal, target_id)
     if target_type == "contact":
         return contacts_api.is_readable_contact(session, principal, target_id)
+    if target_type == "opportunity":
+        return sales_api.is_readable_opportunity(session, principal, target_id)
     return False
 
 
@@ -695,8 +698,17 @@ def list_actions(
     )
 
 
+# Where each kind of record lives in the web app.
+_PATHS = {
+    "lead": "leads",
+    "account": "accounts",
+    "contact": "contacts",
+    "opportunity": "opportunities",
+}
+
+
 def target_link(action: AgentAction) -> str:
-    return f"/{action.target_type}s/{action.target_id}"
+    return f"/{_PATHS[action.target_type]}/{action.target_id}"
 
 
 def target_label(session: Session, principal: Principal, action: AgentAction) -> str | None:
@@ -707,6 +719,8 @@ def target_label(session: Session, principal: Principal, action: AgentAction) ->
         return leads_api.lead_brief(session, principal, action.target_id)
     if action.target_type == "account":
         return accounts_api.account_name(session, action.tenant_id, action.target_id)
+    if action.target_type == "opportunity":
+        return sales_api.opportunity_name(session, principal, action.target_id)
     return contacts_api.contact_name(session, action.tenant_id, action.target_id)
 
 

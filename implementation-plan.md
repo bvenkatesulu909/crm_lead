@@ -441,7 +441,7 @@ Accepted 2026-10-31 with the recommended answers to the five questions in ADR 00
 | MCP5c | Provenance on the approval card, entry on the AI agents page |
 | MCP5d | Live tests, docs, full runs |
 
-## Phase DD — Deal desk and parallel account research (CRM-114)  *(ADR 0024 accepted 2026-11-08 with the recommended answers; DD0, DD1 done)*
+## Phase DD — Deal desk and parallel account research (CRM-114)  *(ADR 0024 accepted 2026-11-08 with the recommended answers; DD0, DD1, DD2 done)*
 
 The newer CRM-114 title asks for a multi-agent deal desk and parallel account research; ADR 0022's
 lead agent (built from an older title) stays as it is. Details and the eight questions: ADR 0024.

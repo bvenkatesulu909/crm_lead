@@ -202,6 +202,9 @@ class Settings(BaseSettings):
     # The optional lead agent (ADR 0022): how often it may run.
     lead_agent_per_lead_hour: int = Field(default=1, ge=1, le=100)
     lead_agent_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # The deal desk (ADR 0024): reviews per deal per hour and per organisation per day.
+    deal_desk_per_deal_hour: int = Field(default=1, ge=1, le=100)
+    deal_desk_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
     # Let the lead agent look at every new website lead as the Automation identity. Off by default;
     # read when the worker starts. The agent's own switch (also off by default), budget and limits
     # still apply.

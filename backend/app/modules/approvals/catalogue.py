@@ -135,6 +135,7 @@ def _run_task(session: Session, me: Principal, proposal: Proposal, payload: Task
         lead_id=link.get("lead_id"),
         account_id=link.get("account_id"),
         contact_id=link.get("contact_id"),
+        opportunity_id=link.get("opportunity_id"),
     )
     return Ran("Task created.", created)
 
@@ -234,7 +235,7 @@ KINDS: dict[str, ActionKind] = {
         ),
         ActionKind(
             "activity.create_task",
-            ("lead", "account", "contact"),
+            ("lead", "account", "contact", "opportunity"),
             TaskPayload,
             _describe_task,
             _check_assignee,

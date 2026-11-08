@@ -9,8 +9,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agent_evals import play
+from agent_evals import desk, play
 from agent_evals.cases import Case
+from agent_evals.desk import DeskRun, ResearchRun
 from agent_evals.play import RAG_MIN_SIMILARITY, explain, invariants
 from agent_evals.rag import HashingEmbedder, RagRun
 from agent_evals.rag_cases import RagCase
@@ -29,6 +30,8 @@ __all__ = [
     "explain",
     "ingest_corpus",
     "invariants",
+    "play_account_research",
+    "play_deal_desk",
     "play_portal",
     "play_public",
     "play_lead_agent",
@@ -107,3 +110,15 @@ def play_qualifier(
     session: Session, world: World, case: Case, **options: Any
 ) -> tuple[CaseResult, QualifierRun]:
     return play.play_qualifier(session, eval_world(session, world), case, **options)
+
+
+def play_deal_desk(
+    session: Session, world: World, case: Case, **options: Any
+) -> tuple[CaseResult, DeskRun]:
+    return desk.play_deal_desk(session, eval_world(session, world), case, **options)
+
+
+def play_account_research(
+    session: Session, world: World, case: Case, **options: Any
+) -> tuple[CaseResult, ResearchRun]:
+    return desk.play_account_research(session, eval_world(session, world), case, **options)

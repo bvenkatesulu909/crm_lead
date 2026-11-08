@@ -11,6 +11,7 @@ lenient scoring - a report, not a gate (docs/agent-evals.md).
 
 import functools
 import json
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,7 +19,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agent_evals import play
+from agent_evals import desk, play
 from agent_evals.cases import Case, dataset_hash, load_cases, substitute
 from agent_evals.rag import HashingEmbedder
 from agent_evals.rag_cases import RagCase, load_rag_cases, rag_dataset_hash
@@ -31,7 +32,15 @@ BACKEND = Path(__file__).resolve().parents[1]
 CASES_DIR = BACKEND / "evals" / "agents"
 RAG_FILE = BACKEND / "evals" / "rag" / "ci_cases.json"
 
-AGENTS = ("staff_assistant", "portal_assistant", "public_chat", "qualifier", "lead_agent")
+AGENTS = (
+    "staff_assistant",
+    "portal_assistant",
+    "public_chat",
+    "qualifier",
+    "lead_agent",
+    "deal_desk",
+    "account_research",
+)
 CITED = "cited_answers"
 ALL_SUITES = (*AGENTS, CITED)
 
@@ -98,6 +107,10 @@ def run_suite(
                     return play.play_qualifier(session, world, c, model=model)[0]
                 if name == "lead_agent":
                     return play.play_lead_agent(session, world, c, model=model)[0]
+                if name == "deal_desk":
+                    return desk.play_deal_desk(session, world, c, model=model)[0]
+                if name == "account_research":
+                    return desk.play_account_research(session, world, c, model=model)[0]
                 return play.play_public(session, world, c, model=model)[0]
 
             try:
@@ -145,20 +158,25 @@ class _Probe:
         self.calls = 0
         self.chars = 0
         self.reply_chars = 0
+        # The deal desk asks its three reviewers from three threads at the same time.
+        self._lock = threading.Lock()
 
     def reply(
         self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
     ) -> ModelReply:
-        self.calls += 1
-        self.chars += (
+        sent = (
             len(system)
             + len(json.dumps(tools, default=str))
             + len(json.dumps(messages, default=str))
         )
         reply = self._inner.reply(system=system, messages=messages, tools=tools)
-        self.reply_chars += len(reply.text or "") + sum(
+        written = len(reply.text or "") + sum(
             len(json.dumps(u.input, default=str)) + len(u.name) for u in reply.tool_uses
         )
+        with self._lock:
+            self.calls += 1
+            self.chars += sent
+            self.reply_chars += written
         return reply
 
 
@@ -200,15 +218,23 @@ def estimate_cost(
 
         def play_one(c: Case = case) -> CaseResult:
             nonlocal calls, chars, reply_chars
-            probe = _Probe(ScriptedModel(c.script))
-            # The Qualifier and the lead agent set up their own leads (and the registry switch),
-            # so they are played whole.
-            whole = c.agent in ("qualifier", "lead_agent")
+            probe = _Probe(
+                desk.DeskScriptedModel(c.script)
+                if c.agent == "deal_desk"
+                else ScriptedModel(c.script)
+            )
+            # These agents set up their own records (and the registry switch), so they are
+            # played whole.
+            whole = c.agent in ("qualifier", "lead_agent", "deal_desk", "account_research")
             ready = c if whole else substitute(c, world.placeholders(c.persona))
             if c.agent == "qualifier":
                 play.play_qualifier(session, world, c, model=probe)
             elif c.agent == "lead_agent":
                 play.play_lead_agent(session, world, c, model=probe)
+            elif c.agent == "deal_desk":
+                desk.play_deal_desk(session, world, c, model=probe)
+            elif c.agent == "account_research":
+                desk.play_account_research(session, world, c, model=probe)
             elif c.agent == "staff_assistant":
                 run_staff_case(session, world.principal(c.persona), ready, model=probe)
             elif c.agent == "portal_assistant":

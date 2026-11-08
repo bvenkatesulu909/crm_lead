@@ -227,6 +227,9 @@ def test_the_ai_and_website_chat_settings_reach_the_api_and_the_worker() -> None
         assert env["CRM_DEEPSEEK_BASE_URL"].endswith(":-https://api.deepseek.com}")
         assert env["CRM_DEEPSEEK_MODEL"] == "${CRM_DEEPSEEK_MODEL:-deepseek-chat}"
         assert env["CRM_DEEPSEEK_FALLBACK_MODELS"] == "${CRM_DEEPSEEK_FALLBACK_MODELS:-}"
+        # Found on staging (2026-11-08): a free "thinking" model used all 1024 output tokens before
+        # writing the account brief, and the limit could not be raised on the server.
+        assert env["CRM_ASSISTANT_MAX_TOKENS"] == "${CRM_ASSISTANT_MAX_TOKENS:-1024}"
         # The website chat stays off unless the owner sets both values.
         assert env["CRM_PUBLIC_CHAT_TENANT_SLUG"] == "${CRM_PUBLIC_CHAT_TENANT_SLUG:-}"
         assert env["CRM_PUBLIC_CHAT_SERVER_KEY"] == "${CRM_PUBLIC_CHAT_SERVER_KEY:-}"

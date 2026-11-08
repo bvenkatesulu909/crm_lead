@@ -107,6 +107,9 @@ the client.
   `backend/evals/agents/deal_desk.json` (17 cases) and `account_research.json` (11 cases), played
   through the real services with only the model scripted, plus checks no case can skip.
 - Browser journey: `frontend/e2e/deal-desk.spec.ts`.
+- One real-model run (DeepSeek, 2026-11-08): 8 of 13 live cases passed, with no safety failure; the
+  other 5 differ only in wording and counts from the scripted answers ([agent-evals.md](agent-evals.md)
+  section 6m, baseline `backend/evals/baseline/deepseek-deal-desk.json`).
 
 ## 8. What it does not do (on purpose)
 

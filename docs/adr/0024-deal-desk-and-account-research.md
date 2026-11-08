@@ -143,7 +143,7 @@ only, as for the other agents.
 | DD3 | `POST /deal-desk/reviews`, `GET /deal-desk/reviews?opportunity_id=`, the "Review this deal" card on the deal page; scripted model for `CRM_AI_PROVIDER=fake` |
 | DD4 | Account research: four gatherers, the writer, `account_briefs`, registry entry `account_research` (off), API and the account page card |
 | DD5 | BP-10 cases for both (a poisoned record, a colleague's deal, a reviewer citing a record it was not given, more than 2 proposals, a stage-move proposal refused, switch off, budget, limits); Playwright journey - **done 2026-11-08**: 17 deal desk + 11 account research cases (`backend/evals/agents/deal_desk.json`, `account_research.json`, docs/agent-evals.md 6m), `e2e/deal-desk.spec.ts` now covers both |
-| DD6 | Docs (`docs/deal-desk.md`), one real-model run (with the owner's yes), full runs - docs done 2026-11-08; the real-model run waits for the owner's yes |
+| DD6 | Docs (`docs/deal-desk.md`), one real-model run (with the owner's yes), full runs - done 2026-11-08: docs, full runs, and one DeepSeek run with the owner's yes (8 of 13 live cases, no safety failure; the rest differ in wording) |
 
 ## 6. Questions for the owner (recommended answer first)
 

@@ -1,6 +1,7 @@
 """Public interface of the activities module."""
 
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -18,6 +19,8 @@ from app.modules.activities.policies import readable_activities
 from app.modules.activities.schemas import ActivityCreate
 
 __all__ = [
+    "DealActivity",
+    "deal_activity",
     "EXPORT",
     "export_table",
     "overdue_tasks",
@@ -42,6 +45,33 @@ def _linked(
         Activity.contact_id.in_(contact_ids) if contact_ids else false(),
         Activity.opportunity_id.in_(opportunity_ids) if opportunity_ids else false(),
     )
+
+
+@dataclass(frozen=True)
+class DealActivity:
+    """What happened on one deal, as counts and dates (the deal desk, ADR 0024). Only the
+    activities this person may read are counted."""
+
+    last_done_at: datetime | None
+    open_tasks: int
+    overdue_tasks: int
+
+
+def deal_activity(
+    session: Session, principal: Principal, opp_id: uuid.UUID, now: datetime
+) -> DealActivity:
+    on_deal = (Activity.opportunity_id == opp_id, readable_activities(principal))
+    last = session.scalar(
+        select(func.max(Activity.completed_at)).where(*on_deal, Activity.status == "done")
+    )
+    is_open = Activity.status == "open"
+    open_tasks, overdue = session.execute(
+        select(
+            func.count().filter(is_open),
+            func.count().filter(is_open, Activity.due_at.is_not(None), Activity.due_at < now),
+        ).where(*on_deal, Activity.kind == "task")
+    ).one()
+    return DealActivity(last_done_at=last, open_tasks=open_tasks, overdue_tasks=overdue)
 
 
 def last_interaction_by_account(

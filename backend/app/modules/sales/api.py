@@ -1,6 +1,7 @@
 """Public interface of the sales module. Other modules import only from here."""
 
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -27,6 +28,8 @@ from app.modules.sales.models import (
 from app.modules.sales.policies import readable_opportunities
 
 __all__ = [
+    "DealFacts",
+    "deal_facts",
     "win_loss_table",
     "EXPORT",
     "export_table",
@@ -84,6 +87,66 @@ def create_opportunity(
     )
     session.flush()
     return opportunity.id
+
+
+@dataclass(frozen=True)
+class DealFacts:
+    """One deal as the deal desk (ADR 0024) reads it: only for someone who may read the deal."""
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    account_id: uuid.UUID
+    owner_id: uuid.UUID | None
+    primary_contact_id: uuid.UUID | None
+    stage: str
+    is_open: bool
+    amount: Decimal | None
+    currency: str
+    expected_close_date: date | None
+    next_step: str | None
+    # When the deal entered its current stage (its last stage change, else its creation).
+    stage_entered_at: datetime
+    # Other open deals with the same account (a count only; the deals may not be readable).
+    other_open_deals: int
+
+
+def deal_facts(session: Session, principal: Principal, opp_id: uuid.UUID) -> DealFacts | None:
+    """The deal's facts, or None when it does not exist or this person may not read it."""
+    deal = repository.get_readable(session, principal, opp_id)
+    if deal is None:
+        return None
+    entered = session.scalar(
+        select(func.max(OpportunityStageChange.changed_at)).where(
+            OpportunityStageChange.tenant_id == deal.tenant_id,
+            OpportunityStageChange.opportunity_id == deal.id,
+        )
+    )
+    others = session.scalar(
+        select(func.count()).where(
+            Opportunity.tenant_id == deal.tenant_id,
+            Opportunity.account_id == deal.account_id,
+            Opportunity.id != deal.id,
+            Opportunity.stage.in_(OPEN_STAGES),
+            Opportunity.deleted_at.is_(None),
+        )
+    )
+    return DealFacts(
+        id=deal.id,
+        tenant_id=deal.tenant_id,
+        name=deal.name,
+        account_id=deal.account_id,
+        owner_id=deal.owner_id,
+        primary_contact_id=deal.primary_contact_id,
+        stage=deal.stage,
+        is_open=deal.stage in OPEN_STAGES,
+        amount=deal.amount,
+        currency=deal.currency,
+        expected_close_date=deal.expected_close_date,
+        next_step=deal.next_step,
+        stage_entered_at=entered or deal.created_at,
+        other_open_deals=others or 0,
+    )
 
 
 def is_readable_opportunity(session: Session, principal: Principal, opp_id: uuid.UUID) -> bool:

@@ -32,6 +32,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "qualifier",
         "lead_agent",
         "deal_desk",
+        "account_research",
     }
     assert {key for key, agent in AGENTS.items() if agent.uses_model} == models
     # The web check is governed like an agent but calls no language model (ADR 0019).
@@ -46,11 +47,12 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
     # The deal desk starts ON (ADR 0024, owner's decision of 2026-11-08 replacing Q8).
     assert not AGENTS["lead_agent"].default_enabled
     assert AGENTS["deal_desk"].default_enabled
+    assert not AGENTS["account_research"].default_enabled  # ADR 0024 Q8 still applies to it
     assert not AGENTS["voice"].default_enabled and AGENTS["voice"].platform_switch is False
     assert all(
         a.default_enabled
         for key, a in AGENTS.items()
-        if key not in ("mcp_client", "lead_agent", "voice")
+        if key not in ("mcp_client", "lead_agent", "voice", "account_research")
     )
 
 

@@ -96,3 +96,46 @@ export function proposalLink(link: string): string | null {
     : "";
   return isUuid(id) ? `/approvals/${id}` : null;
 }
+
+// --- account research (DD4) ----------------------------------------------------------------------
+
+export type AccountBriefSentence = {
+  /** Written by a model and cleaned by the API: shown as plain text only. */
+  text: string;
+  records: { type: "opportunity" | "account" | "contract"; id: string }[];
+};
+
+export type AccountBrief = {
+  id: string;
+  account_id: string;
+  created_at: string;
+  sentences: AccountBriefSentence[];
+  /** Sentences removed for naming no source the writer was given. */
+  dropped: number;
+  gathered: Partial<
+    Record<"sales" | "service" | "conversations" | "registry", number>
+  >;
+};
+
+const RESEARCH_ERRORS: Record<string, string> = {
+  account_not_found: "Account not found.",
+  account_research_invalid_answer:
+    "The assistant did not write a usable brief. Nothing was stored. Please try again later.",
+  agent_unavailable:
+    "Account research is switched off. An administrator can switch it on under AI agents.",
+  agent_budget_reached:
+    "Account research has reached its limit for this month.",
+  assistant_unavailable: "The assistant is not available right now.",
+};
+
+export function researchErrorText(
+  code: string | undefined | null,
+  fallback: string,
+): string {
+  return (code && RESEARCH_ERRORS[code]) || fallback;
+}
+
+export function accountPath(accountId: string): string {
+  if (!isUuid(accountId)) throw new Error("invalid account");
+  return "/accounts/" + accountId;
+}

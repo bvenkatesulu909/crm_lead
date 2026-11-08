@@ -143,6 +143,7 @@ def run_schedules(
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += deal_desk_api.delete_expired(session, now, tenant_id=tenant_id)
+                count += deal_desk_api.delete_expired_briefs(session, now, tenant_id=tenant_id)
             # AI proposals nobody decided on in time (ADR 0014): expired, requester told.
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)

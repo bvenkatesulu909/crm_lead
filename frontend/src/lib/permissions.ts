@@ -114,6 +114,9 @@ export const canRunQualifier = (me: Pick<Me, "permissions">) =>
  * about deals they own. */
 export const canRunDealDesk = (me: Pick<Me, "permissions">) =>
   hasAny(me, "deal_desk:run");
+/** Account research (ADR 0024): display only - the API checks the account again. */
+export const canResearchAccounts = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "account_research:run");
 export const canReadQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:read");
 export const canManageQualifier = (me: Pick<Me, "permissions">) =>

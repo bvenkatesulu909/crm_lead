@@ -53,3 +53,40 @@ class ReviewCreated(ReviewRead):
 
 class ReviewList(BaseModel):
     items: list[ReviewRead]
+
+
+# --- account research (DD4) ----------------------------------------------------------------------
+
+
+class BriefCreate(BaseModel):
+    """Ask for a brief about one account. Nothing else is accepted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: uuid.UUID
+
+
+class BriefRecord(BaseModel):
+    type: Literal["opportunity", "account", "contract"]
+    id: uuid.UUID
+
+
+class BriefSentence(BaseModel):
+    # Written by a model and cleaned: show it as plain text.
+    text: str
+    records: list[BriefRecord]
+
+
+class BriefRead(BaseModel):
+    id: uuid.UUID
+    account_id: uuid.UUID
+    created_at: datetime
+    sentences: list[BriefSentence]
+    # Sentences the writer wrote that were removed for naming no source it was given.
+    dropped: int
+    # How many facts each gatherer found (sales, service, conversations, registry).
+    gathered: dict[str, int]
+
+
+class BriefList(BaseModel):
+    items: list[BriefRead]

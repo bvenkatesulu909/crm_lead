@@ -174,6 +174,8 @@ class Permission(StrEnum):
     # The deal desk (ADR 0024): ask the AI reviewers to look at a deal. A sales agent may ask only
     # about deals they own; the deal must be readable either way.
     DEAL_DESK_RUN = "deal_desk:run"
+    # Account research (ADR 0024): a one-page brief about an account the person may read.
+    ACCOUNT_RESEARCH_RUN = "account_research:run"
 
 
 _P = Permission
@@ -193,7 +195,7 @@ _SALES_ALL = frozenset(
         _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE, _P.AGENT_READ,
         _P.WEBCHECK_RUN, _P.WEBCHECK_READ,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
-        _P.DEAL_DESK_RUN,
+        _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN,
     }
 )  # fmt: skip
 
@@ -253,6 +255,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.WEBCHECK_READ,
             _P.QUALIFIER_RUN,
             _P.DEAL_DESK_RUN,
+            _P.ACCOUNT_RESEARCH_RUN,
         }
     ),  # fmt: skip
     Role.SUPPORT_AGENT: frozenset(
@@ -273,6 +276,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.AGENT_ACTION_PROPOSE,
             _P.WEBCHECK_RUN,
             _P.WEBCHECK_READ,
+            _P.ACCOUNT_RESEARCH_RUN,
         }
     ),
     Role.CUSTOMER: frozenset(

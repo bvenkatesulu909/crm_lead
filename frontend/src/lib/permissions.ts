@@ -110,6 +110,10 @@ export const canReadWebCheck = (me: Pick<Me, "permissions">) =>
 /** The Qualifier (docs/qualifier.md): ask for an assessment / read the procedure / write it. */
 export const canRunQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:run");
+/** The deal desk (ADR 0024): display only - the API checks again, and a sales agent may ask only
+ * about deals they own. */
+export const canRunDealDesk = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "deal_desk:run");
 export const canReadQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:read");
 export const canManageQualifier = (me: Pick<Me, "permissions">) =>

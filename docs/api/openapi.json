@@ -2057,6 +2057,31 @@
         "title": "CitationRead",
         "type": "object"
       },
+      "CitedRecord": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "opportunity",
+              "quote",
+              "account",
+              "contract"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ],
+        "title": "CitedRecord",
+        "type": "object"
+      },
       "ColumnOut": {
         "properties": {
           "key": {
@@ -5213,6 +5238,47 @@
           "options"
         ],
         "title": "FieldOut",
+        "type": "object"
+      },
+      "FindingRead": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/CitedRecord"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "reviewer": {
+            "enum": [
+              "pricing",
+              "account",
+              "momentum"
+            ],
+            "title": "Reviewer",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "watch",
+              "act"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reviewer",
+          "severity",
+          "text",
+          "records"
+        ],
+        "title": "FindingRead",
         "type": "object"
       },
       "FollowUpFigures": {
@@ -11372,6 +11438,25 @@
         "title": "ProposalRead",
         "type": "object"
       },
+      "ProposalRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "link"
+        ],
+        "title": "ProposalRef",
+        "type": "object"
+      },
       "PublicChatReply": {
         "properties": {
           "lead_saved": {
@@ -12864,6 +12949,164 @@
           "overdue"
         ],
         "title": "RevenueFigures",
+        "type": "object"
+      },
+      "ReviewCreate": {
+        "additionalProperties": false,
+        "description": "Ask the deal desk to review one deal. The person and the organisation come from the token;\nnothing else is accepted.",
+        "properties": {
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "opportunity_id"
+        ],
+        "title": "ReviewCreate",
+        "type": "object"
+      },
+      "ReviewCreated": {
+        "properties": {
+          "blocked_messages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocked Messages",
+            "type": "array"
+          },
+          "brief": {
+            "title": "Brief",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingRead"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalRef"
+            },
+            "title": "Proposals",
+            "type": "array"
+          },
+          "reviewers": {
+            "additionalProperties": {
+              "enum": [
+                "answered",
+                "refused"
+              ],
+              "type": "string"
+            },
+            "title": "Reviewers",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "opportunity_id",
+          "created_at",
+          "brief",
+          "findings",
+          "reviewers",
+          "proposals",
+          "blocked_messages"
+        ],
+        "title": "ReviewCreated",
+        "type": "object"
+      },
+      "ReviewList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReviewList",
+        "type": "object"
+      },
+      "ReviewRead": {
+        "properties": {
+          "brief": {
+            "title": "Brief",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingRead"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalRef"
+            },
+            "title": "Proposals",
+            "type": "array"
+          },
+          "reviewers": {
+            "additionalProperties": {
+              "enum": [
+                "answered",
+                "refused"
+              ],
+              "type": "string"
+            },
+            "title": "Reviewers",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "opportunity_id",
+          "created_at",
+          "brief",
+          "findings",
+          "reviewers",
+          "proposals"
+        ],
+        "title": "ReviewRead",
         "type": "object"
       },
       "RoleChange": {
@@ -22141,6 +22384,180 @@
         "summary": "Dashboard figures for your role",
         "tags": [
           "dashboard"
+        ]
+      }
+    },
+    "/api/v1/deal-desk/reviews": {
+      "get": {
+        "description": "Only for a deal you may read; any other id answers 404.",
+        "operationId": "list_reviews_api_v1_deal_desk_reviews_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The deal desk's reviews of one deal, newest first",
+        "tags": [
+          "deal-desk"
+        ]
+      },
+      "post": {
+        "description": "Three AI reviewers (pricing, account, momentum) look at the deal at the same time; a desk lead writes a short brief and may suggest at most two follow-up tasks, which wait in the approval queue. Needs a deal you may read (a sales agent: one they own) and the deal desk switched on by an administrator. Off, over budget or over a limit: 503 / 429.",
+        "operationId": "create_review_api_v1_deal_desk_reviews_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask the deal desk to review one deal; it suggests, a different person decides",
+        "tags": [
+          "deal-desk"
         ]
       }
     },

@@ -42,6 +42,7 @@ const AGENT_LABELS: Record<string, string> = {
   mcp_client: "an outside AI client (MCP)",
   qualifier: "the Qualifier",
   lead_agent: "the lead agent",
+  deal_desk: "the deal desk",
 };
 
 /**

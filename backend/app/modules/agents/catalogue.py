@@ -118,6 +118,19 @@ AGENTS: dict[str, AgentDef] = {
             tools=("submit_findings", "submit_brief"),
         ),
         AgentDef(
+            key="account_research",
+            title="Account research",
+            description=(
+                "Writes a one-page brief about one account from the CRM's own records (deals, "
+                "support, interactions, registry checks on file), every sentence with its source. "
+                "It reads only; it proposes nothing and does not browse the web. Off until "
+                "switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_account_brief",),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="web_check",
             title="Web check",
             description=(

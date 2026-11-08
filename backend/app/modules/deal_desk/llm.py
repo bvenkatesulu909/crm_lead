@@ -15,6 +15,7 @@ from typing import Any
 from app.core.config import Settings
 from app.modules.assistant import api as assistant_api
 from app.modules.assistant.api import ChatModel, ModelReply, ToolUse
+from app.modules.deal_desk import research_rules
 from app.modules.deal_desk.review import BRIEF_TOOL, FINDINGS_TOOL, MAX_FINDINGS, MAX_TASKS
 
 ACT = frozenset(
@@ -60,6 +61,8 @@ class FakeDealDeskModel:
     def reply(
         self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
     ) -> ModelReply:
+        if research_rules.TOOL in system and "account" in system:
+            return self._account(_json_list(_DATA, system))
         if "You are the desk lead" in system:
             return self._lead(_json_list(_FINDINGS, system))
         return self._reviewer(_json_list(_DATA, system))
@@ -78,6 +81,17 @@ class FakeDealDeskModel:
         return ModelReply("", [ToolUse("fake-findings", FINDINGS_TOOL, {"findings": found})])
 
     @staticmethod
+    def _account(facts: list[dict[str, Any]]) -> ModelReply:
+        return ModelReply(
+            "",
+            [
+                ToolUse(
+                    "fake-account", research_rules.TOOL, {"sentences": _account_sentences(facts)}
+                )
+            ],
+        )
+
+    @staticmethod
     def _lead(findings: list[dict[str, Any]]) -> ModelReply:
         sentences = [str(f.get("finding", "")) for f in findings][:5]
         brief = " ".join(sentences) or "Nothing on this deal needs attention right now."
@@ -91,6 +105,14 @@ class FakeDealDeskModel:
             if f.get("severity") == "act"
         ][:MAX_TASKS]
         return ModelReply("", [ToolUse("fake-brief", BRIEF_TOOL, {"brief": brief, "tasks": tasks})])
+
+
+def _account_sentences(facts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One sentence per fact, citing its own record (at most the writer's maximum)."""
+    return [
+        {"text": str(fact.get("fact", "")), "record_ids": [str(fact.get("record_id"))]}
+        for fact in facts
+    ][: research_rules.MAX_SENTENCES]
 
 
 def model_for(settings: Settings) -> ChatModel:

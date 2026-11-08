@@ -17,10 +17,13 @@ from app.core.db import get_db_session
 from app.core.errors import problem_responses
 from app.modules.agents import api as agents_api
 from app.modules.assistant.api import ChatModel
-from app.modules.deal_desk import service
+from app.modules.deal_desk import research, service
 from app.modules.deal_desk.llm import model_for
-from app.modules.deal_desk.models import DealReview
+from app.modules.deal_desk.models import AccountBrief, DealReview
 from app.modules.deal_desk.schemas import (
+    BriefCreate,
+    BriefList,
+    BriefRead,
     ReviewCreate,
     ReviewCreated,
     ReviewList,
@@ -112,3 +115,71 @@ def list_reviews(
 ) -> ReviewList:
     rows = service.list_reviews(session, principal, opportunity_id)
     return ReviewList(items=[_read(row) for row in rows])
+
+
+# --- account research (DD4) ----------------------------------------------------------------------
+
+research_router = APIRouter(prefix="/account-research", tags=["account-research"])
+Researcher = Annotated[Principal, Depends(require_any_permission(Permission.ACCOUNT_RESEARCH_RUN))]
+AccountReader = Annotated[
+    Principal,
+    Depends(require_any_permission(Permission.ACCOUNT_READ_ALL, Permission.ACCOUNT_READ_OWN)),
+]
+
+
+def _brief(row: AccountBrief) -> BriefRead:
+    return BriefRead.model_validate(
+        {
+            "id": row.id,
+            "account_id": row.account_id,
+            "created_at": row.created_at,
+            "sentences": row.sentences,
+            "dropped": row.dropped,
+            "gathered": row.gathered,
+        }
+    )
+
+
+@research_router.post(
+    "/briefs",
+    status_code=201,
+    summary="Write a one-page brief about one account from the CRM's own records",
+    description="Four gatherers read the account's deals, support, interactions and the registry "
+    "checks already on file, as you; one model writes the brief and every sentence names its "
+    "source (a sentence without one is removed). It proposes nothing and does not browse the "
+    "web. Needs an account you may read and account research switched on by an administrator. "
+    "Off, over budget or over a limit: 503 / 429.",
+    responses=problem_responses(401, 403, 404, 422, 429, 503),
+)
+def create_brief(
+    data: BriefCreate, principal: Researcher, session: Db, request: Request, model: Model
+) -> BriefRead:
+    settings: Settings = request.app.state.settings
+    try:
+        row = research.run_research(
+            session,
+            principal,
+            model,
+            data.account_id,
+            limits=research.Limits.from_settings(settings),
+            ai_limits=agents_api.Limits.from_settings(settings),
+        )
+    except research.ResearchInvalidError:
+        session.commit()  # the model was called: keep the tokens it used on the month's total
+        raise
+    session.commit()
+    return _brief(row)
+
+
+@research_router.get(
+    "/briefs",
+    summary="The briefs of one account, newest first",
+    description="Only for an account you may read; any other id answers 404.",
+    responses=problem_responses(401, 403, 404),
+)
+def list_briefs(
+    principal: AccountReader, session: Db, account_id: Annotated[uuid.UUID, Query()]
+) -> BriefList:
+    return BriefList(
+        items=[_brief(r) for r in research.list_briefs(session, principal, account_id)]
+    )

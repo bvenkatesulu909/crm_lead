@@ -31,6 +31,8 @@ __all__ = [
     "DealFacts",
     "deal_facts",
     "opportunity_name",
+    "AccountDeal",
+    "account_deals",
     "win_loss_table",
     "EXPORT",
     "export_table",
@@ -148,6 +150,34 @@ def deal_facts(session: Session, principal: Principal, opp_id: uuid.UUID) -> Dea
         stage_entered_at=entered or deal.created_at,
         other_open_deals=others or 0,
     )
+
+
+@dataclass(frozen=True)
+class AccountDeal:
+    """One deal of an account as account research (ADR 0024) reads it."""
+
+    id: uuid.UUID
+    name: str
+    stage: str
+    amount: Decimal | None
+    currency: str
+
+
+def account_deals(
+    session: Session, principal: Principal, account_id: uuid.UUID, limit: int = 10
+) -> list[AccountDeal]:
+    """The newest deals of an account that this person may read (others are left out)."""
+    rows = session.scalars(
+        select(Opportunity)
+        .where(
+            Opportunity.account_id == account_id,
+            Opportunity.deleted_at.is_(None),
+            readable_opportunities(principal),
+        )
+        .order_by(Opportunity.created_at.desc())
+        .limit(limit)
+    ).all()
+    return [AccountDeal(o.id, o.name, o.stage, o.amount, o.currency) for o in rows]
 
 
 def opportunity_name(session: Session, principal: Principal, opp_id: uuid.UUID) -> str | None:

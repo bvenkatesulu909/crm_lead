@@ -66,3 +66,40 @@ class DealReview(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     proposal_ids: Mapped[list[str]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     input_tokens: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     output_tokens: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+
+
+class AccountBrief(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
+    """One account brief (ADR 0024, step DD4): the writer's cited sentences, how many sentences
+    were removed for citing nothing gathered, how many facts each gatherer found, and the tokens.
+    Insert-only like ``deal_reviews`` (migration 0053)."""
+
+    __tablename__ = "account_briefs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "account_id"], ["accounts.tenant_id", "accounts.id"], ondelete="RESTRICT"
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "requested_by_user_id"],
+            ["users.tenant_id", "users.id"],
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("jsonb_typeof(sentences) = 'array'", name="sentences_is_list"),
+        CheckConstraint("jsonb_typeof(gathered) = 'object'", name="gathered_is_object"),
+        CheckConstraint("dropped >= 0", name="dropped_not_negative"),
+        CheckConstraint("input_tokens >= 0 AND output_tokens >= 0", name="tokens_not_negative"),
+        Index("ix_account_briefs_tenant_id_account_id", "tenant_id", "account_id", "seq"),
+    )
+
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    account_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    requested_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    # [{"text", "records": [{"type", "id"}]}]
+    sentences: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )
+    dropped: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    # {"sales": 4, "service": 2, ...}: how many facts each gatherer found
+    gathered: Mapped[dict[str, int]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    input_tokens: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    output_tokens: Mapped[int] = mapped_column(Integer, server_default=text("0"))

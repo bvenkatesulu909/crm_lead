@@ -183,6 +183,14 @@ it switched on**, including organisations created later; an administrator can st
 under AI agents (the switch, budget, limits and approval rules are unchanged). Account research
 (DD4) is not decided by this change and still starts off.
 
+### Implementation note (2026-11-08, step DD4): the gatherers read one after the other
+
+The four gatherers are independent, but they read through the request's ONE database session, and a
+session must not be shared between threads. Their reads take milliseconds, so they run one after the
+other; the slow part, the writer's model call, is a single call. Only work that waits on a model runs
+in parallel threads (the deal desk's three reviewers). The gatherers only show registry checks that
+are already on file; account research starts none.
+
 ## 7. What this does not change
 
 ADR 0022's lead agent, the Qualifier, the approval queue's rules (a different person approves) and

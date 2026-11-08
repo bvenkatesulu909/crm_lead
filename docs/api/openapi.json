@@ -1954,6 +1954,130 @@
         "title": "Body_upload_document_api_v1_knowledge_documents_post",
         "type": "object"
       },
+      "BriefCreate": {
+        "additionalProperties": false,
+        "description": "Ask for a brief about one account. Nothing else is accepted.",
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id"
+        ],
+        "title": "BriefCreate",
+        "type": "object"
+      },
+      "BriefList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BriefRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BriefList",
+        "type": "object"
+      },
+      "BriefRead": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dropped": {
+            "title": "Dropped",
+            "type": "integer"
+          },
+          "gathered": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Gathered",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/BriefSentence"
+            },
+            "title": "Sentences",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "created_at",
+          "sentences",
+          "dropped",
+          "gathered"
+        ],
+        "title": "BriefRead",
+        "type": "object"
+      },
+      "BriefRecord": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "opportunity",
+              "account",
+              "contract"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ],
+        "title": "BriefRecord",
+        "type": "object"
+      },
+      "BriefSentence": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/BriefRecord"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "records"
+        ],
+        "title": "BriefSentence",
+        "type": "object"
+      },
       "Cancel": {
         "additionalProperties": false,
         "properties": {
@@ -16079,6 +16203,180 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/account-research/briefs": {
+      "get": {
+        "description": "Only for an account you may read; any other id answers 404.",
+        "operationId": "list_briefs_api_v1_account_research_briefs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The briefs of one account, newest first",
+        "tags": [
+          "account-research"
+        ]
+      },
+      "post": {
+        "description": "Four gatherers read the account's deals, support, interactions and the registry checks already on file, as you; one model writes the brief and every sentence names its source (a sentence without one is removed). It proposes nothing and does not browse the web. Needs an account you may read and account research switched on by an administrator. Off, over budget or over a limit: 503 / 429.",
+        "operationId": "create_brief_api_v1_account_research_briefs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BriefCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Write a one-page brief about one account from the CRM's own records",
+        "tags": [
+          "account-research"
+        ]
+      }
+    },
     "/api/v1/accounts": {
       "get": {
         "description": "`q` searches name and account number (case-insensitive, substring). `total` counts only accounts you may see. `archived=true` lists archived accounts instead (managers and administrators only).",

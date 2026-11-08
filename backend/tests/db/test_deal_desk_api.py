@@ -86,7 +86,8 @@ def test_a_review_through_the_api(api, auth, world, deal) -> None:
     )
 
 
-def test_off_by_default_is_503_and_no_model_is_asked(api, auth, world) -> None:
+def test_switched_off_by_an_administrator_is_503_and_no_model_is_asked(api, auth, world) -> None:
+    switch(api, auth, False)  # it starts ON (ADR 0024, 2026-11-08); an administrator turns it off
     model = use(api)
     assert code_of(review(api, auth, "alpha.agent1", world.ids["O1"])) == (503, "agent_unavailable")
     assert model.calls == 0

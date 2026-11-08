@@ -103,7 +103,8 @@ page).
 
 ### 3.3 Rules shared by both
 
-- Two new registry entries, **`deal_desk`** and **`account_research`**, **off by default**; the
+- Two new registry entries, **`deal_desk`** and **`account_research`**, **off by default** (the deal
+  desk changed to ON by default on 2026-11-08, see the change after section 6); the
   switch, monthly token budget and the platform switch apply; tokens are metered per agent.
 - Who may: the deal desk - the deal's owner, sales managers and tenant administrators; account
   research - anyone who may read the account. New permissions `deal_desk:run`, `account_research:run`.
@@ -174,6 +175,13 @@ momentum reviewers; Q3 follow-up tasks on the deal only, at most 2; Q4 A (3 revi
 Q5 evidence on file only, no new web checks; Q6 deal owner, sales managers and tenant administrators
 for the deal desk, anyone who may read the account for research; Q7 12 months, insert-only; Q8 both
 off by default.
+
+### Change (2026-11-08): the deal desk is ON by default
+
+After trying it on staging the owner changed Q8 for the deal desk: **every organisation starts with
+it switched on**, including organisations created later; an administrator can still switch it off
+under AI agents (the switch, budget, limits and approval rules are unchanged). Account research
+(DD4) is not decided by this change and still starts off.
 
 ## 7. What this does not change
 

@@ -2,9 +2,10 @@
 """A whole deal review against the real database (ADR 0024, step DD2).
 
 Only the language model is scripted. Everything else is real: the fact sheets read as the asker,
-the agent registry (off by default), the limits, the approval queue and its Sentinel, the stored
-review (insert-only), the audit and the token count. Happy path, role denial, record-level denial,
-tenant isolation, ID tampering, refused answers, a blocked proposal and the limits.
+the agent registry (on by default; an administrator can switch it off), the limits, the approval
+queue and its Sentinel, the stored review (insert-only), the audit and the token count. Happy
+path, role denial, record-level denial, tenant isolation, ID tampering, refused answers, a blocked
+proposal and the limits.
 """
 
 import json
@@ -237,10 +238,14 @@ def test_reviews_are_listed_for_people_who_may_read_the_deal(api, auth, world, d
 # --- who may -------------------------------------------------------------------------------------
 
 
-def test_off_by_default_and_no_model_is_called(world, db_session) -> None:
+def test_on_by_default_and_switched_off_no_model_is_called(world, db_session) -> None:
+    # A new organisation has it ON without anyone switching it (ADR 0024, 2026-11-08)...
+    assert ask(db_session, world, "alpha.agent1", world.ids["O1"]).review is not None
+    # ...and once an administrator switches it off, it stops before any model.
+    switch_on(db_session, world, False)
     model = Desk()
     with pytest.raises(agents_api.AgentUnavailableError):
-        ask(db_session, world, "alpha.agent1", world.ids["O1"], model)
+        ask(db_session, world, "alpha.manager", world.ids["O2"], model)
     assert model.calls == []
 
 

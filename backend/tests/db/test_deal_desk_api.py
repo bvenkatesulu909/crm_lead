@@ -20,7 +20,7 @@ class Counting(FakeDealDeskModel):
     def __init__(self) -> None:
         self.calls = 0
 
-    def reply(self, **kw: Any) -> Any:  # type: ignore[override]
+    def reply(self, **kw: Any) -> Any:
         self.calls += 1
         return super().reply(**kw)
 
@@ -48,7 +48,7 @@ def listed(api: Any, auth: Headers, who: str, deal: Any) -> Any:
 
 
 @pytest.fixture
-def deal(api, auth, world) -> uuid.UUID:
+def deal(api, auth, world: World) -> uuid.UUID:
     # A quote above the 10 % approval limit, so the fake pricing reviewer has an "act" finding.
     new_quote(
         api, auth, world, opportunity_id=str(world.ids["O1"]), lines=lines(world, ("P1", "3", "12"))

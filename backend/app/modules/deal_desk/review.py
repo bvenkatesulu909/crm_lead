@@ -108,6 +108,9 @@ class Finding:
     severity: str
     text: str  # cleaned
     record_ids: tuple[uuid.UUID, ...]
+    # The kind of each cited record ("quote", "account", ...), in the same order, so a screen can
+    # link to it. Taken from the fact sheet, never from the model.
+    record_types: tuple[str, ...] = ()
 
     def as_json(self) -> dict[str, Any]:
         return {
@@ -115,6 +118,10 @@ class Finding:
             "severity": self.severity,
             "text": self.text,
             "record_ids": [str(i) for i in self.record_ids],
+            "records": [
+                {"type": kind, "id": str(record)}
+                for kind, record in zip(self.record_types, self.record_ids, strict=True)
+            ],
         }
 
 
@@ -141,6 +148,7 @@ def parse_findings(uses: list[Any], sheet: FactSheet) -> list[Finding]:
     if len(data["findings"]) > MAX_FINDINGS:
         raise AnswerRefusedError("Too many findings.")
     allowed = sheet.record_ids
+    kinds = {fact.record_id: fact.record_type for fact in sheet.facts}
     found: list[Finding] = []
     for item in data["findings"]:
         if not isinstance(item, dict) or set(item) != {"severity", "text", "record_ids"}:
@@ -161,7 +169,15 @@ def parse_findings(uses: list[Any], sheet: FactSheet) -> list[Finding]:
             if record not in allowed:
                 raise AnswerRefusedError("A finding cited a record it was not given.")
             ids.append(record)
-        found.append(Finding(sheet.reviewer, severity, clean(text, FINDING_MAX), tuple(ids)))
+        found.append(
+            Finding(
+                sheet.reviewer,
+                severity,
+                clean(text, FINDING_MAX),
+                tuple(ids),
+                tuple(kinds[record] for record in ids),
+            )
+        )
     return found
 
 

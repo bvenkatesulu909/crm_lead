@@ -1473,7 +1473,7 @@ export type AgentAction = {
   kind: string;
   /** One line for the approver, e.g. "Change the lead's status to contacted". */
   description: string;
-  target_type: "lead" | "account" | "contact";
+  target_type: "lead" | "account" | "contact" | "opportunity";
   target_id: string;
   target_link: string;
   /** The record's name - only if the reader may see that record. */

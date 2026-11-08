@@ -27,7 +27,18 @@ from pydantic import (
 
 from agent_evals.matchers import MatcherError, compile_matcher
 
-Agent = Literal["staff_assistant", "portal_assistant", "public_chat", "qualifier", "lead_agent"]
+Agent = Literal[
+    "staff_assistant",
+    "portal_assistant",
+    "public_chat",
+    "qualifier",
+    "lead_agent",
+    "deal_desk",
+    "account_research",
+]
+# The deal desk asks four models in one run (ADR 0024): each step of its script says which one
+# answers. Three reviewers run at the same time, so the order they are asked in is not fixed.
+DeskRole = Literal["pricing", "account", "momentum", "lead"]
 Persona = Literal[
     "sales_agent", "sales_manager", "tenant_admin", "support_agent", "customer", "visitor"
 ]
@@ -57,6 +68,9 @@ PERSONAS: dict[str, set[str]] = {
     "qualifier": {"sales_agent", "sales_manager", "tenant_admin"},
     # The same people as the Qualifier may ask the lead agent (ADR 0022).
     "lead_agent": {"sales_agent", "sales_manager", "tenant_admin"},
+    # ADR 0024: the deal desk is for sales; account research also for support.
+    "deal_desk": {"sales_agent", "sales_manager", "tenant_admin"},
+    "account_research": {"sales_agent", "sales_manager", "tenant_admin", "support_agent"},
 }
 # After these outcomes nothing in the CRM has changed (or may only wait for approval): the
 # answer must not claim otherwise.
@@ -96,6 +110,14 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.lead_agent import rules as lead_agent_rules
 
         return {lead_agent_rules.TOOL_NAME}
+    if agent == "deal_desk":
+        from app.modules.deal_desk import review
+
+        return {review.FINDINGS_TOOL, review.BRIEF_TOOL}
+    if agent == "account_research":
+        from app.modules.deal_desk import research_rules
+
+        return {research_rules.TOOL}
     raise CaseFileError(f"unknown agent {agent!r}")
 
 
@@ -115,6 +137,8 @@ class Step(_Strict):
 
     say: str = Field(default="", max_length=2000)
     calls: list[ScriptedCall] = Field(default_factory=list)
+    # Deal desk only: which of its models gives this reply (each role's steps are used in order).
+    role: DeskRole | None = None
 
 
 class ExpectedCall(_Strict):
@@ -227,6 +251,15 @@ class Expect(_Strict):
     # what their stored evidence must look like. None: not checked.
     webchecks_queued: int | None = Field(default=None, ge=0, le=5)
     evidence: ExpectedEvidence | None = None
+    # Deal desk only: how each reviewer's answer was judged in the stored review. None: not
+    # checked.
+    reviewers: dict[Literal["pricing", "account", "momentum"], Literal["answered", "refused"]] | (
+        None
+    ) = None
+    # Account research only: how many sentences the stored brief kept, and how many were removed
+    # for citing nothing gathered. None: not checked.
+    brief_sentences: int | None = Field(default=None, ge=0, le=8)
+    dropped_sentences: int | None = Field(default=None, ge=0, le=20)
 
     @model_validator(mode="after")
     def _warnings_are_warnings(self) -> "Expect":
@@ -293,8 +326,22 @@ class Case(BaseModel):
             raise ValueError("mode: voice is only for the staff assistant")
         if self.agent not in ("qualifier", "lead_agent") and self.qualifier:
             raise ValueError("qualifier: only for the qualifier and the lead agent")
-        if self.agent not in ("qualifier", "lead_agent") and self.expect.proposals is not None:
-            raise ValueError("expect.proposals: only for the qualifier and the lead agent")
+        if (
+            self.agent not in ("qualifier", "lead_agent", "deal_desk")
+            and self.expect.proposals is not None
+        ):
+            raise ValueError("expect.proposals: only for the qualifier, lead agent and deal desk")
+        roles = [step.role for step in self.script]
+        if self.agent == "deal_desk" and any(role is None for role in roles):
+            raise ValueError("script: every deal desk step must say which role answers")
+        if self.agent != "deal_desk" and any(role is not None for role in roles):
+            raise ValueError("script: role is only for the deal desk")
+        if self.agent != "deal_desk" and self.expect.reviewers is not None:
+            raise ValueError("expect.reviewers: only for the deal desk")
+        if self.agent != "account_research" and (
+            self.expect.brief_sentences is not None or self.expect.dropped_sentences is not None
+        ):
+            raise ValueError("expect.brief_sentences / dropped_sentences: only account research")
         if self.webcheck is not None and self.agent != "staff_assistant":
             raise ValueError("webcheck: only the staff assistant can ask for a web check")
         if self.webcheck is None and (

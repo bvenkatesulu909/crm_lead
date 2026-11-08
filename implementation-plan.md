@@ -453,8 +453,8 @@ lead agent (built from an older title) stays as it is. Details and the eight que
 | DD2 | The graph (parallel reviewers, desk lead, citation and answer checks), registry entry `deal_desk` (off), migration, limits, audit |
 | DD3 | API and the "Review this deal" card; scripted model |
 | DD4 | Account research: four gatherers, writer, `account_briefs`, registry entry `account_research` (off), API and the account card |
-| DD5 | BP-10 cases and a Playwright journey |
-| DD6 | `docs/deal-desk.md`, one real-model run (owner's yes), full runs |
+| DD5 | BP-10 cases and a Playwright journey - done 2026-11-08 (28 cases; journey covers both) |
+| DD6 | `docs/deal-desk.md`, one real-model run (owner's yes), full runs - done 2026-11-08 (DeepSeek run: 8 of 13 live cases, no safety failure) |
 
 ## Phase 19 — External Integrations (Module 17)  *(CRM MCP server: ADR 0015, steps MCP0-MCP6; MCP1 done 2026-10-26)*
 

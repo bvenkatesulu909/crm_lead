@@ -298,3 +298,80 @@ def test_the_dataset_hash_ignores_file_names_and_other_files(tmp_path: Path) -> 
     (tmp_path / "a.json").rename(tmp_path / "renamed.json")
     (tmp_path / "notes.txt").write_text("anything", encoding="utf-8")
     assert dataset_hash(tmp_path) == first
+
+
+# --- the deal desk and account research (ADR 0024, step DD5) ------------------------------------
+
+DESK: dict[str, Any] = {
+    "id": "desk-format",
+    "description": "A deal desk case.",
+    "agent": "deal_desk",
+    "as": "sales_agent",
+    "messages": ["{{deal.own}}"],
+    "script": [
+        {"role": "pricing", "calls": [{"name": "submit_findings", "arguments": {"findings": []}}]},
+        {"role": "lead", "calls": [{"name": "submit_brief", "arguments": {}}]},
+    ],
+    "expect": {"outcome": "answered", "reviewers": {"pricing": "answered"}},
+}
+
+
+def test_a_deal_desk_case_loads_with_roles(tmp_path: Path) -> None:
+    loaded = load_one(tmp_path, copy.deepcopy(DESK))
+    assert [step.role for step in loaded.script] == ["pricing", "lead"]
+    assert known_tools("deal_desk") == {"submit_findings", "submit_brief"}
+    assert known_tools("account_research") == {"submit_account_brief"}
+
+
+def test_every_deal_desk_step_must_name_its_role(tmp_path: Path) -> None:
+    raw = copy.deepcopy(DESK)
+    del raw["script"][0]["role"]
+    with pytest.raises(CaseFileError, match="must say which role"):
+        load_one(tmp_path, raw)
+
+
+def test_an_unknown_role_is_refused(tmp_path: Path) -> None:
+    raw = copy.deepcopy(DESK)
+    raw["script"][0]["role"] = "legal"
+    with pytest.raises(CaseFileError):
+        load_one(tmp_path, raw)
+
+
+def test_roles_and_reviewers_are_only_for_the_deal_desk(tmp_path: Path) -> None:
+    with_role = case()
+    with_role["script"][1]["role"] = "lead"
+    with pytest.raises(CaseFileError, match="only for the deal desk"):
+        load_one(tmp_path, with_role)
+    reviewers = case()
+    reviewers["expect"]["reviewers"] = {"pricing": "answered"}
+    with pytest.raises(CaseFileError, match="only for the deal desk"):
+        load_one(tmp_path, reviewers)
+
+
+def test_sentence_counts_are_only_for_account_research(tmp_path: Path) -> None:
+    raw = copy.deepcopy(DESK)
+    raw["expect"]["brief_sentences"] = 2
+    with pytest.raises(CaseFileError, match="only account research"):
+        load_one(tmp_path, raw)
+
+
+def test_a_support_agent_may_ask_for_research_but_not_the_deal_desk(tmp_path: Path) -> None:
+    research = {
+        "id": "research-format",
+        "description": "Account research.",
+        "agent": "account_research",
+        "as": "support_agent",
+        "messages": ["{{account.own}}"],
+        "expect": {"outcome": "answered", "brief_sentences": 1},
+    }
+    assert load_one(tmp_path, research).persona == "support_agent"
+    desk = copy.deepcopy(DESK)
+    desk["as"] = "support_agent"
+    with pytest.raises(CaseFileError, match="can't use the deal_desk"):
+        load_one(_fresh(tmp_path), desk)
+
+
+def _fresh(tmp_path: Path) -> Path:
+    other = tmp_path / "other"
+    other.mkdir()
+    return other

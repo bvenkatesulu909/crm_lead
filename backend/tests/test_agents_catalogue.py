@@ -60,7 +60,10 @@ def test_every_key_fits_the_database_rule() -> None:
     assert all(re.fullmatch(KEY_PATTERN, key) for key in AGENTS)
 
 
-@pytest.mark.parametrize("agent", ["staff_assistant", "portal_assistant", "public_chat"])
+@pytest.mark.parametrize(
+    "agent",
+    ["staff_assistant", "portal_assistant", "public_chat", "deal_desk", "account_research"],
+)
 def test_the_listed_tools_are_exactly_the_tools_the_code_gives(agent: str) -> None:
     """The catalogue cannot drift from the real tools: a new tool must be listed here."""
     assert set(AGENTS[agent].tools) == known_tools(agent)

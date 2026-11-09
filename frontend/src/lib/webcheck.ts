@@ -34,6 +34,7 @@ export function verdictLabel(verdict: string): string {
 
 const STATUS_LABELS: Record<string, string> = {
   active: "Active",
+  registered: "Registered",
   expired: "Expired",
   revoked: "Revoked",
   suspended: "Suspended",

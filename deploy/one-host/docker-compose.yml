@@ -60,6 +60,8 @@ x-api-environment: &api-environment
   CRM_ASSISTANT_MAX_TOKENS: ${CRM_ASSISTANT_MAX_TOKENS:-1024}
   # Off on a server: the browser's own speech engine sends the audio to Google/Apple/Microsoft.
   CRM_VOICE_BROWSER_ENGINE: ${CRM_VOICE_BROWSER_ENGINE:-false}
+  # Real registries for the web check (ADR 0019), comma-separated keys. Empty: none is contacted.
+  CRM_WEBCHECK_SOURCES: ${CRM_WEBCHECK_SOURCES:-}
   # For the estimated cost on the AI agents page (US dollars per million tokens; 0 = no estimate).
   CRM_AI_INPUT_PRICE_PER_MILLION: ${CRM_AI_INPUT_PRICE_PER_MILLION:-0}
   CRM_AI_OUTPUT_PRICE_PER_MILLION: ${CRM_AI_OUTPUT_PRICE_PER_MILLION:-0}

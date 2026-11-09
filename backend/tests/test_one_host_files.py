@@ -233,6 +233,8 @@ def test_the_ai_and_website_chat_settings_reach_the_api_and_the_worker() -> None
         # Go-live check (2026-11-09): the browser's own speech engine sends spoken words to
         # Google/Apple/Microsoft, so on the server it is OFF unless the owner switches it on.
         assert env["CRM_VOICE_BROWSER_ENGINE"] == "${CRM_VOICE_BROWSER_ENGINE:-false}"
+        # The web check (ADR 0019): no real registry is contacted unless the owner names it.
+        assert env["CRM_WEBCHECK_SOURCES"] == "${CRM_WEBCHECK_SOURCES:-}"
         # The website chat stays off unless the owner sets both values.
         assert env["CRM_PUBLIC_CHAT_TENANT_SLUG"] == "${CRM_PUBLIC_CHAT_TENANT_SLUG:-}"
         assert env["CRM_PUBLIC_CHAT_SERVER_KEY"] == "${CRM_PUBLIC_CHAT_SERVER_KEY:-}"

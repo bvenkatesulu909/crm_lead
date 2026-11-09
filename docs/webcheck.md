@@ -120,6 +120,14 @@ The first real source proposed is **AP RERA** (Andhra Pradesh). Its search is a 
 POSTed back, which the fetcher cannot do yet: [ADR 0019, Amendment A](adr/0019-live-web-check-rera-and-company.md)
 (section 7, accepted 2026-11-09) adds a narrow "form search" shape and the steps WC6a-c.
 
+WC6a is built: `app/core/webfetch.py` has `form_search(spec, query, host=...)` beside `fetch`. It reads
+robots.txt, GETs the source's fixed page, finds the POST form that targets the same path on the same host,
+keeps only the hidden fields on the source's allow-list (each at most 64 KB, the whole form at most 128 KB),
+adds the one query field and the submit button, and POSTs to the same pinned address. A redirect is never
+followed; the answer must be plain, small HTML; one deadline covers the whole check; the per-host limiter
+counts every request. Tests: `tests/test_webfetch_form.py` (and the POST in `test_webfetch_transport.py`).
+No source uses it yet (WC6b adds AP RERA).
+
 ## Tests
 
 - `tests/test_webfetch.py`, `tests/test_webfetch_transport.py` - the fetcher (fake network, and a

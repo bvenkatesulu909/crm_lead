@@ -7,6 +7,12 @@ cannot swap the machine after the check); only when robots.txt allows it; with a
 size limit, no cookies or credentials, and no compressed bodies. Redirects are followed only
 inside the same host and every hop is checked again.
 
+``form_search`` (ADR 0019, Amendment A) is the one other shape: a registry whose search is an old
+web form. It GETs the source's fixed page and POSTs that form back to the SAME path on the SAME
+pinned address, carrying only the hidden fields the page itself sent (from the source's allow-list,
+size-capped), the one query field and the submit button. No redirect is followed, and one deadline
+covers the whole check.
+
 Nothing here touches the network on import. The resolver and the transport are parameters, so the
 rules are tested without the internet (tests/test_webfetch.py); the real transport is tested
 against a local TLS server (tests/test_webfetch_transport.py).
@@ -21,7 +27,8 @@ import time
 import urllib.robotparser
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from urllib.parse import urljoin, urlsplit
+from html.parser import HTMLParser
+from urllib.parse import urlencode, urljoin, urlsplit
 
 USER_AGENT = "crm-lead-webcheck/1.0"
 ROBOTS_TOKEN = "crm-lead-webcheck"  # noqa: S105 - a crawler name, not a secret
@@ -48,6 +55,9 @@ MESSAGES = {
     "timeout": "The site did not answer in time.",
     "network_error": "The site could not be reached.",
     "rate_limited": "Too many requests to this site; try later.",
+    "form_changed": "The site's search form is not as expected.",
+    "form_too_large": "The site's search form is larger than the limit.",
+    "bad_query": "The search text is not valid.",
 }
 
 
@@ -79,6 +89,8 @@ class PinnedRequest:
     timeout: float
     max_bytes: int
     port: int = 443
+    method: str = "GET"
+    body: bytes | None = None
 
 
 @dataclass(frozen=True)
@@ -242,12 +254,17 @@ class _PinnedConnection(http.client.HTTPSConnection):
 def real_transport(
     request: PinnedRequest, *, ssl_context: ssl.SSLContext | None = None
 ) -> TransportResponse:
-    """One GET to the given address. The timeout covers the whole response, not each read."""
+    """One request (a GET, or the form search's POST) to the given address. The timeout covers
+    the whole response, not each read."""
     context = ssl_context or ssl.create_default_context()
     deadline = time.monotonic() + request.timeout
     connection = _PinnedConnection(request.host, request.port, request.ip, context, request.timeout)
     try:
-        connection.request("GET", request.target, headers=dict(request.headers))
+        if request.method not in ("GET", "POST"):
+            raise ValueError("only GET and POST are sent")
+        connection.request(
+            request.method, request.target, body=request.body, headers=dict(request.headers)
+        )
         response = connection.getresponse()
         body = b""
         limit = request.max_bytes + 1
@@ -297,16 +314,30 @@ def _send(
     transport: Transport,
     policy: FetchPolicy,
     limiter: HostLimiter | None,
+    *,
+    form: bytes | None = None,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
 ) -> TransportResponse:
     if limiter is not None:
         limiter.acquire(site.host)
+    timeout = policy.timeout_s
+    if deadline is not None:
+        timeout = min(timeout, deadline - clock())
+        if timeout <= 0:
+            raise FetchRefused("timeout")
+    headers = {"User-Agent": policy.user_agent, "Accept-Encoding": "identity"}
+    if form is not None:
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
     request = PinnedRequest(
         ip=site.ip,
         host=site.host,
         target=target,
-        headers={"User-Agent": policy.user_agent, "Accept-Encoding": "identity"},
-        timeout=policy.timeout_s,
+        headers=headers,
+        timeout=timeout,
         max_bytes=policy.max_bytes,
+        method="GET" if form is None else "POST",
+        body=form,
     )
     try:
         return transport(request)
@@ -317,9 +348,17 @@ def _send(
 
 
 def _read_robots(
-    site: _Site, transport: Transport, policy: FetchPolicy, limiter: HostLimiter | None
+    site: _Site,
+    transport: Transport,
+    policy: FetchPolicy,
+    limiter: HostLimiter | None,
+    *,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
 ) -> urllib.robotparser.RobotFileParser:
-    response = _send(site, "/robots.txt", transport, policy, limiter)
+    response = _send(
+        site, "/robots.txt", transport, policy, limiter, deadline=deadline, clock=clock
+    )
     parser = urllib.robotparser.RobotFileParser()
     if 400 <= response.status < 500 and response.status != 429:
         parser.parse([])  # no rules: everything allowed (RFC 9309)
@@ -378,3 +417,149 @@ def fetch(
             raise FetchRefused("bad_content_type")
         return FetchResult(response.status, current, content_type, response.body, site.ip)
     raise FetchRefused("too_many_redirects")  # unreachable: the loop returns or raises
+
+
+# --- the form search (ADR 0019, Amendment A) ---------------------------------------------------
+
+_FIELD_NAME = re.compile(r"^[A-Za-z0-9_$.:-]{1,100}$")
+MAX_FIELD_BYTES = 64 * 1024
+MAX_FORM_BYTES = 128 * 1024
+MAX_QUERY_LENGTH = 200
+
+
+@dataclass(frozen=True)
+class FormSpec:
+    """How one source's search form is filled. Everything here is fixed in the source catalogue;
+    nothing comes from a person or a model except the (already validated) query."""
+
+    path: str  # the page and the form's target, e.g. "/RERA/Views/Reports/Search.aspx"
+    query_field: str  # the text box the query goes into
+    submit: tuple[str, str]  # the button's name and value
+    hidden_fields: tuple[str, ...]  # the only hidden fields that may be sent back
+    required: tuple[str, ...] = ()  # hidden fields the page must have, or it has changed
+
+    def __post_init__(self) -> None:
+        names = [self.query_field, self.submit[0], *self.hidden_fields, *self.required]
+        if not all(_FIELD_NAME.match(name) for name in names):
+            raise ValueError("a form field name is not allowed")
+        if not set(self.required) <= set(self.hidden_fields):
+            raise ValueError("a required field must also be allowed")
+        if not self.path.startswith("/") or any(c in self.path for c in "?#\\ "):
+            raise ValueError("the form path must be a plain absolute path")
+
+
+class _FormReader(HTMLParser):
+    """The hidden inputs of the first top-level POST form whose target is ``path``."""
+
+    def __init__(self, page_url: str, path: str) -> None:
+        super().__init__(convert_charrefs=True)
+        self._page_url = page_url
+        self._path = path
+        self._depth = 0
+        self._inside = False
+        self.found = False
+        self.fields: list[tuple[str, str]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = {name.lower(): (value or "") for name, value in attrs}
+        if tag == "form":
+            self._depth += 1
+            target = urlsplit(urljoin(self._page_url, values.get("action", "")))
+            if (
+                self._depth == 1
+                and not self.found
+                and values.get("method", "get").lower() == "post"
+                and target.netloc == urlsplit(self._page_url).netloc
+                and target.path == self._path
+            ):
+                self._inside = True
+                self.found = True
+        elif tag == "input" and self._inside and values.get("type", "").lower() == "hidden":
+            self.fields.append((values.get("name", ""), values.get("value", "")))
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "form" and self._depth:
+            self._depth -= 1
+            if self._depth == 0:
+                self._inside = False
+
+
+def build_form(page: bytes, page_url: str, spec: FormSpec, query: str) -> bytes:
+    """The POST body: allow-listed hidden fields the page sent, the query, the submit button.
+    Raises ``form_changed`` / ``form_too_large`` / ``bad_query``; never adds anything else."""
+    if (
+        not query
+        or len(query) > MAX_QUERY_LENGTH
+        or any(ord(c) < 0x20 or ord(c) == 0x7F for c in query)
+    ):
+        raise FetchRefused("bad_query")
+    reader = _FormReader(page_url, spec.path)
+    reader.feed(page.decode("utf-8", errors="replace"))
+    reader.close()
+    if not reader.found:
+        raise FetchRefused("form_changed")
+    on_page: dict[str, str] = {}
+    for name, value in reader.fields:
+        on_page.setdefault(name, value)  # the first of a repeated name counts
+    # The ONE place the allow-list is applied: nothing else of the page is ever sent.
+    sent = {name: on_page[name] for name in spec.hidden_fields if name in on_page}
+    if not set(spec.required) <= set(sent):
+        raise FetchRefused("form_changed")
+    if any(len(value.encode()) > MAX_FIELD_BYTES for value in sent.values()):
+        raise FetchRefused("form_too_large")
+    pairs = list(sent.items())
+    pairs += [(spec.query_field, query), spec.submit]
+    body = urlencode(pairs).encode("ascii")
+    if len(body) > MAX_FORM_BYTES:
+        raise FetchRefused("form_too_large")
+    return body
+
+
+def _accept(response: TransportResponse, policy: FetchPolicy) -> str:
+    """The checks every answer of a form search must pass; returns its content type."""
+    if response.status in REDIRECT_STATUSES:
+        raise FetchRefused("bad_redirect")  # never followed in a form search
+    if response.truncated:
+        raise FetchRefused("too_large")
+    if response.headers.get("content-encoding", "identity").strip().lower() not in (
+        "",
+        "identity",
+    ):
+        raise FetchRefused("bad_encoding")
+    content_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
+    if content_type != "text/html" or content_type not in policy.content_types:
+        raise FetchRefused("bad_content_type")
+    return content_type
+
+
+def form_search(
+    spec: FormSpec,
+    query: str,
+    *,
+    host: str,
+    resolver: Resolver = system_resolver,
+    transport: Transport = real_transport,
+    policy: FetchPolicy = FetchPolicy(),  # noqa: B008 - frozen, shared on purpose
+    limiter: HostLimiter | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> FetchResult:
+    """Search a registry whose search is a web form: GET ``spec.path`` on ``host``, then POST the
+    form back to the same path on the same pinned address. ``policy.timeout_s`` covers the whole
+    check (robots.txt, the page and the answer together). Raises ``FetchRefused`` otherwise."""
+    deadline = clock() + policy.timeout_s
+    page_url = f"https://{host}{spec.path}"
+    name, target = validate_url(page_url, host)
+    site = _Site(name, _resolve(name, resolver))
+    site.robots = _read_robots(site, transport, policy, limiter, deadline=deadline, clock=clock)
+    if not site.robots.can_fetch(ROBOTS_TOKEN, page_url):
+        raise FetchRefused("robots_disallowed")
+    page = _send(site, target, transport, policy, limiter, deadline=deadline, clock=clock)
+    _accept(page, policy)
+    if page.status != 200:
+        raise FetchRefused("form_changed")
+    form = build_form(page.body, page_url, spec, query)
+    answer = _send(
+        site, target, transport, policy, limiter, form=form, deadline=deadline, clock=clock
+    )
+    content_type = _accept(answer, policy)
+    return FetchResult(answer.status, page_url, content_type, answer.body, site.ip)

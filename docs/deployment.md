@@ -226,14 +226,21 @@ Tick **every** item of the checklist below, remove the staging password, announc
         (2026-11-06: 1,000 accounts, 1,000 contacts, 301 leads restored).
   - [ ] A copy of the server's `.env` is in your password manager (a backup does not contain it).
   - [x] The Keycloak administration console is closed again (`ADMIN_ALLOWED_IPS=127.0.0.1`; 403 from outside, 2026-11-06).
-- [ ] **Upload/PDF sizes verified** on the chosen hosts: Netlify functions limit request and response
+- [ ] **Upload/PDF sizes verified** on the chosen hosts (measured 2026-11-09 on `crm.crmlead.co.in`:
+      Netlify answers **413 to any request of 6 MB or more**, so uploads above about 5 MB fail - a decision
+      is open: browser -> bucket uploads, or a 5 MB limit): Netlify functions limit request and response
       sizes and run time, and our files can be 20 MB. If too small: browser → bucket uploads with
       signed URLs (a small design change, to be done in D1b before staging).
 - [ ] Rate limiting and security headers at the edge; logs checked for personal data.
-- [ ] Voice (ADR 0023): `CRM_VOICE_BROWSER_ENGINE=false` once real customers' data is spoken (otherwise
+- [ ] Voice (ADR 0023): `CRM_VOICE_BROWSER_ENGINE=false` (the one-server compose file makes `false` the
+  default since 2026-11-09) once real customers' data is spoken (otherwise
   Google/Apple/Microsoft hear the audio); a speech key (`CRM_VOICE_API_KEY`) only if the owner accepts that
   vendor; the `voice` agent stays off until an administrator switches it on.
 - [ ] Dependency and image scan (`docker-skills:scan` / Trivy) with no high findings.
+  Scan of 2026-11-09 (Trivy 0.58.1): pypdf 6.21.1 had 10 high findings -> **6.21.4** (0 left); Caddy
+  2.10.2 had 6 critical / 99 high -> **2.11.6** (1 critical in the unused brotli library, 12 high);
+  the web app's packages: none; postgres:16-alpine 1 critical / 28 high (musl, zlib, a Go helper);
+  **Keycloak 26.4.7: 8 critical / 84 high - upgrade to a newer 26.x still to do** (needs a rehearsal).
 - [ ] Phase 21 hardening list in `implementation-plan.md` completed.
 - [ ] Monthly cost understood (Netlify credits plan + API host + database + Keycloak host + bucket +
       mail). Exact amounts depend on your provider choices.

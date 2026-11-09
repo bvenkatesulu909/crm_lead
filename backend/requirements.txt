@@ -38,7 +38,7 @@ reportlab==5.0.1
 # Reads file uploads (multipart/form-data) in FastAPI - documents module (Phase 10).
 python-multipart==0.0.32
 # Text extraction for knowledge ingestion (RAG R1): PDF and Word documents.
-pypdf==6.21.1
+pypdf==6.21.4
 python-docx==1.2.0
 # --- Operations (R6): metrics and tracing. Prometheus scrapes the token-protected internal route;
 # OpenTelemetry is opt-in (no collector needed to run the app).

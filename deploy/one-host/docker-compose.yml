@@ -58,6 +58,8 @@ x-api-environment: &api-environment
   CRM_DEEPSEEK_FALLBACK_MODELS: ${CRM_DEEPSEEK_FALLBACK_MODELS:-}
   # The most a model may write in one answer. Free models that think before answering need more.
   CRM_ASSISTANT_MAX_TOKENS: ${CRM_ASSISTANT_MAX_TOKENS:-1024}
+  # Off on a server: the browser's own speech engine sends the audio to Google/Apple/Microsoft.
+  CRM_VOICE_BROWSER_ENGINE: ${CRM_VOICE_BROWSER_ENGINE:-false}
   # For the estimated cost on the AI agents page (US dollars per million tokens; 0 = no estimate).
   CRM_AI_INPUT_PRICE_PER_MILLION: ${CRM_AI_INPUT_PRICE_PER_MILLION:-0}
   CRM_AI_OUTPUT_PRICE_PER_MILLION: ${CRM_AI_OUTPUT_PRICE_PER_MILLION:-0}
@@ -214,7 +216,7 @@ services:
 
   caddy:
     # The only service the internet can reach: ports 80 (certificate checks, redirect) and 443.
-    image: caddy:2.10.2-alpine
+    image: caddy:2.11.6-alpine
     restart: unless-stopped
     environment:
       API_HOST: ${API_HOST}

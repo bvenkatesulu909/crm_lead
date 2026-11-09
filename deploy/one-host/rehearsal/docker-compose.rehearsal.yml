@@ -30,7 +30,7 @@ services:
   rehearsal-ca:
     # Waits until the proxy has made its authority, then copies the public certificate (never the key)
     # to a place the API's user may read, and exits.
-    image: caddy:2.10.2-alpine
+    image: caddy:2.11.6-alpine
     restart: "no"
     entrypoint: ["sh", "-c"]
     command:

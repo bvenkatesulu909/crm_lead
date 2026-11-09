@@ -230,6 +230,9 @@ def test_the_ai_and_website_chat_settings_reach_the_api_and_the_worker() -> None
         # Found on staging (2026-11-08): a free "thinking" model used all 1024 output tokens before
         # writing the account brief, and the limit could not be raised on the server.
         assert env["CRM_ASSISTANT_MAX_TOKENS"] == "${CRM_ASSISTANT_MAX_TOKENS:-1024}"
+        # Go-live check (2026-11-09): the browser's own speech engine sends spoken words to
+        # Google/Apple/Microsoft, so on the server it is OFF unless the owner switches it on.
+        assert env["CRM_VOICE_BROWSER_ENGINE"] == "${CRM_VOICE_BROWSER_ENGINE:-false}"
         # The website chat stays off unless the owner sets both values.
         assert env["CRM_PUBLIC_CHAT_TENANT_SLUG"] == "${CRM_PUBLIC_CHAT_TENANT_SLUG:-}"
         assert env["CRM_PUBLIC_CHAT_SERVER_KEY"] == "${CRM_PUBLIC_CHAT_SERVER_KEY:-}"
@@ -592,3 +595,13 @@ def test_the_api_and_worker_send_keycloak_admin_calls_inside_the_stack() -> None
     # (creating an organisation's first administrator) got 403 on the first real server.
     for name in ("api", "worker"):
         assert environment_of(name).get("CRM_IDENTITY_ADMIN_URL") == "http://keycloak:8080", name
+
+
+def test_the_proxy_image_is_one_without_the_known_critical_flaws() -> None:
+    """Go-live scan (2026-11-09): caddy 2.10.2 had 6 critical and 99 high findings that 2.11.4+
+    fixes. The proxy is the only part the internet talks to, so it may not fall behind again."""
+    image = services()["caddy"]["image"]
+    name, tag = image.split(":")
+    major, minor, patch = (int(part) for part in tag.removesuffix("-alpine").split("."))
+    assert name == "caddy" and tag.endswith("-alpine")
+    assert (major, minor, patch) >= (2, 11, 6)

@@ -5,15 +5,17 @@
 > supply, left blank on purpose: a case study with invented numbers is worse than none. The page ends at
 > the line below; the to-do list after it is not part of the page.
 
-**Client:** [TO FILL - a real-estate agency in (city); name it only with the client's written OK]
-**Built by:** [TO FILL - your name] **Pilot period:** [TO FILL]
+**Client:** a real-estate agency in Anantapuramu (Anantapur), Andhra Pradesh [name it only with the client's written OK]
+**Built by:** Venkatesulu Boya **Pilot period:** [TO FILL]
 **Status today:** a working, tested system; not yet running for the client's customers.
 
 ## The problem
 Home buyers contact an agency through its website at any hour. Whoever answers must ask the same
 questions every time (name, phone, property type, budget, area) and then judge which leads deserve a
 salesperson's evening. Details get lost and each person judges "serious" differently.
-[TO FILL - in the client's words: how enquiries arrive, how long the first reply takes, what is lost.]
+Today the agency's enquiries reach it **by phone and e-mail**. [TO CONFIRM - how long the first reply to a
+phone call or e-mail takes today, and what is lost. The owner noted "seconds": if that is how fast the new
+chat answers, it belongs in the results table below, not here.]
 
 ## Scope
 A CRM for the sales team, one customer-facing piece (a **website chat** that collects the buyer's details)

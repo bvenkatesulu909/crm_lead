@@ -399,6 +399,7 @@ Accepted 2026-10-30 with the recommended answers to the five questions in ADR 00
 | WC3 | Agent registry entry (no model), staff assistant tool `check_rera`, limits |
 | WC4 | Screens: Check button and Evidence card on lead and account pages |
 | WC5 | BP-10 cases, `docs/webcheck.md`, Playwright journey, full runs (done 2026-11-08) |
+| WC6a-c | First real source, AP RERA, through a narrow form search (ADR 0019 Amendment A, proposed 2026-11-09): fetcher shape, parser on saved copies, one live check with the owner's yes |
 ## Phase 16 — Marketing Management (Module 7)
 
 **Acceptance criteria**

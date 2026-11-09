@@ -30,7 +30,7 @@ Rules:
 | [0016](0016-agent-registry-budgets-kill-switch.md) | Agent registry, monthly token budgets and a kill switch (BP-14) | Accepted |
 | [0017](0017-sentinel-action-verifier.md) | Sentinel: rule-based second check on AI proposals and input screening (BP-21) | Accepted |
 | [0018](0018-verification-artifacts-and-injection-defences.md) | Verification artifacts and the ForcedLeak / BodySnatcher defences (BP-29) | Accepted |
-| [0019](0019-live-web-check-rera-and-company.md) | Live web check of a RERA number or a company (BP-15) | Accepted |
+| [0019](0019-live-web-check-rera-and-company.md) | Live web check of a RERA number or a company (BP-15) | Accepted; Amendment A (form search, AP RERA) proposed |
 | [0020](0020-mcp-propose-tools.md) | Propose-only tools in the CRM MCP server (BP-11, step MCP5) | Accepted |
 | [0021](0021-one-host-deployment.md) | One-host deployment: API, worker, database and sign-in on one server (CRM-112; amends 0007) | Accepted |
 | [0022](0022-lead-agent-langgraph.md) | An optional lead agent built with LangGraph (CRM-114) | Proposed |

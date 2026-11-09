@@ -116,6 +116,10 @@ A real source is added only after the owner has read that site's terms of use an
 against saved copies of the page's layout, and a `terms_note` that records what the terms say. It
 is then switched on per deployment in `CRM_WEBCHECK_SOURCES`. Version 1 ships with demo sources only.
 
+The first real source proposed is **AP RERA** (Andhra Pradesh). Its search is a form that must be
+POSTed back, which the fetcher cannot do yet: [ADR 0019, Amendment A](adr/0019-live-web-check-rera-and-company.md)
+(section 7) proposes a narrow "form search" shape and the steps WC6a-c. Not built until the owner agrees.
+
 ## Tests
 
 - `tests/test_webfetch.py`, `tests/test_webfetch_transport.py` - the fetcher (fake network, and a

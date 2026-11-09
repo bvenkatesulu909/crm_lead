@@ -1,6 +1,7 @@
 # ADR 0019 — Live web check of a RERA number or a company (BP-15)
 
-- **Status:** Accepted (2026-10-30) with the recommended answers to the five questions in section 5
+- **Status:** Accepted (2026-10-30) with the recommended answers to the five questions in section 5;
+  **Amendment A** (section 7, form search for AP RERA) proposed 2026-11-09
 - **Date:** 2026-10-30
 - **Deciders:** Project owner
 - **Depends on:** ADR 0005 (outbox and worker), ADR 0014 (approval queue), ADR 0016 (agent
@@ -119,3 +120,92 @@ model: it appears on the same page, counts checks instead of tokens, and the sta
 - The fetcher becomes the only code that fetches a web page for a user. (The AI providers are already
   called over the internet, by their own clients with fixed addresses; those stay as they are.) A test
   in WC1 will fail if another module starts fetching pages with its own HTTP client.
+
+## 7. Amendment A (2026-11-09) - a narrow form search, for the first real source (AP RERA)
+
+- **Status:** Proposed - waits for the owner's answers to the questions in 7.5. Nothing is built yet.
+- **Why now:** the pilot client is in Anantapuramu, Andhra Pradesh, so the first real source should be
+  the AP RERA portal. Its search is an old ASP.NET form: it must be POSTed back with the page's own
+  hidden state. The fetcher of W3 sends only GET requests, so it cannot use this site.
+
+### 7.1 What was found (manual research, 2026-11-09, a handful of requests by hand)
+
+| Point | Finding |
+|---|---|
+| Site | `https://rera.ap.gov.in`, search page `/RERA/Views/Reports/ApprovedProjectSearch.aspx` |
+| robots.txt | none (404) - under RFC 9309 that means no rules; the fetcher already reads it so |
+| Terms of use | `termsandconditions.aspx`: by using the site you accept its terms; the content "should not be interpreted as a statement of law or used for any legal purposes"; doubts are to be checked with the department; no clause about automated access was found. The owner reads the page before deciding (W2) - this table is not legal advice |
+| CAPTCHA | none on the project search (one appears only in the login pop-up, which we never use) |
+| How the search works | GET the page (about 117 KB) -> it carries hidden fields `__VIEWSTATE`, `__VIEWSTATEGENERATOR`, `__EVENTVALIDATION` and a few empty ones -> POST them back to the same path with the keyword box filled and the Search button named (about 1 KB) -> the answer is the same page with a results table |
+| Cookies | the site sets `ASP.NET_SessionId`, but the search works **without** sending it back - W3's "no cookies" can stay |
+| What a result row holds | S.No., Application No, **Registration No**, Project Name, Promoter Name, Place, Status |
+| Registration numbers | look like `P` + 11 digits, e.g. `P12250106962`; a search for one returns its row |
+| Sizes | both answers well under the 1 MB limit (time per request to be measured in WC6c) |
+
+### 7.2 Decisions
+
+**W7 - One more fetch shape: "form search", and nothing wider.** A source may declare
+`kind = "form_search"` instead of an address template. Then a check makes exactly **two** requests:
+
+1. `GET https://<host><path>` - the source's fixed host and path;
+2. `POST https://<host><path>` - **the same host and the same path**, body
+   `application/x-www-form-urlencoded`, made only of:
+   - the hidden fields **the page itself sent** whose names are on the source's allow-list
+     (for AP RERA: `__VIEWSTATE`, `__VIEWSTATEGENERATOR`, `__EVENTVALIDATION`, `__EVENTTARGET`,
+     `__EVENTARGUMENT`, `__VIEWSTATEENCRYPTED`, `__SCROLLPOSITIONX`, `__SCROLLPOSITIONY`), copied as
+     they came, each at most 64 KB, all together at most 128 KB;
+   - **one** query field (its name fixed in the source) holding the already-validated query;
+   - the submit button's fixed name and value from the source.
+
+Nothing else can be added: no field from a person or a model, no other page, no file, no header but
+the content type. The query must still match the source's pattern (W1) before anything is sent.
+
+**W8 - Every W3 protection applies to both requests, unchanged.** HTTPS and port 443 only; the
+host resolved by us, every address public, the connection pinned to it; robots.txt read first and
+obeyed for that path; **no redirect** on the POST (a redirect there is treated as an error, not
+followed); 10 s for the whole check (both requests together); 1 MB per answer; no cookies; the fixed
+`User-Agent` with a contact; HTML only. The per-host limiter counts both requests (at least one
+second apart), and the daily ceiling counts **checks**, as today.
+
+**W9 - Fail closed when the form changes.** If the page has no form with that path, a required hidden
+field is missing, a field is too large, or the answer has no results table with the expected column
+headings, the check ends as `unclear` or `error` - never a guess - exactly like a layout change in
+W4. The parser reads only the results table and keeps only the row whose Registration No equals the
+query exactly (both upper-cased; one row or none).
+
+**W10 - The AP RERA source.** Key `rera_andhra_pradesh`, label "AP RERA (Andhra Pradesh)", host
+`rera.ap.gov.in`, query pattern `^P\d{11}$` (case-insensitive, stored upper-case), parser to
+`found` (status, project name, promoter, place, registration number) / `not_found` / `unclear`, and a
+`terms_note` that quotes the "not for legal purposes" line. The evidence card and the assistant keep
+saying what W5 already says: this is what the registry's public page showed at that time, not a legal
+opinion. **Off by default**; switched on per deployment in `CRM_WEBCHECK_SOURCES` only after the
+owner's yes (W2).
+
+**W11 - The company registry stays on the demo source.** The national company registry (MCA) is
+believed to put its company search behind a CAPTCHA (not tested here). Section 3 already rules out
+solving CAPTCHAs, so no real company source is planned in this amendment.
+
+### 7.3 What this amendment does not change
+
+The no-address rule (W1 / ADR 0018), no model reading pages (W4), insert-only cleaned evidence (W5),
+who may ask and the limits, the agent registry switch, retention and section 3 all stay as they are.
+The guard test that fails when another module fetches pages keeps holding: the form search lives
+inside `app/core/webfetch.py`.
+
+### 7.4 Steps (each stops for review)
+
+| Step | Content |
+|---|---|
+| WC6a | `webfetch`: the form-search shape (W7-W9), tested without a network: same host/path only, allow-listed hidden fields only, size caps, POST redirect refused, robots, limiter counts both requests, one deadline for both; deliberate breaks of each protection must fail a test |
+| WC6b | Source `rera_andhra_pradesh`: parser tested against **saved copies** of the real page (a found row, no row, a changed layout, a page with injected text), `terms_note`, docs; no network in CI |
+| WC6c | One live check from the development PC against the real site (with the owner's yes), then the owner decides whether to switch it on for staging; a BP-10 case on the saved copy |
+
+### 7.5 Questions for the owner
+
+1. **Allow the form-search shape (W7-W9)** - two requests to the same page, nothing added but the
+   query? *Recommended: yes.*
+2. **AP RERA as the first real source (W10)**, after you have read
+   `https://rera.ap.gov.in/RERA/Views/termsandconditions.aspx` yourself? *Recommended: yes.*
+3. **Leave the company check on the demo source (W11)?** *Recommended: yes.*
+4. **The live test in WC6c:** a few real searches from your PC, with registration numbers you choose
+   (public data), before anything runs on the server? *Recommended: yes.*

@@ -137,8 +137,12 @@ def test_every_source_says_what_the_owner_must_check_first() -> None:
 
 
 def test_the_demo_sources_are_marked_and_off_unless_asked_for() -> None:
-    assert all(s.demo for s in sources.SOURCES.values())  # v1 has only demo sources
+    # The only real source is AP RERA (ADR 0019, Amendment A); everything else is a demo.
+    real = {key for key, s in sources.SOURCES.items() if not s.demo}
+    assert real == {"rera_andhra_pradesh"}
+    # Nothing - real or demo - is on unless the deployment names it.
     assert sources.enabled_sources(configured=[], demo=False) == {}
+    assert "rera_andhra_pradesh" not in sources.enabled_sources(configured=[], demo=True)
 
 
 def test_the_demo_sources_can_be_switched_on() -> None:

@@ -126,7 +126,26 @@ keeps only the hidden fields on the source's allow-list (each at most 64 KB, the
 adds the one query field and the submit button, and POSTs to the same pinned address. A redirect is never
 followed; the answer must be plain, small HTML; one deadline covers the whole check; the per-host limiter
 counts every request. Tests: `tests/test_webfetch_form.py` (and the POST in `test_webfetch_transport.py`).
-No source uses it yet (WC6b adds AP RERA).
+
+WC6b is built: the source **`rera_andhra_pradesh`** ("AP RERA (Andhra Pradesh)") in
+`app/modules/webcheck/sources.py`.
+
+- **Query:** one registration number, `P` + 11 digits (stored in capitals). A keyword search is not allowed.
+- **How:** `form_search` on `/RERA/Views/Reports/ApprovedProjectSearch.aspx` (form `HomeForm`; the hidden
+  fields of ADR 0019 7.2 only - the page's sorting fields are never sent).
+- **Reading the answer** (`parse_aprera_results`): the table `ContentPlaceHolder1_gvApprovedProject` must have
+  exactly the seven columns S.No., Application No, Registration No, Project Name, Promoter Name, Place, Status.
+  The one row whose Registration No equals the query and whose Status is "APRERA Registered" is **found**,
+  stored as status **`registered`** (what the page says - not "active"); the message "No Data found on your
+  entered text", or a table without that number, is **not found**; anything else (a changed column, the number
+  twice, another status, another message, more than 50 rows) is **unclear**. The page gives no expiry date.
+  Project, promoter and place are cleaned like every page text.
+- **Tests** run on pages with the real site's structure but invented content (`tests/aprera_pages.py`); no real
+  project data is kept in the repository.
+- **Switched on** only by `CRM_WEBCHECK_SOURCES=rera_andhra_pradesh` (also passed by the one-server compose
+  file, empty by default), after the live test of WC6c and the owner's yes.
+- **Live check (WC6c, 2026-11-09, from the development PC):** a public registration number was found and
+  read correctly (status registered), a made-up number came back not found; about 3 seconds per check.
 
 ## Tests
 

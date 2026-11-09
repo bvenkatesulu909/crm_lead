@@ -31,6 +31,7 @@ from app.core.webfetch import (
     Resolver,
     Transport,
     fetch,
+    form_search,
     real_transport,
     system_resolver,
 )
@@ -342,14 +343,25 @@ def run_check(
             resolver, transport = resolver or system_resolver, transport or real_transport
     last_try = job.attempt >= min(MAX_ATTEMPTS, settings.worker_max_attempts)
     try:
-        result = fetch(
-            source.url_for(query),
-            host=source.host,
-            resolver=resolver,
-            transport=transport,
-            policy=policy or FetchPolicy(),
-            limiter=limiter,
-        )
+        if source.form is not None:
+            result = form_search(
+                source.form,
+                query,
+                host=source.host,
+                resolver=resolver,
+                transport=transport,
+                policy=policy or FetchPolicy(),
+                limiter=limiter,
+            )
+        else:
+            result = fetch(
+                source.url_for(query),
+                host=source.host,
+                resolver=resolver,
+                transport=transport,
+                policy=policy or FetchPolicy(),
+                limiter=limiter,
+            )
     except FetchRefused as refused:
         if refused.code in TRANSIENT_CODES and not last_try:
             raise TemporaryFailure(refused.code) from None

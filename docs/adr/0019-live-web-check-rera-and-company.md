@@ -199,8 +199,8 @@ inside `app/core/webfetch.py`.
 | Step | Content |
 |---|---|
 | WC6a | `webfetch`: the form-search shape (W7-W9), tested without a network: same host/path only, allow-listed hidden fields only, size caps, POST redirect refused, robots, limiter counts every request, one deadline for the check; deliberate breaks of each protection must fail a test - **done 2026-11-09** (`form_search`, `FormSpec`, `build_form`; 41 + 2 new tests, 17 of 17 breaks caught) |
-| WC6b | Source `rera_andhra_pradesh`: parser tested against **saved copies** of the real page (a found row, no row, a changed layout, a page with injected text), `terms_note`, docs; no network in CI |
-| WC6c | One live check from the development PC against the real site (with the owner's yes), then the owner decides whether to switch it on for staging; a BP-10 case on the saved copy |
+| WC6b | Source `rera_andhra_pradesh`: parser tested against **saved copies** of the real page (a found row, no row, a changed layout, a page with injected text), `terms_note`, docs; no network in CI - **done 2026-11-09**: the fixtures copy the real page's structure with invented content (no real project data in the public repository); new status `registered` |
+| WC6c | One live check from the development PC against the real site (with the owner's yes), then the owner decides whether to switch it on for staging; a BP-10 case on the saved copy - **live check done 2026-11-09** with the real code path (real resolver and TLS transport, a shared limiter): a public registration number -> found / registered, a made-up one -> not found; three requests per check (robots.txt, page, POST) about 3 s each including the 1 s spacing; the search answers without the page's sorting fields (the allow-list is enough). Switching it on for staging and the BP-10 case are still open |
 
 ### 7.5 Questions for the owner
 

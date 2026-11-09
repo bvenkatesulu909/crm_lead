@@ -15,6 +15,9 @@ Verdict = Literal["found", "not_found", "unclear"]
 STATUSES = frozenset(
     {
         "active",
+        # AP RERA lists approved projects as "APRERA Registered" (ADR 0019, Amendment A). Kept as
+        # what the page says: it is not mapped to "active", which would claim more than it shows.
+        "registered",
         "expired",
         "revoked",
         "suspended",

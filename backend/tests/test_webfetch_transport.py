@@ -195,3 +195,47 @@ def test_a_server_that_drips_bytes_cannot_hold_the_total_time(server: Server) ->
 def test_the_port_defaults_to_443() -> None:
     plain = PinnedRequest("93.184.216.34", NAME, "/", {}, 5.0, 1000)
     assert plain.port == 443
+
+
+# --- the form search's POST (ADR 0019, Amendment A) -----------------------------------------------
+
+
+def test_a_post_sends_its_form_body_with_a_length(server: Server) -> None:
+    form = b"__VIEWSTATE=abc&q=P12250106962&go=Search"
+    body_seen: list[bytes] = []
+
+    def answer(conn: socket.socket) -> None:
+        head, _, rest = server.received[-1].partition(b"\r\n\r\n")
+        length = int(
+            next(
+                line.split(b":")[1]
+                for line in head.split(b"\r\n")
+                if line.lower().startswith(b"content-length")
+            )
+        )
+        while len(rest) < length:
+            rest += conn.recv(4096)
+        body_seen.append(rest)
+        reply("200 OK", b"<html>ok</html>")(conn)
+
+    server.handler = answer
+    headers = {
+        "User-Agent": "crm-lead-webcheck/1.0",
+        "Accept-Encoding": "identity",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    response = real_transport(
+        request(server, method="POST", body=form, headers=headers, target="/Search.aspx"),
+        ssl_context=server.trusting(),
+    )
+    assert response.status == 200 and response.body == b"<html>ok</html>"
+    sent = server.received[0].decode().lower()
+    assert sent.startswith("post /search.aspx http/1.1")
+    assert f"content-length: {len(form)}" in sent and "cookie" not in sent
+    assert body_seen == [form]
+
+
+def test_only_get_and_post_can_be_sent(server: Server) -> None:
+    with pytest.raises(ValueError, match="only GET and POST"):
+        real_transport(request(server, method="DELETE"), ssl_context=server.trusting())
+    assert server.received == []

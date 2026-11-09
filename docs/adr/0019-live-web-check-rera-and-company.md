@@ -165,8 +165,9 @@ the content type. The query must still match the source's pattern (W1) before an
 host resolved by us, every address public, the connection pinned to it; robots.txt read first and
 obeyed for that path; **no redirect** on the POST (a redirect there is treated as an error, not
 followed); 10 s for the whole check (both requests together); 1 MB per answer; no cookies; the fixed
-`User-Agent` with a contact; HTML only. The per-host limiter counts both requests (at least one
-second apart), and the daily ceiling counts **checks**, as today.
+`User-Agent` with a contact; HTML only. The per-host limiter counts **every request** (robots.txt,
+the page and the answer - at least one second apart, and against the per-host daily ceiling); the
+per-person and per-organisation limits of the web check still count **checks**.
 
 **W9 - Fail closed when the form changes.** If the page has no form with that path, a required hidden
 field is missing, a field is too large, or the answer has no results table with the expected column
@@ -197,7 +198,7 @@ inside `app/core/webfetch.py`.
 
 | Step | Content |
 |---|---|
-| WC6a | `webfetch`: the form-search shape (W7-W9), tested without a network: same host/path only, allow-listed hidden fields only, size caps, POST redirect refused, robots, limiter counts both requests, one deadline for both; deliberate breaks of each protection must fail a test |
+| WC6a | `webfetch`: the form-search shape (W7-W9), tested without a network: same host/path only, allow-listed hidden fields only, size caps, POST redirect refused, robots, limiter counts every request, one deadline for the check; deliberate breaks of each protection must fail a test - **done 2026-11-09** (`form_search`, `FormSpec`, `build_form`; 41 + 2 new tests, 17 of 17 breaks caught) |
 | WC6b | Source `rera_andhra_pradesh`: parser tested against **saved copies** of the real page (a found row, no row, a changed layout, a page with injected text), `terms_note`, docs; no network in CI |
 | WC6c | One live check from the development PC against the real site (with the owner's yes), then the owner decides whether to switch it on for staging; a BP-10 case on the saved copy |
 

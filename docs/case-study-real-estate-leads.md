@@ -5,15 +5,16 @@
 > supply, left blank on purpose: a case study with invented numbers is worse than none. The page ends at
 > the line below; the to-do list after it is not part of the page.
 
-**Client:** [TO FILL - a real-estate agency in (city); name it only with the client's written OK]
-**Built by:** [TO FILL - your name] **Pilot period:** [TO FILL]
+**Client:** a real-estate agency in Anantapuramu (Anantapur), Andhra Pradesh [name it only with the client's written OK]
+**Built by:** Venkatesulu Boya **Pilot period:** [TO FILL]
 **Status today:** a working, tested system; not yet running for the client's customers.
 
 ## The problem
 Home buyers contact an agency through its website at any hour. Whoever answers must ask the same
 questions every time (name, phone, property type, budget, area) and then judge which leads deserve a
 salesperson's evening. Details get lost and each person judges "serious" differently.
-[TO FILL - in the client's words: how enquiries arrive, how long the first reply takes, what is lost.]
+Today the agency's enquiries reach it **by phone and e-mail**. [TO FILL - ask the client: how long the first
+reply to a phone call or e-mail takes today (outside office hours too), and what is lost.]
 
 ## Scope
 A CRM for the sales team, one customer-facing piece (a **website chat** that collects the buyer's details)
@@ -47,6 +48,7 @@ passes. This shows the system *works*, not that it *paid off*.
 
 | Measure | Before (client) | After (system) | Where the "after" number comes from |
 |---|---|---|---|
+| Time until the enquirer gets a first answer | [TO FILL - today's phone / e-mail reply time] | [TO FILL] | The chat answers within seconds on staging (owner's own test, 2026-11-09); measure it in the pilot from the conversation's timestamps - a test is not a result |
 | First message to a saved lead | [TO FILL] | [TO FILL] | Reports -> "Website chat", section 1: median seconds from the first message to the lead |
 | Chats that end with a lead | [TO FILL] | [TO FILL] | Section 1: conversations started, leads saved, the share |
 | Leads with budget and area filled in | [TO FILL] | [TO FILL] | Section 2: web leads "with budget, area and type" and the share |

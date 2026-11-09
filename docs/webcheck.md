@@ -118,7 +118,7 @@ is then switched on per deployment in `CRM_WEBCHECK_SOURCES`. Version 1 ships wi
 
 The first real source proposed is **AP RERA** (Andhra Pradesh). Its search is a form that must be
 POSTed back, which the fetcher cannot do yet: [ADR 0019, Amendment A](adr/0019-live-web-check-rera-and-company.md)
-(section 7) proposes a narrow "form search" shape and the steps WC6a-c. Not built until the owner agrees.
+(section 7, accepted 2026-11-09) adds a narrow "form search" shape and the steps WC6a-c.
 
 ## Tests
 

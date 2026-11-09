@@ -1,7 +1,7 @@
 # ADR 0019 — Live web check of a RERA number or a company (BP-15)
 
 - **Status:** Accepted (2026-10-30) with the recommended answers to the five questions in section 5;
-  **Amendment A** (section 7, form search for AP RERA) proposed 2026-11-09
+  **Amendment A** (section 7, form search for AP RERA) accepted 2026-11-09 with the four recommended answers
 - **Date:** 2026-10-30
 - **Deciders:** Project owner
 - **Depends on:** ADR 0005 (outbox and worker), ADR 0014 (approval queue), ADR 0016 (agent
@@ -123,7 +123,8 @@ model: it appears on the same page, counts checks instead of tokens, and the sta
 
 ## 7. Amendment A (2026-11-09) - a narrow form search, for the first real source (AP RERA)
 
-- **Status:** Proposed - waits for the owner's answers to the questions in 7.5. Nothing is built yet.
+- **Status:** Accepted 2026-11-09 with the four recommended answers in 7.5 (the owner reads the AP RERA
+  terms before the source is switched on anywhere).
 - **Why now:** the pilot client is in Anantapuramu, Andhra Pradesh, so the first real source should be
   the AP RERA portal. Its search is an old ASP.NET form: it must be POSTed back with the page's own
   hidden state. The fetcher of W3 sends only GET requests, so it cannot use this site.

@@ -144,6 +144,8 @@ WC6b is built: the source **`rera_andhra_pradesh`** ("AP RERA (Andhra Pradesh)")
   project data is kept in the repository.
 - **Switched on** only by `CRM_WEBCHECK_SOURCES=rera_andhra_pradesh` (also passed by the one-server compose
   file, empty by default), after the live test of WC6c and the owner's yes.
+- **Live check (WC6c, 2026-11-09, from the development PC):** a public registration number was found and
+  read correctly (status registered), a made-up number came back not found; about 3 seconds per check.
 
 ## Tests
 

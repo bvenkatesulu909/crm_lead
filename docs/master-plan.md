@@ -108,7 +108,7 @@ See `docs/adr/0012-communication-center.md` and Phase CC in `implementation-plan
 
 | # | Blueprint | What it means in this CRM | Builds on | Design | Size |
 |---|---|---|---|---|---|
-| BP-02 | One-click lead and company enrichment | Button on a lead: fill company size, website, industry from an outside data source; every change shown before saving | BP-14, BP-05 | **ADR** (lead data sent outside): [ADR 0026](adr/0026-lead-company-enrichment.md), proposed 2026-11-10 | L |
+| BP-02 | One-click lead and company enrichment | Button on a lead: fill company size, website, industry from an outside data source; every change shown before saving | BP-14, BP-05 | **ADR** (lead data sent outside): [ADR 0026](adr/0026-lead-company-enrichment.md), accepted 2026-11-10 | L |
 | BP-03 | Qualification procedures (AOPs) | Admin writes plain-English qualification steps; the AI follows them and **proposes** stage changes through BP-05 | BP-05, workflows | design | M |
 | BP-12 | Automatic follow-up sequences | Timed e-mail sequences (day 0, 2, 7) that stop when the lead replies or converts | **Communication Center**, outbox, workflows | design | M |
 | BP-13 | Deal risk and forecast | Risk score per deal (no activity, stage age, missing contact) and a forecast view | sales, dashboard, reports | design | M |

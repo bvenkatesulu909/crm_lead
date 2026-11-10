@@ -1,6 +1,6 @@
 # ADR 0026 — One-click company details on a lead (BP-02)
 
-- **Status:** Proposed (2026-11-10), waiting for the owner's answers in section 6
+- **Status:** Accepted (2026-11-10) with the recommended answer to all six questions in section 6
 - **Date:** 2026-11-10
 - **Deciders:** Project owner
 - **Depends on:** ADR 0019 (live web check: the safe fetcher, evidence, limits), ADR 0016 (agent
@@ -81,7 +81,7 @@ the button), no change without the person saving it.
 
 | Step | Content |
 |---|---|
-| EN0 | This ADR + ADR 0019 Amendment B (documents only) |
+| EN0 | This ADR + ADR 0019 Amendment B (documents only) - **done 2026-11-10** |
 | EN1 | Lead fields `company_website`, `company_industry`, `company_size` (migration, checks, schemas, lead form and page), copied to the account on conversion |
 | EN2 | `company_site` source: host rules (E2) with the free-mail and deny lists, fetch through `webfetch`, deterministic parser, fictional demo sites; tests incl. SSRF attempts (IP literals, internal names, redirects to other hosts) |
 | EN3 | API: request details (queues a job), list suggestions with evidence, apply chosen fields (normal lead update + audit); registry entry and limits |

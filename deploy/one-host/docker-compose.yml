@@ -203,14 +203,15 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      # The image has no curl: bash opens a TCP connection to the management port and checks that
-      # /health/ready reports "UP".
+      # The image has no curl: bash opens a TCP connection to the management port and reads the
+      # status line of /health/ready - 200 only when Keycloak is ready, 503 while it starts or
+      # updates its database. (The body cannot be searched for "UP": one sub-check always says UP.)
       test:
         - CMD-SHELL
         - >-
           exec 3<>/dev/tcp/127.0.0.1/9000 &&
           printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
-          grep -q '"status": *"UP"' <&3
+          head -n 1 <&3 | grep -q ' 200 '
       interval: 10s
       timeout: 5s
       retries: 30

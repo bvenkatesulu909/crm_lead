@@ -63,13 +63,13 @@ browser and the documents bucket directly, through links the API signs for one f
 minutes. The bucket stays **private**; it needs two settings, made once from your own PC
 (Windows CMD, with the Google Cloud command line signed in to your project):
 
-1. Copy `storage\cors.example.json` to a file of your own and put your web app's address in it
+1. Copy `bucket\cors.example.json` to a file of your own and put your web app's address in it
    (for example `https://crm.yourcompany.in`). Only that address may send or fetch files.
 2. Apply both files (`lifecycle.json` deletes unfinished uploads in `pending/` after a day):
 
    ```
    gcloud storage buckets update gs://YOUR-DOCUMENTS-BUCKET --cors-file=my-cors.json
-   gcloud storage buckets update gs://YOUR-DOCUMENTS-BUCKET --lifecycle-file=deploy\one-host\storage\lifecycle.json
+   gcloud storage buckets update gs://YOUR-DOCUMENTS-BUCKET --lifecycle-file=deploy\one-host\bucket\lifecycle.json
    ```
 
 3. Check: `gcloud storage buckets describe gs://YOUR-DOCUMENTS-BUCKET --format="json(cors_config,lifecycle_config,public_access_prevention)"`

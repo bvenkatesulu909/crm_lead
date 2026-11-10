@@ -1,6 +1,6 @@
 # ADR 0025 — Large files go straight to the file store through short-lived signed links
 
-- **Status:** Proposed (2026-11-10) - waits for the owner's answers to the questions in section 6
+- **Status:** Accepted (2026-11-10) with the recommended answers to all five questions in section 6
 - **Date:** 2026-11-10
 - **Deciders:** Project owner
 - **Depends on:** ADR 0005 (file store), ADR 0007 / ADR 0021 (Netlify for the web app, one server for

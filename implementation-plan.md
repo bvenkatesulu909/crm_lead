@@ -457,7 +457,7 @@ lead agent (built from an older title) stays as it is. Details and the eight que
 | DD5 | BP-10 cases and a Playwright journey - done 2026-11-08 (28 cases; journey covers both) |
 | DD6 | `docs/deal-desk.md`, one real-model run (owner's yes), full runs - done 2026-11-08 (DeepSeek run: 8 of 13 live cases, no safety failure) |
 
-## Phase DU — Large files through signed links (ADR 0025, proposed 2026-11-10)
+## Phase DU — Large files through signed links (ADR 0025, accepted 2026-11-10)
 
 Netlify refuses requests of 6 MB or more, so uploads (and probably downloads) above about 5 MB fail in
 the live set-up although the CRM allows 20 MB. Files go straight between the browser and the private

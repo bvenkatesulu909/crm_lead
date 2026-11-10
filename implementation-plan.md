@@ -457,6 +457,22 @@ lead agent (built from an older title) stays as it is. Details and the eight que
 | DD5 | BP-10 cases and a Playwright journey - done 2026-11-08 (28 cases; journey covers both) |
 | DD6 | `docs/deal-desk.md`, one real-model run (owner's yes), full runs - done 2026-11-08 (DeepSeek run: 8 of 13 live cases, no safety failure) |
 
+## Phase DU — Large files through signed links (ADR 0025, accepted 2026-11-10)
+
+Netlify refuses requests of 6 MB or more, so uploads (and probably downloads) above about 5 MB fail in
+the live set-up although the CRM allows 20 MB. Files go straight between the browser and the private
+file store through short-lived signed links; the API still decides who may do what and checks every
+file exactly as today. Details and the five questions: ADR 0025.
+
+| Step | Content |
+|---|---|
+| DU0 | Measurements on staging (download limit; POST policy and CORS on SeaweedFS and Google Cloud Storage); documents only - **done 2026-11-10**: both stores enforce a POST policy's size; GCS needs a CORS rule (DU5) |
+| DU1 | Signed upload / download, stat and copy in `app/core/storage.py` |
+| DU2 | Documents: start + finish an upload through a pending object, the sweep, all rule tests |
+| DU3 | Knowledge documents; downloads (documents, portal, quote PDFs) by 302 to a signed link |
+| DU4 | Web app: direct upload with progress, CSP `connect-src`, Playwright with a 15 MB file |
+| DU5 | Staging bucket CORS + lifecycle, a real 15 MB upload and download, checklist ticked |
+
 ## Phase 19 — External Integrations (Module 17)  *(CRM MCP server: ADR 0015, steps MCP0-MCP6; MCP1 done 2026-10-26)*
 
 **Acceptance criteria**

@@ -36,3 +36,4 @@ Rules:
 | [0022](0022-lead-agent-langgraph.md) | An optional lead agent built with LangGraph (CRM-114) | Proposed |
 | [0023](0023-live-voice-assistant.md) | Live voice mode for the staff AI Assistant (Phase 20c) | Accepted |
 | [0024](0024-deal-desk-and-account-research.md) | Deal desk: several AI reviewers on one deal, plus parallel account research (CRM-114) | Accepted |
+| [0025](0025-direct-uploads-signed-links.md) | Large files go straight to the file store through short-lived signed links | Accepted |

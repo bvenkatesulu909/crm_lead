@@ -161,6 +161,9 @@ class Settings(BaseSettings):
     # S3-compatible file store (ADR 0005; SeaweedFS locally). Without keys, features that store
     # files answer 503 and everything else keeps working.
     files_s3_endpoint: str = Field(default="127.0.0.1:9333", pattern=r"^[A-Za-z0-9.\-]+:\d{1,5}$")
+    # The address a BROWSER uses to reach the store (signed links, ADR 0025). Empty = the same as
+    # files_s3_endpoint, which is right when the API and the browser see the store at one address.
+    files_s3_public_endpoint: str = Field(default="", pattern=r"^([A-Za-z0-9.\-]+:\d{1,5})?$")
     files_s3_secure: bool = False
     files_s3_access_key: SecretStr | None = None
     files_s3_secret_key: SecretStr | None = None

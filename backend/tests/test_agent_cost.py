@@ -24,8 +24,8 @@ def cost(
     return estimate_cost_usd(
         input_tokens,
         output_tokens,
-        input_price_per_million=input_price,
-        output_price_per_million=output_price,
+        input_price_per_million=Decimal(str(input_price)),
+        output_price_per_million=Decimal(str(output_price)),
         uses_model=uses_model,
     )
 

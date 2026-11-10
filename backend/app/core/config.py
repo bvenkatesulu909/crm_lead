@@ -5,6 +5,7 @@ Invalid values stop the application at startup instead of failing later at runti
 """
 
 import re
+from decimal import Decimal
 from functools import lru_cache
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
@@ -246,8 +247,9 @@ class Settings(BaseSettings):
     otel_service_name: str = "crm-lead-api"
     otel_sample_ratio: float = Field(default=0.1, ge=0.0, le=1.0)
     # Price per 1M tokens, used only to ESTIMATE cost (model prices change; set from the provider).
-    ai_input_price_per_million: float = Field(default=0.0, ge=0.0)
-    ai_output_price_per_million: float = Field(default=0.0, ge=0.0)
+    # Decimal like all money (BP-20): "0.28" stays 0.28, never 0.28000000000000003.
+    ai_input_price_per_million: Decimal = Field(default=Decimal(0), ge=0)
+    ai_output_price_per_million: Decimal = Field(default=Decimal(0), ge=0)
     # AI governance (ADR 0016). The platform switch refuses EVERY AI call for every organisation
     # (a leaked key, a runaway); the default budget is tokens per agent and organisation per month
     # for agents nobody has configured. There is no "unlimited": a cap is always in force.

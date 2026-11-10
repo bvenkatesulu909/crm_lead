@@ -240,7 +240,11 @@ Tick **every** item of the checklist below, remove the staging password, announc
   Scan of 2026-11-09 (Trivy 0.58.1): pypdf 6.21.1 had 10 high findings -> **6.21.4** (0 left); Caddy
   2.10.2 had 6 critical / 99 high -> **2.11.6** (1 critical in the unused brotli library, 12 high);
   the web app's packages: none; postgres:16-alpine 1 critical / 28 high (musl, zlib, a Go helper);
-  **Keycloak 26.4.7: 8 critical / 84 high - upgrade to a newer 26.x still to do** (needs a rehearsal).
+  Keycloak 26.4.7 had 8 critical / 84 high -> **26.7.5** (1 critical in the operating system's
+  ca-certificates, 9 high), rehearsed 2026-11-10 on a PC: the upgrade from 26.4.7 on the same database
+  migrated both realms automatically, kept users and required actions, the CRM's admin service account
+  still worked and the smoke test passed 22/22 before and after. **There is no way back without the
+  backup** (Keycloak does not undo its database changes): `update.sh` takes one first.
 - [ ] Phase 21 hardening list in `implementation-plan.md` completed.
 - [ ] Monthly cost understood (Netlify credits plan + API host + database + Keycloak host + bucket +
       mail). Exact amounts depend on your provider choices.

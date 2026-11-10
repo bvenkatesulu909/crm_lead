@@ -31,7 +31,7 @@ from app.core.observability.metrics import (
 )
 from app.core.storage import FileStore, get_file_store
 from app.modules.identity.api import granted_account_ids, require_any_permission
-from app.modules.knowledge import answers, repository, retrieval, rules, service
+from app.modules.knowledge import answers, repository, retrieval, rules, service, uploads
 from app.modules.knowledge.models import KnowledgeDocument
 from app.modules.knowledge.schemas import (
     KnowledgeAnswerRequest,
@@ -41,6 +41,8 @@ from app.modules.knowledge.schemas import (
     KnowledgeDocumentRead,
     KnowledgeSearchHit,
     KnowledgeSearchResponse,
+    KnowledgeUploadStart,
+    KnowledgeUploadTicket,
     RagFeedbackCreate,
 )
 
@@ -244,6 +246,37 @@ async def upload_document(
         visibility=visibility,
         account_id=uuid.UUID(account_id) if account_id else None,
         replaces_document_id=(uuid.UUID(replaces_document_id) if replaces_document_id else None),
+    )
+    session.commit()
+    session.refresh(document)
+    return _read(document, 0)
+
+
+@router.post(
+    "/uploads",
+    status_code=status.HTTP_201_CREATED,
+    summary="Start a direct upload: checks, then a 5-minute signed link for the file (ADR 0025)",
+    responses=problem_responses(413, 415, 422, 429, 503),
+)
+def start_upload(
+    request: Request, principal: Manager, session: Db, files: Files, body: KnowledgeUploadStart
+) -> KnowledgeUploadTicket:
+    ticket = uploads.start_upload(session, principal, files, body, request.app.state.settings)
+    session.commit()
+    return ticket
+
+
+@router.post(
+    "/uploads/{upload_id}/finish",
+    status_code=status.HTTP_201_CREATED,
+    summary="Finish a direct upload: the file is checked and queued for indexing",
+    responses=problem_responses(404, 409, 410, 413, 415, 422, 503),
+)
+def finish_upload(
+    request: Request, upload_id: uuid.UUID, principal: Manager, session: Db, files: Files
+) -> KnowledgeDocumentRead:
+    document = uploads.finish_upload(
+        session, principal, files, upload_id, request.app.state.settings
     )
     session.commit()
     session.refresh(document)

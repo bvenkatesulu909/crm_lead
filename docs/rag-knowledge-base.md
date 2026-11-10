@@ -218,6 +218,7 @@ If the image change is not acceptable now, the fallback is a separate vector sto
 | `GET/POST /api/v1/knowledge/collections`, `PATCH/DELETE …/{id}` | manage collections (tenant admins) |
 | `POST /api/v1/knowledge/documents` (multipart, `collection_id`), `GET …`, `GET …/{id}`, `DELETE …/{id}` | upload/list/status/delete knowledge files |
 | `POST /api/v1/knowledge/documents/{id}/reindex` | requeue indexing (admin) |
+| `POST /api/v1/knowledge/uploads` (JSON: `file_name`, `size_bytes`, `title`, `visibility`, `account_id`, `replaces_document_id`), `POST /api/v1/knowledge/uploads/{id}/finish` | **direct upload** (ADR 0025): the checks that need no bytes, a 5-minute signed link, the browser sends the file straight to the store, then `finish` runs the normal upload (content check, duplicate check, version, indexing job, audit). Table `kb_uploads` (migration 0055) |
 | `GET /api/v1/knowledge/search?q=…` | permission-filtered search results with citations (no LLM) |
 | staff assistant chat (new endpoint) | read-only knowledge chat with `search_knowledge` |
 

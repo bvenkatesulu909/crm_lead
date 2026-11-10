@@ -153,6 +153,9 @@ def run_schedules(
                 count += documents_api.delete_stale_uploads(
                     session, files, now, tenant_id=tenant_id
                 )
+                count += knowledge_api.delete_stale_knowledge_uploads(
+                    session, files, now, tenant_id=tenant_id
+                )
             # AI proposals nobody decided on in time (ADR 0014): expired, requester told.
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)

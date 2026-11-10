@@ -1,7 +1,8 @@
 # ADR 0019 — Live web check of a RERA number or a company (BP-15)
 
 - **Status:** Accepted (2026-10-30) with the recommended answers to the five questions in section 5;
-  **Amendment A** (section 7, form search for AP RERA) accepted 2026-11-09 with the four recommended answers
+  **Amendment A** (section 7, form search for AP RERA) accepted 2026-11-09 with the four recommended answers;
+  **Amendment B** (section 8, a host derived from a lead's own data, for BP-02) accepted 2026-11-10 with ADR 0026
 - **Date:** 2026-10-30
 - **Deciders:** Project owner
 - **Depends on:** ADR 0005 (outbox and worker), ADR 0014 (approval queue), ADR 0016 (agent
@@ -211,3 +212,27 @@ inside `app/core/webfetch.py`.
 3. **Leave the company check on the demo source (W11)?** *Recommended: yes.*
 4. **The live test in WC6c:** a few real searches from your PC, with registration numbers you choose
    (public data), before anything runs on the server? *Recommended: yes.*
+
+## 8. Amendment B (2026-11-10) - a host taken from the lead, for company details (ADR 0026)
+
+Until now every source names its one host and nobody gives the fetcher an address (W2). BP-02 reads
+the **company's own website**, whose host differs for every lead. Amendment B allows exactly that one
+case, and nothing else changes.
+
+- **B1 - Where the host may come from.** Only from the lead itself: a company website typed by staff
+  on the lead, else the domain of the lead's work e-mail address. Never from a model, a page, a
+  query string or any other request field.
+- **B2 - What a host must be.** A plain registrable domain name: no IP address in any notation, no
+  port, no path, no user info, no trailing dot tricks; not `localhost` or under `.local`, `.internal`,
+  `.lan`, `.home`, `.corp`, `.localhost`, `.test`, `.example`, `.invalid`; not a free e-mail provider
+  (a fixed list: gmail.com, yahoo.com, outlook.com, hotmail.com, live.com, icloud.com, proton.me,
+  rediffmail.com, …); not on a deny list kept in code. The name is lower-cased and IDNA-encoded first.
+- **B3 - Every existing protection still applies.** https only, port 443, every resolved address
+  public and the connection pinned to it (an internal answer from DNS is refused), robots.txt
+  honoured, redirects only inside the same host and re-checked, 10 s / 1 MB caps, text only, the
+  per-host limiter and its daily ceiling. At most two pages per check (home page, `/about`).
+- **B4 - Only what the page itself says, cleaned.** The parser reads structured facts only (ADR 0026
+  E4/E5); page text is cleaned with `screen()`, capped, never shown as HTML and never given to a model.
+- **B5 - Attack tests.** EN2 adds tests for each refused form (IP literals including decimal, octal
+  and IPv6 forms, internal suffixes, free-mail domains, user info, ports, a DNS answer pointing inside,
+  a redirect to another host); deliberate breaks of each rule must fail a test.

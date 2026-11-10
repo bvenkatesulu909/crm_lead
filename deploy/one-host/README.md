@@ -56,6 +56,27 @@ Windows PC stay CMD, as everywhere else in this project.
    For that you need the Keycloak administration console, which is closed to the internet; see
    "Administration console" below.
 
+## Documents bucket: files straight from the browser (ADR 0025)
+
+The web app (Netlify) refuses requests of 6 MB or more, so uploads and downloads go between the
+browser and the documents bucket directly, through links the API signs for one file and a few
+minutes. The bucket stays **private**; it needs two settings, made once from your own PC
+(Windows CMD, with the Google Cloud command line signed in to your project):
+
+1. Copy `storage\cors.example.json` to a file of your own and put your web app's address in it
+   (for example `https://crm.yourcompany.in`). Only that address may send or fetch files.
+2. Apply both files (`lifecycle.json` deletes unfinished uploads in `pending/` after a day):
+
+   ```
+   gcloud storage buckets update gs://YOUR-DOCUMENTS-BUCKET --cors-file=my-cors.json
+   gcloud storage buckets update gs://YOUR-DOCUMENTS-BUCKET --lifecycle-file=deploy\one-host\storage\lifecycle.json
+   ```
+
+3. Check: `gcloud storage buckets describe gs://YOUR-DOCUMENTS-BUCKET --format="json(cors_config,lifecycle_config,public_access_prevention)"`
+   shows your address, the `pending/` rule and `"public_access_prevention": "enforced"`.
+4. Optional, in Netlify: `FILE_STORE_ORIGIN` = `https://storage.googleapis.com` (the store in the
+   browser security policy, report-only for now).
+
 ## Administration console
 
 `https://login.…/admin` answers 403 for everybody unless `ADMIN_ALLOWED_IPS` in `.env` lists your
@@ -187,6 +208,8 @@ for the old code, and, only if the old code cannot run on the new database, rest
 | `backup/backup.sh` | One backup: dump, check, encrypt for your public key, upload, size check |
 | `bin/restore-test.sh` | Restores the newest backup into a scratch database and compares it |
 | `bin/update.sh` | Backup, build, migrate, restart, wait until healthy |
+| `bucket/cors.example.json` | The documents bucket's CORS rule (ADR 0025): only the web app's address may send or fetch files |
+| `bucket/lifecycle.json` | Deletes unfinished uploads in `pending/` after one day |
 | `bin/server-check.sh` | Looks at the machine (firewall, SSH, updates, ports, backups, disk); changes nothing |
 | `rehearsal/docker-compose.rehearsal.yml` | **Never for a real server.** Starts the whole stack on a PC |
 | `rehearsal/tls.caddy` | **Never for a real server.** A throwaway certificate authority for the rehearsal |

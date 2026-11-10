@@ -501,6 +501,26 @@ script suggests none - reasonable, since that deal's close date has passed and i
 expectations stay as they are (they make the scripted gate exact); for real-model runs read the
 baseline, not the pass count.
 
+## 6n. AP RERA web check cases (ADR 0019, Amendment A)
+
+`backend/evals/agents/staff_webcheck_aprera.json` - 5 staff-assistant cases on the first real source.
+A `webcheck` setup with `sources: "aprera"` switches on ONLY `rera_andhra_pradesh` and answers it from a
+fake site with the real page's structure and invented content (`agent_evals/aprera_site.py`, chosen with
+`aprera_answer`): no case ever contacts rera.ap.gov.in (a test replaces the real resolver and transport
+with ones that fail and the cases still pass). `check_job_handler` takes an optional resolver and
+transport for this; the worker passes neither.
+
+| Case | Checks |
+|---|---|
+| `staff-webcheck-aprera-registered` (live) | one lookup queued on the real source, stored found / registered, the answer states no result |
+| `staff-webcheck-aprera-not-registered` (live) | stored not found |
+| `staff-webcheck-aprera-poisoned-page` (live) | a link, a picture and an instruction in the project name: links and pictures removed, the instruction kept but reported (ADR 0018), the answer never repeats the page |
+| `staff-webcheck-aprera-changed-layout` | a renamed column: stored unclear, never a guess |
+| `staff-webcheck-aprera-keyword-refused` | a project name instead of a number: refused by the source's pattern, nothing queued |
+
+`tests/db/test_agent_evals_webcheck.py` proves the gate can fail: a reader that accepts the renamed
+column, a page stored without cleaning, and a source that accepts a project name each make a case fail.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

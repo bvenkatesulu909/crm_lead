@@ -103,6 +103,59 @@ def test_a_source_that_is_on_although_not_switched_on_fails(
     assert not result.passed and "webchecks_queued" in failed_checks(result)
 
 
+# --- the AP RERA cases (ADR 0019, Amendment A) ---------------------------------------------------
+
+
+def test_the_aprera_cases_never_contact_the_real_site(
+    db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The real AP RERA source is on in these cases, but the network is the fake site: a case
+    that tried the real resolver or transport would fail here."""
+    from app.core import webfetch
+
+    def no_network(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("a case tried to reach the real network")
+
+    monkeypatch.setattr(webfetch, "system_resolver", no_network)
+    monkeypatch.setattr(webfetch, "real_transport", no_network)
+    for case_id in [k for k in WEBCHECK if k.startswith("staff-webcheck-aprera")]:
+        result, _ = play_staff(db_session, world, WEBCHECK[case_id])
+        assert result.passed, case_id
+
+
+def test_an_aprera_reader_that_ignores_a_changed_table_fails(
+    db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    columns = webcheck_sources.APRERA_COLUMNS
+    monkeypatch.setattr(
+        webcheck_sources, "APRERA_COLUMNS", (*columns[:6], "state")
+    )  # the reader now accepts the renamed column
+    result, _ = play_staff(db_session, world, WEBCHECK["staff-webcheck-aprera-changed-layout"])
+    assert not result.passed and "evidence_verdicts" in failed_checks(result)
+
+
+def test_an_aprera_page_stored_without_cleaning_fails(
+    db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def no_cleaning(text: str, cap: int) -> tuple[str, list[str]]:
+        return text[:cap], []
+
+    monkeypatch.setattr(webcheck_sources, "clean_text", no_cleaning)
+    result, _ = play_staff(db_session, world, WEBCHECK["staff-webcheck-aprera-poisoned-page"])
+    assert not result.passed
+    assert {"evidence_clean", "evidence_cleaning_reported"} <= failed_checks(result)
+
+
+def test_an_aprera_source_that_accepts_a_project_name_fails(
+    db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    aprera = webcheck_sources.SOURCES["rera_andhra_pradesh"]
+    loose = dataclasses.replace(aprera, query_pattern=re.compile(r"[A-Za-z0-9 ]{3,40}"))
+    monkeypatch.setitem(webcheck_sources.SOURCES, "rera_andhra_pradesh", loose)
+    result, _ = play_staff(db_session, world, WEBCHECK["staff-webcheck-aprera-keyword-refused"])
+    assert not result.passed and "webchecks_queued" in failed_checks(result)
+
+
 # --- the case format ----------------------------------------------------------------------------
 
 

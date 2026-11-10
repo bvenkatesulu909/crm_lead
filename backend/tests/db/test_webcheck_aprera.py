@@ -3,16 +3,16 @@
 
 The request, the queued job and the REAL worker job (``run_check`` -> ``form_search`` -> the AP RERA
 parser -> insert-only evidence). Only the network is replaced: a fake answers like the real site
-(tests/aprera_pages.py - real structure, invented content)."""
+(agent_evals/aprera_site.py - real structure, invented content)."""
 
 from typing import Any
 
 import pytest
 from sqlalchemy.orm import Session
 
-from app.core.webfetch import PinnedRequest, TransportResponse
+from agent_evals import aprera_site as pages
+from agent_evals.aprera_site import Site
 from app.modules.webcheck import service
-from tests import aprera_pages as pages
 from tests.db.test_approvals import add_lead
 from tests.db.test_quotes_api import World, world  # noqa: F401 - fixture used by name
 from tests.db.test_webcheck import Acting, acting, settings  # noqa: F401
@@ -20,28 +20,6 @@ from tests.db.test_webcheck import Acting, acting, settings  # noqa: F401
 SOURCE = "rera_andhra_pradesh"
 PATH = "/RERA/Views/Reports/ApprovedProjectSearch.aspx"
 ON = settings(webcheck_demo=False, webcheck_sources=SOURCE)
-
-
-class Site:
-    """Plays rera.ap.gov.in: no robots.txt, the search page, then ``answer`` for the POST."""
-
-    def __init__(self, answer: str = pages.results(pages.row(1)), page: str = pages.SEARCH):
-        self.answer, self.page = answer, page
-        self.requests: list[PinnedRequest] = []
-
-    def resolver(self, host: str) -> list[str]:
-        assert host == "rera.ap.gov.in"
-        return ["93.184.216.34"]
-
-    def transport(self, request: PinnedRequest) -> TransportResponse:
-        self.requests.append(request)
-        if request.target == "/robots.txt":
-            return TransportResponse(404, {"content-type": "text/html"}, b"", False)
-        assert request.target == PATH
-        body = self.page if request.method == "GET" else self.answer
-        return TransportResponse(
-            200, {"content-type": "text/html; charset=utf-8"}, body.encode(), False
-        )
 
 
 def check(acting: Acting, db_session: Session, world: World, site: Site, query: str) -> Any:

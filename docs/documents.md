@@ -48,8 +48,9 @@ signed forms. Quote PDFs are stored automatically when a quote is sent (see
 | `POST /documents/uploads/{upload_id}/finish` | the file sent with that link is checked and becomes a document version (201) |
 | `GET /documents/{id}/versions` | all versions, newest first |
 | `GET /documents/{id}/download` | the file |
+| `GET /documents/{id}/download-link` | the same access rules, then a 60-second signed link to the file in the store (ADR 0025); the web app's download route redirects there |
 | `DELETE /documents/{id}` | delete with all versions (204) |
-| `GET /portal/documents?account_id=…`, `GET /portal/documents/{id}/download` | customer portal |
+| `GET /portal/documents?account_id=…`, `GET /portal/documents/{id}/download`, `GET /portal/documents/{id}/download-link` | customer portal |
 
 Error codes: `record_not_found`, `document_not_found` (404), `file_too_large` (413),
 `file_type_not_allowed` (415), `invalid_document` (422), `upload_conflict` (409),

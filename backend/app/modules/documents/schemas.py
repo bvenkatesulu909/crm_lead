@@ -70,3 +70,11 @@ class UploadTicket(BaseModel):
     fields: dict[str, str]
     expires_at: datetime
     max_bytes: int
+
+
+class DownloadLinkRead(BaseModel):
+    """Open ``url`` within a minute: it fetches the file straight from the file store."""
+
+    url: str
+    file_name: str
+    expires_at: datetime

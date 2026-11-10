@@ -9,18 +9,20 @@ the request.
 import hashlib
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
-from app.core.storage import FileStore, object_key
+from app.core.storage import DOWNLOAD_LINK_LIFETIME, FileStore, object_key
 from app.modules.documents.models import Document
 
 __all__ = [
+    "DownloadLink",
     "delete_stale_uploads",
+    "download_link",
     "DocumentInfo",
     "DocumentIntegrityError",
     "find_document",
@@ -104,7 +106,7 @@ def store_generated_document(
         return _info(existing)
     document_id = uuid.uuid4()
     key = object_key(tenant_id, f"{record_type}s", record_id, document_id)
-    store.put(key, data, content_type)
+    store.put(key, data, content_type, download_name=file_name)
     inserted = session.scalar(
         insert(Document)
         .values(
@@ -147,6 +149,32 @@ def read_document(
     if len(data) != doc.size_bytes or hashlib.sha256(data).hexdigest() != doc.sha256:
         raise DocumentIntegrityError("The stored file is damaged. Please contact support.")
     return _info(doc), data
+
+
+@dataclass(frozen=True)
+class DownloadLink:
+    """A 60-second signed link to one stored file (ADR 0025): the browser fetches it straight
+    from the file store, so large files never pass through the web app's host."""
+
+    url: str
+    file_name: str
+    expires_at: datetime
+
+
+def download_link(
+    session: Session, store: FileStore, tenant_id: uuid.UUID, document_id: uuid.UUID
+) -> DownloadLink:
+    """A link for a document of this tenant. Callers have already checked that the person may
+    read it. The stored object's size must match the record: the bytes are not read here (that
+    is the point), so the full SHA-256 check stays with ``read_document``; only the API holds the
+    store's write keys, so the size check catches a missing or truncated file."""
+    doc = session.scalars(
+        select(Document).where(Document.tenant_id == tenant_id, Document.id == document_id)
+    ).one()
+    if store.stat(doc.storage_key).size != doc.size_bytes:
+        raise DocumentIntegrityError("The stored file is damaged. Please contact support.")
+    url = store.signed_download(doc.storage_key, file_name=doc.file_name)
+    return DownloadLink(url, doc.file_name, datetime.now(UTC) + DOWNLOAD_LINK_LIFETIME)
 
 
 def delete_stale_uploads(

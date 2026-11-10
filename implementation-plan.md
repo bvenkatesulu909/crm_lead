@@ -469,7 +469,7 @@ file exactly as today. Details and the five questions: ADR 0025.
 | DU0 | Measurements on staging (download limit; POST policy and CORS on SeaweedFS and Google Cloud Storage); documents only - **done 2026-11-10**: both stores enforce a POST policy's size; GCS needs a CORS rule (DU5) |
 | DU1 | Signed upload / download, stat and copy in `app/core/storage.py` - done 2026-11-10 |
 | DU2 | Documents: start + finish an upload through a pending object, the sweep, all rule tests - done 2026-11-10 |
-| DU3 | Knowledge documents; downloads (documents, portal, quote PDFs) by 302 to a signed link |
+| DU3 | Knowledge documents; downloads (documents, portal, quote PDFs) by 302 to a signed link - DU3a (downloads) done 2026-11-10; DU3b (knowledge uploads) next |
 | DU4 | Web app: direct upload with progress, CSP `connect-src`, Playwright with a 15 MB file |
 | DU5 | Staging bucket CORS + lifecycle, a real 15 MB upload and download, checklist ticked |
 

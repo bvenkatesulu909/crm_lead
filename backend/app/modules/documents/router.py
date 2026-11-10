@@ -19,6 +19,7 @@ from app.modules.documents import service, uploads
 from app.modules.documents.schemas import (
     DocumentList,
     DocumentRead,
+    DownloadLinkRead,
     PortalDocumentList,
     UploadRecordType,
     UploadStart,
@@ -148,6 +149,18 @@ def download_document(
     return _file_response(info.file_name, info.content_type, data)
 
 
+@router.get(
+    "/{document_id}/download-link",
+    summary="A 60-second link that downloads the file straight from the file store (ADR 0025)",
+    responses=problem_responses(404, 503),
+)
+def document_download_link(
+    document_id: uuid.UUID, principal: Reader, session: Db, files: Files
+) -> DownloadLinkRead:
+    link = service.download_link(session, principal, files, document_id)
+    return DownloadLinkRead(url=link.url, file_name=link.file_name, expires_at=link.expires_at)
+
+
 @router.delete(
     "/{document_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -181,3 +194,15 @@ def download_my_document(
 ) -> Response:
     info, data = service.portal_download(session, principal, files, document_id)
     return _file_response(info.file_name, info.content_type, data)
+
+
+@portal_router.get(
+    "/{document_id}/download-link",
+    summary="A 60-second link to one of my documents (ADR 0025)",
+    responses=problem_responses(404, 503),
+)
+def my_document_download_link(
+    document_id: uuid.UUID, principal: Customer, session: Db, files: Files
+) -> DownloadLinkRead:
+    link = service.portal_download_link(session, principal, files, document_id)
+    return DownloadLinkRead(url=link.url, file_name=link.file_name, expires_at=link.expires_at)

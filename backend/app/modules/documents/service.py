@@ -148,7 +148,7 @@ def upload(
     document_id = uuid.uuid4()
     group_id, version_no = (existing[0], existing[1] + 1) if existing else (document_id, 1)
     key = object_key(tenant_id, f"{record_type}s", record_id, document_id)
-    store.put(key, data, kind.content_type)
+    store.put(key, data, kind.content_type, download_name=name)
     doc = Document(
         id=document_id,
         tenant_id=tenant_id,

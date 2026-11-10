@@ -20,6 +20,7 @@ from app.core.storage import FileStore, object_key
 from app.modules.documents.models import Document
 
 __all__ = [
+    "delete_stale_uploads",
     "DocumentInfo",
     "DocumentIntegrityError",
     "find_document",
@@ -146,3 +147,12 @@ def read_document(
     if len(data) != doc.size_bytes or hashlib.sha256(data).hexdigest() != doc.sha256:
         raise DocumentIntegrityError("The stored file is damaged. Please contact support.")
     return _info(doc), data
+
+
+def delete_stale_uploads(
+    session: Session, store: FileStore | None, now: datetime, *, tenant_id: uuid.UUID
+) -> int:
+    """The worker's sweep for direct uploads a day old (ADR 0025)."""
+    from app.modules.documents import uploads  # the service imports this module: import late
+
+    return uploads.delete_stale_uploads(session, store, now, tenant_id=tenant_id)

@@ -15,12 +15,14 @@ from app.core.db import get_db_session
 from app.core.errors import problem_responses
 from app.core.storage import FileStore, get_file_store
 from app.core.validation import Reason
-from app.modules.documents import service
+from app.modules.documents import service, uploads
 from app.modules.documents.schemas import (
     DocumentList,
     DocumentRead,
     PortalDocumentList,
     UploadRecordType,
+    UploadStart,
+    UploadTicket,
 )
 from app.modules.identity.api import require_any_permission
 
@@ -92,6 +94,34 @@ async def upload_document(
         customer_visible=customer_visible,
         description=description or None,
     )
+    session.commit()
+    return result
+
+
+@router.post(
+    "/uploads",
+    status_code=status.HTTP_201_CREATED,
+    summary="Start a direct upload: checks, then a 5-minute signed link for the file (ADR 0025)",
+    responses=problem_responses(404, 413, 415, 422, 429, 503),
+)
+def start_upload(
+    request: Request, principal: Writer, session: Db, files: Files, body: UploadStart
+) -> UploadTicket:
+    ticket = uploads.start_upload(session, principal, files, body, request.app.state.settings)
+    session.commit()
+    return ticket
+
+
+@router.post(
+    "/uploads/{upload_id}/finish",
+    status_code=status.HTTP_201_CREATED,
+    summary="Finish a direct upload: the file is checked and becomes a document version",
+    responses=problem_responses(404, 409, 410, 413, 415, 422, 503),
+)
+def finish_upload(
+    request: Request, upload_id: uuid.UUID, principal: Writer, session: Db, files: Files
+) -> DocumentRead:
+    result = uploads.finish_upload(session, principal, files, upload_id, request.app.state.settings)
     session.commit()
     return result
 

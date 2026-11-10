@@ -466,7 +466,7 @@ file exactly as today. Details and the five questions: ADR 0025.
 
 | Step | Content |
 |---|---|
-| DU0 | Measurements on staging (download limit; POST policy and CORS on SeaweedFS and Google Cloud Storage); documents only |
+| DU0 | Measurements on staging (download limit; POST policy and CORS on SeaweedFS and Google Cloud Storage); documents only - **done 2026-11-10**: both stores enforce a POST policy's size; GCS needs a CORS rule (DU5) |
 | DU1 | Signed upload / download, stat and copy in `app/core/storage.py` |
 | DU2 | Documents: start + finish an upload through a pending object, the sweep, all rule tests |
 | DU3 | Knowledge documents; downloads (documents, portal, quote PDFs) by 302 to a signed link |

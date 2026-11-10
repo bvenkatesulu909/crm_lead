@@ -111,6 +111,31 @@ today is refused tomorrow.
    lifecycle rule for `pending/` - Claude prepares the exact commands; you run them (or say Claude
    may, with the server's own access)? *Recommended: Claude prepares, you decide who runs them.*
 
+## 6a. DU0 findings (2026-11-10)
+
+**Netlify's documented limits** (functions, which run our Server Actions and route handlers -
+docs.netlify.com/build/functions/configuration and /api): request and buffered response **6 MB**;
+binary uploads are Base64-encoded, so **about 4.5 MB** of file in practice; a *streamed* response may be
+20 MB; 60 seconds per request. So today uploads fail above about 4.5 MB and downloads above 6 MB
+(our download routes send the file in one piece). Both confirm U1 and U4.
+
+**The file stores**, probed with throwaway objects under `pending/du0-probe/` (deleted afterwards):
+
+| | SeaweedFS (this PC) | Google Cloud Storage (staging) |
+|---|---|---|
+| Signed POST policy, file within the size | 204, stored | 204, stored |
+| Same link, file over the size | **400, refused by the store** | **400, refused by the store** |
+| Signed PUT (fallback) | 200 | 200 |
+| Signed GET with a "save as" name in the link | 200, but the name is **ignored** (inline, key name) | 200, **honoured** |
+| "Save as" name stored on the object at upload | honoured | (not needed) |
+| Bucket CORS rule | accepted (`PutBucketCors`); the web app's origin 200, any other origin 403 | none set yet: the preflight answers without `Access-Control-Allow-Origin`, so a browser would block it |
+
+Consequences for the steps: U2 uses the **POST policy** everywhere (both stores enforce the size);
+`finish` also stores the "save as" name on the final object, so downloads show the right name on
+SeaweedFS too (DU1); the development bucket got a CORS rule for `http://localhost:3000` during DU0;
+staging's documents bucket (`crmlead-docs-4cfb7376`) needs its CORS rule and the `pending/` lifecycle
+rule in DU5.
+
 ## 7. Consequences
 
 - Uploads and downloads of up to 20 MB work in the live set-up; Netlify only carries small requests.

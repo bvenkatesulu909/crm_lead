@@ -1,6 +1,6 @@
 # CI security gate (BP-20) - short design
 
-- **Status:** Proposed (2026-11-10), waiting for the owner's answers in section 5
+- **Status:** Accepted (2026-11-10) with the recommended answer to all five questions in section 5
 - **Track:** AI Track A2 in `docs/master-plan.md` (the last open item of A2)
 - **Size:** S-M, no ADR (no new service, nothing leaves the repository except package names to the
   public advisory databases)

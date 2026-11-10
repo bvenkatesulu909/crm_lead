@@ -102,7 +102,7 @@ See `docs/adr/0012-communication-center.md` and Phase CC in `implementation-plan
 | BP-09 | AI usage and cost per tenant | `ai_usage` table (tenant, feature, model, tokens, cost in `Decimal`, latency) and a usage page. Prometheus metrics stay without tenant labels (current privacy rule) | `observability/metrics.py`, price settings | design | M |
 | BP-08 | Cited RERA / brochure answers + "I don't know" gate | Property brochures and RERA numbers in the knowledge base; answers must cite a source or refuse | knowledge module (pgvector, citations, feedback) | design | M |
 | BP-15 | Live RERA / company web check | An agent looks up a RERA number or company on public websites and stores the evidence | BP-14 budgets, BP-05 | **ADR** (sends data outside; site terms; SSRF protection) | L |
-| BP-20 | CI security gate | Add dependency audit (`pip-audit`, `npm audit`), secret scan, "no float for money" check, RLS guard (exists) as required CI jobs | CI workflow | short design: `docs/ci-security-gate.md` (proposed 2026-11-10) | S–M |
+| BP-20 | CI security gate | Add dependency audit (`pip-audit`, `npm audit`), secret scan, "no float for money" check, RLS guard (exists) as required CI jobs | CI workflow | short design: `docs/ci-security-gate.md` (accepted 2026-11-10) | S–M |
 
 ### AI Track A3 — autonomous CRM workflows
 

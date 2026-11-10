@@ -140,7 +140,7 @@ WC6b is built: the source **`rera_andhra_pradesh`** ("AP RERA (Andhra Pradesh)")
   entered text", or a table without that number, is **not found**; anything else (a changed column, the number
   twice, another status, another message, more than 50 rows) is **unclear**. The page gives no expiry date.
   Project, promoter and place are cleaned like every page text.
-- **Tests** run on pages with the real site's structure but invented content (`tests/aprera_pages.py`); no real
+- **Tests** run on pages with the real site's structure but invented content (`backend/agent_evals/aprera_site.py`); no real
   project data is kept in the repository.
 - **Switched on** only by `CRM_WEBCHECK_SOURCES=rera_andhra_pradesh` (also passed by the one-server compose
   file, empty by default), after the live test of WC6c and the owner's yes.

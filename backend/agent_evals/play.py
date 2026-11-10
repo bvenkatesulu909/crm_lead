@@ -23,6 +23,7 @@ from pydantic import SecretStr
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from agent_evals import aprera_site
 from agent_evals.cases import Case, Governance, WebcheckSetup, substitute
 from agent_evals.matchers import check_arguments
 from agent_evals.rag import HashingEmbedder, RagRun, run_rag_case, score_rag_case
@@ -200,7 +201,7 @@ def webcheck_case(
         yield world.settings.model_copy(
             update={
                 "webcheck_demo": setup.sources == "demo",
-                "webcheck_sources": "",
+                "webcheck_sources": "rera_andhra_pradesh" if setup.sources == "aprera" else "",
                 "webcheck_disabled": setup.platform_disabled,
                 "webcheck_per_user_hour": _WEBCHECK_LIMIT,
                 "webcheck_per_tenant_day": _WEBCHECK_LIMIT,
@@ -245,7 +246,14 @@ def webcheck_checks(
         )
     if not case.webcheck.run_jobs:
         return checks
-    handle = webcheck_api.check_job_handler(settings)
+    if case.webcheck.sources == "aprera":
+        # The real AP RERA source, answered by a fake site: never the real registry.
+        site = aprera_site.Site(aprera_site.answer_page(case.webcheck.aprera_answer))
+        handle = webcheck_api.check_job_handler(
+            settings, resolver=site.resolver, transport=site.transport
+        )
+    else:
+        handle = webcheck_api.check_job_handler(settings)
     for job in new:
         handle(session, Job(job.id, job.tenant_id, job.kind, dict(job.payload), 1))
     session.flush()

@@ -1,16 +1,16 @@
 """The first real web check source: AP RERA (ADR 0019, Amendment A, step WC6b).
 
-Everything runs without the internet, on pages shaped like the real site (tests/aprera_pages.py:
-real structure, invented content). The live check against the real site is step WC6c."""
+Everything runs without the internet, on pages shaped like the real site
+(agent_evals/aprera_site.py: real structure, invented content). The live check was step WC6c."""
 
 from urllib.parse import parse_qsl
 
 import pytest
 
+from agent_evals import aprera_site as pages
 from app.core.webfetch import FetchResult, PinnedRequest, TransportResponse, form_search
 from app.modules.webcheck import sources
 from app.modules.webcheck.rules import STATUSES, InvalidQueryError
-from tests import aprera_pages as pages
 
 SOURCE = sources.SOURCES["rera_andhra_pradesh"]
 PAGE_URL = "https://rera.ap.gov.in/RERA/Views/Reports/ApprovedProjectSearch.aspx"

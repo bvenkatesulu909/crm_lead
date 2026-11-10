@@ -640,3 +640,14 @@ def test_the_proxy_drops_a_forwarded_prefix_that_a_visitor_sends() -> None:
     login = caddyfile[caddyfile.index("{$LOGIN_HOST} {") :]
     login = login[: login.index("\n}\n")]
     assert "reverse_proxy keycloak:8080 {\n\t\theader_up -X-Forwarded-Prefix\n\t}" in login
+
+
+def test_keycloak_is_healthy_only_when_its_readiness_answers_200() -> None:
+    """Found on the server (2026-11-10): during the 26.7 database update /health/ready answered
+    503 with an overall "DOWN", but its "Graceful Shutdown" sub-check said "UP" - and the old check
+    looked for "UP" anywhere, so Docker called Keycloak healthy too early. Only the status line
+    tells the truth: 200 means ready, 503 means not."""
+    test = " ".join(services()["keycloak"]["healthcheck"]["test"])
+    assert "GET /health/ready HTTP/1.1" in test
+    assert "head -n 1 <&3 | grep -q ' 200 '" in test
+    assert '"UP"' not in test

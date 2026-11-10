@@ -92,7 +92,7 @@ today is refused tomorrow.
 | Step | Content |
 |---|---|
 | DU0 | Measure on staging: the largest download Netlify passes; whether SeaweedFS (PC) and Google Cloud Storage (staging) honour signed POST policies and CORS. Documents only, no code |
-| DU1 | `app/core/storage.py`: signed upload (POST policy or PUT) and signed download, `stat`, `copy`; tested against the in-memory store and the real SeaweedFS |
+| DU1 | `app/core/storage.py`: signed upload (POST policy or PUT) and signed download, `stat`, `copy`; tested against the in-memory store and the real SeaweedFS - **done 2026-11-10**: POST policy pinning key, type and 1..size; 60-second download link with a safe "save as" name; `stat`; `put(..., download_name=)` (no `copy` needed: `finish` already holds the bytes); `CRM_FILES_S3_PUBLIC_ENDPOINT` for the address a browser uses. Both stores refuse a tampered key or type and store nothing (Google Cloud Storage with 400, SeaweedFS with 307) |
 | DU2 | Documents: `POST /documents/uploads`, `.../finish`, pending table or rows, the sweep; tests for every rule (permission, record, tenant, ID tampering, a body bigger than declared, a wrong type disguised by name, finishing someone else's upload, finishing twice) |
 | DU3 | Knowledge documents the same; downloads (documents, portal, quote PDFs) by 302 to a signed link |
 | DU4 | Web app: the upload dialogs send the file straight to the store with progress and clear errors; CSP `connect-src`; Playwright journey with a 15 MB file |

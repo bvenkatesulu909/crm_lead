@@ -75,7 +75,15 @@ private file store:
    the browser.
 
 The worker deletes upload rows a day old and any pending file left behind. The multipart `POST /documents` stays
-for tests and small files.
+for tests and other API clients; the web app uses only the direct path (step DU4).
+
+**In the web app** (`src/lib/direct-upload.ts`): the Upload dialog calls the `startDocumentUpload` Server Action
+with the file's name and size only, posts the file to the signed link with a progress bar, then calls
+`finishDocumentUpload`. The bytes never pass through the web app, so the 6 MB Netlify limit does not apply. The
+browser follows only an absolute http(s) address. The store must allow the web app's address (a CORS rule on the
+bucket), and `FILE_STORE_ORIGIN` puts the store in the report-only `connect-src`. Messages: "The file store
+refused the file", "could not be reached", "larger than the size that was announced"; the API's own refusals
+(type, size, permission) are shown as before.
 
 ## Database
 

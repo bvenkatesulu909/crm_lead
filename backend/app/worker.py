@@ -36,6 +36,7 @@ from app.modules.assistant import api as assistant_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.deal_desk import api as deal_desk_api
+from app.modules.documents import api as documents_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
 from app.modules.lead_agent import api as lead_agent_api
@@ -113,6 +114,8 @@ def run_schedules(
     limit = settings.workflow_actions_per_hour if settings else 500
     retention = settings.public_chat_retention_days if settings else 30
     staff_hours = settings.staff_conversation_retention_hours if settings else 24
+    # Direct uploads (ADR 0025) leave pending files to remove: the sweep needs the store.
+    files: FileStore | None = build_file_store(settings) if settings else None
     for tenant_id in tenant_ids:
         # Each tenant's scheduled work runs in its own transaction with app.tenant_id set.
         with session_factory() as session, session.begin():
@@ -144,6 +147,12 @@ def run_schedules(
                 bind_tenant(session, tenant_id)
                 count += deal_desk_api.delete_expired(session, now, tenant_id=tenant_id)
                 count += deal_desk_api.delete_expired_briefs(session, now, tenant_id=tenant_id)
+            # Direct uploads a day old (ADR 0025): the row and any pending file left behind.
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += documents_api.delete_stale_uploads(
+                    session, files, now, tenant_id=tenant_id
+                )
             # AI proposals nobody decided on in time (ADR 0014): expired, requester told.
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)

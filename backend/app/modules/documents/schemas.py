@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # Records people can attach documents to (quote PDFs are made by the system).
 UploadRecordType = Literal["account", "opportunity"]
@@ -45,3 +45,28 @@ class PortalDocumentRead(BaseModel):
 
 class PortalDocumentList(BaseModel):
     items: list[PortalDocumentRead]
+
+
+class UploadStart(BaseModel):
+    """What a browser says before it sends a file straight to the store (ADR 0025). Nothing here
+    is trusted beyond its shape: the record, the name, the size and the type are all checked."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    record_type: UploadRecordType
+    record_id: uuid.UUID
+    file_name: str = Field(min_length=1, max_length=255)
+    size_bytes: int = Field(ge=1)
+    customer_visible: bool = False
+    description: str | None = Field(default=None, max_length=500)
+
+
+class UploadTicket(BaseModel):
+    """Where and how to send the file: POST every field in ``fields`` to ``url``, in order, with
+    the file last as the field ``file``; then call ``finish`` with ``upload_id``."""
+
+    upload_id: uuid.UUID
+    url: str
+    fields: dict[str, str]
+    expires_at: datetime
+    max_bytes: int

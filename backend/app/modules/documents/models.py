@@ -78,3 +78,50 @@ class Document(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     group_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     version_no: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     description: Mapped[str | None] = mapped_column(String(500), default=None)
+
+
+UPLOAD_STATUSES = ("pending", "finished", "failed", "expired")
+UPLOAD_RECORD_TYPES = ("account", "opportunity")
+
+
+class DocumentUpload(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
+    """An upload a person started (ADR 0025): checked before the bytes arrive, the file then goes
+    straight to ``pending/{tenant}/{id}`` in the store, and ``finish`` makes it a document after the
+    same checks as a normal upload. Short-lived: the worker deletes rows a day old."""
+
+    __tablename__ = "document_uploads"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "id"),
+        CheckConstraint(
+            f"record_type IN {_sql_list(UPLOAD_RECORD_TYPES)}", name="record_type_allowed"
+        ),
+        CheckConstraint(f"status IN {_sql_list(UPLOAD_STATUSES)}", name="status_allowed"),
+        CheckConstraint("declared_size >= 1", name="declared_size_positive"),
+        CheckConstraint(
+            "(status = 'finished') = (document_id IS NOT NULL)", name="finished_has_document"
+        ),
+        Index(
+            "ix_document_uploads_tenant_id_user_created",
+            "tenant_id",
+            "created_by_user_id",
+            "created_at",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "created_by_user_id"],
+            ["users.tenant_id", "users.id"],
+            ondelete="CASCADE",
+        ),
+    )
+
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    record_type: Mapped[str] = mapped_column(String(30))
+    record_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    file_name: Mapped[str] = mapped_column(String(200))
+    content_type: Mapped[str] = mapped_column(String(100))
+    declared_size: Mapped[int] = mapped_column(BigInteger)
+    customer_visible: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    description: Mapped[str | None] = mapped_column(String(500), default=None)
+    status: Mapped[str] = mapped_column(String(20), server_default=text("'pending'"))
+    document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, default=None)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(default=None)

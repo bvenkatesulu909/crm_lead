@@ -44,6 +44,8 @@ signed forms. Quote PDFs are stored automatically when a quote is sent (see
 |---|---|
 | `GET /documents?record_type=account|opportunity&record_id=…` | newest version of each document |
 | `POST /documents` (multipart: `record_type`, `record_id`, `file`, `customer_visible`, `description`) | upload (201); same name = new version |
+| `POST /documents/uploads` (JSON: `record_type`, `record_id`, `file_name`, `size_bytes`, `customer_visible`, `description`) | start a **direct upload** (ADR 0025): the same checks, then a 5-minute signed link for the file (201) |
+| `POST /documents/uploads/{upload_id}/finish` | the file sent with that link is checked and becomes a document version (201) |
 | `GET /documents/{id}/versions` | all versions, newest first |
 | `GET /documents/{id}/download` | the file |
 | `DELETE /documents/{id}` | delete with all versions (204) |
@@ -51,13 +53,36 @@ signed forms. Quote PDFs are stored automatically when a quote is sent (see
 
 Error codes: `record_not_found`, `document_not_found` (404), `file_too_large` (413),
 `file_type_not_allowed` (415), `invalid_document` (422), `upload_conflict` (409),
-`files_unavailable` (503, file store not configured or down).
+`files_unavailable` (503, file store not configured or down); direct uploads also `upload_not_found` (404),
+`upload_not_received` (409, the file has not arrived yet - send it, then finish again), `upload_expired` (410)
+and `upload_limit_reached` (429).
+
+### Direct uploads (ADR 0025)
+
+The web app's host (Netlify) refuses requests of 6 MB or more, so the file goes from the browser straight to the
+private file store:
+
+1. **Start** - the API checks what it can before the bytes arrive (document:write, a record the person may see,
+   account-only customer visibility, size <= 20 MB, a type allowed by name), counts the person's uploads this
+   hour (`CRM_FILES_UPLOADS_PER_USER_HOUR`, 60), stores a pending row and hands out a five-minute signed POST
+   policy for `pending/{tenant}/{upload}`. The store itself refuses another key, another type or a bigger body.
+2. **Send** - the browser POSTs the fields and then the file to the store.
+3. **Finish** - the row must be this person's, still pending and younger than `CRM_FILES_UPLOAD_FINISH_MINUTES`
+   (60); the stored size is checked; the bytes are read back once and go through the normal upload, so the type
+   check by name AND content, versions, the audit entry and events are exactly the same; the pending file is
+   deleted. A refused file is deleted too. Record, name, visibility and description come from the row, never from
+   the browser.
+
+The worker deletes upload rows a day old and any pending file left behind. The multipart `POST /documents` stays
+for tests and small files.
 
 ## Database
 
 Migration `20261019_0017_document_uploads_and_versions`: `documents` gets `group_id`,
 `version_no` and `description`; record types `account` and `opportunity`; purpose
 `attachment`. Document rows can't be updated by the application (only added or deleted).
+Migration `20261110_0054_document_uploads` (ADR 0025): `document_uploads` - pending direct uploads (who, which
+record, cleaned name, type, declared size, status), forced row-level security, deleted by the worker after a day.
 
 ## Not built yet
 

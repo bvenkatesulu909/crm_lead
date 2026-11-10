@@ -172,6 +172,10 @@ class Settings(BaseSettings):
     )
     # Largest file the API will store or serve.
     files_max_bytes: int = Field(default=20 * 1024 * 1024, ge=1024, le=200 * 1024 * 1024)
+    # Direct uploads (ADR 0025): how many one person may START per hour, and how long a started
+    # upload may wait for "finish" (the signed link itself lives five minutes).
+    files_uploads_per_user_hour: int = Field(default=60, ge=1, le=10_000)
+    files_upload_finish_minutes: int = Field(default=60, ge=5, le=1440)
 
     # Outgoing e-mail via SMTP (ADR 0005). Locally Mailpit catches everything (127.0.0.1:2525).
     smtp_host: str = "127.0.0.1"

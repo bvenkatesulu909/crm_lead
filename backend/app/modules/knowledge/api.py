@@ -1,6 +1,7 @@
 """Public interface of the knowledge module: the outbox job handler (RAG R1)."""
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -126,3 +127,12 @@ def answer_customer_scope(
         reranker=reranker,
         account_ids=account_ids,
     )
+
+
+def delete_stale_knowledge_uploads(
+    session: Session, store: FileStore | None, now: datetime, *, tenant_id: uuid.UUID
+) -> int:
+    """The worker's sweep for knowledge direct uploads a day old (ADR 0025)."""
+    from app.modules.knowledge import uploads
+
+    return uploads.delete_stale_uploads(session, store, now, tenant_id=tenant_id)

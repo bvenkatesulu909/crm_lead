@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class KnowledgeDocumentRead(BaseModel):
@@ -86,3 +86,27 @@ class KnowledgeSearchResponse(BaseModel):
     best_similarity: float | None
     threshold: float | None
     enough: bool
+
+
+class KnowledgeUploadStart(BaseModel):
+    """What a browser says before it sends a knowledge file straight to the store (ADR 0025)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    file_name: str = Field(min_length=1, max_length=255)
+    size_bytes: int = Field(ge=1)
+    title: str | None = Field(default=None, max_length=200)
+    visibility: str = "internal"
+    account_id: uuid.UUID | None = None
+    replaces_document_id: uuid.UUID | None = None
+
+
+class KnowledgeUploadTicket(BaseModel):
+    """POST every field in ``fields`` to ``url`` with the file last (field ``file``), then call
+    ``finish`` with ``upload_id``."""
+
+    upload_id: uuid.UUID
+    url: str
+    fields: dict[str, str]
+    expires_at: datetime
+    max_bytes: int

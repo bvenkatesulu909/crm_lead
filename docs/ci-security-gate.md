@@ -57,8 +57,8 @@ in the go-live checks), licence checks.
 | Step | Content |
 |---|---|
 | SG1 | Money check + AI price settings as `Decimal` + tests that the checker catches a planted `float` price - **done 2026-11-10**: `backend/scripts/check_money_types.py` (reads the source, imports nothing; money words matched as whole words, `total` only next to a currency), gate test `tests/test_money_types.py` on `app` + `alembic`, `CRM_AI_*_PRICE_PER_MILLION` are `Decimal` end to end, only the Prometheus counter gets a marked `float` |
-| SG2 | `security` job: pip-audit with the exceptions file, npm audit, gitleaks with `.gitleaksignore`; pillow handled (question 2) |
-| SG3 | Weekly schedule, job summary, docs (`docs/ci-security-gate.md` final, CLAUDE.md commands), required-check instructions |
+| SG2 | `security` job: pip-audit with the exceptions file, npm audit, gitleaks with `.gitleaksignore`; pillow handled (question 2) - **done 2026-11-10**: `.github/workflows/security.yml` (job `security`), `backend/scripts/check_audit.py` judges the pip-audit reports against `security/audit-exceptions.toml` (empty: nothing needs an exception), `npm audit --omit=dev --audit-level=high`, gitleaks image pinned by digest over the whole history with `.gitleaksignore` (2 made-up test values). **Pillow fixed, no exception:** `fastembed` 0.9.1 allows Pillow 13, so both are pinned (`pillow==13.0.0`) |
+| SG3 | Weekly schedule, job summary, docs (`docs/ci-security-gate.md` final, CLAUDE.md commands), required-check instructions - **done 2026-11-10**: Monday 03:00 UTC run and a manual "Run workflow" button; the steps below |
 
 Each step proves its check can fail: a planted vulnerable pin, a planted fake key and a planted
 `float` price must turn the job red (on a throwaway branch, never merged).
@@ -77,3 +77,23 @@ Each step proves its check can fail: a planted vulnerable pin, a planted fake ke
 4. **Weekly run.** *Recommended:* yes. Alternative: only on pushes and pull requests.
 5. **Required check.** *Recommended:* yes, after the first green run (you click it in GitHub
    settings). Alternative: report only.
+
+## 6. Living with the gate
+
+**Make `security` a required check (once, by the owner).** `main` already requires `backend`,
+`frontend` and `mcp-server`. On GitHub: the repository -> **Settings** -> **Branches** -> the rule
+for `main` -> **Edit** -> under "Require status checks to pass before merging" type `security` in
+the search box and pick it -> **Save changes**. The name only shows up after the job has run once
+(it ran first on PR #133). From then on, auto-merge waits for it too.
+
+**When the job is red**, its log says which part:
+
+| Part | What to do |
+|---|---|
+| `FAIL  <package> <version>: <advisory>, fixed in <x>` | Pin the fixed version in `backend/requirements.txt` (or the MCP server's `pyproject.toml` + `uv lock`), run the tests, push. Only if no fix exists or it breaks something: add an entry to `security/audit-exceptions.toml` with a real reason and an expiry at most 30 days away |
+| `exception … expired on …` | Same choice again: fix the package now, or renew with a new reason (and a new date) |
+| `npm audit` (high or critical) | `npm audit fix` in `frontend` if it only moves within allowed ranges; otherwise update the package by hand and run lint, typecheck, tests and build |
+| gitleaks `leaks found` | **A real secret: treat it as leaked** - revoke and replace it at the provider first, then remove it from the code. A made-up test value: add its fingerprint (printed in the log) to `.gitleaksignore` with a one-line reason |
+
+**The weekly run** checks `main` every Monday at 03:00 UTC (08:30 in India) and can be started by
+hand (Actions -> Security -> Run workflow). GitHub e-mails the repository owner when it fails.

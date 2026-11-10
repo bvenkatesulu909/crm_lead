@@ -1,6 +1,6 @@
 # CI security gate (BP-20) - short design
 
-- **Status:** Accepted (2026-11-10) with the recommended answer to all five questions in section 5
+- **Status:** Accepted (2026-11-10) with the recommended answer to all five questions in section 5; **built and in force 2026-11-10** (SG1-SG3, required checks set)
 - **Track:** AI Track A2 in `docs/master-plan.md` (the last open item of A2)
 - **Size:** S-M, no ADR (no new service, nothing leaves the repository except package names to the
   public advisory databases)
@@ -80,11 +80,14 @@ Each step proves its check can fail: a planted vulnerable pin, a planted fake ke
 
 ## 6. Living with the gate
 
-**Make `security` a required check (once, by the owner).** `main` already requires `backend`,
-`frontend` and `mcp-server`. On GitHub: the repository -> **Settings** -> **Branches** -> the rule
-for `main` -> **Edit** -> under "Require status checks to pass before merging" type `security` in
-the search box and pick it -> **Save changes**. The name only shows up after the job has run once
-(it ran first on PR #133). From then on, auto-merge waits for it too.
+**Required checks (done 2026-11-10).** `main` is protected by the repository ruleset
+**crm-lead** (Settings -> Rules -> Rulesets), not by a classic branch-protection rule. Its
+"Require status checks to pass" rule lists `backend`, `frontend`, `mcp-server` and `security`;
+"Require branches to be up to date before merging" is off. Auto-merge waits for all four. To
+change the list: Settings -> Rules -> Rulesets -> crm-lead -> "Require status checks to pass" ->
+Add checks / remove -> Save changes. Careful: the default branch's own name is set elsewhere
+(Settings -> General -> Default branch); renaming it breaks the server's and Netlify's link to
+`main`.
 
 **When the job is red**, its log says which part:
 

@@ -1,0 +1,7 @@
+# Findings of the secret scan (gitleaks, BP-20) that are NOT secrets, by fingerprint
+# (commit:file:rule:line). Never switch a rule off; list a made-up value here with the reason.
+#
+# backend/tests/test_one_host_files.py fills .env.example with obviously fake bucket keys
+# ("0123456789abcdef…", "K003xYzAbCdEf…") to test the configuration checker (OH1, 2026-11-03).
+73d3a24a23f5a92d6cbb022e13af453a97a98c9e:backend/tests/test_one_host_files.py:generic-api-key:91
+73d3a24a23f5a92d6cbb022e13af453a97a98c9e:backend/tests/test_one_host_files.py:generic-api-key:96

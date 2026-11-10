@@ -57,7 +57,7 @@ in the go-live checks), licence checks.
 | Step | Content |
 |---|---|
 | SG1 | Money check + AI price settings as `Decimal` + tests that the checker catches a planted `float` price - **done 2026-11-10**: `backend/scripts/check_money_types.py` (reads the source, imports nothing; money words matched as whole words, `total` only next to a currency), gate test `tests/test_money_types.py` on `app` + `alembic`, `CRM_AI_*_PRICE_PER_MILLION` are `Decimal` end to end, only the Prometheus counter gets a marked `float` |
-| SG2 | `security` job: pip-audit with the exceptions file, npm audit, gitleaks with `.gitleaksignore`; pillow handled (question 2) |
+| SG2 | `security` job: pip-audit with the exceptions file, npm audit, gitleaks with `.gitleaksignore`; pillow handled (question 2) - **done 2026-11-10**: `.github/workflows/security.yml` (job `security`), `backend/scripts/check_audit.py` judges the pip-audit reports against `security/audit-exceptions.toml` (empty: nothing needs an exception), `npm audit --omit=dev --audit-level=high`, gitleaks image pinned by digest over the whole history with `.gitleaksignore` (2 made-up test values). **Pillow fixed, no exception:** `fastembed` 0.9.1 allows Pillow 13, so both are pinned (`pillow==13.0.0`) |
 | SG3 | Weekly schedule, job summary, docs (`docs/ci-security-gate.md` final, CLAUDE.md commands), required-check instructions |
 
 Each step proves its check can fail: a planted vulnerable pin, a planted fake key and a planted

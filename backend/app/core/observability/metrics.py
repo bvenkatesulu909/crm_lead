@@ -11,6 +11,7 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from decimal import Decimal
 
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
@@ -220,8 +221,8 @@ def observe_ai_call(
     seconds: float,
     input_tokens: int = 0,
     output_tokens: int = 0,
-    input_price_per_million: float = 0.0,
-    output_price_per_million: float = 0.0,
+    input_price_per_million: Decimal = Decimal(0),
+    output_price_per_million: Decimal = Decimal(0),
 ) -> None:
     agent = _AGENT.get()
     AI_REQUESTS.labels(provider=provider, model=model, outcome=outcome, agent=agent).inc()
@@ -238,7 +239,8 @@ def observe_ai_call(
         input_tokens * input_price_per_million + output_tokens * output_price_per_million
     ) / 1_000_000
     if cost > 0:
-        AI_COST.labels(provider=provider, model=model, agent=agent).inc(cost)
+        counter = AI_COST.labels(provider=provider, model=model, agent=agent)
+        counter.inc(float(cost))  # money-float-ok: Prometheus counters only take float
 
 
 def refresh_operational_gauges(engine: Engine) -> None:

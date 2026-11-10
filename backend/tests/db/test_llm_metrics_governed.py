@@ -7,6 +7,7 @@ call must be counted under THAT agent, a failed call too, and nothing may stay b
 
 import re
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -47,8 +48,8 @@ class Metered:
             seconds=0.1,
             input_tokens=400,
             output_tokens=100,
-            input_price_per_million=1.0,
-            output_price_per_million=2.0,
+            input_price_per_million=Decimal("1"),
+            output_price_per_million=Decimal("2"),
         )
         return ModelReply("hello", usage={"input_tokens": 400, "output_tokens": 100})
 

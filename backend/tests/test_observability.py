@@ -2,6 +2,7 @@
 
 import json
 import logging
+from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
@@ -83,8 +84,8 @@ def test_ai_token_and_estimated_cost_metrics_are_recorded():
         seconds=0.5,
         input_tokens=1000,
         output_tokens=500,
-        input_price_per_million=3.0,
-        output_price_per_million=15.0,
+        input_price_per_million=Decimal("3"),
+        output_price_per_million=Decimal("15"),
     )
     after = REGISTRY.get_sample_value(
         "crm_ai_tokens_total",

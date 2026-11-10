@@ -269,3 +269,24 @@ def portal_download(
     if doc.id not in {d.id for d in _portal_latest(session, principal, doc.record_id)}:
         raise DocumentNotFoundError()
     return documents_api.read_document(session, store, doc.tenant_id, doc.id)
+
+
+def download_link(
+    session: Session, principal: Principal, store: FileStore, document_id: uuid.UUID
+) -> documents_api.DownloadLink:
+    """The same rules as ``download`` (a record the person may see), then a signed link."""
+    doc = _load(session, principal, document_id)
+    return documents_api.download_link(session, store, doc.tenant_id, doc.id)
+
+
+def portal_download_link(
+    session: Session, principal: Principal, store: FileStore, document_id: uuid.UUID
+) -> documents_api.DownloadLink:
+    """The same rules as ``portal_download``: only the newest, customer-visible version of one of
+    the customer's own accounts' documents."""
+    doc = repository.get(session, _tenant(principal), document_id)
+    if doc is None or doc.record_type != "account":
+        raise DocumentNotFoundError()
+    if doc.id not in {d.id for d in _portal_latest(session, principal, doc.record_id)}:
+        raise DocumentNotFoundError()
+    return documents_api.download_link(session, store, doc.tenant_id, doc.id)

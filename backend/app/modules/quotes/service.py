@@ -758,6 +758,15 @@ def quote_pdf(
     return documents_api.read_document(session, store, quote.tenant_id, info.id)
 
 
+def quote_pdf_link(
+    session: Session, principal: Principal, store: FileStore, quote_id: uuid.UUID
+) -> documents_api.DownloadLink:
+    """The same rules as ``quote_pdf``, then a 60-second signed link (ADR 0025)."""
+    quote = get_quote(session, principal, quote_id)
+    info = ensure_pdf(session, store, quote, principal.user_id)
+    return documents_api.download_link(session, store, quote.tenant_id, info.id)
+
+
 def run_pdf_job(
     session: Session, store: FileStore, tenant_id: uuid.UUID, quote_id: uuid.UUID
 ) -> None:

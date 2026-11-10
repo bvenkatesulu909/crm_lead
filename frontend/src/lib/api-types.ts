@@ -45,6 +45,48 @@ export const PROPERTY_TYPES = [
 ] as const;
 export type PropertyType = (typeof PROPERTY_TYPES)[number];
 
+/** The company behind a lead (BP-02, ADR 0026): the same keys and bands as the API. */
+export const COMPANY_INDUSTRIES = {
+  agriculture: "Agriculture",
+  automotive: "Automotive",
+  banking_finance: "Banking and finance",
+  construction: "Construction",
+  consulting: "Consulting",
+  education: "Education",
+  energy: "Energy",
+  government: "Government",
+  healthcare: "Healthcare",
+  hospitality: "Hospitality",
+  information_technology: "Information technology",
+  insurance: "Insurance",
+  legal: "Legal",
+  logistics: "Logistics",
+  manufacturing: "Manufacturing",
+  media: "Media and entertainment",
+  non_profit: "Non-profit",
+  pharmaceuticals: "Pharmaceuticals",
+  real_estate: "Real estate",
+  retail: "Retail",
+  telecom: "Telecom",
+  textiles: "Textiles",
+  travel: "Travel and tourism",
+  wholesale: "Wholesale",
+  other: "Other",
+} as const;
+export type CompanyIndustry = keyof typeof COMPANY_INDUSTRIES;
+export const COMPANY_INDUSTRY_KEYS = Object.keys(COMPANY_INDUSTRIES) as [
+  CompanyIndustry,
+  ...CompanyIndustry[],
+];
+export const COMPANY_SIZES = [
+  "1-10",
+  "11-50",
+  "51-200",
+  "201-1000",
+  "1001+",
+] as const;
+export type CompanySize = (typeof COMPANY_SIZES)[number];
+
 export const LEAD_SORTS = {
   "-created_at": "Newest first",
   created_at: "Oldest first",
@@ -70,6 +112,9 @@ export type Lead = {
   budget_min_inr?: number | null;
   budget_max_inr?: number | null;
   location?: string | null;
+  company_website?: string | null;
+  company_industry?: CompanyIndustry | null;
+  company_size?: CompanySize | null;
   owner_id: string | null;
   converted_at: string | null;
   converted_account_id: string | null;

@@ -173,3 +173,22 @@ Four optional fields on every lead, for home buyers (migration 0040):
 - Changes are in the audit trail like every other lead field.
 - Tests: `backend/tests/db/test_lead_real_estate.py`, `frontend/src/lib/lead-real-estate.test.tsx`,
   `frontend/e2e/lead-property.spec.ts`.
+
+## The company behind a lead (ADR 0026, step EN1, 2026-11-10)
+
+Three optional fields describe the lead's company. They are typed by staff today; from step EN3 a
+"Find company details" button suggests them from the company's own website, and the person decides.
+
+| Field | Values | Rules |
+|---|---|---|
+| `company_website` | `https://<host>` | What people type ("Example.com", "http://example.com/") is stored as `https://example.com`; a page, `?` part, port, user name, e-mail address or IP address is refused (422) |
+| `company_industry` | one of 25 keys (`real_estate`, `construction`, `information_technology`, …, `other`) | `app/modules/leads/company.py`; the web form shows the labels |
+| `company_size` | `1-10`, `11-50`, `51-200`, `201-1000`, `1001+` | employees, as a band |
+
+- The database refuses anything else by itself (`ck_leads_company_website_shape`,
+  `ck_leads_company_industry_allowed`, `ck_leads_company_size_allowed`, migration `0056`).
+- Changes are audited like every other lead field (`lead.created` / `lead.updated`).
+- **On conversion** a new account gets the website and the industry's label; an existing account
+  only gets them where it has nothing yet - a value it already has is never overwritten.
+- The web form groups them under **About the company**; the lead page shows them as plain text.
+

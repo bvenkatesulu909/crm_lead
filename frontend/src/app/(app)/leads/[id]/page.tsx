@@ -12,6 +12,7 @@ import { WebCheckCard } from "@/components/webcheck-card";
 import { LeadScoreCard } from "@/components/lead-score";
 import { Card, Forbidden, StatusBadge, SuccessAlert } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
+import { COMPANY_INDUSTRIES } from "@/lib/api-types";
 import type {
   Account,
   AccountPage,
@@ -147,6 +148,12 @@ export default async function LeadPage({
 
   const details: [string, string][] = [
     ["Company", lead.company_name ?? "—"],
+    ["Website", lead.company_website ?? "—"],
+    [
+      "Industry",
+      lead.company_industry ? COMPANY_INDUSTRIES[lead.company_industry] : "—",
+    ],
+    ["Employees", lead.company_size ?? "—"],
     ["Job title", lead.job_title ?? "—"],
     ["E-mail", lead.email ?? "—"],
     ["Phone", lead.phone ?? "—"],

@@ -22,6 +22,7 @@ from app.modules.accounts import api as accounts_api
 from app.modules.contacts import api as contacts_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import repository, scoring
+from app.modules.leads.company import industry_label
 from app.modules.leads.models import Lead, LeadActivity, LeadAssignment
 from app.modules.leads.policies import can_write
 from app.modules.leads.repository import LeadFilters
@@ -51,6 +52,9 @@ _DETAIL_FIELDS = (
     "budget_min_inr",
     "budget_max_inr",
     "location",
+    "company_website",
+    "company_industry",
+    "company_size",
 )
 
 
@@ -350,14 +354,23 @@ def convert_lead(
         ):
             raise NotFoundError("Account not found.")
         account_id = data.account.existing_account_id
+        # Fill only what the account does not know yet (ADR 0026 E3); never overwrite.
+        accounts_api.fill_empty_company_details(
+            session,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            website=lead.company_website,
+            industry=industry_label(lead.company_industry),
+        )
     else:
         account_id = accounts_api.create_account(
             session,
             tenant_id=tenant_id,
             name=data.account.name or lead.company_name or person,
-            website=None,
+            website=lead.company_website,
             phone=lead.phone,
             owner_id=lead.owner_id,
+            industry=industry_label(lead.company_industry),
         )
 
     contact_id = contacts_api.create_contact(

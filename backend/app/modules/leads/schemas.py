@@ -20,6 +20,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.modules.leads.company import normalise_website
+
 LeadStatus = Literal["new", "contacted", "qualified", "unqualified", "converted"]
 LeadSource = Literal["web", "referral", "event", "cold_call", "partner", "advertisement", "other"]
 UserActivityKind = Literal["note", "call", "email", "meeting"]
@@ -29,6 +31,15 @@ LeadSort = Literal[
 ]  # fmt: skip
 LeadPriority = Literal["hot", "warm", "cold"]
 PropertyType = Literal["apartment", "villa", "plot", "commercial"]
+# Keys of app.modules.leads.company.INDUSTRIES / SIZES (a test keeps them in step).
+CompanyIndustry = Literal[
+    "agriculture", "automotive", "banking_finance", "construction", "consulting",
+    "education", "energy", "government", "healthcare", "hospitality",
+    "information_technology", "insurance", "legal", "logistics", "manufacturing",
+    "media", "non_profit", "pharmaceuticals", "real_estate", "retail", "telecom",
+    "textiles", "travel", "wholesale", "other",
+]  # fmt: skip
+CompanySize = Literal["1-10", "11-50", "51-200", "201-1000", "1001+"]
 
 _EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]+$")
 _PHONE = re.compile(r"^[0-9+().\-\s]{3,50}$")
@@ -59,6 +70,7 @@ Reason = Annotated[str, _trimmed(500)]
 Email = Annotated[str, _trimmed(320), AfterValidator(_email)]
 Phone = Annotated[str, _trimmed(50), AfterValidator(_phone)]
 Text160 = Annotated[str, _trimmed(160)]
+CompanyWebsite = Annotated[str, _trimmed(300), AfterValidator(normalise_website)]
 # Whole rupees. The upper limit (1 lakh crore) only catches typos such as extra zeros.
 BudgetInr = Annotated[int, Field(ge=0, le=1_000_000_000_000)]
 
@@ -79,6 +91,11 @@ class LeadCreate(_Input):
     budget_min_inr: BudgetInr | None = Field(default=None, description="Whole rupees.")
     budget_max_inr: BudgetInr | None = Field(default=None, description="Whole rupees.")
     location: Text160 | None = Field(default=None, description="Area or city they want.")
+    company_website: CompanyWebsite | None = Field(
+        default=None, description="The company's website; stored as https://<host>."
+    )
+    company_industry: CompanyIndustry | None = None
+    company_size: CompanySize | None = Field(default=None, description="Employees, as a band.")
     owner_id: uuid.UUID | None = Field(
         default=None,
         description="Sales employee who should own the lead. Requires `lead:assign` unless it is "
@@ -126,6 +143,9 @@ class LeadUpdate(_Input):
     budget_min_inr: BudgetInr | None = None
     budget_max_inr: BudgetInr | None = None
     location: Text160 | None = None
+    company_website: CompanyWebsite | None = None
+    company_industry: CompanyIndustry | None = None
+    company_size: CompanySize | None = None
 
     @model_validator(mode="after")
     def _check(self) -> "LeadUpdate":
@@ -229,6 +249,9 @@ class LeadRead(_Output):
     budget_min_inr: int | None = None
     budget_max_inr: int | None = None
     location: str | None = None
+    company_website: str | None = None
+    company_industry: CompanyIndustry | None = None
+    company_size: CompanySize | None = None
     owner_id: uuid.UUID | None
     converted_at: datetime | None
     converted_account_id: uuid.UUID | None

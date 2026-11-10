@@ -6945,6 +6945,44 @@
             "description": "Whole rupees.",
             "title": "Budget Min Inr"
           },
+          "company_industry": {
+            "anyOf": [
+              {
+                "enum": [
+                  "agriculture",
+                  "automotive",
+                  "banking_finance",
+                  "construction",
+                  "consulting",
+                  "education",
+                  "energy",
+                  "government",
+                  "healthcare",
+                  "hospitality",
+                  "information_technology",
+                  "insurance",
+                  "legal",
+                  "logistics",
+                  "manufacturing",
+                  "media",
+                  "non_profit",
+                  "pharmaceuticals",
+                  "real_estate",
+                  "retail",
+                  "telecom",
+                  "textiles",
+                  "travel",
+                  "wholesale",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Industry"
+          },
           "company_name": {
             "anyOf": [
               {
@@ -6957,6 +6995,39 @@
               }
             ],
             "title": "Company Name"
+          },
+          "company_size": {
+            "anyOf": [
+              {
+                "enum": [
+                  "1-10",
+                  "11-50",
+                  "51-200",
+                  "201-1000",
+                  "1001+"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Employees, as a band.",
+            "title": "Company Size"
+          },
+          "company_website": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The company's website; stored as https://<host>.",
+            "title": "Company Website"
           },
           "email": {
             "anyOf": [
@@ -7250,6 +7321,44 @@
             ],
             "title": "Budget Min Inr"
           },
+          "company_industry": {
+            "anyOf": [
+              {
+                "enum": [
+                  "agriculture",
+                  "automotive",
+                  "banking_finance",
+                  "construction",
+                  "consulting",
+                  "education",
+                  "energy",
+                  "government",
+                  "healthcare",
+                  "hospitality",
+                  "information_technology",
+                  "insurance",
+                  "legal",
+                  "logistics",
+                  "manufacturing",
+                  "media",
+                  "non_profit",
+                  "pharmaceuticals",
+                  "real_estate",
+                  "retail",
+                  "telecom",
+                  "textiles",
+                  "travel",
+                  "wholesale",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Industry"
+          },
           "company_name": {
             "anyOf": [
               {
@@ -7260,6 +7369,35 @@
               }
             ],
             "title": "Company Name"
+          },
+          "company_size": {
+            "anyOf": [
+              {
+                "enum": [
+                  "1-10",
+                  "11-50",
+                  "51-200",
+                  "201-1000",
+                  "1001+"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Size"
+          },
+          "company_website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Website"
           },
           "converted_account_id": {
             "anyOf": [
@@ -7590,6 +7728,44 @@
             ],
             "title": "Budget Min Inr"
           },
+          "company_industry": {
+            "anyOf": [
+              {
+                "enum": [
+                  "agriculture",
+                  "automotive",
+                  "banking_finance",
+                  "construction",
+                  "consulting",
+                  "education",
+                  "energy",
+                  "government",
+                  "healthcare",
+                  "hospitality",
+                  "information_technology",
+                  "insurance",
+                  "legal",
+                  "logistics",
+                  "manufacturing",
+                  "media",
+                  "non_profit",
+                  "pharmaceuticals",
+                  "real_estate",
+                  "retail",
+                  "telecom",
+                  "textiles",
+                  "travel",
+                  "wholesale",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Industry"
+          },
           "company_name": {
             "anyOf": [
               {
@@ -7602,6 +7778,37 @@
               }
             ],
             "title": "Company Name"
+          },
+          "company_size": {
+            "anyOf": [
+              {
+                "enum": [
+                  "1-10",
+                  "11-50",
+                  "51-200",
+                  "201-1000",
+                  "1001+"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Size"
+          },
+          "company_website": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Website"
           },
           "email": {
             "anyOf": [

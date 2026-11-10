@@ -26,10 +26,12 @@ from app.core.models import (
     UUIDPrimaryKeyMixin,
     VersionedMixin,
 )
+from app.modules.leads.company import INDUSTRIES, SIZES, WEBSITE_PATTERN
 
 LEAD_STATUSES = ("new", "contacted", "qualified", "unqualified", "converted")
 # Real-estate wishes (ADR 0013, step PC2). Budgets are whole rupees, so integers, never floats.
 PROPERTY_TYPES = ("apartment", "villa", "plot", "commercial")
+COMPANY_INDUSTRY_KEYS = tuple(INDUSTRIES)
 # Activities a user records by hand ...
 USER_ACTIVITY_KINDS = ("note", "call", "email", "meeting")
 # ... and ones the system writes automatically when something happens to the lead.
@@ -87,6 +89,19 @@ class Lead(
             "budget_min_inr IS NULL OR budget_max_inr IS NULL OR budget_min_inr <= budget_max_inr",
             name="budget_in_order",
         ),
+        # BP-02 / ADR 0026: only https://<host>, a known industry and a known size band.
+        CheckConstraint(
+            f"company_website IS NULL OR company_website ~ '{WEBSITE_PATTERN}'",
+            name="company_website_shape",
+        ),
+        CheckConstraint(
+            f"company_industry IS NULL OR company_industry IN {COMPANY_INDUSTRY_KEYS}",
+            name="company_industry_allowed",
+        ),
+        CheckConstraint(
+            f"company_size IS NULL OR company_size IN {SIZES}",
+            name="company_size_allowed",
+        ),
         Index("ix_leads_tenant_id_status", "tenant_id", "status"),
         Index("ix_leads_tenant_id_owner_id", "tenant_id", "owner_id"),
         Index("ix_leads_tenant_id_lower_email", "tenant_id", func.lower(text("email"))),
@@ -110,6 +125,9 @@ class Lead(
     budget_min_inr: Mapped[int | None] = mapped_column(BigInteger)
     budget_max_inr: Mapped[int | None] = mapped_column(BigInteger)
     location: Mapped[str | None] = mapped_column(String(160))
+    company_website: Mapped[str | None] = mapped_column(String(255))
+    company_industry: Mapped[str | None] = mapped_column(String(40))
+    company_size: Mapped[str | None] = mapped_column(String(10))
 
 
 class LeadActivity(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):

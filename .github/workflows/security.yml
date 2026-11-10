@@ -8,6 +8,12 @@ name: Security
 on:
   push:
   pull_request:
+  # New advisories appear without any code change: check main every Monday at 03:00 UTC
+  # (08:30 in India). A red run shows on GitHub and GitHub e-mails the repository owner.
+  schedule:
+    - cron: "0 3 * * 1"
+  # The same check by hand: Actions -> Security -> Run workflow.
+  workflow_dispatch:
 
 concurrency:
   group: security-${{ github.ref }}

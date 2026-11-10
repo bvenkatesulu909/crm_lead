@@ -188,8 +188,12 @@ class WebcheckSetup(_Strict):
     assistant plays with no web check settings at all, as before. Applied inside the case's
     savepoint, so nothing leaks into the next case."""
 
-    # "demo": the fictional demo registry is switched on; "none": no source is switched on.
-    sources: Literal["demo", "none"] = "demo"
+    # "demo": the fictional demo registry is switched on; "none": no source is switched on;
+    # "aprera": only the real AP RERA source is on, answered by a fake site with the real page's
+    # structure (agent_evals/aprera_site.py) - a case never contacts the real registry.
+    sources: Literal["demo", "none", "aprera"] = "demo"
+    # With "aprera": what the fake site answers to the search.
+    aprera_answer: Literal["registered", "not_registered", "poisoned", "changed"] = "registered"
     # The organisation's switch in the agent registry (entry "web_check").
     enabled: bool = True
     # The platform switch CRM_WEBCHECK_DISABLED.

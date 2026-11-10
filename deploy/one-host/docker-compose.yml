@@ -174,8 +174,10 @@ services:
     build:
       context: ../../infrastructure/keycloak
       dockerfile: Dockerfile.production
-    image: crm-lead-keycloak:26.4.7-production
+    image: crm-lead-keycloak:26.7.5-production
     restart: unless-stopped
+    # Keycloak 26.7 waits 10 s for requests to finish when it stops; give it time.
+    stop_grace_period: 30s
     environment:
       KC_HOSTNAME: https://${LOGIN_HOST:?run bin/make_env.py}
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
@@ -184,6 +186,8 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-keycloak-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?run bin/make_env.py}
       KC_HEALTH_ENABLED: "true"
+      # Its "clients have not been logged out" warnings name the person's e-mail: errors only.
+      KC_LOG_LEVEL: info,org.keycloak.services.managers.AuthenticationManager:error
       # Substituted into the realm file (infrastructure/keycloak/realm-crm-production.json).
       CRM_WEB_URL: ${WEB_URL}
       CRM_WEB_CLIENT_SECRET: ${CRM_WEB_CLIENT_SECRET:?run bin/make_env.py}

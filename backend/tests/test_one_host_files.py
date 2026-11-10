@@ -607,3 +607,36 @@ def test_the_proxy_image_is_one_without_the_known_critical_flaws() -> None:
     major, minor, patch = (int(part) for part in tag.removesuffix("-alpine").split("."))
     assert name == "caddy" and tag.endswith("-alpine")
     assert (major, minor, patch) >= (2, 11, 6)
+
+
+# --- Keycloak 26.7 (go-live checks, 2026-11-10) ---------------------------------------------------
+
+
+def test_keycloak_is_the_version_without_the_known_critical_flaws() -> None:
+    """Keycloak 26.4.7 had 8 critical findings (Trivy, 2026-11-09); 26.7.5 has one, in the
+    operating system's ca-certificates. Development and production must stay on one version."""
+    production = ROOT / "infrastructure/keycloak/Dockerfile.production"
+    dockerfile = production.read_text(encoding="utf-8")
+    development = (ROOT / "infrastructure/docker-compose.yml").read_text(encoding="utf-8")
+    assert "FROM quay.io/keycloak/keycloak:26.7.5\n" in dockerfile
+    assert "image: quay.io/keycloak/keycloak:26.7.5\n" in development
+    assert services()["keycloak"]["image"] == "crm-lead-keycloak:26.7.5-production"
+
+
+def test_keycloak_has_time_to_shut_down_cleanly() -> None:
+    # Keycloak 26.7 waits 10 s for requests to finish before it stops; Docker must wait longer.
+    assert services()["keycloak"]["stop_grace_period"] == "30s"
+
+
+def test_keycloak_logs_no_staff_addresses_in_its_logout_warnings() -> None:
+    level = services()["keycloak"]["environment"]["KC_LOG_LEVEL"]
+    assert level == "info,org.keycloak.services.managers.AuthenticationManager:error"
+
+
+def test_the_proxy_drops_a_forwarded_prefix_that_a_visitor_sends() -> None:
+    """Keycloak 26.6+ trusts X-Forwarded-Prefix when it trusts X-Forwarded-*; a visitor must not
+    be able to choose the paths Keycloak builds into its pages."""
+    caddyfile = (FOLDER / "Caddyfile").read_text(encoding="utf-8")
+    login = caddyfile[caddyfile.index("{$LOGIN_HOST} {") :]
+    login = login[: login.index("\n}\n")]
+    assert "reverse_proxy keycloak:8080 {\n\t\theader_up -X-Forwarded-Prefix\n\t}" in login

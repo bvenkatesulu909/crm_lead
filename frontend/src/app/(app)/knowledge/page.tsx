@@ -22,7 +22,11 @@ import { initialDialogState } from "@/lib/dialog-state";
 import { canManageKnowledge, canReadKnowledge } from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
-import { deleteKnowledge, uploadKnowledge } from "./actions";
+import {
+  deleteKnowledge,
+  finishKnowledgeUpload,
+  startKnowledgeUpload,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Knowledge" };
 
@@ -203,7 +207,7 @@ export default async function KnowledgePage({
                 PDF, Word, TXT or Markdown, up to 20 MB. Personal data is detected before
                 indexing, and scanned PDFs are refused until OCR exists.
               </p>
-              <KnowledgeUploadForm action={uploadKnowledge} />
+              <KnowledgeUploadForm start={startKnowledgeUpload} finish={finishKnowledgeUpload} />
             </Card>
           )}
           <Card className="p-5 text-sm">

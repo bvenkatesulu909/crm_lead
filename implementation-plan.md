@@ -470,7 +470,7 @@ file exactly as today. Details and the five questions: ADR 0025.
 | DU1 | Signed upload / download, stat and copy in `app/core/storage.py` - done 2026-11-10 |
 | DU2 | Documents: start + finish an upload through a pending object, the sweep, all rule tests - done 2026-11-10 |
 | DU3 | Knowledge documents; downloads (documents, portal, quote PDFs) by 302 to a signed link - DU3a (downloads) and DU3b (knowledge uploads) done 2026-11-10 |
-| DU4 | Web app: direct upload with progress, CSP `connect-src`, Playwright with a 15 MB file |
+| DU4 | Web app: direct upload with progress, CSP `connect-src`, Playwright with a 15 MB file - done 2026-11-10 |
 | DU5 | Staging bucket CORS + lifecycle, a real 15 MB upload and download, checklist ticked |
 
 ## Phase 19 — External Integrations (Module 17)  *(CRM MCP server: ADR 0015, steps MCP0-MCP6; MCP1 done 2026-10-26)*

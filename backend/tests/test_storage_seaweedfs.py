@@ -117,6 +117,17 @@ def test_a_signed_download_gives_the_bytes_with_the_stored_name(
         assert 'filename="Brochure 2026.pdf"' in response.headers["Content-Disposition"]
 
 
+def test_a_large_file_keeps_its_stored_name(store: S3FileStore, key: str) -> None:
+    # Above 5 MB the client used to split the upload into parts, and SeaweedFS dropped the
+    # stored "save as" name: a 15 MB download was named after its key (found by the DU4 journey).
+    data = b"%PDF-1.4 " + b" " * (6 * 1024 * 1024)
+    store.put(key, data, "application/pdf", download_name="Big brochure.pdf")
+    url = store.signed_download(key, file_name="Big brochure.pdf")
+    with urllib.request.urlopen(url, timeout=60) as response:  # noqa: S310
+        assert len(response.read()) == len(data)
+        assert 'filename="Big brochure.pdf"' in response.headers["Content-Disposition"]
+
+
 def test_a_tampered_download_link_is_refused(store: S3FileStore, key: str) -> None:
     store.put(key, b"secret", "application/pdf")
     url = store.signed_download(key, file_name="a.pdf")

@@ -87,6 +87,18 @@ def test_s3_store_maps_connection_failures_to_503() -> None:
         store.put("tenant/a/x", b"x", "text/plain")
 
 
+def test_s3_store_sends_every_file_in_one_request() -> None:
+    # A multipart upload loses the stored "save as" name on SeaweedFS (found with a 15 MB file):
+    # the part size must cover the largest allowed file, so the client never splits it.
+    settings = make_settings(files_s3_access_key="crm", files_s3_secret_key=FAKE_SECRET)
+    store = S3FileStore(settings, retries=0)
+    calls: list[dict[str, Any]] = []
+    store._bucket_ready = True  # noqa: SLF001 - no store in this test
+    store._client.put_object = lambda *a, **kw: calls.append(kw)  # type: ignore[method-assign,assignment]  # noqa: SLF001
+    store.put("tenant/a/x", b"x" * 10, "application/pdf", download_name="a.pdf")
+    assert calls[0]["part_size"] >= settings.files_max_bytes
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

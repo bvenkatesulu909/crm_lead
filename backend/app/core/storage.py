@@ -194,6 +194,10 @@ class S3FileStore:
                 len(data),
                 content_type=content_type,
                 metadata=metadata,  # type: ignore[arg-type]  # minio's hint is too narrow
+                # One request, never a multipart upload: SeaweedFS drops the stored "save as"
+                # name of a multipart object. Files are at most files_max_bytes (20 MB), far
+                # below S3's 5 GB single-request limit; the client needs at least 5 MiB here.
+                part_size=max(self._max_bytes, 5 * 1024 * 1024),
             )
         except (S3Error, HTTPError) as exc:
             logger.warning("file store write failed", extra={"error": type(exc).__name__})

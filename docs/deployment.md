@@ -226,11 +226,13 @@ Tick **every** item of the checklist below, remove the staging password, announc
         (2026-11-06: 1,000 accounts, 1,000 contacts, 301 leads restored).
   - [ ] A copy of the server's `.env` is in your password manager (a backup does not contain it).
   - [x] The Keycloak administration console is closed again (`ADMIN_ALLOWED_IPS=127.0.0.1`; 403 from outside, 2026-11-06).
-- [ ] **Upload/PDF sizes verified** on the chosen hosts (measured 2026-11-09 on `crm.crmlead.co.in`:
-      Netlify answers **413 to any request of 6 MB or more**, so uploads above about 5 MB fail - a decision
-      is open: browser -> bucket uploads, or a 5 MB limit): Netlify functions limit request and response
-      sizes and run time, and our files can be 20 MB. If too small: browser → bucket uploads with
-      signed URLs (a small design change, to be done in D1b before staging).
+- [x] **Upload/PDF sizes verified** on the chosen hosts. Netlify refuses requests of 6 MB or more
+      (measured 2026-11-09), so files go between the browser and the documents bucket through signed
+      links (ADR 0025). Checked on staging 2026-11-10: a fictional 15 MB PDF uploaded through the real
+      dialog on `crm.crmlead.co.in` (progress bar, "The document was uploaded."), stored once in the
+      bucket at 15,728,640 bytes with its "save as" name, nothing left in `pending/`, and downloaded
+      back with the same name, size and SHA-256. The bucket's CORS rule allows only the web app's
+      address and `pending/` is emptied after a day (`deploy/one-host/bucket/`).
 - [ ] Rate limiting and security headers at the edge; logs checked for personal data.
 - [ ] Voice (ADR 0023): `CRM_VOICE_BROWSER_ENGINE=false` (the one-server compose file makes `false` the
   default since 2026-11-09) once real customers' data is spoken (otherwise

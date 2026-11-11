@@ -52,6 +52,10 @@ class WebEvidence(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
             "body_sha256 IS NULL OR body_sha256 ~ '^[0-9a-f]{64}$'", name="body_sha256_shape"
         ),
         CheckConstraint("jsonb_typeof(cleaned) = 'array'", name="cleaned_is_list"),
+        CheckConstraint(
+            "suggestions IS NULL OR jsonb_typeof(suggestions) = 'object'",
+            name="suggestions_is_object",
+        ),
         Index("ix_web_evidence_tenant_id_target", "tenant_id", "target_type", "target_id", "seq"),
     )
 
@@ -76,3 +80,5 @@ class WebEvidence(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     excerpt: Mapped[str] = mapped_column(Text, server_default=text("''"))
     # The kinds of finding when text had to be cleaned (never the removed text).
     cleaned: Mapped[list[str]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    # Company details from the company's own website (ADR 0026): website, industry, size, pages.
+    suggestions: Mapped[dict[str, object] | None] = mapped_column(JSONB, default=None)

@@ -191,3 +191,21 @@ WC6b is built: the source **`rera_andhra_pradesh`** ("AP RERA (Andhra Pradesh)")
   `found` (an industry or a size), `not_found` (the site answered, nothing to suggest - the website
   itself is still known) or `unclear` with the fetcher's code.
 
+### The API (step EN3, 2026-11-11)
+
+| Endpoint | Who | What |
+|---|---|---|
+| `POST /api/v1/webcheck/company-details` `{lead_id}` | `webcheck:run` and the lead readable (else 404) | 202; the host is worked out on the server from the lead (website, else work e-mail domain); refused with `422 company_host_<code>` (`no_source`, `free_mail`, `ip_literal`, `internal_name`, `bad_name`, `denied`); `503 company_details_unavailable` while the organisation has it off; `429 company_details_limit_reached` |
+| `GET /api/v1/webcheck/company-details?lead_id=` | `webcheck:read` and the lead readable | the lead's three fields and version, and the newest lookup: verdict, suggested website / industry / size, name, excerpt, pages read, kinds of cleaning |
+| `POST /api/v1/webcheck/company-details/apply` `{lead_id, evidence_id, fields, version}` | `webcheck:run` and the lead writable | saves the named fields with the values **from the stored evidence** (a value in the request is refused) through the normal lead update (`lead.updated`), then audits `lead.enriched` with the fields and the evidence id; `422 field_not_suggested`, `404` for evidence of another lead, `409` for a stale version |
+
+- The worker job `webcheck.company_details` reads the site (`lookup_company`), stores the evidence
+  under source `company_site` (insert-only, 12 months) with `suggestions` (migration 0057) and
+  tells the person (`webcheck.completed`). A refused or unreadable site is stored as an `error`
+  with the fetcher's code; a temporary failure is retried.
+- Company lookups are not listed with the registry checks (`GET /webcheck/evidence`).
+- Registry entry **Company details** (`company_details`): no model, **off** until a tenant
+  administrator switches it on; the web check's platform switch (`CRM_WEBCHECK_DISABLED`) and demo
+  (`CRM_WEBCHECK_DEMO`, the `.demo.example` sites) apply. Limits:
+  `CRM_COMPANY_DETAILS_PER_USER_HOUR` (20) and `CRM_COMPANY_DETAILS_PER_TENANT_DAY` (300).
+

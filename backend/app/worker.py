@@ -76,6 +76,7 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
         ),
         communications_api.EMAIL_JOB: communications_api.email_job_handler(services.mailer),
         webcheck_api.CHECK_JOB: webcheck_api.check_job_handler(services.settings),
+        webcheck_api.COMPANY_JOB: webcheck_api.company_job_handler(services.settings),
         # Domain events (ADR 0006): every "event.<name>" job goes to its subscribers.
         **dispatcher(
             merge_subscribers(

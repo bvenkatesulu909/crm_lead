@@ -48,6 +48,8 @@ logger = logging.getLogger(__name__)
 CHECK_JOB = "webcheck.run"
 # Its entry in the agent registry (ADR 0016): the organisation's switch and the monthly count.
 AGENT_KEY = "web_check"
+# Evidence of a company-details lookup (ADR 0026) is stored under this source key.
+COMPANY_SOURCE = "company_site"
 RETENTION = timedelta(days=365)  # the database enforces the same figure (migration 0045)
 MAX_ATTEMPTS = 3
 LIST_LIMIT = 50
@@ -404,7 +406,10 @@ def list_evidence(
     """The evidence about one lead or account, newest first, for someone who may read it."""
     tenant_id, _ = _person(principal, Permission.WEBCHECK_READ)
     _check_target(session, principal, target_type, target_id)
-    return repository.list_for_target(session, tenant_id, target_type, target_id, LIST_LIMIT)
+    # Company details (ADR 0026) have their own card; this list is the registry checks.
+    return repository.list_for_target(
+        session, tenant_id, target_type, target_id, LIST_LIMIT, without_source=COMPANY_SOURCE
+    )
 
 
 SUMMARY_ROWS = 3

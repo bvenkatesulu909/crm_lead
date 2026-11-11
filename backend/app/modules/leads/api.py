@@ -5,14 +5,17 @@ their own leads.
 """
 
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
+from pydantic import ValidationError
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
+from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
-from app.core.errors import ForbiddenError
+from app.core.errors import DomainError, ForbiddenError
 from app.core.records import LeadQualifierFacts, LeadSnapshot, Recipient, RecordFacts
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
 from app.modules.leads import repository, service
@@ -34,9 +37,14 @@ from app.modules.leads.metrics import (
 from app.modules.leads.models import LEAD_STATUSES, Lead
 from app.modules.leads.policies import readable_leads
 from app.modules.leads.repository import LeadFilters
-from app.modules.leads.schemas import ActivityCreate, LeadCreate
+from app.modules.leads.schemas import ActivityCreate, LeadCreate, LeadUpdate
 
 __all__ = [
+    "COMPANY_FIELDS",
+    "InvalidCompanySuggestionError",
+    "LeadCompany",
+    "apply_company_details",
+    "lead_company",
     "conversion_table",
     "duplicate_count",
     "created_at_of",
@@ -300,3 +308,77 @@ def search_leads(
         }
         for lead in items
     ]
+
+
+# --- the company behind a lead (BP-02, ADR 0026) ------------------------------------------------
+
+
+@dataclass(frozen=True)
+class LeadCompany:
+    """What the company-details feature may know about a lead the person can read: the three
+    company fields, the e-mail address (only its domain is used, to find the company's site) and
+    the version for a later save."""
+
+    company_name: str | None
+    website: str | None
+    industry: str | None
+    size: str | None
+    email: str | None
+    version: int
+
+
+COMPANY_FIELDS = ("company_website", "company_industry", "company_size")
+
+
+class InvalidCompanySuggestionError(DomainError):
+    status_code = 422
+    code = "invalid_company_suggestion"
+
+    def __init__(self) -> None:
+        super().__init__("The suggestion is no longer valid. Ask for the company details again.")
+
+
+def lead_company(session: Session, principal: Principal, lead_id: uuid.UUID) -> LeadCompany | None:
+    lead = repository.get_readable(session, principal, lead_id)
+    if lead is None:
+        return None
+    return LeadCompany(
+        company_name=lead.company_name,
+        website=lead.company_website,
+        industry=lead.company_industry,
+        size=lead.company_size,
+        email=lead.email,
+        version=lead.version,
+    )
+
+
+def apply_company_details(
+    session: Session,
+    principal: Principal,
+    lead_id: uuid.UUID,
+    *,
+    version: int,
+    values: dict[str, str],
+    evidence_id: uuid.UUID,
+) -> None:
+    """Save chosen company suggestions with the normal lead rules (who may write, the version,
+    the field checks, the ``lead.updated`` audit), then note where they came from."""
+    if not values or set(values) - set(COMPANY_FIELDS):
+        raise InvalidCompanySuggestionError()
+    try:
+        data = LeadUpdate.model_validate({"version": version, **values})
+    except ValidationError:
+        raise InvalidCompanySuggestionError() from None
+    service.update_lead(session, principal, lead_id, data)
+    record_audit(
+        session,
+        principal,
+        action="lead.enriched",
+        entity_type="lead",
+        entity_id=lead_id,
+        changes={
+            "fields": sorted(values),
+            "source": "company_site",
+            "evidence_id": str(evidence_id),
+        },
+    )

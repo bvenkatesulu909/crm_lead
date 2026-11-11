@@ -160,6 +160,11 @@ def _looks_like_an_address(host: str) -> bool:
     return True
 
 
+def looks_like_an_address(host: str) -> bool:
+    """Public name of the IP-address test, for code that chooses a host (ADR 0019 Amendment B)."""
+    return _looks_like_an_address(host)
+
+
 def validate_url(url: str, host: str) -> tuple[str, str]:
     """Check an address against the one host a source allows. Returns (host, path and query)."""
     if not url.lower().startswith("https://"):

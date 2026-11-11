@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { LEAD_SOURCES, PROPERTY_TYPES } from "@/lib/api-types";
+import {
+  COMPANY_INDUSTRY_KEYS,
+  COMPANY_SIZES,
+  LEAD_SOURCES,
+  PROPERTY_TYPES,
+} from "@/lib/api-types";
 import { parseRupees } from "@/lib/format";
 
 /**
@@ -62,6 +67,19 @@ export const leadCreateSchema = z.object({
   budget_min_inr: budget("Minimum budget"),
   budget_max_inr: budget("Maximum budget"),
   location: optionalText(160, "Location"),
+  // The API turns this into https://<host>; here only the obvious mistakes are caught early.
+  company_website: optionalText(300, "Website").refine(
+    (v) => v === undefined || /^(https?:\/\/)?[^\s/@:?#]+\.[^\s/@:?#]+\/?$/i.test(v),
+    "Enter only the website's address, like example.com.",
+  ),
+  company_industry: z
+    .union([z.enum(COMPANY_INDUSTRY_KEYS), z.literal("")])
+    .transform((v) => (v === "" ? undefined : v))
+    .optional(),
+  company_size: z
+    .union([z.enum(COMPANY_SIZES), z.literal("")])
+    .transform((v) => (v === "" ? undefined : v))
+    .optional(),
 }).refine(
   (d) => d.budget_min_inr === undefined || d.budget_max_inr === undefined || d.budget_min_inr <= d.budget_max_inr,
   { path: ["budget_max_inr"], message: "The maximum budget can't be below the minimum budget." },
@@ -80,6 +98,9 @@ export const LEAD_FIELDS = [
   "budget_min_inr",
   "budget_max_inr",
   "location",
+  "company_website",
+  "company_industry",
+  "company_size",
 ] as const;
 export type LeadField = (typeof LEAD_FIELDS)[number];
 

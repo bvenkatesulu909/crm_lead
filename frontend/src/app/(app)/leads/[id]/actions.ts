@@ -84,6 +84,9 @@ export async function updateLead(
     budget_min_inr: data.budget_min_inr ?? null,
     budget_max_inr: data.budget_max_inr ?? null,
     location: data.location ?? null,
+    company_website: data.company_website ?? null,
+    company_industry: data.company_industry ?? null,
+    company_size: data.company_size ?? null,
   };
   try {
     await apiFetch<Lead>(path, { method: "PATCH", body: JSON.stringify(body) });

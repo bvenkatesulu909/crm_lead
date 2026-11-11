@@ -165,3 +165,29 @@ WC6b is built: the source **`rera_andhra_pradesh`** ("AP RERA (Andhra Pradesh)")
   checks per run, so set `CRM_WEBCHECK_PER_USER_HOUR=1000` as well when you run it more than once an
   hour (the real limit is 10 per person per hour). Like the other journeys that run the worker
   themselves it expects no standing worker.
+
+## Company details from the company's own website (ADR 0026, step EN2, 2026-11-11)
+
+`app/modules/webcheck/company_site.py` - no database, no model; the API and screens come in EN3/EN4.
+
+- **Which host** (`company_host`, ADR 0019 Amendment B): the lead's website (`https://host`), else
+  the domain of its work e-mail. Refused, each with a fixed message and a stable code: no source
+  (`no_source`), a free mail provider (`free_mail`: gmail, yahoo, outlook, rediffmail, …), an IP
+  address in any spelling - dotted, octal, hex, one big number, IPv6, in brackets (`ip_literal`),
+  a reserved or internal name - `localhost`, `.local`, `.internal`, `.corp`, `.lan`, `.test`,
+  `.example`, `.invalid`, `.arpa`, `.onion`, a single label (`internal_name`), a user name, port or
+  path (`bad_name`), and our own or shared cloud names - `crmlead.co.in`, `googleapis.com`,
+  `amazonaws.com`, `netlify.app`, … (`denied`). Demo sites under `.demo.example` pass only with the
+  demo switched on.
+- **What is read** (`parse_company_page`): schema.org `Organization` data (name, description,
+  `numberOfEmployees`, locality), `og:site_name`, meta description, title - nothing else on the
+  page. Industry only when at least two words of one industry appear and no other industry has as
+  many; size only from a whole employee number between 1 and 5,000,000. All text through
+  `screen()`, capped (name 200, description 300, place 100).
+- **The fetch** (`lookup_company`): home page, then `/about`, through the unchanged `fetch()`
+  (https, port 443, public pinned addresses, robots.txt, 10 s / 1 MB, HTML only, redirects inside
+  the host). A redirect from `example.com` to `www.example.com` is answered by asking
+  `www.example.com` itself; any other refusal is final (no other name is looked up). Result:
+  `found` (an industry or a size), `not_found` (the site answered, nothing to suggest - the website
+  itself is still known) or `unclear` with the fetcher's code.
+

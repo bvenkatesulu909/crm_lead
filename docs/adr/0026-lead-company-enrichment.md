@@ -83,7 +83,7 @@ the button), no change without the person saving it.
 |---|---|
 | EN0 | This ADR + ADR 0019 Amendment B (documents only) - **done 2026-11-10** |
 | EN1 | Lead fields `company_website`, `company_industry`, `company_size` (migration, checks, schemas, lead form and page), copied to the account on conversion - **done 2026-11-10** (migration 0056; `leads/company.py`; docs/leads.md) |
-| EN2 | `company_site` source: host rules (E2) with the free-mail and deny lists, fetch through `webfetch`, deterministic parser, fictional demo sites; tests incl. SSRF attempts (IP literals, internal names, redirects to other hosts) |
+| EN2 | `company_site` source: host rules (E2) with the free-mail and deny lists, fetch through `webfetch`, deterministic parser, fictional demo sites; tests incl. SSRF attempts (IP literals, internal names, redirects to other hosts) - **done 2026-11-11**: `app/modules/webcheck/company_site.py` (`company_host` / `check_host`, `parse_company_page`, `lookup_company`), demo sites in `webcheck/fake.py`; a home page that redirects to `www.` is asked again at `www.` (a second candidate host under the same rules), never a looser redirect rule |
 | EN3 | API: request details (queues a job), list suggestions with evidence, apply chosen fields (normal lead update + audit); registry entry and limits |
 | EN4 | "Company details" card on the lead page (suggestions side by side, tick and save) |
 | EN5 | Evaluation cases (poisoned page, page without facts, free-mail lead, internal-address attempt), Playwright journey, docs |

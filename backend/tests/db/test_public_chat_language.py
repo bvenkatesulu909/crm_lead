@@ -171,3 +171,59 @@ def test_instructions_to_the_model_in_hindi_or_telugu_are_refused(
     assert response.status_code == 422
     bind_tenant(db_session, alpha(world))
     assert db_session.scalars(select(PublicChatSession)).all() == []
+
+
+# --- the lead API: reading, editing and filtering by language -----------------------------------
+
+from tests.db.test_leads_api import api, auth, create, people  # noqa: E402, F401 - fixtures
+
+LEADS = "/api/v1/leads"
+
+
+def test_the_language_is_read_edited_and_cleared_through_the_lead_api(api, auth) -> None:
+    lead = create(api, auth, "alpha.agent1", last_name="Rao", preferred_language="te")
+    assert lead["preferred_language"] == "te"
+    changed = api.patch(
+        f"{LEADS}/{lead['id']}",
+        json={"version": lead["version"], "preferred_language": "hi"},
+        headers=auth("alpha.agent1"),
+    )
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["preferred_language"] == "hi"
+    cleared = api.patch(
+        f"{LEADS}/{lead['id']}",
+        json={"version": changed.json()["version"], "preferred_language": None},
+        headers=auth("alpha.agent1"),
+    )
+    assert cleared.json()["preferred_language"] is None
+
+
+@pytest.mark.parametrize("bad", ["fr", "HI", "", "hi; drop table leads"])
+def test_an_unknown_language_is_refused_by_the_lead_api(api, auth, bad) -> None:
+    response = api.post(
+        LEADS, json={"last_name": "Rao", "preferred_language": bad}, headers=auth("alpha.agent1")
+    )
+    assert response.status_code == 422
+
+
+def test_leads_can_be_filtered_by_language(api, auth) -> None:
+    create(api, auth, "alpha.agent1", last_name="Telugu", preferred_language="te")
+    create(api, auth, "alpha.agent1", last_name="Hindi", preferred_language="hi")
+    create(api, auth, "alpha.agent1", last_name="Nothing")
+    names = lambda lang: sorted(  # noqa: E731
+        item["last_name"]
+        for item in api.get(
+            f"{LEADS}?preferred_language={lang}&limit=200", headers=auth("alpha.agent1")
+        ).json()["items"]
+    )
+    assert names("te") == ["Telugu"]
+    assert names("hi") == ["Hindi"]
+    assert (
+        api.get(f"{LEADS}?preferred_language=fr", headers=auth("alpha.agent1")).status_code == 422
+    )
+
+
+def test_the_language_filter_never_shows_another_agents_lead(api, auth) -> None:
+    create(api, auth, "alpha.agent2", last_name="Theirs", preferred_language="te")
+    mine = api.get(f"{LEADS}?preferred_language=te", headers=auth("alpha.agent1")).json()
+    assert [item["last_name"] for item in mine["items"]] == []

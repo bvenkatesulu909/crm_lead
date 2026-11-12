@@ -2,7 +2,7 @@ import "server-only";
 
 import { cookies, headers } from "next/headers";
 
-import { checkVisitorMessage } from "@/lib/public-chat";
+import { checkVisitorMessage, isChatLanguage } from "@/lib/public-chat";
 import { serverConfig } from "@/lib/server/config";
 import {
   CHAT_COOKIE,
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     message?: unknown;
     website?: unknown;
+    language?: unknown;
   } | null;
   const message = typeof body?.message === "string" ? body.message.trim() : "";
   const problem = checkVisitorMessage(message);
@@ -31,11 +32,15 @@ export async function POST(request: Request) {
   const website =
     typeof body?.website === "string" ? body.website.slice(0, 500) : "";
 
+  // A fixed list; anything else is English (the API would refuse it).
+  const language = isChatLanguage(body?.language) ? body.language : "en";
+
   const config = serverConfig();
   const jar = await cookies();
   const result = await forwardChat({
     message,
     website,
+    language,
     token: jar.get(CHAT_COOKIE)?.value,
     ip: visitorIp(await headers()),
     key,

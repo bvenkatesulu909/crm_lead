@@ -26,6 +26,7 @@ import type {
 } from "@/lib/api-types";
 import {
   PROPERTY_TYPE_LABELS,
+  LANGUAGE_LABELS,
   SOURCE_LABELS,
   formatBudget,
   formatDate,
@@ -162,6 +163,10 @@ export default async function LeadPage({
     ["E-mail", lead.email ?? "—"],
     ["Phone", lead.phone ?? "—"],
     ["Source", lead.source ? SOURCE_LABELS[lead.source] : "—"],
+    [
+      "Call in",
+      lead.preferred_language ? LANGUAGE_LABELS[lead.preferred_language] : "—",
+    ],
     [
       "Property type",
       lead.property_type ? PROPERTY_TYPE_LABELS[lead.property_type] : "—",

@@ -1470,6 +1470,35 @@ export type WebEvidence = {
 };
 
 export type WebEvidencePage = { items: WebEvidence[] };
+
+/** A lead's company fields as they are now (ADR 0026), with the version to save against. */
+export type CompanyCurrent = {
+  company_website: string | null;
+  company_industry: CompanyIndustry | null;
+  company_size: CompanySize | null;
+  version: number;
+};
+
+/** One lookup of the company's own website: what it suggests and what that rests on (cleaned). */
+export type CompanySuggestion = {
+  id: string;
+  created_at: string;
+  verdict: WebEvidenceVerdict;
+  error_code: string | null;
+  company_website: string | null;
+  company_industry: CompanyIndustry | null;
+  company_size: CompanySize | null;
+  name: string | null;
+  excerpt: string;
+  /** The pages that were read (shown as text, never as links). */
+  pages: string[];
+  cleaned: string[];
+};
+
+export type CompanyDetails = {
+  current: CompanyCurrent;
+  latest: CompanySuggestion | null;
+};
 export type WebCheckSourcePage = { items: WebCheckSource[] };
 
 export type EmailPage = {

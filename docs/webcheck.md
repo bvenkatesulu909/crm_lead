@@ -209,3 +209,15 @@ WC6b is built: the source **`rera_andhra_pradesh`** ("AP RERA (Andhra Pradesh)")
   (`CRM_WEBCHECK_DEMO`, the `.demo.example` sites) apply. Limits:
   `CRM_COMPANY_DETAILS_PER_USER_HOUR` (20) and `CRM_COMPANY_DETAILS_PER_TENANT_DAY` (300).
 
+
+### The screen (EN4, 2026-11-12)
+
+The lead page has a **Company details** card (people who may run or read web checks; hidden when
+the lead cannot be read). "Find company details" asks for the look-up and sends only the lead.
+The newest result lists the website, industry and employee band as *Now* and *Suggested*; a box is
+ticked where the suggestion differs. "Save the ticked details" sends the lead, the evidence id, the
+version and the **names** of the ticked fields - never values: the server takes them from the
+stored evidence, so a changed form cannot put its own value on the lead. Readers without run
+permission see the suggestions but no boxes or buttons. Everything the page said is plain text
+(no links), and a note says what was cleaned. A look-up that failed is explained in words (a
+free-mail address, an internal name, a site that could not be read, the feature switched off).

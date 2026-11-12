@@ -8,6 +8,7 @@ import { EmailCard } from "@/components/email-card";
 import { RecordProposals } from "@/components/record-proposals";
 import { LeadAgentSection } from "@/components/lead-agent-section";
 import { QualifierCard } from "@/components/qualifier-card";
+import { CompanyDetailsCard } from "@/components/company-details-card";
 import { WebCheckCard } from "@/components/webcheck-card";
 import { LeadScoreCard } from "@/components/lead-score";
 import { Card, Forbidden, StatusBadge, SuccessAlert } from "@/components/ui";
@@ -62,6 +63,9 @@ const DONE: Record<string, string> = {
     "The lead agent made a suggestion, but the safety check refused it, so nothing was created.",
   "webcheck-queued":
     "The web check was queued. The result appears under Web check and you get a notification.",
+  "company-queued":
+    "The look-up was queued. The suggestions appear under Company details and you get a notification.",
+  "company-saved": "The chosen company details were saved on the lead.",
   "email-logged": "The received e-mail was saved in the history.",
   updated: "The lead was updated.",
   assigned: "The lead was assigned.",
@@ -295,6 +299,7 @@ export default async function LeadPage({
           <RecordProposals me={me} targetId={lead.id} />
           <QualifierCard me={me} leadId={lead.id} />
           <LeadAgentSection me={me} leadId={lead.id} />
+          <CompanyDetailsCard me={me} leadId={lead.id} />
           <WebCheckCard me={me} record={{ type: "lead", id: lead.id }} />
           <EmailCard
             me={me}

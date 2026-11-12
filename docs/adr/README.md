@@ -38,3 +38,4 @@ Rules:
 | [0024](0024-deal-desk-and-account-research.md) | Deal desk: several AI reviewers on one deal, plus parallel account research (CRM-114) | Accepted |
 | [0025](0025-direct-uploads-signed-links.md) | Large files go straight to the file store through short-lived signed links | Accepted |
 | [0026](0026-lead-company-enrichment.md) | One-click company details on a lead from the company's own website (BP-02) | Accepted |
+| [0027](0027-hindi-telugu-voice-lead-capture.md) | Hindi and Telugu voice lead capture on the website chat | Proposed |

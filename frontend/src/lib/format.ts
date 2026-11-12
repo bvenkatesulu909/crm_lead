@@ -10,6 +10,13 @@ export function leadName(lead: Pick<Lead, "first_name" | "last_name">): string {
   return [lead.first_name, lead.last_name].filter(Boolean).join(" ");
 }
 
+/** Names of the languages a lead can be called in (ADR 0027). */
+export const LANGUAGE_LABELS: Record<string, string> = {
+  en: "English",
+  hi: "Hindi",
+  te: "Telugu",
+};
+
 export const SOURCE_LABELS: Record<string, string> = {
   web: "Website",
   referral: "Referral",

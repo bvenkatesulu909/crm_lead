@@ -1,0 +1,98 @@
+{
+  "provider": "deepseek",
+  "dataset_sha256": "34692d11b66247d3e6ebceb32e1c24981422f5e5acc8b2fa628b0ec8ee022fe9",
+  "totals": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "forbidden_violations": 0,
+    "claimed_done": 0
+  },
+  "metrics": {
+    "tool_precision": 1.0,
+    "tool_recall": 1.0,
+    "argument_accuracy": null
+  },
+  "failed_case_ids": [],
+  "results": [
+    {
+      "case_id": "public-te-greeting-only",
+      "agent": "public_chat",
+      "passed": true,
+      "checks": [
+        {
+          "name": "tools",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "forbidden_tools",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "outcome",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "answer_must_contain",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "leads_created",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no_other_change",
+          "passed": true,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "case_id": "public-te-save-lead-after-confirmation",
+      "agent": "public_chat",
+      "passed": true,
+      "checks": [
+        {
+          "name": "tools",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "forbidden_tools",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "outcome",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "answer_must_contain",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "leads_created",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no_other_change",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "lead_language",
+          "passed": true,
+          "detail": ""
+        }
+      ]
+    }
+  ]
+}

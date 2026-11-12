@@ -123,6 +123,33 @@ for every active sales manager, linking to the lead (e-mail per their notificati
   address), `src/lib/public-chat.test.tsx` (transcript card).
 - End to end: `e2e/public-chat.spec.ts` (skipped unless `PUBLIC_CHAT_SERVER_KEY` is set).
 
+## Language (ADR 0027, step VL1)
+
+The request may carry `language`: `en` (default), `hi` or `te` - a fixed list, anything else is a
+422. It chooses one fixed sentence in the model's prompt (answer in English, or in Hindi in
+Devanagari script, or in Telugu in Telugu script; notes for `save_lead` always in English) and is
+written on the lead as `preferred_language`, taken from the request that saved the lead - never
+from the model. Phone numbers written in Devanagari or Telugu digits are saved with 0-9. The input
+screening has a first set of Hindi and Telugu instruction phrases; card numbers in those digits
+are refused like any other. 
+### The page (step VL2)
+
+`/chat` shows three buttons - English, हिन्दी, తెలుగు - and starts with the browser's own language
+when it is one of them. The greeting, the placeholder, the buttons and the notices change with the
+choice (`CHAT_TEXT` in `src/lib/public-chat.ts`); the choice is sent with every message and ends up
+on the lead. A **Speak** button (only where the browser has speech recognition) listens in `en-IN`,
+`hi-IN` or `te-IN` and puts the words it recognised in the message box - the visitor reads them and
+presses Send, so nothing is sent by voice alone. **Read replies aloud** (only where the browser can
+speak) is off until ticked. Speaking and hearing use the browser's own speech service, which may
+send the voice to its provider; the page says so, and this application never receives audio.
+Tests: `tests/db/test_public_chat_language.py` (the API and the lead), the evaluation cases
+(docs/agent-evals.md 6o) and the Playwright journeys in `e2e/public-chat-languages.spec.ts`, which
+fake the speech engine (it checks our code: the language asked for and the words landing in the
+box, not a real browser's accuracy).
+Honest limits: Chrome, Edge and Android are good for Hindi, Telugu recognition is weaker, Safari may
+have no microphone; the visitor-facing words were written by the assistant and have not yet been
+read by a Hindi and a Telugu speaker; error messages are still English.
+
 ## Not built yet
 
 - Embedding the chat in the company's own website (iframe or link) - the page sends

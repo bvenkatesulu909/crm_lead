@@ -87,6 +87,10 @@ export const COMPANY_SIZES = [
 ] as const;
 export type CompanySize = (typeof COMPANY_SIZES)[number];
 
+/** The language an advisor should call a lead in (ADR 0027). */
+export const PREFERRED_LANGUAGES = ["en", "hi", "te"] as const;
+export type PreferredLanguage = (typeof PREFERRED_LANGUAGES)[number];
+
 export const LEAD_SORTS = {
   "-created_at": "Newest first",
   created_at: "Oldest first",
@@ -115,6 +119,7 @@ export type Lead = {
   company_website?: string | null;
   company_industry?: CompanyIndustry | null;
   company_size?: CompanySize | null;
+  preferred_language?: PreferredLanguage | null;
   owner_id: string | null;
   converted_at: string | null;
   converted_account_id: string | null;

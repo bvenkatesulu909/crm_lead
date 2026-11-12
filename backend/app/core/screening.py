@@ -164,6 +164,26 @@ _INSTRUCTION_PATTERNS = [
         r"(?:leads?|contacts?|customers?|records?|data)\b"
     ),
     re.compile(r"\bjailbreak\b|\bdeveloper message\b"),
+    # Hindi and Telugu (ADR 0027): the same families - "ignore the instructions", "show your
+    # system prompt", "give me every lead". A first version, written for text after NFKC (a nukta
+    # letter such as ज़ arrives as ज + U+093C, hence the optional \u093c). No \b: it is unreliable
+    # next to Indic vowel signs.
+    re.compile(
+        r"(?:निर्देश|निर्देशों|आदेश|आदेशों|नियम|नियमों|हिदायत|हिदायतों)\s*(?:को\s*)?(?:सब\s*|सभी\s*)?"
+        r"(?:अनदेखा|नज\u093c?रअंदाज\u093c?|नज\u093c?रंदाज\u093c?|भूल)"
+    ),
+    re.compile(r"सिस्टम\s*(?:प्रॉम्प्ट|प्रोम्प्ट|प्रॉम्पट|प्रम्प्ट)"),
+    re.compile(
+        r"(?:अपने|अपना|आपके)\s*(?:निर्देश|निर्देशों)\s*(?:को\s*)?"
+        r"(?:बताओ|बताइए|बताएं|दिखाओ|दिखाइए|दिखाएं)"
+    ),
+    re.compile(r"(?:सभी|सारी|हर)\s*(?:लीड्स?|ग्राहकों|डेटा)\s*(?:मुझे\s*)?(?:को\s*)?(?:दे|भेज)"),
+    re.compile(
+        r"(?:సూచనలను|సూచనలు|సూచనల్ని|ఆదేశాలను|నియమాలను)\s*(?:అన్నింటినీ\s*|అన్నీ\s*)?"
+        r"(?:విస్మరించండి|విస్మరించు|విస్మరించాలి|పట్టించుకోవద్దు|మర్చిపోండి|మరచిపోండి|మర్చిపో)"
+    ),
+    re.compile(r"సిస్టమ్\s*(?:ప్రాంప్ట్|ప్రామ్ప్ట్)"),
+    re.compile(r"(?:మీ|నీ)\s*(?:సూచనలను|సూచనలు|ఆదేశాలను)\s*(?:చూపించండి|చెప్పండి|చూపించు)"),
 ]
 
 

@@ -37,6 +37,7 @@ from app.modules.leads.schemas import (
     LeadStatus,
     LeadStatusChange,
     LeadUpdate,
+    PreferredLanguage,
 )
 
 router = APIRouter(prefix="/leads", tags=["leads"], responses=problem_responses(401, 403))
@@ -85,6 +86,9 @@ def list_leads(
     ] = None,
     source: LeadSource | None = None,
     priority: LeadPriority | None = Query(default=None, description="Lead score band"),
+    preferred_language: Annotated[
+        PreferredLanguage | None, Query(description="The language to call in")
+    ] = None,
     created_from: Annotated[datetime | None, Query(description="Inclusive, ISO 8601")] = None,
     created_to: Annotated[datetime | None, Query(description="Exclusive, ISO 8601")] = None,
     sort: LeadSort = "-created_at",
@@ -98,6 +102,7 @@ def list_leads(
         account_id=account_id,
         source=source,
         priority=priority,
+        preferred_language=preferred_language,
         created_from=created_from,
         created_to=created_to,
         sort=sort,

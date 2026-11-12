@@ -123,6 +123,7 @@ def create_lead_from_website(
     budget_max_inr: int | None,
     location: str | None,
     notes: str | None,
+    preferred_language: str | None = None,
     cleaned_codes: list[str] | None = None,
 ) -> uuid.UUID:
     """A lead from the public website chat (ADR 0013), with this module's own rules and audit.
@@ -143,6 +144,7 @@ def create_lead_from_website(
                 "budget_min_inr": budget_min_inr,
                 "budget_max_inr": budget_max_inr,
                 "location": location,
+                "preferred_language": preferred_language,
             }
         ),
     )

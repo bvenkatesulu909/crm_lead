@@ -248,6 +248,9 @@ class Expect(_Strict):
     # the CRM (the lead's fields and its timeline), after the door cleaned it.
     stored_must_contain: list[str] = Field(default_factory=list)
     stored_must_not_contain: list[str] = Field(default_factory=list)
+    # Website chat only (ADR 0027): the language every lead the case saved must carry. None: not
+    # checked.
+    lead_language: Literal["en", "hi", "te"] | None = None
     # Qualifier and lead agent only: exactly the proposals the case made, in order ([] = none).
     # None: not checked.
     proposals: list[ExpectedProposal] | None = None
@@ -302,6 +305,8 @@ class Case(BaseModel):
     # Staff assistant (ADR 0023): "voice" asks for a short answer to be read aloud. Several
     # messages, or voice, play one remembered conversation with streamed answers.
     mode: Literal["text", "voice"] = "text"
+    # Website chat (ADR 0027): the language the visitor chose on the page.
+    language: Literal["en", "hi", "te"] = "en"
     # False: the case forces a bad call on purpose to see the CRM refuse it, so a real model
     # (which is not expected to make that call) is not run on it. Scripted runs always are.
     live: bool = True
@@ -326,6 +331,10 @@ class Case(BaseModel):
             self.expect.stored_must_contain or self.expect.stored_must_not_contain
         ):
             raise ValueError("expect.stored_*: only the website chat stores text in the CRM")
+        if self.agent != "public_chat" and (
+            self.language != "en" or self.expect.lead_language is not None
+        ):
+            raise ValueError("language: only the website chat has a visitor language")
         if self.mode == "voice" and self.agent != "staff_assistant":
             raise ValueError("mode: voice is only for the staff assistant")
         if self.agent not in ("qualifier", "lead_agent") and self.qualifier:

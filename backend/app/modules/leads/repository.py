@@ -30,6 +30,7 @@ class LeadFilters:
     account_id: uuid.UUID | None = None
     source: str | None = None
     priority: str | None = None  # hot / warm / cold (lead score bands)
+    preferred_language: str | None = None  # en / hi / te (ADR 0027)
     created_from: datetime | None = None
     created_to: datetime | None = None
     sort: str = "-created_at"
@@ -57,6 +58,8 @@ def _filtered(principal: Principal, filters: LeadFilters) -> Select[Lead]:
         statement = statement.where(Lead.converted_account_id == filters.account_id)
     if filters.source:
         statement = statement.where(Lead.source == filters.source)
+    if filters.preferred_language:
+        statement = statement.where(Lead.preferred_language == filters.preferred_language)
     if filters.priority:
         statement = statement.where(scoring.priority_condition(filters.priority))
     if filters.created_from:

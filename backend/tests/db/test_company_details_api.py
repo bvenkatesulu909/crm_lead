@@ -79,8 +79,9 @@ def test_it_is_off_until_an_administrator_switches_it_on(api, auth, world, db_se
 
 def test_the_platform_switch_stops_it(make_api, auth, world, db_session) -> None:
     api = make_api(webcheck_disabled=True)
+    switch(api, auth)  # the organisation says yes; the platform still says no
     lead = add_lead(db_session, world, company_website=ACME)
-    assert ask(api, auth, lead).status_code == 503
+    assert code_of(ask(api, auth, lead)) == (503, "webcheck_disabled")
 
 
 @pytest.mark.parametrize(

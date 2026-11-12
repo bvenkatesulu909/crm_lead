@@ -496,6 +496,62 @@ describe("the card", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps what was typed when a save is refused, so nothing has to be retyped", async () => {
+    const refusing = vi.fn(async (s: DialogState): Promise<DialogState> => ({
+      attempt: s.attempt + 1,
+      fieldErrors: { reason: "Say why we think so." },
+      error: null,
+    }));
+    view(memory(), true, { addAction: refusing });
+    await userEvent.click(screen.getByText("Add a detail"));
+    await userEvent.selectOptions(
+      screen.getByLabelText("What is it about?"),
+      "timeline",
+    );
+    await userEvent.click(screen.getByLabelText("We think so (not confirmed)"));
+    await userEvent.type(
+      screen.getByLabelText("The detail", { exact: true }),
+      "Within six months",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save detail" }));
+    expect(await screen.findByText("Say why we think so.")).toBeInTheDocument();
+    expect(screen.getByLabelText("What is it about?")).toHaveValue("timeline");
+    expect(screen.getByLabelText("We think so (not confirmed)")).toBeChecked();
+    expect(screen.getByLabelText("The detail", { exact: true })).toHaveValue(
+      "Within six months",
+    );
+  });
+
+  it("keeps the buyer's words when a confirmation is refused", async () => {
+    const refusing = vi.fn(async (s: DialogState): Promise<DialogState> => ({
+      attempt: s.attempt + 1,
+      fieldErrors: {},
+      error: {
+        status: 409,
+        message: "A newer entry exists",
+        code: "memory_not_current",
+        requestId: "r",
+        fieldErrors: {},
+      },
+    }));
+    view(memory(), true, { confirmAction: refusing });
+    const guesses = screen.getByRole("region", { name: "Assumptions" });
+    await userEvent.click(
+      within(guesses).getByRole("button", { name: "Confirm" }),
+    );
+    await userEvent.type(
+      screen.getByLabelText("What did the buyer say?"),
+      "Yes, within six months.",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirm as fact" }),
+    );
+    expect(await screen.findByText(/newer entry/)).toBeInTheDocument();
+    expect(screen.getByLabelText("What did the buyer say?")).toHaveValue(
+      "Yes, within six months.",
+    );
+  });
+
   it("shows the API's refusal after a failed save", async () => {
     const failing = vi.fn(async (s: DialogState): Promise<DialogState> => ({
       attempt: s.attempt + 1,

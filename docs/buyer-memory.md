@@ -2,7 +2,7 @@
 
 What we know about a home buyer, with every detail labelled **fact**, **assumption** or **gap**, so a
 guess is never read later as something the buyer said. Design and the options considered:
-[ADR 0028](adr/0028-buyer-memory.md). This page describes what is built (steps BM1: the backend, BM2: the lead page card).
+[ADR 0028](adr/0028-buyer-memory.md). This page describes what is built (steps BM1: the backend, BM2: the lead page card, BM3: tests and this page).
 
 ## 1. The three labels
 
@@ -99,7 +99,24 @@ list of fields: a fact is always sent as "the buyer confirmed" with its quote, a
 In v1 the form offers only "the buyer told us" as a source; citing a timeline entry is possible through the
 API. Messages after an action (`?done=memory-added`, `-confirmed`, `-copied`) are shown at the top of the page.
 
-## 10. Not built yet
+A refused save keeps what the person typed: React empties a form after its action, so every field keeps
+its text in state and is remounted after each attempt with that text as its default. (A real browser
+journey found this: after "Say why we think so" the topic and detail were blank again.)
 
-A Playwright journey and the rest of the screen tests (BM3); AI suggestions as assumptions through the approval queue (a later step);
+## 10. Tests
+
+Backend: see section 8. Web: `src/lib/buyer-memory.test.tsx` (helpers, the Server Actions, the card:
+groups, plain-text display, read-only users, the confirm and add forms, refusals that keep the typed text).
+Playwright `e2e/buyer-memory.spec.ts`:
+
+1. An agent creates a lead, sees "0 facts · 0 assumptions · 12 still to ask", copies the lead form in as
+   facts, adds an assumption (refused without a reason, saved with one), confirms it with the buyer's words
+   (refused without), sees the history, and sees a fact without a quote and a card number refused. A colleague
+   who may not read the lead gets "not found" and no card; a manager reads it; a support agent sees no card.
+2. (needs the website chat switched on, like `public-chat.spec.ts`) a visitor's details appear as facts
+   citing "The website chat", and nothing is guessed.
+
+## 11. Not built yet
+
+AI suggestions as assumptions through the approval queue (a later step);
 copying the memory to the contact or account on conversion (the lead page stays reachable).

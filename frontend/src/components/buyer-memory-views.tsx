@@ -183,6 +183,10 @@ function AssumptionRow({
   action: FormAction;
 }) {
   const [open, setOpen] = useState(false);
+  // React empties a form after its action. Each field keeps its text in state and is remounted
+  // after every attempt with that text as its default, so a refusal never loses what was typed.
+  const [quote, setQuote] = useState("");
+  const [corrected, setCorrected] = useState("");
   const [state, formAction, pending] = useActionState(
     action,
     initialDialogState,
@@ -221,8 +225,11 @@ function AssumptionRow({
             <textarea
               id={`${id}-quote`}
               name="quote"
+              key={state.attempt}
               rows={2}
               maxLength={MEMORY_TEXT_MAX}
+              defaultValue={quote}
+              onChange={(e) => setQuote(e.target.value)}
               className={field}
             />
             {state.fieldErrors.quote && (
@@ -238,7 +245,10 @@ function AssumptionRow({
             <input
               id={`${id}-value`}
               name="value"
+              key={state.attempt}
               maxLength={MEMORY_TEXT_MAX}
+              defaultValue={corrected}
+              onChange={(e) => setCorrected(e.target.value)}
               className={field}
             />
           </div>
@@ -293,6 +303,11 @@ function AddDetailForm({
     initialDialogState,
   );
   const [status, setStatus] = useState<"fact" | "assumption">("fact");
+  // See the confirm form: the text is kept in state and the fields remount with it after each attempt.
+  const [topic, setTopic] = useState("");
+  const [value, setValue] = useState("");
+  const [quote, setQuote] = useState("");
+  const [reason, setReason] = useState("");
   const id = useId();
   return (
     <form action={formAction} className="mt-3 space-y-3">
@@ -301,7 +316,14 @@ function AddDetailForm({
         <label htmlFor={`${id}-key`} className="text-sm font-medium">
           What is it about?
         </label>
-        <select id={`${id}-key`} name="key" defaultValue="" className={field}>
+        <select
+          id={`${id}-key`}
+          name="key"
+          key={state.attempt}
+          defaultValue={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          className={field}
+        >
           <option value="" disabled>
             Choose…
           </option>
@@ -322,7 +344,8 @@ function AddDetailForm({
             type="radio"
             name="status"
             value="fact"
-            checked={status === "fact"}
+            key={state.attempt}
+            defaultChecked={status === "fact"}
             onChange={() => setStatus("fact")}
           />
           The buyer told us
@@ -332,7 +355,8 @@ function AddDetailForm({
             type="radio"
             name="status"
             value="assumption"
-            checked={status === "assumption"}
+            key={state.attempt}
+            defaultChecked={status === "assumption"}
             onChange={() => setStatus("assumption")}
           />
           We think so (not confirmed)
@@ -345,7 +369,10 @@ function AddDetailForm({
         <input
           id={`${id}-value`}
           name="value"
+          key={state.attempt}
           maxLength={MEMORY_TEXT_MAX}
+          defaultValue={value}
+          onChange={(e) => setValue(e.target.value)}
           className={field}
         />
         {state.fieldErrors.value && (
@@ -360,8 +387,11 @@ function AddDetailForm({
           <textarea
             id={`${id}-quote`}
             name="quote"
+            key={state.attempt}
             rows={2}
             maxLength={MEMORY_TEXT_MAX}
+            defaultValue={quote}
+            onChange={(e) => setQuote(e.target.value)}
             className={field}
           />
           {state.fieldErrors.quote && (
@@ -378,8 +408,11 @@ function AddDetailForm({
           <textarea
             id={`${id}-reason`}
             name="reason"
+            key={state.attempt}
             rows={2}
             maxLength={MEMORY_TEXT_MAX}
+            defaultValue={reason}
+            onChange={(e) => setReason(e.target.value)}
             className={field}
           />
           {state.fieldErrors.reason && (

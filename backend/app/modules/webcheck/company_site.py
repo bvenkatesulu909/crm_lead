@@ -422,8 +422,10 @@ def lookup_company(
             # The first reason is the one that explains the result ("it redirected elsewhere"),
             # not the www. retry's ("no such name").
             refusal = refusal or exc.code
-            # Only "it redirected to another name" earns the www. retry; anything else is final.
-            if exc.code != "bad_host":
+            # Only "it redirected to another name" earns the www. retry - for the page or for its
+            # robots.txt (many real sites send both to www.; the fetcher never follows either).
+            # Anything else, such as a private address or a robots.txt that forbids us, is final.
+            if exc.code not in ("bad_host", "robots_unavailable"):
                 break
     if home is None or home.status != 200:
         return CompanyLookup(

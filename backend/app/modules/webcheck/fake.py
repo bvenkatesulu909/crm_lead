@@ -164,6 +164,23 @@ COMPANY_SITES: dict[str, dict[str, str]] = {
 # A site whose robots.txt forbids automated readers: honoured, nothing is read.
 COMPANY_SITES["blocked.demo.example"] = {"/": _org_page("Blocked", {"@type": "Organization"})}
 COMPANY_ROBOTS = {"blocked.demo.example": "User-agent: *\nDisallow: /\n"}
+# Like many real sites (found on a live trial): even robots.txt at the bare name sends the
+# visitor to www. - the fetcher never follows that, so the look-up must ask www. itself.
+COMPANY_SITES["robotsredirect.demo.example"] = {}
+COMPANY_ROBOTS["robotsredirect.demo.example"] = (
+    "REDIRECT https://www.robotsredirect.demo.example/robots.txt"
+)
+COMPANY_SITES["www.robotsredirect.demo.example"] = {
+    "/": _org_page(
+        "Robots Redirect",
+        {
+            "@type": "Organization",
+            "name": "Robots Redirect",
+            "numberOfEmployees": 40,
+            "description": "Real estate apartments and villas.",
+        },
+    )  # fmt: skip
+}
 # Names that resolve to an address inside a network: the fetcher must refuse them.
 PRIVATE_COMPANY_HOSTS = {
     "intranet.demo.example": "10.0.0.5",
@@ -183,6 +200,8 @@ class DemoCompanySites:
         path = urlsplit(request.target).path or "/"
         if path == "/robots.txt":
             robots = COMPANY_ROBOTS.get(request.host, "User-agent: *\nAllow: /\n")
+            if robots.startswith("REDIRECT "):
+                return TransportResponse(301, {"location": robots.split(" ", 1)[1]}, b"", False)
             return DemoRegistry._answer(robots, "text/plain")
         page = COMPANY_SITES.get(request.host, {}).get(path)
         if page is None:

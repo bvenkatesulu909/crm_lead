@@ -275,6 +275,17 @@ def test_a_redirect_to_www_is_followed_by_asking_www_itself() -> None:
     )
 
 
+def test_a_robots_txt_that_redirects_to_www_is_answered_by_asking_www_itself() -> None:
+    # Found on a live trial: godrejproperties.com and puravankara.com send even /robots.txt at the
+    # bare name to www.; the fetcher does not follow it, so the look-up asks www. directly.
+    result = look("robotsredirect.demo.example")
+    assert (result.verdict, result.website, result.size) == (
+        "found",
+        "https://www.robotsredirect.demo.example",
+        "11-50",
+    )
+
+
 def test_a_redirect_to_another_site_is_refused() -> None:
     result = look("elsewhere.demo.example")
     assert (result.verdict, result.refusal, result.website) == ("unclear", "bad_host", None)

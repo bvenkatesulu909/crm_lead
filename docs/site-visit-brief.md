@@ -3,7 +3,7 @@
 One short page for the minutes before showing a home to a buyer: who the buyer is, what we know and how
 sure we are, what to ask, where we left off, and what to be careful about. It is built **by code** from what
 the CRM already holds - no AI, nothing stored, nothing sent. Design and the options considered:
-[ADR 0029](adr/0029-site-visit-brief.md). This page describes what is built (step SV1: the backend).
+[ADR 0029](adr/0029-site-visit-brief.md). This page describes what is built (steps SV1: the backend, SV2: the page).
 
 ## 1. What it returns
 
@@ -69,8 +69,29 @@ caution) and `tests/db/test_site_brief_api.py` (the whole brief through the real
 place cleaned and refused, nothing written, role denial, a colleague's lead, another organisation, made-up
 and malformed ids).
 
-## 8. Not built yet
+## 8. The page (SV2)
 
-The page and the button on the lead page, the print style and a Playwright journey (step SV2); a Hindi or
+A **Site visit brief** button on the lead page (shown to people with `buyer_memory:read`) opens
+`/print/leads/{id}/brief` - the same kind of bare page as a printed quote (no menu), one column, made for a
+phone and for paper. At the top: "Back to the lead", **Print / Save as PDF**, and a small form "Where is
+the visit?" (a plain GET form, at most 100 characters) - none of these are printed. Then the six
+sections: **The buyer**, **What we know** (each line marked Fact or Assumption, with its source and quote or
+reason), **Ask on the visit** (marked Confirm or Ask), **Where we left off** (the timeline and the open
+follow-ups, overdue ones in red) and **Be careful** (each caution marked Note). Everything anyone wrote is shown as
+plain text, never markup or a link. A refused place (a card number, an instruction) is explained in a
+sentence and the brief is still shown, built without it. An id that is not an id, a lead the person may not
+read and a role without access all show "not found".
+
+Files: `src/app/print/leads/[id]/brief/page.tsx`, `src/components/site-brief-view.tsx`,
+`src/lib/site-brief.ts`, the button in `src/app/(app)/leads/[id]/page.tsx`. Tests:
+`src/lib/site-brief.test.tsx` (words, the six sections, labels, plain text, the page, the place) and
+Playwright `e2e/site-brief.spec.ts` (open the brief from the lead page; twelve questions on a new lead; fill in
+buyer memory and watch the brief change; the place and its refusal; a colleague and a support agent get
+"not found", a manager reads it). The print style (`print:hidden`) is covered by a unit test on the classes; the
+journey cannot check it because the worktree's webpack run does not process Tailwind.
+
+## 9. Not built yet
+
+A Hindi or
 Telugu version of the words; project facts from the brochures (RERA number, price list) and AI-written
 talking points (later, separate decisions); a PDF, an e-mail or a sharing link (not in v1).

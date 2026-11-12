@@ -12,7 +12,13 @@ import { BuyerMemoryCard } from "@/components/buyer-memory-card";
 import { CompanyDetailsCard } from "@/components/company-details-card";
 import { WebCheckCard } from "@/components/webcheck-card";
 import { LeadScoreCard } from "@/components/lead-score";
-import { Card, Forbidden, StatusBadge, SuccessAlert } from "@/components/ui";
+import {
+  ButtonLink,
+  Card,
+  Forbidden,
+  StatusBadge,
+  SuccessAlert,
+} from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
 import { COMPANY_INDUSTRIES } from "@/lib/api-types";
 import type {
@@ -35,7 +41,7 @@ import {
   leadName,
 } from "@/lib/format";
 import { availableActions } from "@/lib/lead-rules";
-import { hasAny } from "@/lib/permissions";
+import { canReadBuyerMemory, hasAny } from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
 import {
@@ -212,6 +218,16 @@ export default async function LeadPage({
           <p className="mt-1 text-sm text-slate-600">
             {lead.company_name ?? "No company"} · Owner: {nameOf(lead.owner_id)}
           </p>
+          {canReadBuyerMemory(me) && (
+            <div className="mt-3">
+              <ButtonLink
+                variant="secondary"
+                href={`/print/leads/${lead.id}/brief`}
+              >
+                Site visit brief
+              </ButtonLink>
+            </div>
+          )}
         </div>
         {/* key: after any change the version changes, so dialogs re-mount closed. */}
         <LeadActionBar

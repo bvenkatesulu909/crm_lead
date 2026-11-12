@@ -79,7 +79,7 @@ sharing, no change to the lead, the memory or the timeline.
 |---|---|
 | SV0 | This ADR (documents only) - **done 2026-11-12** |
 | SV1 | Backend: pure rules (sections, the twelve questions, the cautions, cleaning of the place and the note excerpts), service reading through the other modules' `api.py`, `GET /api/v1/leads/{id}/brief?place=`, a small read function in the leads and activities `api.py`, tests (happy path, record-level denial, other organisation, role denial, made-up id, the place cleaned, nothing stored) - **done 2026-11-12**: module `site_brief` (pure rules, service, `GET /api/v1/leads/{id}/brief?place=`), small read functions in the leads, activities and buyer memory `api.py` files, no table, nothing written; see docs/site-visit-brief.md |
-| SV2 | The page `/leads/{id}/brief` and the button on the lead page, print style, component tests, a Playwright journey |
+| SV2 | The page `/leads/{id}/brief` and the button on the lead page, print style, component tests, a Playwright journey - **done 2026-11-12**: the page is `/print/leads/{id}/brief` (the same bare layout as a printed quote: no menu, phone-friendly), the button "Site visit brief" is on the lead page, the place is a plain GET form, the six sections with Fact / Assumption / Confirm / Ask / Note marks, a Print button, 18 unit tests and a Playwright journey |
 | SV3 | `docs/site-visit-brief.md`, status notes |
 
 ## 6. Questions for the owner (recommended answer first)

@@ -1705,3 +1705,48 @@ export type BuyerMemory = {
   history: BuyerMemoryItem[];
   gaps: BuyerMemoryKey[];
 };
+
+/** The rep's brief before a site visit (ADR 0029): built by code, nothing stored. */
+export type SiteBrief = {
+  as_of: string;
+  place: string | null;
+  buyer: {
+    name: string;
+    status: string;
+    source: string | null;
+    owner: string | null;
+    phone: string | null;
+    email: string | null;
+    language: "en" | "hi" | "te" | null;
+    language_label: string | null;
+  };
+  facts: {
+    key: string;
+    label: string;
+    value: string;
+    source: string | null;
+    quote: string | null;
+    recorded_on: string;
+  }[];
+  assumptions: {
+    key: string;
+    label: string;
+    value: string;
+    reason: string | null;
+    recorded_on: string;
+  }[];
+  ask: { kind: "confirm" | "gap"; key: string; label: string; text: string }[];
+  recent: {
+    kind: string;
+    occurred_at: string;
+    subject: string;
+    excerpt: string;
+  }[];
+  tasks: {
+    subject: string;
+    due_at: string | null;
+    priority: string;
+    overdue: boolean;
+  }[];
+  cautions: { code: string; text: string }[];
+};

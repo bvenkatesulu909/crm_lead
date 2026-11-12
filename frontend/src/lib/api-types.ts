@@ -1680,3 +1680,28 @@ export type QualifierTrial = {
   would_propose: string | null;
   procedure_version: number | null;
 };
+
+/** One of the twelve things buyer memory records about a buyer (ADR 0028). */
+export type BuyerMemoryKey = { key: string; label: string };
+
+/** A fact (source and quote) or an assumption (reason); never edited, a change adds a row. */
+export type BuyerMemoryItem = {
+  id: string;
+  key: string;
+  value: string;
+  status: "fact" | "assumption";
+  source: string | null;
+  source_ref: string | null;
+  quote: string | null;
+  reason: string | null;
+  recorded_by_user_id: string;
+  created_at: string;
+};
+
+/** The newest entry of each key is current; older ones are history; keys with none are gaps. */
+export type BuyerMemory = {
+  keys: BuyerMemoryKey[];
+  current: BuyerMemoryItem[];
+  history: BuyerMemoryItem[];
+  gaps: BuyerMemoryKey[];
+};

@@ -9,6 +9,7 @@ from app.modules.agents.router import router as agents_router
 from app.modules.approvals.router import router as approvals_router
 from app.modules.assistant.router import router as assistant_router
 from app.modules.assistant.staff_router import router as staff_assistant_router
+from app.modules.buyer_memory.router import router as buyer_memory_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.communications.router import router as communications_router
 from app.modules.contacts.router import router as contacts_router
@@ -78,6 +79,7 @@ api_router.include_router(account_research_router)
 api_router.include_router(workflows_router)
 api_router.include_router(reports_router)
 api_router.include_router(leads_router)
+api_router.include_router(buyer_memory_router)
 api_router.include_router(portal_router)
 api_router.include_router(tickets_router)
 api_router.include_router(portal_tickets_router)

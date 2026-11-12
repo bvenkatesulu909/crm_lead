@@ -34,7 +34,7 @@ from app.modules.leads.metrics import (
     web_lead_quality_table,
     web_leads_by_month,
 )
-from app.modules.leads.models import LEAD_STATUSES, Lead
+from app.modules.leads.models import LEAD_STATUSES, Lead, LeadActivity
 from app.modules.leads.policies import readable_leads
 from app.modules.leads.repository import LeadFilters
 from app.modules.leads.schemas import ActivityCreate, LeadCreate, LeadUpdate
@@ -66,6 +66,9 @@ __all__ = [
     "OwnerLeadFigures",
     "follow_ups",
     "is_readable_lead",
+    "lead_activity_belongs",
+    "BuyerFields",
+    "buyer_fields",
     "owned_lead_ids",
     "lead_figures_by_owner",
     "lead_metrics",
@@ -75,6 +78,42 @@ __all__ = [
 
 def is_readable_lead(session: Session, principal: Principal, lead_id: uuid.UUID) -> bool:
     return repository.get_readable(session, principal, lead_id) is not None
+
+
+def lead_activity_belongs(
+    session: Session, principal: Principal, lead_id: uuid.UUID, activity_id: uuid.UUID
+) -> bool:
+    """Is this timeline entry one of this lead's - and may the person read the lead?"""
+    if principal.tenant_id is None or not is_readable_lead(session, principal, lead_id):
+        return False
+    return (
+        session.scalar(
+            select(LeadActivity.id).where(
+                LeadActivity.tenant_id == principal.tenant_id,
+                LeadActivity.lead_id == lead_id,
+                LeadActivity.id == activity_id,
+            )
+        )
+        is not None
+    )
+
+
+@dataclass(frozen=True)
+class BuyerFields:
+    """The lead form's details about what the buyer wants (for buyer memory, ADR 0028)."""
+
+    property_type: str | None
+    budget_min_inr: int | None
+    budget_max_inr: int | None
+    location: str | None
+
+
+def buyer_fields(session: Session, principal: Principal, lead_id: uuid.UUID) -> BuyerFields | None:
+    """What the lead form says the buyer wants, if this person may read the lead, else None."""
+    lead = repository.get_readable(session, principal, lead_id)
+    if lead is None:
+        return None
+    return BuyerFields(lead.property_type, lead.budget_min_inr, lead.budget_max_inr, lead.location)
 
 
 def owned_lead_ids(principal: Principal) -> Select[uuid.UUID]:

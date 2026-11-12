@@ -14,6 +14,7 @@ from app.modules.agents import models as agents_models
 from app.modules.approvals import models as approvals_models
 from app.modules.assistant import models as assistant_models
 from app.modules.assistant import staff_models as staff_assistant_models
+from app.modules.buyer_memory import models as buyer_memory_models
 from app.modules.catalog import models as catalog_models
 from app.modules.communications import models as communications_models
 from app.modules.contacts import models as contacts_models
@@ -44,6 +45,7 @@ __all__ = [
     "heartbeat_models",
     "catalog_models",
     "approvals_models",
+    "buyer_memory_models",
     "communications_models",
     "contacts_models",
     "contracts_models",

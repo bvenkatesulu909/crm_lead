@@ -86,3 +86,54 @@ def test_a_second_lead_in_one_conversation_would_be_caught(
     result, _ = play_public(db_session, world, BY_ID["public-one-lead-per-conversation"])
     assert result.passed is False
     assert "leads_created" in explain(result)
+
+
+# --- Hindi and Telugu (ADR 0027, step VL3) -------------------------------------------------------
+
+
+def test_the_hindi_and_telugu_cases_are_there_and_pass_through_the_real_chat(
+    db_session: Session, world: World
+) -> None:
+    cases = [c for c in PUBLIC if c.language != "en"]
+    assert {c.language for c in cases} == {"hi", "te"} and len(cases) >= 12
+    for case in cases:
+        result, _ = play_public(db_session, world, case)
+        assert result.passed, (case.id, explain(result))
+
+
+def test_a_lead_saved_in_the_wrong_language_would_be_caught(
+    db_session: Session, world: World
+) -> None:
+    # The visitor chose Hindi but the harness expects Telugu on the lead: the gate must fail.
+    case = variant("public-hi-save-lead", **{"expect.lead_language": "te"})
+    result, _ = play_public(db_session, world, case)
+    assert result.passed is False
+    assert "lead_language" in explain(result)
+
+
+def test_a_chat_that_forgot_the_language_would_be_caught(
+    db_session: Session, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # If the service stopped writing the visitor's language on the lead, the English default
+    # would be saved for a Telugu visitor.
+    real = public_chat_service._save_lead
+
+    def forgetful(
+        session: Any, tenant_id: Any, conversation: Any, arguments: Any, *rest: Any
+    ) -> Any:
+        return real(session, tenant_id, conversation, arguments, "en")
+
+    monkeypatch.setattr(public_chat_service, "_save_lead", forgetful)
+    result, _ = play_public(db_session, world, BY_ID["public-te-save-lead"])
+    assert result.passed is False
+    assert "lead_language" in explain(result)
+
+
+def test_a_phone_in_indic_digits_that_was_not_converted_would_be_caught(
+    db_session: Session, world: World
+) -> None:
+    # The case checks the stored phone is 0-9: a different expectation must fail, not pass.
+    case = variant("public-te-save-lead", **{"expect.stored_must_contain": ["౯౮౪౮౦"]})
+    result, _ = play_public(db_session, world, case)
+    assert result.passed is False
+    assert "stored_text" in explain(result)

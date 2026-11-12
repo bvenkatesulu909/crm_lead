@@ -210,12 +210,13 @@ def test_leads_can_be_filtered_by_language(api, auth) -> None:
     create(api, auth, "alpha.agent1", last_name="Telugu", preferred_language="te")
     create(api, auth, "alpha.agent1", last_name="Hindi", preferred_language="hi")
     create(api, auth, "alpha.agent1", last_name="Nothing")
-    names = lambda lang: sorted(  # noqa: E731
-        item["last_name"]
-        for item in api.get(
+
+    def names(lang: str) -> list[str]:
+        response = api.get(
             f"{LEADS}?preferred_language={lang}&limit=200", headers=auth("alpha.agent1")
-        ).json()["items"]
-    )
+        )
+        return sorted(item["last_name"] for item in response.json()["items"])
+
     assert names("te") == ["Telugu"]
     assert names("hi") == ["Hindi"]
     assert (

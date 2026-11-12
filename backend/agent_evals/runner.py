@@ -352,7 +352,7 @@ def run_public_chat_case(
                 session,
                 settings,
                 recorder,
-                PublicChatRequest(token=token, message=text),
+                PublicChatRequest(token=token, message=text, language=case.language),
                 visitor_ip=visitor_ip,
             )
         except public_chat_service.MessageRefusedError as exc:

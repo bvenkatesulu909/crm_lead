@@ -142,6 +142,10 @@ on the lead. A **Speak** button (only where the browser has speech recognition) 
 presses Send, so nothing is sent by voice alone. **Read replies aloud** (only where the browser can
 speak) is off until ticked. Speaking and hearing use the browser's own speech service, which may
 send the voice to its provider; the page says so, and this application never receives audio.
+Tests: `tests/db/test_public_chat_language.py` (the API and the lead), the evaluation cases
+(docs/agent-evals.md 6o) and the Playwright journeys in `e2e/public-chat-languages.spec.ts`, which
+fake the speech engine (it checks our code: the language asked for and the words landing in the
+box, not a real browser's accuracy).
 Honest limits: Chrome, Edge and Android are good for Hindi, Telugu recognition is weaker, Safari may
 have no microphone; the visitor-facing words were written by the assistant and have not yet been
 read by a Hindi and a Telugu speaker; error messages are still English.

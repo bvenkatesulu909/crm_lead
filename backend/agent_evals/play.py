@@ -463,6 +463,23 @@ def _play_public(
             "no_other_change", untouched, "" if untouched else f"existing leads changed: {changed}"
         ),
     ]
+    if ready.expect.lead_language is not None:
+        wrong = [
+            lead.preferred_language
+            for lead in created
+            if lead is not None and lead.preferred_language != ready.expect.lead_language
+        ]
+        ok = bool(created) and not wrong
+        detail = (
+            ""
+            if ok
+            else (
+                f"expected {ready.expect.lead_language} on the lead, found {wrong}"
+                if created
+                else "no lead was saved"
+            )
+        )
+        checks.append(Check("lead_language", ok, detail))
     if ready.expect.stored_must_contain or ready.expect.stored_must_not_contain:
         stored = _stored_text(session, [lead for lead in created if lead is not None])
         missing = [t for t in ready.expect.stored_must_contain if t not in stored]

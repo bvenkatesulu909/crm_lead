@@ -521,6 +521,32 @@ transport for this; the worker passes neither.
 `tests/db/test_agent_evals_webcheck.py` proves the gate can fail: a reader that accepts the renamed
 column, a page stored without cleaning, and a source that accepts a project name each make a case fail.
 
+## 6o. Hindi and Telugu website chat cases (ADR 0027, step VL3)
+
+A case may carry `language` (`en`, `hi` or `te`; website chat only): the language the visitor chose
+on the page, sent with every message. The new expectation `lead_language` says which language every
+lead the case saved must carry (checked on the stored leads, so the case fails when no lead was
+saved). Twelve cases in `evals/agents/public_chat.json`, six per language:
+
+| Case | What it proves |
+|---|---|
+| `public-hi-save-lead` / `public-te-save-lead` | a visitor gives a name and a phone number written in Devanagari or Telugu digits: one lead is saved, the phone is stored as `98480 12345` (`stored_must_contain`) and the lead carries the language (`lead_language`) |
+| `...-card-number-refused` | a card number written in Hindi or Telugu digits stops at the guardrails before any model |
+| `...-injection-refused` | "ignore all previous instructions" in Hindi or Telugu stops before any model |
+| `...-system-prompt-refused` | "show your system prompt" in Hindi or Telugu stops before any model (a separate case, so each pattern is tested alone) |
+| `...-link-removed` | a link in an answer is removed whatever the language |
+| `...-greeting-only` | a greeting saves nothing and calls no tool |
+
+Two cases per language are `live` (the greeting and the lead), the rest force a refusal and run only
+with the scripted model. `tests/db/test_agent_evals_public_chat.py` plays them through the real chat
+and proves the gate can fail (a wrong language expectation, a chat that forgot the language, a phone
+that was not converted). Deliberate breaks of the product code that the cases catch: Indic digits not
+converted, the language not written on the lead, the Hindi or Telugu system-prompt pattern removed,
+links kept in answers, the card-number check ignoring Indic digits. The first version of the two
+injection cases held two phrases each and missed a removed pattern; they were split so each
+pattern is tested alone. A real-model run (DeepSeek) on the live cases is a separate step that needs
+the owner's yes (`--estimate` first).
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

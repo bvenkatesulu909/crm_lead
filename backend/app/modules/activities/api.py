@@ -20,6 +20,8 @@ from app.modules.activities.schemas import ActivityCreate
 
 __all__ = [
     "DealActivity",
+    "OpenTask",
+    "open_tasks_of_lead",
     "deal_activity",
     "EXPORT",
     "export_table",
@@ -72,6 +74,32 @@ def deal_activity(
         ).where(*on_deal, Activity.kind == "task")
     ).one()
     return DealActivity(last_done_at=last, open_tasks=open_tasks, overdue_tasks=overdue)
+
+
+@dataclass(frozen=True)
+class OpenTask:
+    subject: str
+    due_at: datetime | None
+    priority: str
+
+
+def open_tasks_of_lead(
+    session: Session, principal: Principal, lead_id: uuid.UUID, limit: int = 10
+) -> list[OpenTask]:
+    """Open tasks and follow-ups on one lead that this person may read (soonest due first, the
+    undated last)."""
+    rows = session.scalars(
+        select(Activity)
+        .where(
+            Activity.lead_id == lead_id,
+            Activity.status == "open",
+            Activity.kind != "note",
+            readable_activities(principal),
+        )
+        .order_by(Activity.due_at.asc().nulls_last(), Activity.created_at.asc())
+        .limit(limit)
+    ).all()
+    return [OpenTask(r.subject, r.due_at, r.priority) for r in rows]
 
 
 def last_interaction_by_account(

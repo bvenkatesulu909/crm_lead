@@ -1954,6 +1954,192 @@
         "title": "Body_upload_document_api_v1_knowledge_documents_post",
         "type": "object"
       },
+      "BriefAsk": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "confirm",
+              "gap"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "key",
+          "label",
+          "text"
+        ],
+        "title": "BriefAsk",
+        "type": "object"
+      },
+      "BriefAssumption": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "recorded_on": {
+            "format": "date-time",
+            "title": "Recorded On",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "reason",
+          "recorded_on"
+        ],
+        "title": "BriefAssumption",
+        "type": "object"
+      },
+      "BriefBuyer": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "hi",
+                  "te"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "language_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language Label"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "source",
+          "owner",
+          "phone",
+          "email",
+          "language",
+          "language_label"
+        ],
+        "title": "BriefBuyer",
+        "type": "object"
+      },
+      "BriefCaution": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "text"
+        ],
+        "title": "BriefCaution",
+        "type": "object"
+      },
       "BriefCreate": {
         "additionalProperties": false,
         "description": "Ask for a brief about one account. Nothing else is accepted.",
@@ -1970,11 +2156,93 @@
         "title": "BriefCreate",
         "type": "object"
       },
+      "BriefEntry": {
+        "properties": {
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "occurred_at",
+          "subject",
+          "excerpt"
+        ],
+        "title": "BriefEntry",
+        "type": "object"
+      },
+      "BriefFact": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "recorded_on": {
+            "format": "date-time",
+            "title": "Recorded On",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "source",
+          "quote",
+          "recorded_on"
+        ],
+        "title": "BriefFact",
+        "type": "object"
+      },
       "BriefList": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/BriefRead"
+              "$ref": "#/components/schemas/app__modules__deal_desk__schemas__BriefRead"
             },
             "title": "Items",
             "type": "array"
@@ -1984,53 +2252,6 @@
           "items"
         ],
         "title": "BriefList",
-        "type": "object"
-      },
-      "BriefRead": {
-        "properties": {
-          "account_id": {
-            "format": "uuid",
-            "title": "Account Id",
-            "type": "string"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "dropped": {
-            "title": "Dropped",
-            "type": "integer"
-          },
-          "gathered": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "title": "Gathered",
-            "type": "object"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "sentences": {
-            "items": {
-              "$ref": "#/components/schemas/BriefSentence"
-            },
-            "title": "Sentences",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "account_id",
-          "created_at",
-          "sentences",
-          "dropped",
-          "gathered"
-        ],
-        "title": "BriefRead",
         "type": "object"
       },
       "BriefRecord": {
@@ -2076,6 +2297,42 @@
           "records"
         ],
         "title": "BriefSentence",
+        "type": "object"
+      },
+      "BriefTask": {
+        "properties": {
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "due_at",
+          "priority",
+          "overdue"
+        ],
+        "title": "BriefTask",
         "type": "object"
       },
       "Cancel": {
@@ -16972,6 +17229,53 @@
         "title": "ActivityRead",
         "type": "object"
       },
+      "app__modules__deal_desk__schemas__BriefRead": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dropped": {
+            "title": "Dropped",
+            "type": "integer"
+          },
+          "gathered": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Gathered",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/BriefSentence"
+            },
+            "title": "Sentences",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "created_at",
+          "sentences",
+          "dropped",
+          "gathered"
+        ],
+        "title": "BriefRead",
+        "type": "object"
+      },
       "app__modules__lead_agent__schemas__RunRead": {
         "properties": {
           "blocked_message": {
@@ -17174,6 +17478,84 @@
         "title": "Reopen",
         "type": "object"
       },
+      "app__modules__site_brief__schemas__BriefRead": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "ask": {
+            "items": {
+              "$ref": "#/components/schemas/BriefAsk"
+            },
+            "title": "Ask",
+            "type": "array"
+          },
+          "assumptions": {
+            "items": {
+              "$ref": "#/components/schemas/BriefAssumption"
+            },
+            "title": "Assumptions",
+            "type": "array"
+          },
+          "buyer": {
+            "$ref": "#/components/schemas/BriefBuyer"
+          },
+          "cautions": {
+            "items": {
+              "$ref": "#/components/schemas/BriefCaution"
+            },
+            "title": "Cautions",
+            "type": "array"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/BriefFact"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/BriefEntry"
+            },
+            "title": "Recent",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/BriefTask"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "place",
+          "buyer",
+          "facts",
+          "assumptions",
+          "ask",
+          "recent",
+          "tasks",
+          "cautions"
+        ],
+        "title": "BriefRead",
+        "type": "object"
+      },
       "app__modules__workflows__schemas__RunRead": {
         "properties": {
           "created_at": {
@@ -17349,7 +17731,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BriefRead"
+                  "$ref": "#/components/schemas/app__modules__deal_desk__schemas__BriefRead"
                 }
               }
             },
@@ -27413,6 +27795,103 @@
         "summary": "Assignment history (who owned the lead, who changed it, why)",
         "tags": [
           "leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/brief": {
+      "get": {
+        "operationId": "read_brief_api_v1_leads__lead_id__brief_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Where the visit is, for this one view (cleaned, at most 100 characters).",
+            "in": "query",
+            "name": "place",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 400,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the visit is, for this one view (cleaned, at most 100 characters).",
+              "title": "Place"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__modules__site_brief__schemas__BriefRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The rep's brief before a site visit (built on demand, nothing is stored)",
+        "tags": [
+          "site-brief"
         ]
       }
     },

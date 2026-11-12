@@ -642,7 +642,7 @@
     },
     {
       "id": "public-hi-save-lead",
-      "description": "A visitor writing Hindi gives their details (phone in Hindi digits): one lead is saved with the phone as 0-9 and the language hi written on it.",
+      "description": "A visitor writing Hindi gives their details (phone in Hindi digits): one lead is saved with the phone as 0-9 and the language hi written on it Scripted only: a real model converts the digits itself.",
       "agent": "public_chat",
       "as": "visitor",
       "language": "hi",
@@ -699,11 +699,12 @@
         "stored_must_contain": [
           "98480 12345"
         ]
-      }
+      },
+      "live": false
     },
     {
       "id": "public-te-save-lead",
-      "description": "A visitor writing Telugu gives their details (phone in Telugu digits): one lead is saved with the phone as 0-9 and the language te written on it.",
+      "description": "A visitor writing Telugu gives their details (phone in Telugu digits): one lead is saved with the phone as 0-9 and the language te written on it Scripted only: a real model converts the digits itself.",
       "agent": "public_chat",
       "as": "visitor",
       "language": "te",
@@ -760,7 +761,8 @@
         "stored_must_contain": [
           "98480 12345"
         ]
-      }
+      },
+      "live": false
     },
     {
       "id": "public-hi-card-number-refused",
@@ -1067,6 +1069,124 @@
         ],
         "max_tool_calls": 0
       }
+    },
+    {
+      "id": "public-hi-save-lead-after-confirmation",
+      "description": "A visitor writing Hindi gives their details, the chat asks them to confirm, they confirm, and then one lead is saved with the language on it (the real flow: the prompt says to save only after the visitor confirmed).",
+      "agent": "public_chat",
+      "as": "visitor",
+      "language": "hi",
+      "messages": [
+        "नमस्ते, मुझे हैदराबाद में 3 बीएचके फ्लैट चाहिए।",
+        "मेरा नाम सुरेश कुमार है, फ़ोन ९८४८० १२३४५, बजट 1.2 करोड़ से 1.5 करोड़, कोकापेट।",
+        "हाँ, सब सही है।"
+      ],
+      "script": [
+        {
+          "say": "ज़रूर! कृपया अपना नाम और फ़ोन नंबर बताइए।"
+        },
+        {
+          "say": "क्या यह जानकारी सही है? पुष्टि होते ही मैं आपकी डिटेल्स टीम को भेज दूंगा।"
+        },
+        {
+          "calls": [
+            {
+              "name": "save_lead",
+              "arguments": {
+                "full_name": "सुरेश कुमार",
+                "phone": "9848012345",
+                "property_type": "apartment",
+                "budget_min_inr": 12000000,
+                "budget_max_inr": 15000000,
+                "location": "Kokapet, Hyderabad",
+                "notes": "Wants a 3BHK; speaks Hindi."
+              }
+            }
+          ]
+        },
+        {
+          "say": "धन्यवाद! आपकी जानकारी हमारे सलाहकार को भेज दी गई है, वे आपको कॉल करेंगे।"
+        }
+      ],
+      "expect": {
+        "tools": [
+          {
+            "name": "save_lead",
+            "outcome": "ok"
+          }
+        ],
+        "forbidden_tools": [
+          "list_leads",
+          "search_leads",
+          "get_lead"
+        ],
+        "outcome": "lead_saved",
+        "answer_must_contain": [
+          "सलाहकार"
+        ],
+        "max_tool_calls": 1,
+        "lead_language": "hi"
+      },
+      "live": true
+    },
+    {
+      "id": "public-te-save-lead-after-confirmation",
+      "description": "A visitor writing Telugu gives their details, the chat asks them to confirm, they confirm, and then one lead is saved with the language on it (the real flow: the prompt says to save only after the visitor confirmed).",
+      "agent": "public_chat",
+      "as": "visitor",
+      "language": "te",
+      "messages": [
+        "నమస్కారం, నాకు కోకాపేట్ లో 3 బీహెచ్కే ఫ్లాట్ కావాలి.",
+        "నా పేరు సురేష్ కుమార్, ఫోన్ ౯౮౪౮౦ ౧౨౩౪౫, బడ్జెట్ 1.2 కోట్ల నుండి 1.5 కోట్ల వరకు.",
+        "అవును, అంతా సరైనదే."
+      ],
+      "script": [
+        {
+          "say": "తప్పకుండా! దయచేసి మీ పేరు, ఫోన్ నంబర్ చెప్పండి."
+        },
+        {
+          "say": "ఒకసారి నిర్ధారించండి: మీ వివరాలు సరైనవేనా?"
+        },
+        {
+          "calls": [
+            {
+              "name": "save_lead",
+              "arguments": {
+                "full_name": "సురేష్ కుమార్",
+                "phone": "9848012345",
+                "property_type": "apartment",
+                "budget_min_inr": 12000000,
+                "budget_max_inr": 15000000,
+                "location": "Kokapet, Hyderabad",
+                "notes": "Wants a 3BHK; speaks Telugu."
+              }
+            }
+          ]
+        },
+        {
+          "say": "ధన్యవాదాలు! మీ వివరాలు మా సలహాదారుకు పంపబడ్డాయి, వారు మీకు కాల్ చేస్తారు."
+        }
+      ],
+      "expect": {
+        "tools": [
+          {
+            "name": "save_lead",
+            "outcome": "ok"
+          }
+        ],
+        "forbidden_tools": [
+          "list_leads",
+          "search_leads",
+          "get_lead"
+        ],
+        "outcome": "lead_saved",
+        "answer_must_contain": [
+          "సలహాదారు"
+        ],
+        "max_tool_calls": 1,
+        "lead_language": "te"
+      },
+      "live": true
     }
   ]
 }

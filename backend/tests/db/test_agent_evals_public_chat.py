@@ -95,7 +95,7 @@ def test_the_hindi_and_telugu_cases_are_there_and_pass_through_the_real_chat(
     db_session: Session, world: World
 ) -> None:
     cases = [c for c in PUBLIC if c.language != "en"]
-    assert {c.language for c in cases} == {"hi", "te"} and len(cases) >= 12
+    assert {c.language for c in cases} == {"hi", "te"} and len(cases) >= 14
     for case in cases:
         result, _ = play_public(db_session, world, case)
         assert result.passed, (case.id, explain(result))

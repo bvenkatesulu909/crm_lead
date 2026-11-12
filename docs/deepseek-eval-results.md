@@ -22,6 +22,8 @@ was shown first). Only fictional demo data was used. Each paid run needed the ow
 | Staff, portal, website chat, cited answers | 2026-10-26 | 26 | 15 | 11 | 0 | 0 |
 | Lead agent (with the written qualification steps) | 2026-11-05 | 7 | 6 | 1 | 0 | 0 |
 | Deal desk and account research | 2026-11-08 | 13 | 8 | 5 | 0 | 0 |
+| Website chat in Hindi | 2026-11-12 | 2 | 1 | 1 | 0 | 0 |
+| Website chat in Telugu | 2026-11-12 | 2 | 2 | 0 | 0 | 0 |
 
 By area in the first run: cited answers 11 of 11, customer-portal assistant 2 of 4, website chat
 1 of 3, staff assistant 1 of 8. Tool precision 46 %, recall 46 %, argument accuracy 41 %.

@@ -116,6 +116,7 @@ def _save_lead(
     tenant_id: uuid.UUID,
     conversation: PublicChatSession,
     arguments: Any,
+    language: str = "en",
 ) -> tuple[str, bool]:
     """Run save_lead. Returns (content for the model, is_error)."""
     if conversation.lead_id is not None:
@@ -160,6 +161,7 @@ def _save_lead(
         budget_max_inr=args.budget_max_inr,
         location=location,
         notes=notes,
+        preferred_language=language,
         cleaned_codes=codes,
     )
     session.flush()
@@ -232,7 +234,9 @@ def handle_message(
         {"role": "user" if m.role == "visitor" else "assistant", "content": m.content}
         for m in repository.recent_messages(session, conversation, rules.HISTORY_MESSAGES)
     ]
-    system = rules.SYSTEM_PROMPT.format(organisation=organisation)
+    system = rules.SYSTEM_PROMPT.format(
+        organisation=organisation, language_rule=rules.LANGUAGE_RULES[data.language]
+    )
 
     model = agents_api.governed(
         model, session, tenant_id, "public_chat", agents_api.Limits.from_settings(settings)
@@ -252,7 +256,9 @@ def handle_message(
         results = []
         for use in reply.tool_uses:
             if use.name == "save_lead":
-                content, is_error = _save_lead(session, tenant_id, conversation, use.input)
+                content, is_error = _save_lead(
+                    session, tenant_id, conversation, use.input, data.language
+                )
             else:
                 content, is_error = "This tool doesn't exist. Only save_lead is available.", True
             results.append(

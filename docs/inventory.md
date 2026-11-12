@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-11-06 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-11-12 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -8,30 +8,31 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **228** operations over **183** paths and **266** schemas.
+- **243** operations over **195** paths and **289** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
 |---|---|
-| portal | 19 |
-| quotes | 17 |
+| portal | 21 |
+| quotes | 18 |
 | leads | 13 |
 | catalogue | 11 |
 | communications | 11 |
 | user administration | 11 |
 | assistant | 10 |
+| knowledge | 10 |
 | opportunities | 10 |
 | accounts | 9 |
 | contracts | 9 |
 | tickets | 9 |
 | activities | 8 |
+| documents | 8 |
 | invoices | 8 |
-| knowledge | 8 |
 | contacts | 7 |
 | qualifier | 7 |
 | workflows | 7 |
+| webcheck | 6 |
 | approvals | 5 |
-| documents | 5 |
 | notifications | 5 |
 | orders | 5 |
 | reports | 5 |
@@ -40,7 +41,8 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | identity | 3 |
 | portal access | 3 |
 | voice | 3 |
-| webcheck | 3 |
+| account-research | 2 |
+| deal-desk | 2 |
 | health | 2 |
 | onboarding | 2 |
 | portal-knowledge | 2 |
@@ -51,14 +53,14 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0051**
-- Tables in the current schema: **67**
-- Tables with Row-Level Security: **63** (63 policies)
+- Alembic revision: **0058**
+- Tables in the current schema: **71**
+- Tables with Row-Level Security: **67** (67 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **51**
-- Heads: `0051`
+- Migration files: **58**
+- Heads: `0058`
 
 ## Web app (`frontend/src/app`)
 
@@ -165,10 +167,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **171**
-- Frontend component test files: **36**
-- Playwright end-to-end specs: **32**
+- Backend test files: **197**
+- Frontend component test files: **43**
+- Playwright end-to-end specs: **36**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **79** (25 in `docs/adr/`)
+- Markdown documents under `docs/`: **87** (29 in `docs/adr/`)

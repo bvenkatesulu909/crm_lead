@@ -55,6 +55,7 @@ _DETAIL_FIELDS = (
     "company_website",
     "company_industry",
     "company_size",
+    "preferred_language",
 )
 
 

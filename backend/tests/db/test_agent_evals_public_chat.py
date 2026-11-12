@@ -76,9 +76,11 @@ def test_a_second_lead_in_one_conversation_would_be_caught(
     # If the "one lead per conversation" rule stopped working, two leads would be saved.
     real = public_chat_service._save_lead
 
-    def forgetful(session: Any, tenant_id: Any, conversation: Any, arguments: Any) -> Any:
+    def forgetful(
+        session: Any, tenant_id: Any, conversation: Any, arguments: Any, *rest: Any
+    ) -> Any:
         conversation.lead_id = None
-        return real(session, tenant_id, conversation, arguments)
+        return real(session, tenant_id, conversation, arguments, *rest)
 
     monkeypatch.setattr(public_chat_service, "_save_lead", forgetful)
     result, _ = play_public(db_session, world, BY_ID["public-one-lead-per-conversation"])

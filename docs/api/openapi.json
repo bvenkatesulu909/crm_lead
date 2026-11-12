@@ -7359,6 +7359,23 @@
             ],
             "title": "Phone"
           },
+          "preferred_language": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "hi",
+                  "te"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The language the advisor should call in.",
+            "title": "Preferred Language"
+          },
           "property_type": {
             "anyOf": [
               {
@@ -7773,6 +7790,22 @@
             ],
             "title": "Phone"
           },
+          "preferred_language": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "hi",
+                  "te"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Language"
+          },
           "priority": {
             "anyOf": [
               {
@@ -8132,6 +8165,22 @@
               }
             ],
             "title": "Phone"
+          },
+          "preferred_language": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "hi",
+                  "te"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Language"
           },
           "property_type": {
             "anyOf": [
@@ -12213,6 +12262,16 @@
       "PublicChatRequest": {
         "additionalProperties": false,
         "properties": {
+          "language": {
+            "default": "en",
+            "enum": [
+              "en",
+              "hi",
+              "te"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
           "message": {
             "maxLength": 4000,
             "minLength": 1,

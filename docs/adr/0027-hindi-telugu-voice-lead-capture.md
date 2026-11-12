@@ -1,6 +1,6 @@
 # ADR 0027 — Hindi and Telugu voice lead capture on the website chat
 
-- **Status:** Proposed (2026-11-12) - waiting for the owner's answers in section 6
+- **Status:** Accepted (2026-11-12) with the recommended answer to all five questions in section 6
 - **Date:** 2026-11-12
 - **Deciders:** Project owner
 - **Depends on:** ADR 0013 (public website chat, `save_lead`), ADR 0017/0018 (cleaning and screening of
@@ -67,8 +67,8 @@ language other than the three, no server-side speech in v1, no change to who may
 
 | Step | Content |
 |---|---|
-| VL0 | This ADR (documents only) |
-| VL1 | Backend: `language` on the chat request, prompt per language, `preferred_language` on leads (migration, check, lead schemas, filter), Indic digit conversion, Hindi/Telugu screening phrases, attack library texts |
+| VL0 | This ADR (documents only) - **done 2026-11-12** |
+| VL1 | Backend: `language` on the chat request, prompt per language, `preferred_language` on leads (migration, check, lead schemas, filter), Indic digit conversion, Hindi/Telugu screening phrases, attack library texts - **done 2026-11-12**: migration 0058 (`leads.preferred_language`, database check `en`/`hi`/`te`), `language` on `POST /public/chat` (fixed list, default `en`, extra values 422), one fixed prompt rule per language, the lead gets the language of the request that saved it (the model cannot set it: `save_lead` still refuses extra arguments), phone numbers in Devanagari or Telugu digits saved as 0-9, seven Hindi/Telugu instruction patterns in `app/core/screening.py` (a first version) and six cases in the attack library. The card-number check already matched Indic digits (`\d` is Unicode-aware); a test now locks that in. The lead list filter is not built yet (it needs a screen, so it moves to VL2) |
 | VL2 | `/chat` screen: language switch, microphone button (browser speech), "read replies aloud", notices; route handler passes the code |
 | VL3 | Evaluation cases (scripted), Playwright journey (typed Hindi and Telugu; speech faked), docs, one real-model pass |
 

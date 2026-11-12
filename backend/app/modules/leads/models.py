@@ -102,6 +102,11 @@ class Lead(
             f"company_size IS NULL OR company_size IN {SIZES}",
             name="company_size_allowed",
         ),
+        # ADR 0027: the language the advisor should call in.
+        CheckConstraint(
+            "preferred_language IS NULL OR preferred_language IN ('en', 'hi', 'te')",
+            name="preferred_language_allowed",
+        ),
         Index("ix_leads_tenant_id_status", "tenant_id", "status"),
         Index("ix_leads_tenant_id_owner_id", "tenant_id", "owner_id"),
         Index("ix_leads_tenant_id_lower_email", "tenant_id", func.lower(text("email"))),
@@ -128,6 +133,7 @@ class Lead(
     company_website: Mapped[str | None] = mapped_column(String(255))
     company_industry: Mapped[str | None] = mapped_column(String(40))
     company_size: Mapped[str | None] = mapped_column(String(10))
+    preferred_language: Mapped[str | None] = mapped_column(String(2))
 
 
 class LeadActivity(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):

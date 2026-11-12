@@ -31,6 +31,7 @@ LeadSort = Literal[
 ]  # fmt: skip
 LeadPriority = Literal["hot", "warm", "cold"]
 PropertyType = Literal["apartment", "villa", "plot", "commercial"]
+PreferredLanguage = Literal["en", "hi", "te"]
 # Keys of app.modules.leads.company.INDUSTRIES / SIZES (a test keeps them in step).
 CompanyIndustry = Literal[
     "agriculture", "automotive", "banking_finance", "construction", "consulting",
@@ -96,6 +97,9 @@ class LeadCreate(_Input):
     )
     company_industry: CompanyIndustry | None = None
     company_size: CompanySize | None = Field(default=None, description="Employees, as a band.")
+    preferred_language: PreferredLanguage | None = Field(
+        default=None, description="The language the advisor should call in."
+    )
     owner_id: uuid.UUID | None = Field(
         default=None,
         description="Sales employee who should own the lead. Requires `lead:assign` unless it is "
@@ -146,6 +150,7 @@ class LeadUpdate(_Input):
     company_website: CompanyWebsite | None = None
     company_industry: CompanyIndustry | None = None
     company_size: CompanySize | None = None
+    preferred_language: PreferredLanguage | None = None
 
     @model_validator(mode="after")
     def _check(self) -> "LeadUpdate":
@@ -252,6 +257,7 @@ class LeadRead(_Output):
     company_website: str | None = None
     company_industry: CompanyIndustry | None = None
     company_size: CompanySize | None = None
+    preferred_language: PreferredLanguage | None = None
     owner_id: uuid.UUID | None
     converted_at: datetime | None
     converted_account_id: uuid.UUID | None

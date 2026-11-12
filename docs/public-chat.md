@@ -123,6 +123,16 @@ for every active sales manager, linking to the lead (e-mail per their notificati
   address), `src/lib/public-chat.test.tsx` (transcript card).
 - End to end: `e2e/public-chat.spec.ts` (skipped unless `PUBLIC_CHAT_SERVER_KEY` is set).
 
+## Language (ADR 0027, step VL1)
+
+The request may carry `language`: `en` (default), `hi` or `te` - a fixed list, anything else is a
+422. It chooses one fixed sentence in the model's prompt (answer in English, or in Hindi in
+Devanagari script, or in Telugu in Telugu script; notes for `save_lead` always in English) and is
+written on the lead as `preferred_language`, taken from the request that saved the lead - never
+from the model. Phone numbers written in Devanagari or Telugu digits are saved with 0-9. The input
+screening has a first set of Hindi and Telugu instruction phrases; card numbers in those digits
+are refused like any other. The microphone and the language switch on the page come in step VL2.
+
 ## Not built yet
 
 - Embedding the chat in the company's own website (iframe or link) - the page sends

@@ -221,3 +221,14 @@ stored evidence, so a changed form cannot put its own value on the lead. Readers
 permission see the suggestions but no boxes or buttons. Everything the page said is plain text
 (no links), and a note says what was cleaned. A look-up that failed is explained in words (a
 free-mail address, an internal name, a site that could not be read, the feature switched off).
+
+### How it is tested (EN5, 2026-11-12)
+
+The BP-10 evaluation harness plays conversations of agents that use a model; company details has
+no model and no assistant tool, so it is checked by database tests that play whole demo sites
+through the real API, worker, fetcher and parser (only the network is the in-process demo):
+`tests/db/test_company_details_api.py` (rules, roles, limits, saving) and
+`tests/db/test_company_details_sites.py` (a page with no facts, a redirect to `www.`, a redirect
+to another site, robots refusal, free-mail leads, a forged job with a private host, the same
+request read only once). `frontend/e2e/company-details.spec.ts` runs the journey in a browser
+(needs `CRM_WEBCHECK_DEMO=true` and `E2E_WEBCHECK_DEMO=1`, and no standing worker).

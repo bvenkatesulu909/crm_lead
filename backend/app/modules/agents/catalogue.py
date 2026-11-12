@@ -143,6 +143,20 @@ AGENTS: dict[str, AgentDef] = {
             platform_switch=False,
         ),
         AgentDef(
+            key="company_details",
+            title="Company details",
+            description=(
+                "Reads a lead's company website (home page and About page) and suggests its "
+                "website, industry and size; the person decides what to save. No language model, "
+                "nothing about the person is sent. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
             key="voice",
             title="Voice conversation",
             description=(

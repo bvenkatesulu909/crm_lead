@@ -2,7 +2,7 @@
 
 What we know about a home buyer, with every detail labelled **fact**, **assumption** or **gap**, so a
 guess is never read later as something the buyer said. Design and the options considered:
-[ADR 0028](adr/0028-buyer-memory.md). This page describes what is built (step BM1: the backend).
+[ADR 0028](adr/0028-buyer-memory.md). This page describes what is built (steps BM1: the backend, BM2: the lead page card).
 
 ## 1. The three labels
 
@@ -78,8 +78,28 @@ paths, a fact without a source, newest wins, confirming, copying, role denial, r
 colleague's lead, another organisation's lead, made-up and malformed ids, fields the server decides, the
 database refusing updates, deletes and bad rows), `tests/db/test_buyer_memory_chat.py` (seeding).
 
-## 9. Not built yet
+## 9. The lead page card (BM2)
 
-The lead page card (BM2: Facts, Assumptions, Gaps, add and confirm dialogs, history, the copy button);
-a Playwright journey (BM3); AI suggestions as assumptions through the approval queue (a later step);
+The **Buyer memory** card sits above Company details on `/leads/{id}` and is shown to people with
+`buyer_memory:read` (the API answers 404 for a lead they may not read, and then nothing is shown).
+
+- a one-line summary: "2 facts · 1 assumption · 9 still to ask";
+- **Facts**: the detail, where it came from ("Buyer confirmed - \"quote\"", "The website chat", "The lead form") and the date;
+- **Assumptions** ("We think so - not confirmed by the buyer"): the detail and "Why we think so", with a
+  **Confirm** button that asks "What did the buyer say?" (and optionally a corrected detail) and adds a fact;
+- **Still to ask**: the keys with no answer yet;
+- for people with `buyer_memory:write`: **Add a detail** (what is it about, "The buyer told us" with what they
+  said, or "We think so" with why) and **Copy from the lead form**;
+- **Earlier entries (n)** behind a fold (the history), and a line: do not record religion, caste, health,
+  politics or ID numbers here.
+
+Everything anyone wrote is shown as plain text (never markup or a link). The Server Actions send only a short
+list of fields: a fact is always sent as "the buyer confirmed" with its quote, and nothing else in the form
+(a tenant, a lead, a source) is passed on; the API checks the key list, the permissions and every rule again.
+In v1 the form offers only "the buyer told us" as a source; citing a timeline entry is possible through the
+API. Messages after an action (`?done=memory-added`, `-confirmed`, `-copied`) are shown at the top of the page.
+
+## 10. Not built yet
+
+A Playwright journey and the rest of the screen tests (BM3); AI suggestions as assumptions through the approval queue (a later step);
 copying the memory to the contact or account on conversion (the lead page stays reachable).

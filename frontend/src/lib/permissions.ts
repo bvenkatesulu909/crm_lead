@@ -107,6 +107,11 @@ export const canRunWebCheck = (me: Pick<Me, "permissions">) =>
   hasAny(me, "webcheck:run");
 export const canReadWebCheck = (me: Pick<Me, "permissions">) =>
   hasAny(me, "webcheck:read");
+/** Buyer memory (ADR 0028): display only - the API checks again, and the lead decides. */
+export const canReadBuyerMemory = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "buyer_memory:read");
+export const canWriteBuyerMemory = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "buyer_memory:write");
 /** The Qualifier (docs/qualifier.md): ask for an assessment / read the procedure / write it. */
 export const canRunQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:run");

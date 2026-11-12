@@ -60,6 +60,7 @@ modules = [
     "app.modules.assistant",
     "app.modules.catalog",
     "app.modules.approvals",
+    "app.modules.buyer_memory",
     "app.modules.communications",
     "app.modules.contacts",
     "app.modules.contracts",

@@ -1,6 +1,6 @@
 # ADR 0028 — Buyer memory: every detail labelled a fact, an assumption or a gap
 
-- **Status:** Proposed (2026-11-12) - waiting for the owner's answers in section 6
+- **Status:** Accepted (2026-11-12) with the recommended answer to all seven questions in section 6
 - **Date:** 2026-11-12
 - **Deciders:** Project owner
 - **Depends on:** ADR 0013 (website chat), ADR 0017/0018 (cleaning of untrusted text), ADR 0014
@@ -88,8 +88,8 @@ reachable, so the memory stays reachable); no sensitive categories.
 
 | Step | Content |
 |---|---|
-| BM0 | This ADR (documents only) |
-| BM1 | Backend: migration (table, forced RLS, no UPDATE/DELETE for the app role), pure rules (keys, statuses, source and quote/reason checks, cleaning), service, `api.py`, permissions `buyer_memory:read` / `:write`, endpoints (`GET`/`POST /leads/{id}/memory`, confirm), audit, seeding from the website chat and from the lead form |
+| BM0 | This ADR (documents only) - **done 2026-11-12** |
+| BM1 | Backend: migration (table, forced RLS, no UPDATE/DELETE for the app role), pure rules (keys, statuses, source and quote/reason checks, cleaning), service, `api.py`, permissions `buyer_memory:read` / `:write`, endpoints (`GET`/`POST /leads/{id}/memory`, confirm), audit, seeding from the website chat and from the lead form - **done 2026-11-12**: migration 0059 `buyer_memory_items` (forced RLS; the database refuses a fact without a source and quote, an assumption without a reason, an unknown key or status, and any UPDATE - a trigger plus no UPDATE/DELETE privilege for the application role), pure rules, service, `/api/v1/leads/{id}/memory` (read, add, confirm, copy from the lead form), permissions `buyer_memory:read` / `:write`, seeding from the website chat (facts citing the conversation; no guesses, the chat's notes are not turned into facts); see docs/buyer-memory.md |
 | BM2 | Lead page card: three groups (Facts, Assumptions, Gaps), add / confirm dialogs, sources shown, history, "copy from the lead form" |
 | BM3 | Tests (tenant isolation, role denial, record-level denial, ID tampering, a fact without a source, cleaning), Playwright journey, docs, `docs/buyer-memory.md` |
 

@@ -297,6 +297,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "platform:tenant:manage": "Manage organisations on the platform",
   "webcheck:run": "Look up a RERA number or a company on a public registry",
   "webcheck:read": "Read the results of those lookups",
+  "buyer_memory:read": "See what we know about a buyer: facts, assumptions and gaps",
+  "buyer_memory:write": "Record and confirm what we know about a buyer",
   "qualifier:run": "Ask the Qualifier to assess a lead",
   "qualifier:read": "Read the Qualifier's written steps",
   "qualifier:manage": "Write the Qualifier's steps and try them",

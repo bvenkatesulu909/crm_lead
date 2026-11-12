@@ -23,6 +23,7 @@ from app.core.events import publish
 from app.core.screening import screen
 from app.modules.agents import api as agents_api
 from app.modules.assistant import api as assistant_api
+from app.modules.buyer_memory import api as buyer_memory_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 from app.modules.public_chat import repository, rules
@@ -165,6 +166,17 @@ def _save_lead(
         cleaned_codes=codes,
     )
     session.flush()
+    # What the visitor gave becomes buyer memory facts that cite this conversation (ADR 0028).
+    buyer_memory_api.record_from_website_chat(
+        session,
+        automation,
+        conversation.lead_id,
+        conversation.id,
+        property_type=args.property_type,
+        budget_min_inr=args.budget_min_inr,
+        budget_max_inr=args.budget_max_inr,
+        location=location,
+    )
     repository.count_event(session, tenant_id, _now().date(), leads=1)
     # Sales managers hear about it through the worker (notifications, ADR 0006): IDs only.
     publish(

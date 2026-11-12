@@ -168,6 +168,10 @@ class Permission(StrEnum):
     # evidence. Both still need the right to read the lead or account the check is about.
     WEBCHECK_RUN = "webcheck:run"
     WEBCHECK_READ = "webcheck:read"
+    # Buyer memory (ADR 0028): what we know about a buyer. The lead's own read rules still decide
+    # which leads a person may open.
+    BUYER_MEMORY_READ = "buyer_memory:read"
+    BUYER_MEMORY_WRITE = "buyer_memory:write"
     QUALIFIER_RUN = "qualifier:run"
     QUALIFIER_READ = "qualifier:read"
     QUALIFIER_MANAGE = "qualifier:manage"
@@ -194,6 +198,7 @@ _SALES_ALL = frozenset(
         _P.COMMUNICATION_SEND, _P.COMMUNICATION_READ_ALL, _P.COMMUNICATION_TEMPLATE_MANAGE,
         _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE, _P.AGENT_READ,
         _P.WEBCHECK_RUN, _P.WEBCHECK_READ,
+        _P.BUYER_MEMORY_READ, _P.BUYER_MEMORY_WRITE,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
         _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN,
     }
@@ -229,6 +234,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.LEAD_READ_OWN,
             _P.LEAD_WRITE_OWN,
             _P.LEAD_CONVERT,
+            _P.BUYER_MEMORY_READ,
+            _P.BUYER_MEMORY_WRITE,
             _P.OPPORTUNITY_READ_OWN,
             _P.OPPORTUNITY_WRITE_OWN,
             _P.ACTIVITY_READ_OWN,

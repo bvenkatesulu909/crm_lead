@@ -36,12 +36,13 @@ def add_lead(db_session: Session, world: World, owner: str = "alpha.agent1", **f
     return lead
 
 
-def switch(api: Any, auth: Headers, on: bool = True) -> None:
-    current = ok(api.get("/api/v1/agents/company_details", headers=auth("alpha.admin")))
+def switch(api: Any, auth: Headers, on: bool = True, admin: str = "alpha.admin") -> None:
+    url = "/api/v1/agents/company_details"
+    current = ok(api.get(url, headers=auth(admin)))
     body: dict[str, Any] = {"enabled": on}
     if current.get("version") is not None:
         body["version"] = current["version"]
-    ok(api.patch("/api/v1/agents/company_details", json=body, headers=auth("alpha.admin")))
+    ok(api.patch(url, json=body, headers=auth(admin)))
 
 
 def ask(api: Any, auth: Headers, lead: Any, user: str = "alpha.agent1", **extra: Any) -> Any:
@@ -125,12 +126,13 @@ def test_the_work_email_domain_is_used_when_there_is_no_website(
 
 @pytest.mark.parametrize(
     ("user", "expected"),
-    [("alpha.agent2", 404), ("beta.admin", 404), ("alpha.support", 404), ("alpha.customer1", 403)],
+    [("alpha.agent2", 404), ("beta.admin", 404), ("alpha.support", 404), ("alpha.customer", 403)],
 )
 def test_only_people_who_may_read_the_lead_can_ask(
     api, auth, world, db_session, user, expected
 ) -> None:
     switch(api, auth)
+    switch(api, auth, admin="beta.admin")  # on in the other organisation too: still not its lead
     lead = add_lead(db_session, world, company_website=ACME)
     assert ask(api, auth, lead, user).status_code == expected
     assert read(api, auth, lead, user).status_code == expected
@@ -278,6 +280,7 @@ def test_a_stale_version_is_refused(api, auth, world, db_session, worker) -> Non
 @pytest.mark.parametrize("user", ["alpha.agent2", "beta.admin"])
 def test_nobody_else_can_save_them(api, auth, world, db_session, worker, user) -> None:
     switch(api, auth)
+    switch(api, auth, admin="beta.admin")
     lead = add_lead(db_session, world, company_website=ACME)
     body = looked_up(api, auth, worker, lead)
     assert apply(api, auth, lead, body["latest"], ["company_size"], 1, user).status_code == 404

@@ -6,6 +6,7 @@ their own leads.
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from pydantic import ValidationError
@@ -34,7 +35,12 @@ from app.modules.leads.metrics import (
     web_lead_quality_table,
     web_leads_by_month,
 )
-from app.modules.leads.models import LEAD_STATUSES, Lead, LeadActivity
+from app.modules.leads.models import (
+    LEAD_STATUSES,
+    USER_ACTIVITY_KINDS,
+    Lead,
+    LeadActivity,
+)
 from app.modules.leads.policies import readable_leads
 from app.modules.leads.repository import LeadFilters
 from app.modules.leads.schemas import ActivityCreate, LeadCreate, LeadUpdate
@@ -68,6 +74,10 @@ __all__ = [
     "is_readable_lead",
     "lead_activity_belongs",
     "BuyerFields",
+    "LeadBriefFacts",
+    "TimelineEntry",
+    "brief_facts",
+    "recent_timeline",
     "buyer_fields",
     "owned_lead_ids",
     "lead_figures_by_owner",
@@ -114,6 +124,66 @@ def buyer_fields(session: Session, principal: Principal, lead_id: uuid.UUID) -> 
     if lead is None:
         return None
     return BuyerFields(lead.property_type, lead.budget_min_inr, lead.budget_max_inr, lead.location)
+
+
+@dataclass(frozen=True)
+class LeadBriefFacts:
+    """What the rep's brief (ADR 0029) shows about the lead itself."""
+
+    first_name: str | None
+    last_name: str
+    status: str
+    source: str | None
+    owner_id: uuid.UUID | None
+    phone: str | None
+    email: str | None
+    preferred_language: str | None
+    property_type: str | None
+    budget_min_inr: int | None
+    budget_max_inr: int | None
+    location: str | None
+
+
+def brief_facts(
+    session: Session, principal: Principal, lead_id: uuid.UUID
+) -> LeadBriefFacts | None:
+    """The lead as the brief needs it, if this person may read it, else None."""
+    lead = repository.get_readable(session, principal, lead_id)
+    if lead is None:
+        return None
+    return LeadBriefFacts(
+        lead.first_name, lead.last_name, lead.status, lead.source, lead.owner_id, lead.phone,
+        lead.email, lead.preferred_language, lead.property_type, lead.budget_min_inr,
+        lead.budget_max_inr, lead.location,
+    )  # fmt: skip
+
+
+@dataclass(frozen=True)
+class TimelineEntry:
+    kind: str
+    occurred_at: datetime
+    subject: str
+    body: str | None
+
+
+def recent_timeline(
+    session: Session, principal: Principal, lead_id: uuid.UUID, limit: int = 5
+) -> list[TimelineEntry]:
+    """The newest things people logged on a lead (notes, calls, e-mails, meetings - not system
+    events), newest first; empty if this person may not read the lead."""
+    if principal.tenant_id is None or not is_readable_lead(session, principal, lead_id):
+        return []
+    rows = session.scalars(
+        select(LeadActivity)
+        .where(
+            LeadActivity.tenant_id == principal.tenant_id,
+            LeadActivity.lead_id == lead_id,
+            LeadActivity.kind.in_(USER_ACTIVITY_KINDS),
+        )
+        .order_by(LeadActivity.occurred_at.desc(), LeadActivity.seq.desc())
+        .limit(limit)
+    ).all()
+    return [TimelineEntry(r.kind, r.occurred_at, r.subject, r.body) for r in rows]
 
 
 def owned_lead_ids(principal: Principal) -> Select[uuid.UUID]:

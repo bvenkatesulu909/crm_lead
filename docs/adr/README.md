@@ -40,4 +40,4 @@ Rules:
 | [0026](0026-lead-company-enrichment.md) | One-click company details on a lead from the company's own website (BP-02) | Accepted |
 | [0027](0027-hindi-telugu-voice-lead-capture.md) | Hindi and Telugu voice lead capture on the website chat | Accepted |
 | [0028](0028-buyer-memory.md) | Buyer memory: every detail labelled a fact, an assumption or a gap | Accepted |
-| [0029](0029-site-visit-brief.md) | The rep's brief before a site visit | Proposed |
+| [0029](0029-site-visit-brief.md) | The rep's brief before a site visit | Accepted |

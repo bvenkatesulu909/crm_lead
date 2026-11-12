@@ -44,6 +44,7 @@ from app.modules.quotes.router import router as quotes_router
 from app.modules.relationships.router import router as relationships_router
 from app.modules.reports.router import router as reports_router
 from app.modules.sales.router import router as opportunities_router
+from app.modules.site_brief.router import router as site_brief_router
 from app.modules.support.router import portal_router as portal_tickets_router
 from app.modules.support.router import router as tickets_router
 from app.modules.voice.router import router as voice_router
@@ -80,6 +81,7 @@ api_router.include_router(workflows_router)
 api_router.include_router(reports_router)
 api_router.include_router(leads_router)
 api_router.include_router(buyer_memory_router)
+api_router.include_router(site_brief_router)
 api_router.include_router(portal_router)
 api_router.include_router(tickets_router)
 api_router.include_router(portal_tickets_router)

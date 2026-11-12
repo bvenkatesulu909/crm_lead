@@ -1,6 +1,6 @@
 # ADR 0029 — The rep's brief before a site visit
 
-- **Status:** Proposed (2026-11-12) - waiting for the owner's answers in section 6
+- **Status:** Accepted (2026-11-12) with the recommended answer to all seven questions in section 6
 - **Date:** 2026-11-12
 - **Deciders:** Project owner
 - **Depends on:** ADR 0028 (buyer memory - the brief reads it), ADR 0027 (language on the lead), ADR
@@ -77,8 +77,8 @@ sharing, no change to the lead, the memory or the timeline.
 
 | Step | Content |
 |---|---|
-| SV0 | This ADR (documents only) |
-| SV1 | Backend: pure rules (sections, the twelve questions, the cautions, cleaning of the place and the note excerpts), service reading through the other modules' `api.py`, `GET /api/v1/leads/{id}/brief?place=`, a small read function in the leads and activities `api.py`, tests (happy path, record-level denial, other organisation, role denial, made-up id, the place cleaned, nothing stored) |
+| SV0 | This ADR (documents only) - **done 2026-11-12** |
+| SV1 | Backend: pure rules (sections, the twelve questions, the cautions, cleaning of the place and the note excerpts), service reading through the other modules' `api.py`, `GET /api/v1/leads/{id}/brief?place=`, a small read function in the leads and activities `api.py`, tests (happy path, record-level denial, other organisation, role denial, made-up id, the place cleaned, nothing stored) - **done 2026-11-12**: module `site_brief` (pure rules, service, `GET /api/v1/leads/{id}/brief?place=`), small read functions in the leads, activities and buyer memory `api.py` files, no table, nothing written; see docs/site-visit-brief.md |
 | SV2 | The page `/leads/{id}/brief` and the button on the lead page, print style, component tests, a Playwright journey |
 | SV3 | `docs/site-visit-brief.md`, status notes |
 

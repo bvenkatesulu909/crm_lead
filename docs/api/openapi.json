@@ -2335,6 +2335,336 @@
         "title": "BriefTask",
         "type": "object"
       },
+      "CallDetail": {
+        "description": "One recording with its transcript (always an automatic one - the screen says so).",
+        "properties": {
+          "added_by_user_id": {
+            "format": "uuid",
+            "title": "Added By User Id",
+            "type": "string"
+          },
+          "audio_available": {
+            "title": "Audio Available",
+            "type": "boolean"
+          },
+          "audio_deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Deleted At"
+          },
+          "consent_confirmed_at": {
+            "format": "date-time",
+            "title": "Consent Confirmed At",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "has_transcript": {
+            "title": "Has Transcript",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "hi",
+              "te",
+              "en"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "lead_id": {
+            "format": "uuid",
+            "title": "Lead Id",
+            "type": "string"
+          },
+          "segments": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segments"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "transcript": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcript"
+          }
+        },
+        "required": [
+          "id",
+          "lead_id",
+          "added_by_user_id",
+          "language",
+          "status",
+          "failure_code",
+          "file_name",
+          "size_bytes",
+          "duration_seconds",
+          "consent_confirmed_at",
+          "created_at",
+          "finished_at",
+          "audio_available",
+          "audio_deleted_at",
+          "has_transcript",
+          "engine",
+          "transcript",
+          "segments"
+        ],
+        "title": "CallDetail",
+        "type": "object"
+      },
+      "CallPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CallRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CallPage",
+        "type": "object"
+      },
+      "CallRead": {
+        "description": "A recording as the list shows it: no transcript text (that is a separate, heavier read).",
+        "properties": {
+          "added_by_user_id": {
+            "format": "uuid",
+            "title": "Added By User Id",
+            "type": "string"
+          },
+          "audio_available": {
+            "title": "Audio Available",
+            "type": "boolean"
+          },
+          "audio_deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Deleted At"
+          },
+          "consent_confirmed_at": {
+            "format": "date-time",
+            "title": "Consent Confirmed At",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "has_transcript": {
+            "title": "Has Transcript",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "hi",
+              "te",
+              "en"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "lead_id": {
+            "format": "uuid",
+            "title": "Lead Id",
+            "type": "string"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "lead_id",
+          "added_by_user_id",
+          "language",
+          "status",
+          "failure_code",
+          "file_name",
+          "size_bytes",
+          "duration_seconds",
+          "consent_confirmed_at",
+          "created_at",
+          "finished_at",
+          "audio_available",
+          "audio_deleted_at",
+          "has_transcript",
+          "engine"
+        ],
+        "title": "CallRead",
+        "type": "object"
+      },
       "Cancel": {
         "additionalProperties": false,
         "properties": {
@@ -8500,6 +8830,33 @@
           "version"
         ],
         "title": "LeadUpdate",
+        "type": "object"
+      },
+      "ListenLink": {
+        "properties": {
+          "expires_in_seconds": {
+            "title": "Expires In Seconds",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "which": {
+            "enum": [
+              "original",
+              "cleaned"
+            ],
+            "title": "Which",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_in_seconds",
+          "which"
+        ],
+        "title": "ListenLink",
         "type": "object"
       },
       "MarkLost": {
@@ -16367,100 +16724,6 @@
         "title": "TurnRead",
         "type": "object"
       },
-      "UploadStart": {
-        "additionalProperties": false,
-        "description": "What a browser says before it sends a file straight to the store (ADR 0025). Nothing here\nis trusted beyond its shape: the record, the name, the size and the type are all checked.",
-        "properties": {
-          "customer_visible": {
-            "default": false,
-            "title": "Customer Visible",
-            "type": "boolean"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "file_name": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "File Name",
-            "type": "string"
-          },
-          "record_id": {
-            "format": "uuid",
-            "title": "Record Id",
-            "type": "string"
-          },
-          "record_type": {
-            "enum": [
-              "account",
-              "opportunity"
-            ],
-            "title": "Record Type",
-            "type": "string"
-          },
-          "size_bytes": {
-            "minimum": 1.0,
-            "title": "Size Bytes",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "record_type",
-          "record_id",
-          "file_name",
-          "size_bytes"
-        ],
-        "title": "UploadStart",
-        "type": "object"
-      },
-      "UploadTicket": {
-        "description": "Where and how to send the file: POST every field in ``fields`` to ``url``, in order, with\nthe file last as the field ``file``; then call ``finish`` with ``upload_id``.",
-        "properties": {
-          "expires_at": {
-            "format": "date-time",
-            "title": "Expires At",
-            "type": "string"
-          },
-          "fields": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Fields",
-            "type": "object"
-          },
-          "max_bytes": {
-            "title": "Max Bytes",
-            "type": "integer"
-          },
-          "upload_id": {
-            "format": "uuid",
-            "title": "Upload Id",
-            "type": "string"
-          },
-          "url": {
-            "title": "Url",
-            "type": "string"
-          }
-        },
-        "required": [
-          "upload_id",
-          "url",
-          "fields",
-          "expires_at",
-          "max_bytes"
-        ],
-        "title": "UploadTicket",
-        "type": "object"
-      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -17165,6 +17428,81 @@
         "title": "Reopen",
         "type": "object"
       },
+      "app__modules__calls__schemas__UploadStart": {
+        "additionalProperties": false,
+        "properties": {
+          "consent": {
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "file_name": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "File Name",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "hi",
+              "te",
+              "en"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 1.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_name",
+          "size_bytes",
+          "language",
+          "consent"
+        ],
+        "title": "UploadStart",
+        "type": "object"
+      },
+      "app__modules__calls__schemas__UploadTicket": {
+        "properties": {
+          "call_id": {
+            "format": "uuid",
+            "title": "Call Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "max_bytes": {
+            "title": "Max Bytes",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "call_id",
+          "url",
+          "fields",
+          "expires_at",
+          "max_bytes"
+        ],
+        "title": "UploadTicket",
+        "type": "object"
+      },
       "app__modules__dashboard__schemas__ActivityRead": {
         "properties": {
           "actor_name": {
@@ -17274,6 +17612,100 @@
           "gathered"
         ],
         "title": "BriefRead",
+        "type": "object"
+      },
+      "app__modules__documents__schemas__UploadStart": {
+        "additionalProperties": false,
+        "description": "What a browser says before it sends a file straight to the store (ADR 0025). Nothing here\nis trusted beyond its shape: the record, the name, the size and the type are all checked.",
+        "properties": {
+          "customer_visible": {
+            "default": false,
+            "title": "Customer Visible",
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "file_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "File Name",
+            "type": "string"
+          },
+          "record_id": {
+            "format": "uuid",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "record_type": {
+            "enum": [
+              "account",
+              "opportunity"
+            ],
+            "title": "Record Type",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 1.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "record_type",
+          "record_id",
+          "file_name",
+          "size_bytes"
+        ],
+        "title": "UploadStart",
+        "type": "object"
+      },
+      "app__modules__documents__schemas__UploadTicket": {
+        "description": "Where and how to send the file: POST every field in ``fields`` to ``url``, in order, with\nthe file last as the field ``file``; then call ``finish`` with ``upload_id``.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "max_bytes": {
+            "title": "Max Bytes",
+            "type": "integer"
+          },
+          "upload_id": {
+            "format": "uuid",
+            "title": "Upload Id",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_id",
+          "url",
+          "fields",
+          "expires_at",
+          "max_bytes"
+        ],
+        "title": "UploadTicket",
         "type": "object"
       },
       "app__modules__lead_agent__schemas__RunRead": {
@@ -24493,7 +24925,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UploadStart"
+                "$ref": "#/components/schemas/app__modules__documents__schemas__UploadStart"
               }
             }
           },
@@ -24504,7 +24936,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UploadTicket"
+                  "$ref": "#/components/schemas/app__modules__documents__schemas__UploadTicket"
                 }
               }
             },
@@ -27892,6 +28324,604 @@
         "summary": "The rep's brief before a site visit (built on demand, nothing is stored)",
         "tags": [
           "site-brief"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/calls": {
+      "get": {
+        "operationId": "list_calls_api_v1_leads__lead_id__calls_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The recordings of a lead, newest first",
+        "tags": [
+          "calls"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/calls/uploads": {
+      "post": {
+        "operationId": "start_upload_api_v1_leads__lead_id__calls_uploads_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__modules__calls__schemas__UploadStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__modules__calls__schemas__UploadTicket"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start adding a call recording: checks, then a short-lived signed upload link",
+        "tags": [
+          "calls"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/calls/{call_id}": {
+      "get": {
+        "operationId": "get_call_api_v1_leads__lead_id__calls__call_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One recording with its transcript",
+        "tags": [
+          "calls"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/calls/{call_id}/audio": {
+      "delete": {
+        "operationId": "delete_audio_api_v1_leads__lead_id__calls__call_id__audio_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete the audio of a recording (its transcript and consent record stay)",
+        "tags": [
+          "calls"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/calls/{call_id}/finish": {
+      "post": {
+        "operationId": "finish_upload_api_v1_leads__lead_id__calls__call_id__finish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Finish an upload: check the file that arrived and queue it for processing",
+        "tags": [
+          "calls"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/calls/{call_id}/listen": {
+      "get": {
+        "operationId": "listen_api_v1_leads__lead_id__calls__call_id__listen_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListenLink"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A 60-second link to listen to the recording (the cleaned copy when there is one)",
+        "tags": [
+          "calls"
         ]
       }
     },

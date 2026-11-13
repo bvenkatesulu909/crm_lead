@@ -1,6 +1,6 @@
 # ADR 0030 — Call recordings: clear audio and transcripts in Hinglish and Telugu
 
-- **Status:** Proposed (2026-11-12) - waiting for the owner's answers in section 6
+- **Status:** Accepted (2026-11-13, owner: "Approve, build CA1"). CA1 built 2026-11-13; the provider's `language` and timestamps move to CA2.
 - **Date:** 2026-11-12
 - **Deciders:** Project owner
 - **Depends on:** ADR 0025 (large files straight to the store through signed links), ADR 0012 (the
@@ -87,7 +87,7 @@ the CRM, no translation.
 | Step | Content |
 |---|---|
 | CA0 | This ADR (documents only) |
-| CA1 | Backend: migration `call_recordings` (forced RLS), pure rules, signed upload start / finish, status flow, permissions, audit, settings, the registry entry `call_audio`, `language` and timestamps in the speech provider |
+| CA1 | Backend: migration `call_recordings` (forced RLS), pure rules, signed upload start / finish, status flow, permissions, audit, settings, the registry entry `call_audio` (**done 2026-11-13**; `language` and timestamps in the speech provider moved to CA2) |
 | CA2 | The worker: ffmpeg cleaning, transcription with the language hint, retries, retention sweep; tests with a fake engine and a fake cleaner, one real ffmpeg test |
 | CA3 | The lead page card (add a recording, status, player for the cleaned copy, transcript), a Playwright journey, docs, and a measured trial on a small fictional Hindi, Hinglish and Telugu sample |
 

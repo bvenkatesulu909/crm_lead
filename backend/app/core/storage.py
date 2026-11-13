@@ -107,8 +107,23 @@ class FileStore(Protocol):
         """Size and type without reading the bytes. Raises ``StoredFileMissingError``."""
         ...
 
-    def signed_upload(self, key: str, *, content_type: str, max_bytes: int) -> SignedUpload:
-        """A POST policy for exactly this key, type and 1..max_bytes, valid five minutes."""
+    def copy(self, source: str, destination: str) -> None:
+        """Copy one object inside the store (a large recording moves from ``pending/`` to its
+        permanent key), streamed so it is never held whole in memory. The source stays. Raises
+        ``StoredFileMissingError`` if there is no source."""
+        ...
+
+    def read_head(self, key: str, length: int) -> bytes:
+        """At most ``length`` bytes from the start of an object, without reading the rest (to look
+        at the magic bytes of a large file). Raises ``StoredFileMissingError``."""
+        ...
+
+    def signed_upload(
+        self, key: str, *, content_type: str, max_bytes: int, hard_limit: int | None = None
+    ) -> SignedUpload:
+        """A POST policy for exactly this key, type and 1..max_bytes, valid five minutes.
+        ``hard_limit`` replaces the usual file size limit for a feature that takes large files
+        (call recordings, ADR 0030); ``max_bytes`` may not exceed it."""
         ...
 
     def signed_download(self, key: str, *, file_name: str) -> str:
@@ -239,9 +254,56 @@ class S3FileStore:
             raise FileStoreUnavailableError("The file store is temporarily unavailable.") from exc
         return StoredObject(int(found.size or 0), found.content_type or "")
 
-    def signed_upload(self, key: str, *, content_type: str, max_bytes: int) -> SignedUpload:
-        if not 1 <= max_bytes <= self._max_bytes:
-            raise ValueError("max_bytes must be between 1 and files_max_bytes")
+    def copy(self, source: str, destination: str) -> None:
+        # Streamed through this server in parts, never held whole in memory. (The store's own
+        # server-side copy answers in a time format the client cannot read on SeaweedFS.)
+        try:
+            self._ensure_bucket()
+            found = self._client.stat_object(self._bucket, source)
+            response = self._client.get_object(self._bucket, source)
+            try:
+                self._client.put_object(
+                    self._bucket,
+                    destination,
+                    response,  # type: ignore[arg-type]  # a readable stream; minio's hint is too narrow
+                    int(found.size or 0),
+                    content_type=found.content_type or "application/octet-stream",
+                    part_size=10 * 1024 * 1024,
+                )
+            finally:
+                response.close()
+                response.release_conn()
+        except S3Error as exc:
+            if exc.code in ("NoSuchKey", "NoSuchObject", "NotFound"):
+                raise StoredFileMissingError("The file doesn't exist.") from exc
+            raise FileStoreUnavailableError("The file store is temporarily unavailable.") from exc
+        except HTTPError as exc:
+            raise FileStoreUnavailableError("The file store is temporarily unavailable.") from exc
+
+    def read_head(self, key: str, length: int) -> bytes:
+        if length < 1:
+            raise ValueError("length must be at least 1")
+        try:
+            self._ensure_bucket()
+            response = self._client.get_object(self._bucket, key, offset=0, length=length)
+            try:
+                return response.read(length)
+            finally:
+                response.close()
+                response.release_conn()
+        except S3Error as exc:
+            if exc.code in ("NoSuchKey", "NoSuchObject"):
+                raise StoredFileMissingError("The file doesn't exist.") from exc
+            raise FileStoreUnavailableError("The file store is temporarily unavailable.") from exc
+        except HTTPError as exc:
+            raise FileStoreUnavailableError("The file store is temporarily unavailable.") from exc
+
+    def signed_upload(
+        self, key: str, *, content_type: str, max_bytes: int, hard_limit: int | None = None
+    ) -> SignedUpload:
+        limit = hard_limit if hard_limit is not None else self._max_bytes
+        if not 1 <= max_bytes <= limit:
+            raise ValueError("max_bytes must be between 1 and the file size limit")
         expires = datetime.now(UTC) + UPLOAD_LINK_LIFETIME
         policy = PostPolicy(self._bucket, expires)
         policy.add_equals_condition("key", key)
@@ -302,9 +364,28 @@ class MemoryFileStore:
             raise StoredFileMissingError("The file doesn't exist.") from None
         return StoredObject(len(data), content_type)
 
-    def signed_upload(self, key: str, *, content_type: str, max_bytes: int) -> SignedUpload:
+    def copy(self, source: str, destination: str) -> None:
+        try:
+            data, content_type = self.objects[source]
+        except KeyError:
+            raise StoredFileMissingError("The file doesn't exist.") from None
+        self.objects[destination] = (bytes(data), content_type)
+
+    def read_head(self, key: str, length: int) -> bytes:
+        if length < 1:
+            raise ValueError("length must be at least 1")
+        try:
+            return self.objects[key][0][:length]
+        except KeyError:
+            raise StoredFileMissingError("The file doesn't exist.") from None
+
+    def signed_upload(
+        self, key: str, *, content_type: str, max_bytes: int, hard_limit: int | None = None
+    ) -> SignedUpload:
         if max_bytes < 1:
             raise ValueError("max_bytes must be at least 1")
+        if hard_limit is not None and max_bytes > hard_limit:
+            raise ValueError("max_bytes may not exceed the file size limit")
         self.signed_uploads[key] = (content_type, max_bytes)
         expires = datetime.now(UTC) + UPLOAD_LINK_LIFETIME
         fields = {"key": key, "Content-Type": content_type, "policy": "memory"}
@@ -343,7 +424,15 @@ class UnconfiguredFileStore:
     def stat(self, key: str) -> StoredObject:
         raise self._fail()
 
-    def signed_upload(self, key: str, *, content_type: str, max_bytes: int) -> SignedUpload:
+    def copy(self, source: str, destination: str) -> None:
+        raise self._fail()
+
+    def read_head(self, key: str, length: int) -> bytes:
+        raise self._fail()
+
+    def signed_upload(
+        self, key: str, *, content_type: str, max_bytes: int, hard_limit: int | None = None
+    ) -> SignedUpload:
         raise self._fail()
 
     def signed_download(self, key: str, *, file_name: str) -> str:

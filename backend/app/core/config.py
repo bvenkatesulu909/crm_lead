@@ -178,6 +178,17 @@ class Settings(BaseSettings):
     files_uploads_per_user_hour: int = Field(default=60, ge=1, le=10_000)
     files_upload_finish_minutes: int = Field(default=60, ge=5, le=1440)
 
+    # Call recordings (ADR 0030): large audio files go straight to the store, so their own size
+    # limit applies (the usual files_max_bytes does not). A recording may be at most
+    # ``calls_max_minutes`` long (checked by the worker, step CA2) and the audio is deleted after
+    # ``calls_retention_days`` (the transcript stays with the lead).
+    calls_max_bytes: int = Field(default=100 * 1024 * 1024, ge=1024 * 1024, le=500 * 1024 * 1024)
+    calls_max_minutes: int = Field(default=60, ge=1, le=240)
+    calls_retention_days: int = Field(default=90, ge=1, le=3650)
+    calls_uploads_per_user_hour: int = Field(default=20, ge=1, le=1_000)
+    calls_uploads_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
+    calls_upload_finish_minutes: int = Field(default=180, ge=5, le=1440)
+
     # Outgoing e-mail via SMTP (ADR 0005). Locally Mailpit catches everything (127.0.0.1:2525).
     smtp_host: str = "127.0.0.1"
     smtp_port: int = Field(default=2525, ge=1, le=65535)

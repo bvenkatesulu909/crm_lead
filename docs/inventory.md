@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-11-12 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-11-13 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **248** operations over **199** paths and **303** schemas.
+- **254** operations over **205** paths and **309** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -31,6 +31,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | contacts | 7 |
 | qualifier | 7 |
 | workflows | 7 |
+| calls | 6 |
 | webcheck | 6 |
 | approvals | 5 |
 | notifications | 5 |
@@ -55,18 +56,18 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0059**
-- Tables in the current schema: **72**
-- Tables with Row-Level Security: **68** (68 policies)
+- Alembic revision: **0060**
+- Tables in the current schema: **73**
+- Tables with Row-Level Security: **69** (69 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **59**
-- Heads: `0059`
+- Migration files: **60**
+- Heads: `0060`
 
 ## Web app (`frontend/src/app`)
 
-- 81 pages and 15 route handlers.
+- 82 pages and 15 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -144,6 +145,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/portal/tickets` | page |
 | `/portal/tickets/[id]` | page |
 | `/portal/tickets/new` | page |
+| `/print/leads/[id]/brief` | page |
 | `/print/quotes/[id]` | page |
 | `/products` | page |
 | `/products/[id]` | page |
@@ -169,10 +171,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **203**
-- Frontend component test files: **44**
-- Playwright end-to-end specs: **38**
+- Backend test files: **206**
+- Frontend component test files: **45**
+- Playwright end-to-end specs: **39**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **91** (31 in `docs/adr/`)
+- Markdown documents under `docs/`: **92** (32 in `docs/adr/`)

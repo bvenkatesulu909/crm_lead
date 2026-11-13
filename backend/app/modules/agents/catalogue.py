@@ -171,6 +171,20 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="call_audio",
+            title="Call recordings",
+            description=(
+                "Lets staff add a recording of a call with a buyer (with the buyer's consent) to a "
+                "lead, cleans it up and writes a transcript in Hindi, Telugu or English. Counts "
+                "the minutes of audio it processes. Calls no language model. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
             key="mcp_client",
             title="AI clients (MCP)",
             description=(

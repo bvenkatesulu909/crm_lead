@@ -304,6 +304,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "webcheck:read": "Read the results of those lookups",
   "buyer_memory:read": "See what we know about a buyer: facts, assumptions and gaps",
   "buyer_memory:write": "Record and confirm what we know about a buyer",
+  "call:read": "See call recordings and transcripts on a lead",
+  "call:write": "Add a call recording to a lead",
   "qualifier:run": "Ask the Qualifier to assess a lead",
   "qualifier:read": "Read the Qualifier's written steps",
   "qualifier:manage": "Write the Qualifier's steps and try them",

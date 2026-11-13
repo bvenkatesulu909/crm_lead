@@ -11,6 +11,8 @@ with strict borders) and runs on one Windows PC with Docker Desktop.
 > and only after the hardening checklist in [docs/deployment.md](docs/deployment.md) is done
 > (ADR 0007 or the one-server path of ADR 0021). The link will be added here on that day.
 > Until then, run it on your own PC: see [Run it on your PC](#run-it-on-your-pc).
+>
+> **Demo video:** [Watch the 5-minute demo](https://drive.google.com/file/d/1hHTwIGowlo605uB4ZMZQ_OpmHmuo3k1c/view?usp=drive_link) (fictional data, scripted AI model). Script: [docs/demo-video-script.md](docs/demo-video-script.md).
 
 ## How it fits together
 

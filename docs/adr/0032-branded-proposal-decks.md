@@ -77,7 +77,7 @@ Audit entries `deck.created` and `branding.updated` hold ids only.
 | PD1 | `branding` module: table, API, logo re-encoding, tests; Branding page for administrators - **built 2026-11-13** |
 | PD2 | The deck renderer: pure, from plain data, bundled font, tests that read the PDF text - **built 2026-11-13** |
 | PD3 | Worker job, stored file, download links (staff and portal), audit - **built 2026-11-13** |
-| PD4 | Screens: "Create proposal deck" on the quote page, the portal download; Playwright journey; docs |
+| PD4 | Screens: "Create proposal deck" on the quote page, the portal download; Playwright journey; docs - **built 2026-11-13** |
 
 ## 5. Risks and limits
 

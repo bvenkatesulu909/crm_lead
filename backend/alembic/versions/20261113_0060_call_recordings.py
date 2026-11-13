@@ -1,4 +1,4 @@
-"""Call recordings: a recording of a call with a buyer, its cleaned copy and its transcript (ADR 0030, CA1).
+"""Call recordings: a call with a buyer, its cleaned copy and transcript (ADR 0030, CA1).
 
 Revision ID: 0060
 Revises: 0059
@@ -6,12 +6,14 @@ Create Date: 2026-11-13
 
 One table, ``call_recordings``: per lead, the language spoken, the buyer's consent (the database
 refuses a row without one), a status (``uploading`` -> ``queued`` -> ``processing`` -> ``ready`` or
-``failed``/``expired``), the keys of the stored files, and later the transcript with its timed segments.
+``failed``/``expired``), the keys of the stored files, and later the transcript with its
+timed segments.
 
 ENABLE + FORCE row-level security and the one tenant policy (ADR 0009). The application role keeps
 UPDATE (the status moves on) but has no DELETE or TRUNCATE privilege: a recording is removed by
-deleting its audio (the row and its transcript stay under the lead's own retention). The language and
-status lists are written out here on purpose: a migration must not change when the code does.
+deleting its audio (the row and its transcript stay under the lead's own retention). The
+language and status lists are written out here on purpose: a migration must not change when
+the code does.
 """
 
 from collections.abc import Sequence
@@ -64,7 +66,12 @@ def upgrade() -> None:
         sa.Column("content_type", sa.String(length=40), nullable=False),
         sa.Column("declared_size", sa.BigInteger(), nullable=False),
         sa.Column("size_bytes", sa.BigInteger(), nullable=True),
-        sa.Column("status", sa.String(length=12), server_default=sa.text("'uploading'"), nullable=False),
+        sa.Column(
+            "status",
+            sa.String(length=12),
+            server_default=sa.text("'uploading'"),
+            nullable=False,
+        ),
         sa.Column("failure_code", sa.String(length=40), nullable=True),
         sa.Column("original_key", sa.Text(), nullable=True),
         sa.Column("clean_key", sa.Text(), nullable=True),

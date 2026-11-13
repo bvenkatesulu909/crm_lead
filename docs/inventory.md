@@ -177,4 +177,4 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Documentation
 
-- Markdown documents under `docs/`: **92** (32 in `docs/adr/`)
+- Markdown documents under `docs/`: **93** (32 in `docs/adr/`)

@@ -41,4 +41,4 @@ Rules:
 | [0027](0027-hindi-telugu-voice-lead-capture.md) | Hindi and Telugu voice lead capture on the website chat | Accepted |
 | [0028](0028-buyer-memory.md) | Buyer memory: every detail labelled a fact, an assumption or a gap | Accepted |
 | [0029](0029-site-visit-brief.md) | The rep's brief before a site visit | Accepted |
-| [0030](0030-call-recordings-clear-audio.md) | Call recordings: clear audio and transcripts in Hinglish and Telugu | Proposed |
+| [0030](0030-call-recordings-clear-audio.md) | Call recordings: clear audio and transcripts in Hinglish and Telugu | Accepted |

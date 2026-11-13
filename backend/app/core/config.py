@@ -178,6 +178,28 @@ class Settings(BaseSettings):
     files_uploads_per_user_hour: int = Field(default=60, ge=1, le=10_000)
     files_upload_finish_minutes: int = Field(default=60, ge=5, le=1440)
 
+    # Call recordings (ADR 0030): large audio files go straight to the store, so their own size
+    # limit applies (the usual files_max_bytes does not). A recording may be at most
+    # ``calls_max_minutes`` long (checked by the worker, step CA2) and the audio is deleted after
+    # ``calls_retention_days`` (the transcript stays with the lead).
+    calls_max_bytes: int = Field(default=100 * 1024 * 1024, ge=1024 * 1024, le=500 * 1024 * 1024)
+    calls_max_minutes: int = Field(default=60, ge=1, le=240)
+    calls_retention_days: int = Field(default=90, ge=1, le=3650)
+    calls_uploads_per_user_hour: int = Field(default=20, ge=1, le=1_000)
+    calls_uploads_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
+    calls_upload_finish_minutes: int = Field(default=180, ge=5, le=1440)
+    # The worker (step CA2): a Whisper-class transcription model that gives timestamps (the
+    # voice model for chat replies does not), the month's minutes per organisation (estimated
+    # from the audio length), the ffmpeg / ffprobe programs and a time limit for one cleaning.
+    calls_stt_model: str = "whisper-1"
+    calls_monthly_minutes: int = Field(default=600, ge=1, le=1_000_000)
+    calls_ffmpeg_command: str = "ffmpeg"
+    calls_ffprobe_command: str = "ffprobe"
+    calls_clean_timeout_seconds: int = Field(default=900, ge=30, le=7200)
+    # "fake" = no ffmpeg and no speech vendor: a fixed fictional transcript (tests and local demos);
+    # refused in production.
+    calls_engine: Literal["real", "fake"] = "real"
+
     # Outgoing e-mail via SMTP (ADR 0005). Locally Mailpit catches everything (127.0.0.1:2525).
     smtp_host: str = "127.0.0.1"
     smtp_port: int = Field(default=2525, ge=1, le=65535)
@@ -314,6 +336,8 @@ class Settings(BaseSettings):
     def _public_chat_is_safe(self) -> "Settings":
         if self.environment == "production" and self.public_chat_provider == "fake":
             raise ValueError("The fake public chat provider can't be used in production.")
+        if self.environment == "production" and self.calls_engine == "fake":
+            raise ValueError("The fake call engine (calls_engine) can't be used in production.")
         if self.environment == "production" and self.ai_provider == "fake":
             raise ValueError(
                 "The fake assistant provider (ai_provider) can't be used in production."

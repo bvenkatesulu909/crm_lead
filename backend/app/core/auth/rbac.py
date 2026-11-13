@@ -172,6 +172,10 @@ class Permission(StrEnum):
     # which leads a person may open.
     BUYER_MEMORY_READ = "buyer_memory:read"
     BUYER_MEMORY_WRITE = "buyer_memory:write"
+    # Call recordings (ADR 0030): listen to and read the transcript of a call with a buyer / add
+    # or delete one. The lead's own read rules still decide which leads a person may open.
+    CALL_READ = "call:read"
+    CALL_WRITE = "call:write"
     QUALIFIER_RUN = "qualifier:run"
     QUALIFIER_READ = "qualifier:read"
     QUALIFIER_MANAGE = "qualifier:manage"
@@ -199,6 +203,7 @@ _SALES_ALL = frozenset(
         _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE, _P.AGENT_READ,
         _P.WEBCHECK_RUN, _P.WEBCHECK_READ,
         _P.BUYER_MEMORY_READ, _P.BUYER_MEMORY_WRITE,
+        _P.CALL_READ, _P.CALL_WRITE,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
         _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN,
     }
@@ -236,6 +241,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.LEAD_CONVERT,
             _P.BUYER_MEMORY_READ,
             _P.BUYER_MEMORY_WRITE,
+            _P.CALL_READ,
+            _P.CALL_WRITE,
             _P.OPPORTUNITY_READ_OWN,
             _P.OPPORTUNITY_WRITE_OWN,
             _P.ACTIVITY_READ_OWN,

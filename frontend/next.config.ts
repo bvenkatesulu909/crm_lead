@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 /**
  * The file store's address as the BROWSER reaches it (ADR 0025): uploads go there directly,
- * so the content security policy lists it in connect-src. Only an http(s) origin is used; a
+ * so the content security policy lists it in connect-src (and media-src, for the call recordings' player). Only an http(s) origin is used; a
  * missing or broken value leaves connect-src out (the policy is report-only for now).
  */
 export function fileStoreOrigin(
@@ -50,7 +50,9 @@ const nextConfig: NextConfig = {
               "object-src 'none'",
               "frame-ancestors 'none'",
               "base-uri 'self'",
-              ...(store ? [`connect-src 'self' ${store}`] : []),
+              ...(store
+                ? [`connect-src 'self' ${store}`, `media-src 'self' ${store}`]
+                : []),
             ].join("; "),
           },
           {

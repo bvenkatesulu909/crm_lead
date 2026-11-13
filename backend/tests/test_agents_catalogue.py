@@ -36,7 +36,13 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
     }
     assert {key for key, agent in AGENTS.items() if agent.uses_model} == models
     # The web check is governed like an agent but calls no language model (ADR 0019).
-    assert set(AGENTS) == models | {"web_check", "company_details", "mcp_client", "voice"}
+    assert set(AGENTS) == models | {
+        "web_check",
+        "company_details",
+        "mcp_client",
+        "voice",
+        "call_audio",
+    }
     assert AGENTS["web_check"].uses_model is False
     # An outside AI client: no model of ours to meter, the platform switch still stops it, and an
     # organisation must switch it ON (ADR 0020).
@@ -56,7 +62,14 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         False,
         False,
     )
-    starts_off = ("mcp_client", "lead_agent", "voice", "account_research", "company_details")
+    starts_off = (
+        "mcp_client",
+        "lead_agent",
+        "voice",
+        "account_research",
+        "company_details",
+        "call_audio",
+    )
     assert all(a.default_enabled for key, a in AGENTS.items() if key not in starts_off)
 
 

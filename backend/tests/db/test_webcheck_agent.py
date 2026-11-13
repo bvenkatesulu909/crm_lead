@@ -88,8 +88,8 @@ def test_the_web_check_is_in_the_registry_and_uses_no_model() -> None:
     agent = AGENTS[KEY]
     assert agent.uses_model is False and agent.tools == ()
     # Others without a model of ours: the outside AI client (ADR 0020), voice (ADR 0023) and
-    # company details (ADR 0026).
-    without_model = (KEY, "mcp_client", "voice", "company_details")
+    # company details (ADR 0026) and call recordings (ADR 0030).
+    without_model = (KEY, "mcp_client", "voice", "company_details", "call_audio")
     assert all(other.uses_model for key, other in AGENTS.items() if key not in without_model)
 
 

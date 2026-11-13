@@ -150,3 +150,49 @@ def test_links_are_signed_for_the_address_the_browser_uses() -> None:
         assert urlsplit(store.signed_download(name, file_name="a.pdf")).netloc == public
     finally:
         store.delete(name)
+
+
+# --- large recordings (ADR 0030, step CA1) ----------------------------------------------------
+
+
+def test_a_file_is_copied_inside_the_store_and_the_original_stays(
+    store: S3FileStore, key: str
+) -> None:
+    store.put(key, b"call audio bytes", "audio/mpeg")
+    copy_key = key + "-copy"
+    try:
+        store.copy(key, copy_key)
+        assert store.get(copy_key) == b"call audio bytes"
+        assert store.stat(copy_key).content_type == "audio/mpeg"
+        assert store.get(key) == b"call audio bytes"
+    finally:
+        store.delete(copy_key)
+
+
+def test_copying_a_missing_file_says_so(store: S3FileStore, key: str) -> None:
+    with pytest.raises(StoredFileMissingError):
+        store.copy(key + "-none", key + "-copy")
+
+
+def test_only_the_first_bytes_are_read(store: S3FileStore, key: str) -> None:
+    store.put(key, b"ID3" + b"x" * 5000, "audio/mpeg")
+    assert store.read_head(key, 3) == b"ID3"
+    assert len(store.read_head(key, 64)) == 64
+    with pytest.raises(StoredFileMissingError):
+        store.read_head(key + "-none", 4)
+
+
+def test_a_signed_upload_may_exceed_the_usual_file_limit_up_to_its_own(
+    store: S3FileStore, key: str
+) -> None:
+    usual = settings().files_max_bytes
+    with pytest.raises(ValueError):
+        store.signed_upload(key, content_type="audio/mpeg", max_bytes=usual + 1)
+    signed = store.signed_upload(
+        key, content_type="audio/mpeg", max_bytes=usual + 1, hard_limit=usual * 5
+    )
+    assert signed.fields["key"] == key
+    with pytest.raises(ValueError):
+        store.signed_upload(
+            key, content_type="audio/mpeg", max_bytes=usual * 5 + 1, hard_limit=usual * 5
+        )

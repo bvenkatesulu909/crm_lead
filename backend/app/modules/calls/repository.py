@@ -70,6 +70,24 @@ def count_started(
     return int(session.scalar(statement) or 0)
 
 
+def audio_older_than(
+    session: Session, tenant_id: uuid.UUID, before: datetime
+) -> list[CallRecording]:
+    """Finished recordings (ready or failed) whose audio is still stored and was finished before
+    ``before`` - the retention sweep deletes their files."""
+    return list(
+        session.scalars(
+            select(CallRecording).where(
+                CallRecording.tenant_id == tenant_id,
+                CallRecording.status.in_(("ready", "failed")),
+                CallRecording.audio_deleted_at.is_(None),
+                CallRecording.original_key.is_not(None),
+                CallRecording.finished_at < before,
+            )
+        )
+    )
+
+
 def stale_uploads(session: Session, tenant_id: uuid.UUID, before: datetime) -> list[CallRecording]:
     return list(
         session.scalars(

@@ -171,7 +171,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **206**
+- Backend test files: **208**
 - Frontend component test files: **45**
 - Playwright end-to-end specs: **39**
 

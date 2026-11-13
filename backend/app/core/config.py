@@ -188,6 +188,14 @@ class Settings(BaseSettings):
     calls_uploads_per_user_hour: int = Field(default=20, ge=1, le=1_000)
     calls_uploads_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
     calls_upload_finish_minutes: int = Field(default=180, ge=5, le=1440)
+    # The worker (step CA2): a Whisper-class transcription model that gives timestamps (the
+    # voice model for chat replies does not), the month's minutes per organisation (estimated
+    # from the audio length), the ffmpeg / ffprobe programs and a time limit for one cleaning.
+    calls_stt_model: str = "whisper-1"
+    calls_monthly_minutes: int = Field(default=600, ge=1, le=1_000_000)
+    calls_ffmpeg_command: str = "ffmpeg"
+    calls_ffprobe_command: str = "ffprobe"
+    calls_clean_timeout_seconds: int = Field(default=900, ge=30, le=7200)
 
     # Outgoing e-mail via SMTP (ADR 0005). Locally Mailpit catches everything (127.0.0.1:2525).
     smtp_host: str = "127.0.0.1"

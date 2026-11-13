@@ -33,6 +33,7 @@ from app.core.storage import FileStore, build_file_store
 from app.modules.activities import api as activities_api
 from app.modules.approvals import api as approvals_api
 from app.modules.assistant import api as assistant_api
+from app.modules.calls import api as calls_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.deal_desk import api as deal_desk_api
@@ -75,6 +76,7 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
             services.mailer, services.settings.web_app_url
         ),
         communications_api.EMAIL_JOB: communications_api.email_job_handler(services.mailer),
+        calls_api.JOB_KIND: calls_api.job_handler(services.file_store, services.settings),
         webcheck_api.CHECK_JOB: webcheck_api.check_job_handler(services.settings),
         webcheck_api.COMPANY_JOB: webcheck_api.company_job_handler(services.settings),
         # Domain events (ADR 0006): every "event.<name>" job goes to its subscribers.
@@ -157,6 +159,18 @@ def run_schedules(
                 count += knowledge_api.delete_stale_knowledge_uploads(
                     session, files, now, tenant_id=tenant_id
                 )
+            # Call recordings (ADR 0030): uploads never finished are expired, and the audio of
+            # finished ones is deleted after the retention (the transcript stays).
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += calls_api.expire_stale_uploads(session, files, now, tenant_id=tenant_id)
+                count += calls_api.delete_old_audio(
+                    session,
+                    files,
+                    now,
+                    tenant_id=tenant_id,
+                    retention_days=settings.calls_retention_days if settings else 90,
+                )
             # AI proposals nobody decided on in time (ADR 0014): expired, requester told.
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
@@ -174,6 +188,7 @@ def dead_job_handlers() -> dict[str, DeadJobHandler]:
     return {
         quotes_api.EMAIL_JOB: quotes_api.email_failed_handler(),
         communications_api.EMAIL_JOB: communications_api.email_failed_handler(),
+        calls_api.JOB_KIND: calls_api.dead_job_handler(),
     }
 
 

@@ -88,7 +88,7 @@ the CRM, no translation.
 |---|---|
 | CA0 | This ADR (documents only) |
 | CA1 | Backend: migration `call_recordings` (forced RLS), pure rules, signed upload start / finish, status flow, permissions, audit, settings, the registry entry `call_audio` (**done 2026-11-13**; `language` and timestamps in the speech provider moved to CA2) |
-| CA2 | The worker: ffmpeg cleaning, transcription with the language hint, retries, retention sweep; tests with a fake engine and a fake cleaner, one real ffmpeg test |
+| CA2 | The worker: ffmpeg cleaning, transcription with the language hint, retries, retention sweep; tests with a fake engine and a fake cleaner, one real ffmpeg test (**built 2026-11-13**; see docs/call-recordings.md) |
 | CA3 | The lead page card (add a recording, status, player for the cleaned copy, transcript), a Playwright journey, docs, and a measured trial on a small fictional Hindi, Hinglish and Telugu sample |
 
 ## 6. Questions for the owner (recommended answer first)

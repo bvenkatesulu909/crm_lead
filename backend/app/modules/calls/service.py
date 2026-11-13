@@ -9,7 +9,8 @@ Like the other direct uploads (ADR 0025) the file goes from the browser straight
     finish - the row is locked and must be this person's, still uploading and not too old; the
              stored size is checked; the first bytes must be the audio type the name claims; the
              file is copied inside the store to its permanent key and the pending copy removed; the
-             row is ``queued`` for processing (the worker comes in step CA2).
+             row is ``queued`` and the job ``call.process`` is added in the same
+             transaction (the worker cleans and transcribes it, see ``processing.py``).
 
 Nothing here commits - the router commits once (and also after a refusal of the FILE, so the row
 shows ``failed`` with its reason). Audit entries hold ids and codes, never names or text.
@@ -26,9 +27,10 @@ from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.config import Settings
 from app.core.errors import ConflictError, DomainError, NotFoundError
+from app.core.outbox import enqueue
 from app.core.storage import FileStore, StoredFileMissingError, object_key, pending_key
 from app.modules.agents import api as agents_api
-from app.modules.calls import repository, rules
+from app.modules.calls import processing, repository, rules
 from app.modules.calls.models import CallRecording
 from app.modules.calls.schemas import (
     CallDetail,
@@ -301,6 +303,12 @@ def finish_upload(
     row.status = "queued"
     row.finished_at = when
     session.flush()
+    enqueue(
+        session,
+        tenant_id=tenant_id,
+        kind=processing.JOB_KIND,
+        payload={"call_id": str(row.id), "lead_id": str(lead_id)},
+    )
     _audit(session, principal, row, "call.added", language=row.language)
     return CallRead.model_validate(_read(row))
 
@@ -379,6 +387,33 @@ def delete_audio(
         session.flush()
         _audit(session, principal, row, "call.audio_deleted")
     return CallRead.model_validate(_read(row))
+
+
+def delete_old_audio(
+    session: Session,
+    store: FileStore | None,
+    now: datetime,
+    *,
+    tenant_id: uuid.UUID,
+    retention_days: int,
+) -> int:
+    """Retention (ADR 0030, CA5): the audio of a finished recording is deleted ``retention_days``
+    after it was finished; the row, the consent record and the transcript stay."""
+    if store is None:
+        return 0
+    old = repository.audio_older_than(
+        session, tenant_id, rules.retention_cutoff(now, retention_days)
+    )
+    deleted = 0
+    for row in old:
+        for key in (row.original_key, row.clean_key):
+            if key:
+                store.delete(key)
+        row.audio_deleted_at = now
+        session.flush()
+        processing.audit_system(session, tenant_id, row, "call.audio_expired")
+        deleted += 1
+    return deleted
 
 
 def expire_stale(

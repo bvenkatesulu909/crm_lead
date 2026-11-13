@@ -5247,6 +5247,22 @@
         "title": "CopyResult",
         "type": "object"
       },
+      "CreatePaymentLink": {
+        "additionalProperties": false,
+        "description": "Only the invoice. The amount, reference, expiry and who asked are decided by the server.",
+        "properties": {
+          "invoice_id": {
+            "format": "uuid",
+            "title": "Invoice Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invoice_id"
+        ],
+        "title": "CreatePaymentLink",
+        "type": "object"
+      },
       "CreditNoteCreate": {
         "additionalProperties": false,
         "properties": {
@@ -10726,7 +10742,8 @@
               "bank_transfer",
               "card",
               "cash",
-              "other"
+              "other",
+              "upi"
             ],
             "title": "Method",
             "type": "string"
@@ -10759,6 +10776,93 @@
         "title": "PaymentCreate",
         "type": "object"
       },
+      "PaymentLinkList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentLinkRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PaymentLinkList",
+        "type": "object"
+      },
+      "PaymentLinkRead": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invoice_id": {
+            "format": "uuid",
+            "title": "Invoice Id",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "short_url": {
+            "title": "Short Url",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "created",
+              "paid",
+              "cancelled",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "invoice_id",
+          "short_url",
+          "amount",
+          "currency",
+          "status",
+          "expires_at",
+          "created_at",
+          "paid_at"
+        ],
+        "title": "PaymentLinkRead",
+        "type": "object"
+      },
       "PaymentRead": {
         "description": "Staff view of a payment or a reversal.",
         "properties": {
@@ -10781,7 +10885,8 @@
               "bank_transfer",
               "card",
               "cash",
-              "other"
+              "other",
+              "upi"
             ],
             "title": "Method",
             "type": "string"
@@ -11736,7 +11841,8 @@
               "bank_transfer",
               "card",
               "cash",
-              "other"
+              "other",
+              "upi"
             ],
             "title": "Method",
             "type": "string"
@@ -17062,6 +17168,19 @@
           "created_at"
         ],
         "title": "WebEvidenceRead",
+        "type": "object"
+      },
+      "WebhookAck": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "WebhookAck",
         "type": "object"
       },
       "app__modules__activities__schemas__ActivityCreate": {
@@ -25528,6 +25647,48 @@
         ]
       }
     },
+    "/api/v1/integrations/razorpay/webhook": {
+      "post": {
+        "description": "The signature is checked over the raw body before anything is read from it. Answers 200 for every verified delivery, also for events the CRM does not act on, so Razorpay does not keep resending them.",
+        "operationId": "razorpay_webhook_api_v1_integrations_razorpay_webhook_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Razorpay's payment link events (signed; only for Razorpay)",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
     "/api/v1/invoices": {
       "get": {
         "description": "`q` matches the invoice number (e.g. `INV-12`) or the customer's reference. `state`: draft, unpaid (issued with money owed), overdue, paid, discarded.",
@@ -31751,6 +31912,189 @@
         ]
       }
     },
+    "/api/v1/payment-links": {
+      "get": {
+        "operationId": "list_links_api_v1_payment_links_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The payment links of an invoice you can see, newest first",
+        "tags": [
+          "payment-links"
+        ]
+      },
+      "post": {
+        "description": "Only the invoice is sent. The amount, reference and expiry are decided by the server, and a new link replaces the invoice's open one.",
+        "operationId": "create_link_api_v1_payment_links_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentLink"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create a UPI payment link for the balance of an issued invoice",
+        "tags": [
+          "payment-links"
+        ]
+      }
+    },
     "/api/v1/platform/tenants": {
       "get": {
         "operationId": "list_tenants_api_v1_platform_tenants_get",
@@ -33221,6 +33565,84 @@
           }
         ],
         "summary": "One of my orders with its status",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/payment-links": {
+      "get": {
+        "operationId": "my_link_api_v1_portal_payment_links_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The open payment link of one of my invoices (empty if there is none)",
         "tags": [
           "portal"
         ]

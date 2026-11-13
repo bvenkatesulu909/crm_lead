@@ -672,6 +672,7 @@ export const PAYMENT_METHODS = [
   "card",
   "cash",
   "other",
+  "upi",
 ] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 

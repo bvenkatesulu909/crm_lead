@@ -111,6 +111,13 @@ RAG_SEARCH_DURATION = Histogram(
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30),
     registry=REGISTRY,
 )
+PAYMENT_WEBHOOKS = Counter(
+    "crm_payment_webhooks_total",
+    "Razorpay webhook deliveries by result (stored/duplicate/ignored/unknown_link/bad_signature). "
+    "No tenant, link or payment label.",
+    ["result"],
+    registry=REGISTRY,
+)
 RAG_ANSWERS = Counter(
     "crm_rag_answers_total",
     "Knowledge answers by outcome (answered/refused/ungrounded/unavailable, and the RERA/price "

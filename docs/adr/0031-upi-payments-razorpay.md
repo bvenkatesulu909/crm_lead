@@ -93,7 +93,7 @@ own guard test.
 |---|---|
 | UP0 | This ADR, owner's answers |
 | UP1 | Migration, tables, settings, signature check, fake provider (pure and database tests, no endpoint) - **built 2026-11-13** |
-| UP2 | Create link service and API, webhook receiver, worker job, notifications, audit |
+| UP2 | Create link service and API, webhook receiver, worker job, notifications, audit - **built 2026-11-13** |
 | UP3 | Screens: "Pay by UPI" on the invoice (staff) and portal invoice, link status |
 | UP4 | Playwright journey with the fake provider; test-mode check with the owner's Razorpay test keys |
 

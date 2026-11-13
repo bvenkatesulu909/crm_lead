@@ -79,7 +79,8 @@ class PaymentLink(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     expires_at: Mapped[datetime] = mapped_column()
     provider_payment_id: Mapped[str | None] = mapped_column(String(60))
     paid_at: Mapped[datetime | None] = mapped_column()
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # clock_timestamp(), not now(): two links made in one transaction must still sort in order.
+    created_at: Mapped[datetime] = mapped_column(server_default=func.clock_timestamp())
 
 
 class PaymentEvent(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):

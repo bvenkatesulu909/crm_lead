@@ -36,6 +36,9 @@ from app.modules.leads.router import router as leads_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.orders.router import portal_router as portal_orders_router
 from app.modules.orders.router import router as orders_router
+from app.modules.payment_links.router import portal_router as payment_links_portal_router
+from app.modules.payment_links.router import router as payment_links_router
+from app.modules.payment_links.router import webhook_router as payment_links_webhook_router
 from app.modules.portal.router import router as portal_router
 from app.modules.public_chat.router import router as public_chat_router
 from app.modules.public_chat.router import staff_router as public_chat_staff_router
@@ -70,6 +73,9 @@ api_router.include_router(portal_documents_router)
 api_router.include_router(notifications_router)
 api_router.include_router(communications_router)
 api_router.include_router(public_chat_router)
+api_router.include_router(payment_links_router)
+api_router.include_router(payment_links_portal_router)
+api_router.include_router(payment_links_webhook_router)
 api_router.include_router(public_chat_staff_router)
 api_router.include_router(approvals_router)
 api_router.include_router(agents_router)

@@ -42,6 +42,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "mcp_client",
         "voice",
         "call_audio",
+        "payment_links",
     }
     assert AGENTS["web_check"].uses_model is False
     # An outside AI client: no model of ours to meter, the platform switch still stops it, and an
@@ -69,6 +70,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "account_research",
         "company_details",
         "call_audio",
+        "payment_links",
     )
     assert all(a.default_enabled for key, a in AGENTS.items() if key not in starts_off)
 

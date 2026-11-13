@@ -185,6 +185,21 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="payment_links",
+            title="UPI payment links",
+            description=(
+                "Lets staff create a Razorpay payment link for an issued invoice so the buyer can "
+                "pay by UPI; a verified payment confirmation then marks the money received. "
+                "Calls no language model. Off until switched on; payments already on their way "
+                "are still recorded when it is off."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
             key="mcp_client",
             title="AI clients (MCP)",
             description=(

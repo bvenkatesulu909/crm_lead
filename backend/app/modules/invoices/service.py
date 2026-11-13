@@ -8,9 +8,10 @@ writes an audit_log row in the same transaction.
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import cast
+from typing import Literal, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -78,6 +79,10 @@ class OrderNotInvoiceableError(ConflictError):
 
 class OrderAlreadyInvoicedError(ConflictError):
     code = "order_already_invoiced"
+
+
+class PaymentReferenceUsedError(ConflictError):
+    code = "payment_reference_used"
 
 
 class PaymentNotReversibleError(ConflictError):
@@ -437,6 +442,20 @@ def record_payment(
     value = amount
     check_received_on(received_on, _today())
     check_payment_amount(value, invoice.balance_due)
+    if method == "upi" and reference:
+        # A UPI payment is identified by its reference (the same one may be sent by a gateway).
+        seen = session.scalar(
+            select(Payment.id).where(
+                Payment.tenant_id == invoice.tenant_id,
+                Payment.method == "upi",
+                Payment.reference == reference,
+                Payment.reverses_payment_id.is_(None),
+            )
+        )
+        if seen is not None:
+            raise PaymentReferenceUsedError(
+                "A UPI payment with this reference was already recorded."
+            )
     payment = Payment(
         tenant_id=invoice.tenant_id,
         invoice_id=invoice.id,
@@ -514,6 +533,113 @@ def reverse_payment(
     )
     _flush(session)
     return reversal
+
+
+# --- payments made through a gateway (ADR 0031) ---------------------------------------------
+
+
+@dataclass(frozen=True)
+class PayableInvoice:
+    """What the payment links module needs to know about an invoice the person may read."""
+
+    id: uuid.UUID
+    number: int | None
+    status: str
+    currency: str
+    balance_due: Decimal
+    created_by_user_id: uuid.UUID | None
+
+
+def payable_invoice(
+    session: Session, principal: Principal, invoice_id: uuid.UUID
+) -> PayableInvoice | None:
+    """The invoice if this person may read it (customers: issued ones of their accounts), else
+    ``None``. Lets the payment links module ask without touching this module's tables."""
+    invoice = repository.get_readable(session, principal, invoice_id)
+    if invoice is None:
+        return None
+    return PayableInvoice(
+        invoice.id,
+        invoice.number,
+        invoice.status,
+        invoice.currency,
+        invoice.balance_due,
+        invoice.created_by_user_id,
+    )
+
+
+def invoice_brief(
+    session: Session, principal: Principal, invoice_id: uuid.UUID
+) -> tuple[str, uuid.UUID | None] | None:
+    """("Invoice 12", the person who created it) for an invoice this person may read, else None."""
+    invoice = repository.get_readable(session, principal, invoice_id)
+    if invoice is None:
+        return None
+    label = f"Invoice {invoice.number}" if invoice.number is not None else "Invoice"
+    return label, invoice.created_by_user_id
+
+
+GatewayOutcome = Literal["applied", "already_applied", "amount_mismatch", "invoice_closed"]
+
+
+def record_gateway_payment(
+    session: Session,
+    principal: Principal,
+    invoice_id: uuid.UUID,
+    *,
+    amount: Decimal,
+    reference: str,
+) -> GatewayOutcome:
+    """Add a payment the GATEWAY confirmed (a verified webhook), as the Automation identity.
+
+    The same gateway payment id (``reference``) is never added twice - checked here and by a
+    unique index - so a repeated or re-sent event is harmless. Nothing is raised for the cases a
+    person must look at; the outcome says which."""
+    invoice = session.scalars(
+        select(Invoice)
+        .where(Invoice.id == invoice_id, Invoice.tenant_id == _tenant(principal))
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one_or_none()
+    if invoice is None:
+        return "invoice_closed"
+    seen = session.scalar(
+        select(Payment.id).where(
+            Payment.tenant_id == invoice.tenant_id,
+            Payment.method == "upi",
+            Payment.reference == reference,
+            Payment.reverses_payment_id.is_(None),
+        )
+    )
+    if seen is not None:
+        return "already_applied"
+    if invoice.status != "issued" or invoice.balance_due <= 0:
+        return "invoice_closed"
+    if amount <= 0 or amount > invoice.balance_due:
+        return "amount_mismatch"
+    session.add(
+        Payment(
+            tenant_id=invoice.tenant_id,
+            invoice_id=invoice.id,
+            amount=amount,
+            received_on=_today(),
+            method="upi",
+            reference=reference,
+            recorded_by_user_id=principal.user_id,
+        )
+    )
+    invoice.amount_paid += amount
+    invoice.balance_due -= amount
+    _flush(session)
+    _audit(
+        session,
+        principal,
+        invoice.id,
+        "payment.recorded",
+        {"amount": amount, "method": "upi", "via": "payment_link"},
+    )
+    _flush(session)
+    return "applied"
 
 
 # --- credit notes -------------------------------------------------------------------------

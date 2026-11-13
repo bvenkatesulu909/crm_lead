@@ -1,8 +1,8 @@
 # UPI payments through Razorpay payment links
 
 Design and decisions: [ADR 0031](adr/0031-upi-payments-razorpay.md). This page says what is built and how
-to use it. Status: **UP1 and UP2 built (backend)**; the screens (UP3) and the check with real Razorpay
-test keys (UP4) are not done yet.
+to use it. Status: **UP1-UP3 built** (backend and screens); the check with real Razorpay test keys (UP4) is
+not done yet.
 
 ## 1. What it does
 
@@ -36,6 +36,22 @@ Settings (all `CRM_` variables, placeholders in `backend/.env.example`):
 The webhook address to give Razorpay is `https://<api host>/api/v1/integrations/razorpay/webhook`, for the
 events `payment_link.paid`, `payment_link.expired` and `payment_link.cancelled`. Other events are
 acknowledged and dropped.
+
+## 2a. Screens
+
+- **Staff, invoice page:** a **Pay by UPI** card (right column) for an issued invoice in INR with money
+  owed. It shows the open link (address as plain text, amount, expiry, *Open payment page*, *Copy link*),
+  the earlier links in one line each, and a button *Create UPI payment link* (or *Create a new link
+  (replaces this one)*) for people who may record payments. The API's refusals are shown in plain
+  words, e.g. when the feature is switched off. After creating, the page shows "The UPI payment link was
+  created."
+- **Customer portal, invoice page:** while a link is open, a **Pay by UPI** button (opens Razorpay's page in
+  a new tab) with a note that the CRM never sees the UPI details and that the payment can take a few
+  minutes to show.
+- Only an https address is ever shown or opened; the amount comes from the server; the browser sends only
+  the invoice id.
+- **INR** is now offered in the order form's currency list (it was missing); invoices follow their order's
+  currency.
 
 ## 3. API
 

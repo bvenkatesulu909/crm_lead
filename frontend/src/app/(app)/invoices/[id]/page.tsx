@@ -10,6 +10,7 @@ import {
   invoiceNumber,
 } from "@/components/invoices";
 import { OrderLinesTable, formatMoney } from "@/components/orders";
+import { PaymentLinkCard } from "@/components/payment-link-card";
 import { Card, Forbidden, SuccessAlert, cx } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
 import type { Account, Invoice, Order } from "@/lib/api-types";
@@ -42,6 +43,7 @@ const DONE: Record<string, string> = {
   discarded: "The draft was discarded.",
   paid: "The payment was recorded.",
   reversed: "The payment was reversed.",
+  "link-created": "The UPI payment link was created.",
   credited: "The credit note was issued.",
 };
 
@@ -204,6 +206,10 @@ export default async function InvoicePage({
             <h2 className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">Balance</h2>
             <BalanceSummary currency={invoice.currency} total={invoice.total} credited={invoice.amount_credited} paid={invoice.amount_paid} balance={invoice.balance_due} />
           </Card>
+          <PaymentLinkCard
+            invoice={{ id: invoice.id, status: invoice.status, currency: invoice.currency, balance_due: invoice.balance_due }}
+            canCollect={canRecordPayments(me)}
+          />
           <Card>
             <h2 className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">Details</h2>
             <dl className="space-y-3 px-5 py-4 text-sm">

@@ -2,6 +2,7 @@
 only. Never commits; the router does. The deck renderer (a later step) reads through ``api.py``."""
 
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -178,6 +179,35 @@ def remove_logo(session: Session, principal: Principal) -> BrandingRead:
     session.flush()
     session.refresh(row)
     return _read(row)
+
+
+@dataclass(frozen=True)
+class DeckBranding:
+    """The branding as a proposal deck reads it (ADR 0032). The defaults when nothing was saved."""
+
+    color: str
+    about_text: str
+    terms_text: str
+    contact_line: str
+    footer_line: str
+    logo_png: bytes | None
+    version: int
+
+
+def branding_for_deck(session: Session, tenant_id: uuid.UUID) -> DeckBranding:
+    """For a worker job (no person): this organisation's branding, or the defaults."""
+    row = _row(session, tenant_id)
+    if row is None:
+        return DeckBranding(rules.DEFAULT_COLOR, "", "", "", "", None, 0)
+    return DeckBranding(
+        row.primary_color,
+        row.about_text,
+        row.terms_text,
+        row.contact_line,
+        row.footer_line,
+        row.logo_png,
+        row.version,
+    )
 
 
 def logo_png(session: Session, principal: Principal) -> bytes:

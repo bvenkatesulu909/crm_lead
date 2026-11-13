@@ -43,12 +43,12 @@ python-docx==1.2.0
 # --- Operations (R6): metrics and tracing. Prometheus scrapes the token-protected internal route;
 # OpenTelemetry is opt-in (no collector needed to run the app).
 prometheus-client==0.26.0
-opentelemetry-api==1.45.1
-opentelemetry-sdk==1.45.1
-opentelemetry-exporter-otlp-proto-http==1.45.1
-opentelemetry-instrumentation-fastapi==0.66b1
-opentelemetry-instrumentation-sqlalchemy==0.66b1
-opentelemetry-instrumentation-httpx==0.66b1
+opentelemetry-api==1.45.2
+opentelemetry-sdk==1.45.2
+opentelemetry-exporter-otlp-proto-http==1.45.2
+opentelemetry-instrumentation-fastapi==0.66b2
+opentelemetry-instrumentation-sqlalchemy==0.66b2
+opentelemetry-instrumentation-httpx==0.66b2
 faster-whisper>=1.1.0
 # Agent graphs (ADR 0022): the optional lead agent. Imported by app/modules/lead_agent only.
 langgraph==1.2.19

@@ -631,3 +631,15 @@ def test_the_workers_schedule_deletes_old_audio_from_the_store(
     monkeypatch.setattr(worker, "build_file_store", lambda _settings: setup.store)
     run_schedules(session_factory_for(db_connection), settings())
     assert setup.row(row.id).audio_deleted_at is not None
+
+
+def test_the_scripted_engine_runs_the_whole_flow_without_ffmpeg_or_a_vendor(setup: Setup) -> None:
+    config = settings(calls_engine="fake")
+    queued = setup.queued(language="te")
+    bind_tenant(setup.session, setup.tenant_id)
+    calls_api.job_handler(setup.store, config)(setup.session, setup.job_for(queued.id))
+    setup.session.flush()
+    row = setup.row(queued.id)
+    assert row.status == "ready" and row.engine == "fake:scripted"
+    assert row.transcript_text is not None and "ఫ్లాట్" in row.transcript_text
+    assert row.duration_seconds == 2  # guessed from the size of the small test file

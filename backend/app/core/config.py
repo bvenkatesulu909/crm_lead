@@ -196,6 +196,9 @@ class Settings(BaseSettings):
     calls_ffmpeg_command: str = "ffmpeg"
     calls_ffprobe_command: str = "ffprobe"
     calls_clean_timeout_seconds: int = Field(default=900, ge=30, le=7200)
+    # "fake" = no ffmpeg and no speech vendor: a fixed fictional transcript (tests and local demos);
+    # refused in production.
+    calls_engine: Literal["real", "fake"] = "real"
 
     # Outgoing e-mail via SMTP (ADR 0005). Locally Mailpit catches everything (127.0.0.1:2525).
     smtp_host: str = "127.0.0.1"
@@ -333,6 +336,8 @@ class Settings(BaseSettings):
     def _public_chat_is_safe(self) -> "Settings":
         if self.environment == "production" and self.public_chat_provider == "fake":
             raise ValueError("The fake public chat provider can't be used in production.")
+        if self.environment == "production" and self.calls_engine == "fake":
+            raise ValueError("The fake call engine (calls_engine) can't be used in production.")
         if self.environment == "production" and self.ai_provider == "fake":
             raise ValueError(
                 "The fake assistant provider (ai_provider) can't be used in production."

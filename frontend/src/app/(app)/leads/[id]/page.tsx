@@ -9,6 +9,7 @@ import { RecordProposals } from "@/components/record-proposals";
 import { LeadAgentSection } from "@/components/lead-agent-section";
 import { QualifierCard } from "@/components/qualifier-card";
 import { BuyerMemoryCard } from "@/components/buyer-memory-card";
+import { CallsCard } from "@/components/calls-card";
 import { CompanyDetailsCard } from "@/components/company-details-card";
 import { WebCheckCard } from "@/components/webcheck-card";
 import { LeadScoreCard } from "@/components/lead-score";
@@ -74,6 +75,10 @@ const DONE: Record<string, string> = {
   "company-queued":
     "The look-up was queued. The suggestions appear under Company details and you get a notification.",
   "company-saved": "The chosen company details were saved on the lead.",
+  "call-added":
+    "The recording was added. It is being cleaned and written out; this card updates by itself.",
+  "call-audio-deleted":
+    "The audio was deleted. The transcript and the record of the buyer's agreement stay.",
   "memory-added": "The detail was added to the buyer memory.",
   "memory-confirmed":
     "The assumption was confirmed. It is now a fact; the assumption stays in the history.",
@@ -327,6 +332,7 @@ export default async function LeadPage({
           <QualifierCard me={me} leadId={lead.id} />
           <LeadAgentSection me={me} leadId={lead.id} />
           <BuyerMemoryCard me={me} leadId={lead.id} />
+          <CallsCard me={me} leadId={lead.id} />
           <CompanyDetailsCard me={me} leadId={lead.id} />
           <WebCheckCard me={me} record={{ type: "lead", id: lead.id }} />
           <EmailCard

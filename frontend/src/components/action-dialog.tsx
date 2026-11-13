@@ -30,6 +30,7 @@ export function ActionDialog({
   confirmVariant = "primary",
   action,
   initialState,
+  closeWhen,
   children,
 }: {
   triggerLabel: string;
@@ -40,6 +41,13 @@ export function ActionDialog({
   confirmVariant?: Variant;
   action: (state: DialogState, formData: FormData) => Promise<DialogState>;
   initialState: DialogState;
+  /**
+   * A value that changes when the action SUCCEEDED and the page now shows the result. A
+   * successful action redirects, which keeps this component mounted when its item stays on the
+   * page (a recording whose audio was deleted); without this the modal would stay open and block
+   * the page. Leave it out where the item disappears or the page changes.
+   */
+  closeWhen?: unknown;
   /** Form fields; receive the current field errors to display. */
   children?: (errors: Record<string, string>) => ReactNode;
 }) {
@@ -47,6 +55,11 @@ export function ActionDialog({
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+
+  // Close when the page shows that the action worked.
+  useEffect(() => {
+    dialog.current?.close();
+  }, [closeWhen]);
 
   // Keep the dialog open to show errors returned by the server.
   useEffect(() => {

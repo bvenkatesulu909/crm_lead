@@ -256,3 +256,35 @@ def test_calls_may_use_their_own_transcription_model() -> None:
     default = voice.build_speech_provider(config)
     assert isinstance(default, voice.OpenAISpeechProvider)
     assert default._stt_model == config.voice_stt_model
+
+
+# --- the scripted engine (tests and local demos) -----------------------------------------
+
+
+def test_the_scripted_engine_can_never_run_in_production() -> None:
+    from pydantic import ValidationError
+
+    base = {
+        "_env_file": None,
+        "database_url": UNREACHABLE_DATABASE_URL,
+        "oidc_issuer": "https://auth.example.test/realms/crm",
+        "files_s3_secure": True,
+    }
+    with pytest.raises(ValidationError, match="call engine"):
+        Settings(environment="production", calls_engine="fake", **base)  # type: ignore[arg-type]
+
+
+def test_the_scripted_engine_gives_a_fixed_transcript_in_the_chosen_language() -> None:
+    from app.modules.calls import fakes
+
+    for language, script in (("hi", "फ्लैट"), ("te", "ఫ్లాట్"), ("en", "flat")):
+        result = asyncio.run(
+            fakes.ScriptedSpeech().transcribe_timed(b"A", "c.mp3", "audio/mpeg", language)
+        )
+        assert script in result.text and result.engine == "fake:scripted"
+        assert [s.text for s in result.segments] and result.segments[0].start == 0.0
+    unknown = asyncio.run(fakes.ScriptedSpeech().transcribe_timed(b"A", "c.mp3", "audio/mpeg", "x"))
+    assert "flat" in unknown.text
+    assert fakes.ScriptedCleaner().clean(b"AB", "c.mp3") == b"AB"
+    assert fakes.ScriptedCleaner().duration_seconds(b"A" * 5500, "c.mp3") == 5.0
+    assert fakes.ScriptedCleaner().duration_seconds(b"", "c.mp3") == 1.0

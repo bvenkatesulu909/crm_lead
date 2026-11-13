@@ -1,6 +1,6 @@
 # Call recordings (ADR 0030)
 
-Status: **CA1 (backend) and CA2 (worker) built 2026-11-13.** The lead-page card and a measured trial come in CA3.
+Status: **CA1 (backend), CA2 (worker) and CA3 (screen) built 2026-11-13.** The measured trial on real recordings is still to do (see "The trial").
 
 ## What exists now
 A rep adds a recording of a call to a lead the rep may read. The file goes straight to the file store
@@ -39,5 +39,22 @@ The transcript is a machine's guess and people's words are untrusted: it is stor
 
 Settings added: `CRM_CALLS_STT_MODEL`, `CRM_CALLS_MONTHLY_MINUTES` (600, estimated from the audio length), `CRM_CALLS_FFMPEG_COMMAND`, `CRM_CALLS_FFPROBE_COMMAND`, `CRM_CALLS_CLEAN_TIMEOUT_SECONDS`. The Docker image now installs ffmpeg; on a PC without it the worker marks recordings `processing_failed` (install ffmpeg to try it locally).
 
+## The screen (CA3)
+Leads with `call:read` (sales agents, managers, administrators) get a **Call recordings** card on the lead page; the API still decides who may see which lead (a lead one may not read gives no card, and the page is "not found").
+
+- **Add a call recording** (needs `call:write`): choose the file, the language of the call and tick that **the buyer agreed to the call being recorded**. The tick is never pre-filled and the form refuses without it; a refused attempt keeps what was chosen. The file goes from the browser straight to the file store (ADR 0025), so Netlify's 6 MB limit does not apply; the web app only ever sees the name and size.
+- Each recording shows its file name, language, length, size, date and a status in words: *Being cleaned and transcribed* (the card looks again every 8 seconds), *Transcript ready*, or *Could not be processed* with the reason and what to do. A file that was refused (not really audio) stays on the card as a failed item.
+- **Listen** asks for a fresh 60-second link and plays the **cleaned** copy. **Show transcript** reads the text on request: plain text, the time each stretch started, and a reminder that it is automatic and can contain mistakes. A transcript is never shown as markup and never linked.
+- **Delete audio** asks first; the transcript and the record of the consent stay.
+- The report-only content security policy lists the file store under `media-src` as well, for the player.
+
+A bug the browser journey found and the unit tests now guard: a dialog whose item stays on the page after its action worked (the delete confirmation, the add form) stayed open as a modal and blocked the page. `ActionDialog` has an optional `closeWhen` value that closes it when the page shows the result; the call recordings use it. Other cards that redirect to a page that keeps the same item mounted may have the same problem; they were not changed.
+
+## Trying it without ffmpeg or a speech service
+`CRM_CALLS_ENGINE=fake` (API and worker; refused in production) skips ffmpeg and the vendor: the audio is passed through and every recording gets a fixed fictional transcript in the language chosen (Hindi, Telugu or English). The Playwright journey `frontend/e2e/call-recordings.spec.ts` uses it (`E2E_CALLS_FAKE=1`, no standing worker, file store running).
+
+## The trial (still to do)
+`python -m scripts.measure_call_transcription <folder> --engine real --also-original` (with `CRM_RUN_LIVE_EVALS=1`, ffmpeg installed and the speech service in `backend\.env`) transcribes a folder of made-up sample calls (`visit1.hi.mp3` + `visit1.hi.txt` with the words really said, and likewise `.te` and `.en`) and prints the word and character error rates per sample and language, for the cleaned and, with `--also-original`, the uncleaned audio, and the seconds it took. **It has not been run on real audio**: it needs sample recordings of fictional Hindi, Hinglish and Telugu conversations, ffmpeg on the machine and a paid speech call. The scripted mode (`--engine scripted`) only shows that the table works. Until the trial is run, no accuracy figure for Hindi, Hinglish or Telugu is claimed anywhere.
+
 ## Not yet
-The card on the lead page, the player and the transcript view (CA3); a measured trial on fictional Hindi, Hinglish and Telugu samples (CA3).
+Live calling (ADR 0030 CA1 is uploads only); any AI reading of the transcript (CA7: transcripts are untrusted and no model sees them in this version); the measured trial above.

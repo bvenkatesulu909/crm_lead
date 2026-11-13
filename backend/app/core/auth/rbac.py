@@ -114,6 +114,7 @@ class Permission(StrEnum):
     QUOTE_APPROVE = "quote:approve"
     # Organisation settings for quotes (e.g. the discount that needs approval).
     QUOTE_SETTINGS_MANAGE = "quote:settings:manage"
+    BRANDING_MANAGE = "branding:manage"
     # Customer portal: see quotes sent to their company and accept or decline them.
     PORTAL_QUOTE_READ = "portal:quote:read"
     PORTAL_QUOTE_RESPOND = "portal:quote:respond"
@@ -220,6 +221,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.TENANT_ADMIN: _SALES_ALL
     | {_P.TENANT_USER_READ, _P.TENANT_USER_MANAGE, _P.PORTAL_USER_INVITE}
     | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE, _P.AGENT_MANAGE, _P.QUALIFIER_MANAGE}
+    | {_P.BRANDING_MANAGE}
     | {_P.TICKET_READ_ALL, _P.TICKET_MANAGE}
     | _ORDERS_ALL
     | _BILLING_ALL

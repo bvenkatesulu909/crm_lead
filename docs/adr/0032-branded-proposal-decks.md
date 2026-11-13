@@ -1,6 +1,6 @@
 # ADR 0032 — Branded proposal decks from a quote
 
-- **Status:** Proposed (2026-11-13), waiting for the owner's answers in section 7.
+- **Status:** Accepted (2026-11-13, owner approved all six recommended answers in section 7). PD1 built 2026-11-13.
 - **Date:** 2026-11-13
 - **Deciders:** Project owner
 - **Depends on:** ADR 0005 (files and worker jobs), ADR 0025 (signed download links), ADR 0009 (RLS),
@@ -60,12 +60,21 @@ fonts are a later step (question 3).
 templates from outside, no e-mail sending in v1 (the rep downloads it, or uses the existing quote e-mail).
 Audit entries `deck.created` and `branding.updated` hold ids only.
 
+## 3a. Corrections made while building PD1
+
+- The logo (at most 1 MB, stored at most 500 KB) is sent as one ordinary multipart request to the API,
+  not through the signed-link path (that path exists for large files, ADR 0025), and the clean PNG is kept
+  in the branding row itself (`logo_png`), so it follows the organisation's row-level security and needs no
+  file store. The deck renderer reads it from there.
+- A colour such as `##1f3a5f` is refused (only one leading `#` is accepted); found by a test.
+- The page shows which fields had a link, markup or hidden characters taken out once, after saving.
+
 ## 4. Phases
 
 | Step | Content |
 |---|---|
 | PD0 | This ADR, owner's answers |
-| PD1 | `branding` module: table, API, logo re-encoding, tests; Branding page for administrators |
+| PD1 | `branding` module: table, API, logo re-encoding, tests; Branding page for administrators - **built 2026-11-13** |
 | PD2 | The deck renderer: pure, from plain data, bundled font, tests that read the PDF text |
 | PD3 | Worker job, stored file, download links (staff and portal), audit |
 | PD4 | Screens: "Create proposal deck" on the quote page, the portal download; Playwright journey; docs |

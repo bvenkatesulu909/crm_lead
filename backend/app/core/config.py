@@ -216,6 +216,18 @@ class Settings(BaseSettings):
     agent_action_expiry_days: int = Field(default=7, ge=1, le=90)
     agent_action_pending_per_user: int = Field(default=20, ge=1, le=1_000)
 
+    # UPI payments through Razorpay payment links (ADR 0031). ``fake`` runs the whole flow inside
+    # the CRM with no network (tests, demos; refused in production). ``test`` uses Razorpay's test
+    # keys. ``live`` also needs ``razorpay_go_live`` - the owner's explicit "go live" (ADR 0007).
+    # The three secrets are never logged; the webhook secret is NOT the API key secret.
+    razorpay_mode: Literal["fake", "test", "live"] = "fake"
+    razorpay_go_live: bool = False
+    razorpay_key_id: str | None = Field(default=None, max_length=80)
+    razorpay_key_secret: SecretStr | None = None
+    razorpay_webhook_secret: SecretStr | None = None
+    razorpay_link_expiry_days: int = Field(default=7, ge=1, le=90)
+    razorpay_links_per_user_hour: int = Field(default=30, ge=1, le=1_000)
+
     # Live web check (ADR 0019). Sources are OFF until listed here (comma-separated keys from the
     # catalogue); ``webcheck_demo`` switches on the fictional demo sources served inside the CRM
     # (never in production). ``webcheck_disabled`` is the platform-wide kill switch.
@@ -324,6 +336,26 @@ class Settings(BaseSettings):
     def _production_requires_secure_transport(self) -> "Settings":
         if self.environment == "production" and not self.files_s3_secure:
             raise ValueError("In production the file store must use HTTPS (files_s3_secure).")
+        return self
+
+    @model_validator(mode="after")
+    def _razorpay_is_safe(self) -> "Settings":
+        if self.razorpay_mode == "fake":
+            if self.environment == "production":
+                raise ValueError("The fake payment provider can't be used in production.")
+            return self
+        if self.razorpay_mode == "live" and not self.razorpay_go_live:
+            raise ValueError("Razorpay live mode needs razorpay_go_live (the owner's go-live).")
+        if self.razorpay_mode == "test" and (self.razorpay_key_id or "").startswith("rzp_live_"):
+            raise ValueError("Razorpay test mode can't use a live key.")
+        if self.razorpay_mode == "live" and not (self.razorpay_key_id or "").startswith(
+            "rzp_live_"
+        ):
+            raise ValueError("Razorpay live mode needs a live key.")
+        if not (self.razorpay_key_id and self.razorpay_key_secret and self.razorpay_webhook_secret):
+            raise ValueError(
+                "Razorpay needs razorpay_key_id, razorpay_key_secret and razorpay_webhook_secret."
+            )
         return self
 
     @model_validator(mode="after")

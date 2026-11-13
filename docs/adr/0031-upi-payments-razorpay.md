@@ -1,6 +1,6 @@
 # ADR 0031 — UPI payments on invoices through Razorpay payment links (BP-17)
 
-- **Status:** Proposed (2026-11-13), waiting for the owner's answers in section 4.
+- **Status:** Accepted (2026-11-13, owner approved all six recommended answers in section 7).
 - **Date:** 2026-11-13
 - **Deciders:** Project owner
 - **Depends on:** ADR 0007 (nothing real goes online before "go live"), ADR 0021 (one server), ADR 0005
@@ -78,12 +78,21 @@ no redirects, and the only inbound path is the webhook. Caddy rate-limits the we
 fetcher is not used: this is a vendor API, not a page fetch, so it gets its own allow-listed client and its
 own guard test.
 
+## 4a. Corrections made while building UP1
+
+- The webhook has no tenant until it finds the link, and row-level security hides every row without one.
+  A narrow `SECURITY DEFINER` function `payment_link_tenant(link_id)` returns only the tenant id for a
+  Razorpay link id (same pattern as ADR 0009's login lookup). An event for an unknown link has no tenant
+  to own it, so it is **counted in a metric and not stored** (this replaces "stored as unmatched").
+- `payment_events` is insert-only except two bookkeeping columns, `outcome` and `processed_at`, which the
+  worker sets once; a trigger refuses every other change, and deleting a row younger than 365 days.
+
 ## 5. Phases
 
 | Step | Content |
 |---|---|
 | UP0 | This ADR, owner's answers |
-| UP1 | Migration, tables, settings, signature check, fake provider (pure and database tests, no endpoint) |
+| UP1 | Migration, tables, settings, signature check, fake provider (pure and database tests, no endpoint) - **built 2026-11-13** |
 | UP2 | Create link service and API, webhook receiver, worker job, notifications, audit |
 | UP3 | Screens: "Pay by UPI" on the invoice (staff) and portal invoice, link status |
 | UP4 | Playwright journey with the fake provider; test-mode check with the owner's Razorpay test keys |

@@ -56,14 +56,14 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0060**
-- Tables in the current schema: **73**
-- Tables with Row-Level Security: **69** (69 policies)
+- Alembic revision: **0061**
+- Tables in the current schema: **75**
+- Tables with Row-Level Security: **71** (71 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **60**
-- Heads: `0060`
+- Migration files: **61**
+- Heads: `0061`
 
 ## Web app (`frontend/src/app`)
 
@@ -171,10 +171,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **208**
-- Frontend component test files: **45**
-- Playwright end-to-end specs: **39**
+- Backend test files: **211**
+- Frontend component test files: **46**
+- Playwright end-to-end specs: **40**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **93** (32 in `docs/adr/`)
+- Markdown documents under `docs/`: **94** (33 in `docs/adr/`)

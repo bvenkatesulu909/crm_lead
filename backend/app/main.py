@@ -29,6 +29,8 @@ from app.core.request_context import REQUEST_ID_HEADER, RequestContextMiddleware
 from app.core.storage import FileStore, build_file_store
 from app.modules.assistant.llm import ChatModel, build_chat_model
 from app.modules.knowledge.retrieval import Reranker, build_reranker
+from app.modules.payment_links.api import build_provider as build_payment_provider
+from app.modules.payment_links.provider import PaymentProvider
 from app.modules.public_chat.llm import build_public_chat_model
 from app.modules.voice.provider import SpeechProvider, build_speech_provider
 
@@ -44,6 +46,7 @@ def create_app(
     embedder: Embedder | None = None,
     reranker: Reranker | None = None,
     public_chat_model: ChatModel | None = None,
+    payment_provider: PaymentProvider | None = None,
 ) -> FastAPI:
     """Build the FastAPI application.
 
@@ -84,6 +87,8 @@ def create_app(
     app.state.chat_model = chat_model or build_chat_model(settings)
     # The public website chat's model (ADR 0013): DeepSeek, Claude or the test fake.
     app.state.public_chat_model = public_chat_model or build_public_chat_model(settings)
+    # UPI payment links (ADR 0031): the scripted fake unless Razorpay keys are configured.
+    app.state.payment_provider = payment_provider or build_payment_provider(settings)
     speech_provider: SpeechProvider | None = build_speech_provider(settings)
     app.state.speech_provider = speech_provider
     # S3 file store (ADR 0005); answers 503 if no keys are configured.

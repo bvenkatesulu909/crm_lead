@@ -20,9 +20,17 @@ from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_r
 from app.modules.invoices import service
 from app.modules.invoices.metrics import RevenueMetrics, revenue_by_month_table, revenue_metrics
 from app.modules.invoices.models import INVOICE_STATUSES, Invoice
-from app.modules.invoices.policies import readable_invoices
+from app.modules.invoices.policies import can_record_payments, readable_invoices
 from app.modules.invoices.repository import InvoiceFilters
-from app.modules.invoices.service import customer_invoice, customer_invoices
+from app.modules.invoices.service import (
+    GatewayOutcome,
+    PayableInvoice,
+    customer_invoice,
+    customer_invoices,
+    invoice_brief,
+    payable_invoice,
+    record_gateway_payment,
+)
 
 __all__ = [
     "revenue_by_month_table",
@@ -32,7 +40,13 @@ __all__ = [
     "accounts_with_value",
     "customer_invoice",
     "customer_invoices",
+    "GatewayOutcome",
+    "PayableInvoice",
+    "invoice_brief",
+    "can_record_payments",
     "lifetime_value",
+    "payable_invoice",
+    "record_gateway_payment",
     "overdue_invoices_by_account",
     "revenue_metrics",
 ]

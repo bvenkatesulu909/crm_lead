@@ -60,8 +60,9 @@ def hooked(api: TestClient) -> TestClient:
     """The API with a webhook secret, the way production has one."""
     app = cast(FastAPI, api.app)
     app.state.settings = app.state.settings.model_copy(
-        update={"razorpay_webhook_secret": SecretStr(SECRET)}
+        update={"razorpay_webhook_secret": SecretStr(SECRET), "razorpay_mode": "fake"}
     )
+    app.state.payment_provider = FakeProvider()
     return api
 
 
@@ -226,6 +227,13 @@ def test_the_feature_is_off_until_an_administrator_switches_it_on(hooked, auth, 
     invoice = invoice_of(hooked, auth, world)
     problem = make_link(hooked, auth, invoice, code=503)
     assert problem["code"] == "payment_links_unavailable"
+
+
+def test_with_no_provider_configured_nothing_can_be_created(api, auth, world) -> None:
+    """The default setting is "off": switched on or not, no link is made and nothing leaves."""
+    switch(api, auth, True)
+    problem = make_link(api, auth, invoice_of(api, auth, world), code=503)
+    assert problem["code"] == "payment_provider_unavailable"
 
 
 def test_an_administrator_creates_a_link_for_the_balance(hooked, auth, world, on, fake) -> None:

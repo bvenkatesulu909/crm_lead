@@ -3,7 +3,7 @@
 from app.core.config import Settings
 from app.core.outbox import JobHandler
 from app.modules.payment_links import rules, service
-from app.modules.payment_links.provider import FakeProvider, PaymentProvider
+from app.modules.payment_links.provider import FakeProvider, PaymentProvider, UnavailableProvider
 from app.modules.payment_links.razorpay import RazorpayProvider
 
 APPLY_JOB = service.APPLY_JOB
@@ -28,6 +28,8 @@ __all__ = [
 def build_provider(settings: Settings) -> PaymentProvider:
     """The scripted fake (default, no network), or the real client with the configured keys. The
     settings validator has already refused a half-set or unsafe combination."""
+    if settings.razorpay_mode == "off":
+        return UnavailableProvider()
     if settings.razorpay_mode == "fake":
         return FakeProvider()
     if not (settings.razorpay_key_id and settings.razorpay_key_secret):

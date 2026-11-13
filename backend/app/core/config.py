@@ -216,11 +216,13 @@ class Settings(BaseSettings):
     agent_action_expiry_days: int = Field(default=7, ge=1, le=90)
     agent_action_pending_per_user: int = Field(default=20, ge=1, le=1_000)
 
-    # UPI payments through Razorpay payment links (ADR 0031). ``fake`` runs the whole flow inside
-    # the CRM with no network (tests, demos; refused in production). ``test`` uses Razorpay's test
-    # keys. ``live`` also needs ``razorpay_go_live`` - the owner's explicit "go live" (ADR 0007).
+    # UPI payments through Razorpay payment links (ADR 0031). ``off`` (the default) means no
+    # provider: links can't be created and the webhook refuses everything. ``fake`` runs the whole
+    # flow inside the CRM with no network (tests, demos; refused in production). ``test`` uses
+    # Razorpay's test keys. ``live`` also needs ``razorpay_go_live`` - the owner's explicit
+    # "go live" (ADR 0007).
     # The three secrets are never logged; the webhook secret is NOT the API key secret.
-    razorpay_mode: Literal["fake", "test", "live"] = "fake"
+    razorpay_mode: Literal["off", "fake", "test", "live"] = "off"
     razorpay_go_live: bool = False
     razorpay_key_id: str | None = Field(default=None, max_length=80)
     razorpay_key_secret: SecretStr | None = None
@@ -340,6 +342,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _razorpay_is_safe(self) -> "Settings":
+        if self.razorpay_mode == "off":
+            return self
         if self.razorpay_mode == "fake":
             if self.environment == "production":
                 raise ValueError("The fake payment provider can't be used in production.")

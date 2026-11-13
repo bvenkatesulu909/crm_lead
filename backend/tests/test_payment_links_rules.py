@@ -191,8 +191,26 @@ KEYS = {
 }
 
 
-def test_the_default_is_the_fake_with_no_keys_needed() -> None:
-    assert settings().razorpay_mode == "fake"
+def test_the_default_is_off_with_no_keys_needed() -> None:
+    assert settings().razorpay_mode == "off"
+
+
+def test_off_is_allowed_in_production_so_a_server_without_razorpay_starts() -> None:
+    config = settings(
+        environment="production",
+        oidc_issuer="https://auth.example.test/realms/crm",
+        files_s3_secure=True,
+    )
+    assert config.razorpay_mode == "off"
+
+
+def test_the_unavailable_provider_refuses_everything() -> None:
+    from app.modules.payment_links.provider import UnavailableProvider
+
+    with pytest.raises(ProviderError):
+        create(UnavailableProvider())  # type: ignore[arg-type]
+    with pytest.raises(ProviderError):
+        UnavailableProvider().cancel_link("plink_1")
 
 
 def test_the_fake_is_refused_in_production() -> None:

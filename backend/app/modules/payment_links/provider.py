@@ -38,6 +38,25 @@ class PaymentProvider(Protocol):
     def cancel_link(self, provider_link_id: str) -> None: ...
 
 
+class UnavailableProvider:
+    """No provider is configured (the default): every call says so, nothing leaves the server."""
+
+    def create_link(
+        self,
+        *,
+        reference_id: str,
+        amount_paise: int,
+        currency: str,
+        description: str,
+        expires_at: datetime,
+        notes: dict[str, str],
+    ) -> CreatedLink:
+        raise ProviderError("No payment provider is configured.")
+
+    def cancel_link(self, provider_link_id: str) -> None:
+        raise ProviderError("No payment provider is configured.")
+
+
 class FakeProvider:
     def __init__(self) -> None:
         self._counter = itertools.count(1)

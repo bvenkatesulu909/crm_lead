@@ -27,7 +27,7 @@ Settings (all `CRM_` variables, placeholders in `backend/.env.example`):
 
 | Setting | Meaning |
 |---|---|
-| `CRM_RAZORPAY_MODE` | `fake` (default, no network, tests and demos; refused in production), `test` (Razorpay test keys) or `live` (also needs `CRM_RAZORPAY_GO_LIVE=true` and a live key) |
+| `CRM_RAZORPAY_MODE` | `off` (default: no provider, links cannot be created, the webhook refuses everything), `fake` (no network, tests and demos; refused in production), `test` (Razorpay test keys) or `live` (also needs `CRM_RAZORPAY_GO_LIVE=true` and a live key) |
 | `CRM_RAZORPAY_KEY_ID` / `_KEY_SECRET` | the API key pair; never logged |
 | `CRM_RAZORPAY_WEBHOOK_SECRET` | the webhook's own secret (not the key secret) |
 | `CRM_RAZORPAY_LINK_EXPIRY_DAYS` | how long a link works (default 7) |

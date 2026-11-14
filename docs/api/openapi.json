@@ -15871,6 +15871,24 @@
         "title": "SummaryDraftRead",
         "type": "object"
       },
+      "SummaryRead": {
+        "description": "The approved text of the quote's summary slide, or none.",
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "title": "SummaryRead",
+        "type": "object"
+      },
       "SupportFigures": {
         "properties": {
           "average_rating": {
@@ -38198,6 +38216,84 @@
           }
         ],
         "summary": "A 60-second link to the newest proposal deck (ADR 0025)",
+        "tags": [
+          "proposal-decks"
+        ]
+      }
+    },
+    "/api/v1/quotes/{quote_id}/deck/summary": {
+      "get": {
+        "operationId": "deck_summary_api_v1_quotes__quote_id__deck_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quote_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Quote Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The approved 'why this proposal' text of a quote, if there is one",
         "tags": [
           "proposal-decks"
         ]

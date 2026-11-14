@@ -17,7 +17,12 @@ from app.modules.agents import api as agents_api
 from app.modules.assistant.api import ChatModel
 from app.modules.identity.api import require_any_permission
 from app.modules.proposal_decks import service, writer
-from app.modules.proposal_decks.schemas import DeckLinkRead, DeckStatusRead, SummaryDraftRead
+from app.modules.proposal_decks.schemas import (
+    DeckLinkRead,
+    DeckStatusRead,
+    SummaryDraftRead,
+    SummaryRead,
+)
 from app.modules.proposal_decks.writer_model import model_for
 
 Db = Annotated[Session, Depends(get_db_session)]
@@ -118,6 +123,15 @@ def draft_summary(
         proposal_link=f"/approvals/{proposal.id}" if proposal else None,
         blocked_message=result.blocked_message,
     )
+
+
+@router.get(
+    "/{quote_id}/deck/summary",
+    summary="The approved 'why this proposal' text of a quote, if there is one",
+    responses=problem_responses(404),
+)
+def deck_summary(quote_id: uuid.UUID, principal: Reader, session: Db) -> SummaryRead:
+    return SummaryRead(text=service.summary_state(session, principal, quote_id))
 
 
 @router.get(

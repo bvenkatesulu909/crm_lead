@@ -272,6 +272,14 @@ def summary_problem(
     return None
 
 
+def summary_state(session: Session, principal: Principal, quote_id: uuid.UUID) -> str | None:
+    """The approved "why this proposal" text of a quote, for a person who may read the quote (the
+    quote module decides: 404 otherwise). A quote that is not yet ready for a deck has none."""
+    tenant_id, _ = _ids(principal)
+    source = quotes_api.deck_source(session, principal, quote_id, create=False)
+    return latest_summary(session, tenant_id, source.quote_id)
+
+
 def latest_summary(session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID) -> str | None:
     """The newest approved summary of a quote, or None."""
     return session.scalar(

@@ -384,3 +384,48 @@ def test_someone_who_may_only_read_the_quote_cannot_draft_even_past_the_router(
     with pytest.raises(ForbiddenError):
         writer.draft_summary(db_session, reader, model, uuid.UUID(quote["id"]))
     assert model.calls == [] and proposals(db_session) == []
+
+
+# --- reading the approved text ---------------------------------------------------------------
+
+
+def read_summary(api: TestClient, auth: Headers, quote: Any, user: str = "alpha.agent1") -> Any:
+    return api.get(f"{QUOTES}/{quote['id']}/deck/summary", headers=auth(user))
+
+
+def test_the_approved_text_can_be_read_by_people_who_may_read_the_quote(
+    api, auth, world, db_session
+) -> None:
+    quote = approved(api, auth, world)
+    assert ok(read_summary(api, auth, quote)) == {"text": None}
+    switch_on(api, auth)
+    use(api, says())
+    body = ok(draft(api, auth, quote), 201)
+    assert ok(read_summary(api, auth, quote)) == {"text": None}  # a proposal is not yet approved
+    version = ok(
+        api.get(f"/api/v1/approvals/actions/{body['proposal_id']}", headers=auth("alpha.manager"))
+    )["version"]
+    ok(
+        api.post(
+            f"/api/v1/approvals/actions/{body['proposal_id']}/approve",
+            json={"version": version},
+            headers=auth("alpha.manager"),
+        )
+    )
+    assert ok(read_summary(api, auth, quote)) == {"text": SLIDE}
+    assert ok(read_summary(api, auth, quote, "alpha.manager")) == {"text": SLIDE}
+
+
+@pytest.mark.parametrize(
+    ("user", "expected"),
+    [("alpha.agent2", 404), ("beta.admin", 404), ("alpha.support", 403), ("alpha.customer", 403)],
+)
+def test_who_may_not_read_the_approved_text(api, auth, world, user, expected) -> None:
+    quote = approved(api, auth, world)
+    assert read_summary(api, auth, quote, user).status_code == expected
+    assert api.get(f"{QUOTES}/{quote['id']}/deck/summary").status_code == 401
+
+
+def test_a_quote_not_yet_approved_has_no_text_to_read(api, auth, world) -> None:
+    draft_quote = new_quote(api, auth, world)
+    assert code_of(read_summary(api, auth, draft_quote)) == (409, "quote_not_ready_for_deck")

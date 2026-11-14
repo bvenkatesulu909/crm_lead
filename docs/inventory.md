@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **269** operations over **215** paths and **319** schemas.
+- **270** operations over **216** paths and **320** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -37,9 +37,9 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | branding | 5 |
 | notifications | 5 |
 | orders | 5 |
+| proposal-decks | 5 |
 | reports | 5 |
 | buyer-memory | 4 |
-| proposal-decks | 4 |
 | agents | 3 |
 | customer relationships | 3 |
 | identity | 3 |

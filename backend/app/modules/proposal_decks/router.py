@@ -13,9 +13,17 @@ from app.core.config import Settings
 from app.core.db import get_db_session
 from app.core.errors import problem_responses
 from app.core.storage import FileStore, get_file_store
+from app.modules.agents import api as agents_api
+from app.modules.assistant.api import ChatModel
 from app.modules.identity.api import require_any_permission
-from app.modules.proposal_decks import service
-from app.modules.proposal_decks.schemas import DeckLinkRead, DeckStatusRead
+from app.modules.proposal_decks import service, writer
+from app.modules.proposal_decks.schemas import (
+    DeckLinkRead,
+    DeckStatusRead,
+    SummaryDraftRead,
+    SummaryRead,
+)
+from app.modules.proposal_decks.writer_model import model_for
 
 Db = Annotated[Session, Depends(get_db_session)]
 Files = Annotated[FileStore, Depends(get_file_store)]
@@ -66,6 +74,64 @@ def create_deck(
     state = service.request_deck(session, principal, quote_id, settings, fmt=format)
     session.commit()
     return _read(state)
+
+
+def deck_writer_model(request: Request) -> ChatModel:
+    """The model behind the deck writer. Tests put a scripted one on the app."""
+    override: ChatModel | None = getattr(request.app.state, "deck_writer_model", None)
+    return override or model_for(request.app.state.settings)
+
+
+WriterModel = Annotated[ChatModel, Depends(deck_writer_model)]
+
+
+@router.post(
+    "/{quote_id}/deck/summary-draft",
+    status_code=status.HTTP_201_CREATED,
+    summary="Ask the deck writer to draft the 'why this proposal' slide",
+    description="No body. Needs the right to change the quote and the deck writer switched on "
+    "by an administrator. The text becomes a proposal in the approval queue; nothing is drawn "
+    "into a deck until a different person approves it. Off, over budget or over a limit: "
+    "503 / 429.",
+    responses=problem_responses(404, 409, 422, 429, 503),
+)
+def draft_summary(
+    quote_id: uuid.UUID,
+    request: Request,
+    principal: Writer,
+    session: Db,
+    model: WriterModel,
+) -> SummaryDraftRead:
+    settings: Settings = request.app.state.settings
+    try:
+        result = writer.draft_summary(
+            session,
+            principal,
+            model,
+            quote_id,
+            limits=writer.Limits.from_settings(settings),
+            ai_limits=agents_api.Limits.from_settings(settings),
+        )
+    except writer.DraftInvalidError:
+        session.commit()  # the model was called: keep the tokens it used on the month's total
+        raise
+    session.commit()
+    proposal = result.proposal
+    return SummaryDraftRead(
+        outcome="blocked" if result.outcome == "blocked" else "proposed",
+        proposal_id=str(proposal.id) if proposal else None,
+        proposal_link=f"/approvals/{proposal.id}" if proposal else None,
+        blocked_message=result.blocked_message,
+    )
+
+
+@router.get(
+    "/{quote_id}/deck/summary",
+    summary="The approved 'why this proposal' text of a quote, if there is one",
+    responses=problem_responses(404),
+)
+def deck_summary(quote_id: uuid.UUID, principal: Reader, session: Db) -> SummaryRead:
+    return SummaryRead(text=service.summary_state(session, principal, quote_id))
 
 
 @router.get(

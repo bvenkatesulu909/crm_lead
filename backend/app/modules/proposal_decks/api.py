@@ -2,15 +2,25 @@
 
 from app.core.outbox import JobHandler
 from app.core.storage import FileStore
-from app.modules.proposal_decks import service
+from app.modules.proposal_decks import rules, service
 from app.modules.proposal_decks.data import DeckBrand, DeckData, DeckLine
 from app.modules.proposal_decks.render import drawable_characters, render_deck
 
 JOB = service.JOB
+add_summary = service.add_summary
+latest_summary = service.latest_summary
+summary_problem = service.summary_problem
+DeckSummaryInvalidError = service.DeckSummaryInvalidError
+check_summary = rules.check_summary
 JOB_PPTX = service.JOB_PPTX
 
 __all__ = [
     "JOB",
+    "DeckSummaryInvalidError",
+    "add_summary",
+    "check_summary",
+    "latest_summary",
+    "summary_problem",
     "JOB_PPTX",
     "DeckBrand",
     "DeckData",

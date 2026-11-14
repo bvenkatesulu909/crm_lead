@@ -30,6 +30,7 @@ from app.modules.leads import models as leads_models
 from app.modules.notifications import models as notifications_models
 from app.modules.orders import models as orders_models
 from app.modules.payment_links import models as payment_links_models
+from app.modules.proposal_decks import models as proposal_decks_models
 from app.modules.public_chat import models as public_chat_models
 from app.modules.qualifier import models as qualifier_models
 from app.modules.quotes import models as quotes_models
@@ -71,6 +72,7 @@ __all__ = [
     "support_models",
     "webcheck_models",
     "deal_desk_models",
+    "proposal_decks_models",
     "workflows_models",
 ]
 

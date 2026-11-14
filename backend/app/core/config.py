@@ -253,6 +253,9 @@ class Settings(BaseSettings):
     # The optional lead agent (ADR 0022): how often it may run.
     lead_agent_per_lead_hour: int = Field(default=1, ge=1, le=100)
     lead_agent_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # The deck writer (ADR 0032 Amendment A, PD7): drafts of the summary slide.
+    deck_writer_per_quote_hour: int = Field(default=3, ge=1, le=100)
+    deck_writer_per_tenant_day: int = Field(default=100, ge=1, le=100_000)
     # The deal desk (ADR 0024): reviews per deal per hour and per organisation per day.
     deal_desk_per_deal_hour: int = Field(default=1, ge=1, le=100)
     deal_desk_per_tenant_day: int = Field(default=200, ge=1, le=100_000)

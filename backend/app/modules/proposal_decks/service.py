@@ -26,7 +26,9 @@ from app.core.storage import FileStore
 from app.modules.branding import api as branding_api
 from app.modules.documents import api as documents_api
 from app.modules.identity import api as identity_api
+from app.modules.proposal_decks import rules
 from app.modules.proposal_decks.data import DeckBrand, DeckData, DeckLine
+from app.modules.proposal_decks.models import DeckSummary
 from app.modules.proposal_decks.render import render_deck
 from app.modules.proposal_decks.render_pptx import render_pptx
 from app.modules.quotes import api as quotes_api
@@ -76,6 +78,11 @@ class DeckPendingError(ConflictError):
 
     def __init__(self) -> None:
         super().__init__("A proposal deck for this quote is already being made.")
+
+
+class DeckSummaryInvalidError(DomainError):
+    status_code = 422
+    code = "deck_summary_invalid"
 
 
 class DeckNotFoundError(NotFoundError):
@@ -216,10 +223,79 @@ def deck_link(
     return documents_api.download_link(session, store, tenant_id, doc.id)
 
 
+# --- approved summaries (ADR 0032 Amendment A, PD7) -----------------------------------------
+
+
+def add_summary(
+    session: Session,
+    tenant_id: uuid.UUID,
+    quote_id: uuid.UUID,
+    body: str,
+    approved_by: uuid.UUID,
+    proposal_id: uuid.UUID | None = None,
+) -> uuid.UUID:
+    """Keep the text a person approved as the quote's "why this proposal" slide. Called by the
+    approval queue when it carries out an approved proposal; never by a request of its own, so it
+    checks no permission - the queue did. The text must fit the slide; the quote must exist in the
+    organisation and be one a deck can be made of. Insert-only: a newer approval replaces the older
+    one for the next deck, the older row stays."""
+    text = body.strip()
+    problem = rules.check_summary(text)
+    if problem is not None:
+        raise DeckSummaryInvalidError(problem)
+    quotes_api.deck_source_for_job(session, tenant_id, quote_id)  # not found / not ready: refused
+    row = DeckSummary(
+        tenant_id=tenant_id,
+        quote_id=quote_id,
+        approved_by_user_id=approved_by,
+        proposal_id=proposal_id,
+        body=text,
+    )
+    session.add(row)
+    session.flush()
+    return row.id
+
+
+def summary_problem(
+    session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID, body: str
+) -> str | None:
+    """Why this text cannot become the quote's summary slide (``None`` = it can): it must fit the
+    slide, and the quote must be one a deck can be made of (approved, not superseded). Asked when a
+    proposal is made, so a refusal comes at once and not only when someone approves."""
+    problem = rules.check_summary(body)
+    if problem is not None:
+        return problem
+    try:
+        quotes_api.deck_source_for_job(session, tenant_id, quote_id)
+    except (quotes_api.QuoteNotReadyForDeckError, quotes_api.QuoteSupersededError) as why:
+        return why.detail
+    return None
+
+
+def summary_state(session: Session, principal: Principal, quote_id: uuid.UUID) -> str | None:
+    """The approved "why this proposal" text of a quote, for a person who may read the quote (the
+    quote module decides: 404 otherwise). A quote that is not yet ready for a deck has none."""
+    tenant_id, _ = _ids(principal)
+    source = quotes_api.deck_source(session, principal, quote_id, create=False)
+    return latest_summary(session, tenant_id, source.quote_id)
+
+
+def latest_summary(session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID) -> str | None:
+    """The newest approved summary of a quote, or None."""
+    return session.scalar(
+        select(DeckSummary.body)
+        .where(DeckSummary.tenant_id == tenant_id, DeckSummary.quote_id == quote_id)
+        .order_by(DeckSummary.seq.desc())
+        .limit(1)
+    )
+
+
 # --- the worker -----------------------------------------------------------------------------
 
 
-def _deck_data(source: quotes_api.DeckSource, brand: DeckBrand) -> DeckData:
+def _deck_data(
+    source: quotes_api.DeckSource, brand: DeckBrand, summary: str | None = None
+) -> DeckData:
     return DeckData(
         number=source.number,
         title=source.title,
@@ -248,6 +324,7 @@ def _deck_data(source: quotes_api.DeckSource, brand: DeckBrand) -> DeckData:
         total=source.total,
         customer_note=source.customer_note,
         brand=brand,
+        summary=summary,
     )
 
 
@@ -278,6 +355,7 @@ def run_job(session: Session, store: FileStore, job: Job) -> None:
             footer_line=brand.footer_line,
             logo_png=brand.logo_png,
         ),
+        latest_summary(session, job.tenant_id, quote_id),
     )
     content = render_pptx(data) if fmt == "pptx" else render_deck(data)
     existing = documents_api.find_by_content(

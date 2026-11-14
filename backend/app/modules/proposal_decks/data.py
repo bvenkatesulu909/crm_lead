@@ -46,3 +46,5 @@ class DeckData:
     total: Decimal
     customer_note: str | None
     brand: DeckBrand
+    # An approved "why this proposal" text (ADR 0032 Amendment A, PD7); none = no such slide.
+    summary: str | None = None

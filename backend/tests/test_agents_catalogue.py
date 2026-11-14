@@ -31,6 +31,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "knowledge_answers",
         "qualifier",
         "lead_agent",
+        "deck_writer",
         "deal_desk",
         "account_research",
     }
@@ -54,6 +55,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
     # The deal desk starts ON (ADR 0024, owner's decision of 2026-11-08 replacing Q8).
     assert not AGENTS["lead_agent"].default_enabled
     assert AGENTS["deal_desk"].default_enabled
+    assert not AGENTS["deck_writer"].default_enabled  # ADR 0032 Amendment A: off until switched on
     assert not AGENTS["account_research"].default_enabled  # ADR 0024 Q8 still applies to it
     assert not AGENTS["voice"].default_enabled and AGENTS["voice"].platform_switch is False
     # Company details read outside sites for a lead: OFF until switched on (ADR 0026 Q4).
@@ -66,6 +68,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
     starts_off = (
         "mcp_client",
         "lead_agent",
+        "deck_writer",
         "voice",
         "account_research",
         "company_details",
@@ -81,7 +84,14 @@ def test_every_key_fits_the_database_rule() -> None:
 
 @pytest.mark.parametrize(
     "agent",
-    ["staff_assistant", "portal_assistant", "public_chat", "deal_desk", "account_research"],
+    [
+        "staff_assistant",
+        "portal_assistant",
+        "public_chat",
+        "deal_desk",
+        "account_research",
+        "deck_writer",
+    ],
 )
 def test_the_listed_tools_are_exactly_the_tools_the_code_gives(agent: str) -> None:
     """The catalogue cannot drift from the real tools: a new tool must be listed here."""

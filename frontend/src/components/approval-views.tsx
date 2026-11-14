@@ -43,6 +43,7 @@ const AGENT_LABELS: Record<string, string> = {
   qualifier: "the Qualifier",
   lead_agent: "the lead agent",
   deal_desk: "the deal desk",
+  deck_writer: "the deck writer",
 };
 
 /**

@@ -133,3 +133,39 @@ newest file. The audit entries `deck.requested` and `deck.created` carry the for
   link, so no token reaches the browser. Any other format value is "Page not found".
 - The Server Action sends only the quote id and the format (`pdf` or `pptx`; anything else is refused
   before a request is made).
+
+## 6. The "Why this proposal" slide (ADR 0032 Amendment A, PD7)
+
+An optional slide after "About us" in both the PDF and the PowerPoint, drawn from the newest
+**approved** text of the quote. Nothing reaches a deck without a person approving it.
+
+1. **Draft.** `POST /quotes/{id}/deck/summary-draft` (people who may change the quote; the deck writer
+   switched on by a tenant administrator - it starts OFF - and, like every agent, under the AI platform
+   switch, the monthly token budget and the tool filter). The model sees only this quote's
+   customer-facing facts (title, customer, lines, total, validity, the note for the customer) as the
+   asker, with typed text cleaned and flagged if it reads like an instruction; it has ONE tool,
+   `submit_summary` (text and reason, nothing else). The answer is checked strictly (exactly one call,
+   exactly those two strings, at most 120 words and 1,000 characters).
+2. **Propose.** The text becomes ONE proposal in the approval queue (`quote.deck_summary`, author
+   `deck_writer`, target type `quote`) through the Sentinel: a link, an address or an instruction in
+   the text is refused and audited (`outcome: blocked`). Limits: 3 drafts per quote per hour and 100 per
+   organisation per day (`CRM_DECK_WRITER_PER_QUOTE_HOUR`, `CRM_DECK_WRITER_PER_TENANT_DAY`).
+3. **Approve.** A different person with the right approves it in the queue (nobody approves their own
+   proposal). The approval stores the text in `deck_summaries` (migration 0066: insert-only, forced
+   row-level security, the quote must be one a deck can be made of) and the plan/outcome check runs
+   as for every action.
+4. **Deck.** The next deck job draws the newest approved text; a changed text means a different file,
+   so a new deck is stored and the old one stays. A quote without an approved text has no such slide.
+
+The model cannot change prices, discounts or terms (it writes one text and calls no other tool), sees
+no other customer's data and no internal notes, and cannot fetch anything.
+
+### 6a. On the screens (PD7)
+
+On the quote page the Proposal deck card has a third block, **Why this proposal (slide)**: the approved
+text as plain text (or "No summary slide yet."), and **Draft with the deck writer** / **Draft a new one**
+for people who may change the quote. Pressing it opens the proposal in the approval queue (the asker
+cannot approve it; the card shows no text until a different person approves). A text the safety check
+refuses is shown with its reason instead; a switched-off agent, a used-up budget or a limit are explained
+in plain words. The approval card names "the deck writer" and links to the quote. The block is hidden
+for a quote that is not yet approved. `GET /quotes/{id}/deck/summary` returns the approved text.

@@ -118,6 +118,10 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.deal_desk import research_rules
 
         return {research_rules.TOOL}
+    if agent == "deck_writer":
+        from app.modules.proposal_decks import writer
+
+        return {writer.TOOL_NAME}
     raise CaseFileError(f"unknown agent {agent!r}")
 
 

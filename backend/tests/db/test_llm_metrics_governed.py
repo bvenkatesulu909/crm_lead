@@ -74,7 +74,7 @@ def gate(ctx: Ctx, model: Metered, key: str) -> Any:
     return governed(model, ctx.session, ctx.alpha, key, LIMITS, clock=lambda: NOW)
 
 
-def test_the_catalogue_has_the_eight_model_agents() -> None:
+def test_the_catalogue_has_the_nine_model_agents() -> None:
     # The web check uses no model and the MCP client's model runs outside the CRM.
     assert set(MODEL_AGENTS) == {
         "staff_assistant",
@@ -84,6 +84,7 @@ def test_the_catalogue_has_the_eight_model_agents() -> None:
         "qualifier",
         "lead_agent",
         "deal_desk",
+        "deck_writer",
         "account_research",
     }
 

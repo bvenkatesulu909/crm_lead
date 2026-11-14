@@ -15820,6 +15820,75 @@
         "title": "StepWithReason",
         "type": "object"
       },
+      "SummaryDraftRead": {
+        "description": "What asking the deck writer gave: a proposal waiting in the approval queue (nothing is\ndrawn into a deck until a different person approves it), or a refusal by the safety check.",
+        "properties": {
+          "blocked_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Message"
+          },
+          "outcome": {
+            "enum": [
+              "proposed",
+              "blocked"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
+          "proposal_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Link"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "title": "SummaryDraftRead",
+        "type": "object"
+      },
+      "SummaryRead": {
+        "description": "The approved text of the quote's summary slide, or none.",
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "title": "SummaryRead",
+        "type": "object"
+      },
       "SupportFigures": {
         "properties": {
           "average_rating": {
@@ -38147,6 +38216,193 @@
           }
         ],
         "summary": "A 60-second link to the newest proposal deck (ADR 0025)",
+        "tags": [
+          "proposal-decks"
+        ]
+      }
+    },
+    "/api/v1/quotes/{quote_id}/deck/summary": {
+      "get": {
+        "operationId": "deck_summary_api_v1_quotes__quote_id__deck_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quote_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Quote Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The approved 'why this proposal' text of a quote, if there is one",
+        "tags": [
+          "proposal-decks"
+        ]
+      }
+    },
+    "/api/v1/quotes/{quote_id}/deck/summary-draft": {
+      "post": {
+        "description": "No body. Needs the right to change the quote and the deck writer switched on by an administrator. The text becomes a proposal in the approval queue; nothing is drawn into a deck until a different person approves it. Off, over budget or over a limit: 503 / 429.",
+        "operationId": "draft_summary_api_v1_quotes__quote_id__deck_summary_draft_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quote_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Quote Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryDraftRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask the deck writer to draft the 'why this proposal' slide",
         "tags": [
           "proposal-decks"
         ]

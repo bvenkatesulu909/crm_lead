@@ -7,6 +7,9 @@ from datetime import date
 from decimal import Decimal
 
 LINES_PER_SLIDE = 10
+# The optional summary slide (ADR 0032 Amendment A, PD7): short, so it fits one slide.
+SUMMARY_MAX_WORDS = 120
+SUMMARY_MAX_CHARS = 1000
 RUPEE = "₹"
 UNKNOWN = "?"
 
@@ -123,3 +126,16 @@ def fit_font_size(
             break
         size -= 1
     return float(max(size, floor))
+
+
+def check_summary(text: str) -> str | None:
+    """Why a "why this proposal" text cannot be used (``None`` = fine): not empty, at most 120 words
+    and 1,000 characters, so it fits one slide."""
+    stripped = text.strip()
+    if not stripped:
+        return "The summary is empty."
+    if len(stripped) > SUMMARY_MAX_CHARS:
+        return f"The summary is longer than {SUMMARY_MAX_CHARS} characters."
+    if len(stripped.split()) > SUMMARY_MAX_WORDS:
+        return f"The summary is longer than {SUMMARY_MAX_WORDS} words."
+    return None

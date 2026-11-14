@@ -185,6 +185,12 @@ class _Deck:
         self.text(slide, MARGIN, 1.5, BODY_W, 5.2, self.b.about_text, size=16, min_size=10)
         return slide
 
+    def summary_slide(self) -> Slide:
+        slide = self.new_slide()
+        self.heading(slide, "Why this proposal")
+        self.text(slide, MARGIN, 1.5, BODY_W, 5.2, self.d.summary or "", size=20, min_size=11)
+        return slide
+
     def propose(self, chunk: list[DeckLine], index: int, count: int) -> Slide:
         slide = self.new_slide()
         self.heading(slide, "What we propose" + (f" ({index} of {count})" if count > 1 else ""))
@@ -326,6 +332,8 @@ class _Deck:
         self.cover()
         if self.b.about_text.strip():
             framed.append(self.about())
+        if (self.d.summary or "").strip():
+            framed.append(self.summary_slide())
         chunks = rules.pages(self.d.lines)
         for index, chunk in enumerate(chunks, start=1):
             framed.append(self.propose(chunk, index, len(chunks)))

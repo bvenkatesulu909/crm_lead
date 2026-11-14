@@ -256,6 +256,22 @@ def add_summary(
     return row.id
 
 
+def summary_problem(
+    session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID, body: str
+) -> str | None:
+    """Why this text cannot become the quote's summary slide (``None`` = it can): it must fit the
+    slide, and the quote must be one a deck can be made of (approved, not superseded). Asked when a
+    proposal is made, so a refusal comes at once and not only when someone approves."""
+    problem = rules.check_summary(body)
+    if problem is not None:
+        return problem
+    try:
+        quotes_api.deck_source_for_job(session, tenant_id, quote_id)
+    except (quotes_api.QuoteNotReadyForDeckError, quotes_api.QuoteSupersededError) as why:
+        return why.detail
+    return None
+
+
 def latest_summary(session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID) -> str | None:
     """The newest approved summary of a quote, or None."""
     return session.scalar(

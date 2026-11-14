@@ -131,6 +131,19 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="deck_writer",
+            title="Deck writer",
+            description=(
+                'Drafts one short "why this proposal" slide (at most 120 words) for a quote\'s '
+                "proposal deck, from the quote's own facts. It never changes a deck: the draft "
+                "waits in the approval queue for a different person, and only an approved text is "
+                "drawn into the next deck. Off until an administrator switches it on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_summary",),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="web_check",
             title="Web check",
             description=(

@@ -32,6 +32,7 @@ from app.modules.approvals.models import AGENTS, REASON_MAX, AgentAction
 from app.modules.contacts import api as contacts_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
+from app.modules.quotes import api as quotes_api
 from app.modules.sales import api as sales_api
 
 ENTITY = "agent_action"
@@ -187,6 +188,8 @@ def _visible(
         return contacts_api.is_readable_contact(session, principal, target_id)
     if target_type == "opportunity":
         return sales_api.is_readable_opportunity(session, principal, target_id)
+    if target_type == "quote":
+        return quotes_api.quote_brief(session, principal, target_id) is not None
     return False
 
 
@@ -213,6 +216,7 @@ def _proposal(action: AgentAction) -> Proposal:
         target_id=action.target_id,
         requested_by_user_id=action.requested_by_user_id,
         reason=action.reason,
+        action_id=action.id,
     )
 
 
@@ -704,6 +708,7 @@ _PATHS = {
     "account": "accounts",
     "contact": "contacts",
     "opportunity": "opportunities",
+    "quote": "quotes",
 }
 
 
@@ -721,6 +726,9 @@ def target_label(session: Session, principal: Principal, action: AgentAction) ->
         return accounts_api.account_name(session, action.tenant_id, action.target_id)
     if action.target_type == "opportunity":
         return sales_api.opportunity_name(session, principal, action.target_id)
+    if action.target_type == "quote":
+        brief = quotes_api.quote_brief(session, principal, action.target_id)
+        return brief[0] if brief else None
     return contacts_api.contact_name(session, action.tenant_id, action.target_id)
 
 

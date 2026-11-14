@@ -9,6 +9,7 @@ from app.modules.proposal_decks.render import drawable_characters, render_deck
 JOB = service.JOB
 add_summary = service.add_summary
 latest_summary = service.latest_summary
+summary_problem = service.summary_problem
 DeckSummaryInvalidError = service.DeckSummaryInvalidError
 check_summary = rules.check_summary
 JOB_PPTX = service.JOB_PPTX
@@ -19,6 +20,7 @@ __all__ = [
     "add_summary",
     "check_summary",
     "latest_summary",
+    "summary_problem",
     "JOB_PPTX",
     "DeckBrand",
     "DeckData",

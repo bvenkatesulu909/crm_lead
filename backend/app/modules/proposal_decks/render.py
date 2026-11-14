@@ -165,6 +165,8 @@ class _Deck:
         out: list[tuple[bool, Callable[[Canvas], None]]] = [(False, self.cover)]
         if self.b.about_text.strip():
             out.append((True, self.about))
+        if (self.d.summary or "").strip():
+            out.append((True, self.summary))
         chunks = rules.pages(self.d.lines)
         for index, chunk in enumerate(chunks, start=1):
             out.append((True, self._propose(chunk, index, len(chunks))))
@@ -246,6 +248,10 @@ class _Deck:
     def about(self, c: Canvas) -> None:
         self._heading(c, f"About {self.b.organisation}"[:60])
         _fit(c, [_para(self.b.about_text, _style(16, leading=23))], MARGIN, 70, BODY_WIDTH, 370)
+
+    def summary(self, c: Canvas) -> None:
+        self._heading(c, "Why this proposal")
+        _fit(c, [_para(self.d.summary or "", _style(20, leading=29))], MARGIN, 70, BODY_WIDTH, 370)
 
     def _propose(self, chunk: list[DeckLine], index: int, count: int) -> Callable[[Canvas], None]:
         def draw(c: Canvas) -> None:

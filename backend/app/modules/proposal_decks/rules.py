@@ -1,6 +1,7 @@
 """Pure helpers for the proposal deck (ADR 0032, PD2): money, number and date words, line paging and
 the "can the font draw this?" filter. No database, no drawing."""
 
+import math
 from collections.abc import Mapping, Sequence
 from datetime import date
 from decimal import Decimal
@@ -103,3 +104,22 @@ def printable_scripts(text: str, can_draw: Mapping[str, "set[int] | frozenset[in
         script = script if ch in _JOINERS else script_of(ch)
         out.append(ch if ord(ch) in can_draw[script] else UNKNOWN)
     return "".join(out)
+
+
+def fit_font_size(
+    text: str, *, width_in: float, height_in: float, max_pt: float, min_pt: float = 9
+) -> float:
+    """The largest font size (whole points, from ``max_pt`` down to ``min_pt``) at which ``text``
+    should fit a box, by a length estimate: an average character is about half the font size wide
+    and a line is 1.25 times the size high. For formats that do not shrink text by themselves
+    (PowerPoint, ADR 0032 Amendment A)."""
+    width_pt, height_pt = width_in * 72, height_in * 72
+    size = math.floor(max_pt)
+    floor = math.ceil(min_pt)
+    while size > floor:
+        per_line = max(1, int(width_pt / (size * 0.5)))
+        lines = sum(max(1, math.ceil(len(part) / per_line)) for part in text.split("\n"))
+        if lines * size * 1.25 <= height_pt:
+            break
+        size -= 1
+    return float(max(size, floor))

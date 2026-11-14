@@ -80,3 +80,22 @@ Rules that make it safe and stable:
 - Downloads go through route handlers (`/quotes/<id>/deck`, `/portal/quotes/<id>/deck`) that redirect to a
   60-second signed link, so no token reaches the browser. A refusal sends the user back to the quote page.
 - Only the quote id is sent when a deck is asked for.
+
+
+## 5. PowerPoint file (ADR 0032 Amendment A, PD6)
+
+`render_pptx.py` draws the same deck as an editable `.pptx` from the same plain data and the same slide
+rules as the PDF (cover, about us, what we propose with 10 lines a slide, investment, notes and terms,
+next steps). The amounts come from the same `rules.money`, so the two files always agree.
+
+- It is the only module that imports `python-pptx` (pinned with its `lxml` and `XlsxWriter`; a test
+  checks this). Typed text is a plain run of text: no markup, no hyperlinks, no macros, no embedded
+  objects; control characters an Office file cannot hold are removed. The only picture is the
+  organisation's own re-encoded logo.
+- Unlike the PDF the file does not embed fonts: text is set in Calibri and PowerPoint picks a font that
+  has Hindi or Telugu letters. PowerPoint does not shrink long text when a file is opened, so the font
+  size is chosen up front from a length estimate (`rules.fit_font_size`, never below 9 points).
+- The same data gives the same bytes (fixed file timestamps; python-pptx's printer-settings blob and
+  blank thumbnail are dropped), so identical decks are stored once.
+- PD6a is the renderer only. The job, stored file, download links and the "Download PowerPoint" button
+  are PD6b and PD6c.

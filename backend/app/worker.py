@@ -43,6 +43,7 @@ from app.modules.knowledge import api as knowledge_api
 from app.modules.lead_agent import api as lead_agent_api
 from app.modules.notifications import api as notifications_api
 from app.modules.payment_links import api as payment_links_api
+from app.modules.proposal_decks import api as proposal_decks_api
 from app.modules.public_chat import api as public_chat_api
 from app.modules.qualifier import api as qualifier_api
 from app.modules.quotes import api as quotes_api
@@ -79,6 +80,7 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
         communications_api.EMAIL_JOB: communications_api.email_job_handler(services.mailer),
         calls_api.JOB_KIND: calls_api.job_handler(services.file_store, services.settings),
         payment_links_api.APPLY_JOB: payment_links_api.apply_job_handler(),
+        proposal_decks_api.JOB: proposal_decks_api.job_handler(services.file_store),
         webcheck_api.CHECK_JOB: webcheck_api.check_job_handler(services.settings),
         webcheck_api.COMPANY_JOB: webcheck_api.company_job_handler(services.settings),
         # Domain events (ADR 0006): every "event.<name>" job goes to its subscribers.

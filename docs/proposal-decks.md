@@ -1,8 +1,6 @@
 # Branded proposal decks
 
-Design and decisions: [ADR 0032](adr/0032-branded-proposal-decks.md). Status: **PD1 (branding) and PD2
-(the renderer) are built**; the job that stores a deck, the download links and the screens on the quote
-page (PD3, PD4) are not.
+Design and decisions: [ADR 0032](adr/0032-branded-proposal-decks.md). Status: **PD1 to PD4 are built** (branding, renderer, job and download links, screens).
 
 ## 1. The branding (PD1)
 
@@ -39,3 +37,40 @@ Rules that make it safe and stable:
   print as `?` rather than empty boxes. Hindi and Telugu decks need extra fonts and are a later step.
 - The PDF has no links, scripts, attachments or outside pictures; the only image is the organisation's own
   re-encoded logo. The same data always gives the same bytes.
+
+## 3. Making, storing and downloading a deck (PD3)
+
+| Call | Who | What |
+|---|---|---|
+| `POST /api/v1/quotes/{id}/deck` | people who may change the quote (an agent for their own accounts' quotes, managers, administrators) | queue a deck (202). No body: the server decides everything |
+| `GET /api/v1/quotes/{id}/deck` | anyone who can read the quote | `none`, `queued`, `ready`, `failed` or `not_available` (with the reason), and the file name, size and time of the newest deck |
+| `GET /api/v1/quotes/{id}/deck/link` | anyone who can read the quote | a 60-second signed link to the newest deck (ADR 0025) |
+| `GET /api/v1/portal/quotes/{id}/deck` and `/deck/link` | a portal customer who can see the quote | only a finished deck; never the work in progress |
+
+- **Which quotes:** approved, sent, accepted or declined. A draft or a quote waiting for approval answers
+  409 `quote_not_ready_for_deck`; an old revision answers 409 `quote_superseded` (ask on the newest one).
+- **Worker job `quote.deck`:** reads the quote through the quotes module and the branding through the
+  branding module, draws the deck and stores it as a document (`purpose = quote_deck`, visible to the
+  customer). Nothing in the job is a figure or a text: only the quote id and who asked.
+- **Same content, one file:** the deck is deterministic, so asking again with nothing changed finds the
+  same bytes and stores nothing new (a unique index per quote and content). A changed branding gives a
+  new deck; the newest one is the one served. Each deck stays true for ever.
+- **Limits:** one deck at a time per quote (409 `deck_pending`), `CRM_PROPOSAL_DECKS_PER_USER_HOUR`
+  (default 30) per person per hour (429).
+- **Audit:** `deck.requested` (by the person) and `deck.created` (by the Automation identity, with the
+  document id, size and the branding version; nothing when the same deck already existed).
+- **What is never in a deck:** the quote's internal note, approval details, owner or status.
+
+## 4. Screens (PD4)
+
+- **Staff, quote page:** a **Proposal deck** card above *Details*. For a draft or a quote waiting for approval
+  it says a deck is available once the quote is approved (no button). Otherwise: *Create proposal deck*;
+  while the worker is drawing, the card says so, the button is disabled and the page looks again every four
+  seconds by itself; when ready it shows the file name, size and time with **Download deck** and *Make a new
+  deck* (needed only after the branding changed). A failed attempt says so, and a failed refresh keeps the
+  earlier deck available. People who may read but not change the quote can download but not create.
+- **Customer portal, quote page:** **Download proposal deck** next to *Download PDF*, only when the supplier
+  made a deck and the quote was sent to the customer.
+- Downloads go through route handlers (`/quotes/<id>/deck`, `/portal/quotes/<id>/deck`) that redirect to a
+  60-second signed link, so no token reaches the browser. A refusal sends the user back to the quote page.
+- Only the quote id is sent when a deck is asked for.

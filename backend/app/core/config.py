@@ -230,6 +230,9 @@ class Settings(BaseSettings):
     razorpay_link_expiry_days: int = Field(default=7, ge=1, le=90)
     razorpay_links_per_user_hour: int = Field(default=30, ge=1, le=1_000)
 
+    # Proposal decks (ADR 0032): decks one person may ask for per hour.
+    proposal_decks_per_user_hour: int = Field(default=30, ge=1, le=1_000)
+
     # Live web check (ADR 0019). Sources are OFF until listed here (comma-separated keys from the
     # catalogue); ``webcheck_demo`` switches on the fictional demo sources served inside the CRM
     # (never in production). ``webcheck_disabled`` is the platform-wide kill switch.

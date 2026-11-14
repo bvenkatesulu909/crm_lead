@@ -121,7 +121,8 @@ def request_deck(
 ) -> DeckState:
     """Queue the drawing of a deck in one format. Needs the right to change the quote (the quote
     module decides); refused for a quote not yet approved or one that was superseded, while one of
-    the same format is already being made, and past the hourly limit (both formats count together)."""
+    the same format is already being made, and past the hourly limit (both formats count
+    together)."""
     when = now or datetime.now(UTC)
     tenant_id, user_id = _ids(principal)
     source = quotes_api.deck_source(session, principal, quote_id, create=True)

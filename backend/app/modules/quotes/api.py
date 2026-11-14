@@ -42,9 +42,21 @@ __all__ = [
     "email_failed_handler",
     "email_job_handler",
     "pdf_job_handler",
+    "DeckLineSource",
+    "QuoteNotReadyForDeckError",
+    "QuoteSupersededError",
+    "DeckSource",
+    "deck_source",
+    "deck_source_for_job",
 ]
 
 PDF_JOB = service.PDF_JOB
+DeckLineSource = service.DeckLineSource
+QuoteNotReadyForDeckError = service.QuoteNotReadyForDeckError
+QuoteSupersededError = service.QuoteSupersededError
+DeckSource = service.DeckSource
+deck_source = service.deck_source
+deck_source_for_job = service.deck_source_for_job
 EMAIL_JOB = service.EMAIL_JOB
 
 

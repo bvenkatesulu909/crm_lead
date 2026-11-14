@@ -14,6 +14,7 @@
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
@@ -84,6 +85,14 @@ class InvalidQuoteError(DomainError):
 
 class VersionConflictError(ConflictError):
     code = "version_conflict"
+
+
+class QuoteNotReadyForDeckError(ConflictError):
+    code = "quote_not_ready_for_deck"
+
+
+class QuoteSupersededError(ConflictError):
+    code = "quote_superseded"
 
 
 class QuoteNotSentError(ConflictError):
@@ -722,6 +731,113 @@ def _pdf_data(session: Session, quote: Quote) -> QuotePdfData:
         total=quote.total,
         customer_note=quote.customer_note,
     )
+
+
+# --- the proposal deck's view of a quote (ADR 0032) -----------------------------------------
+
+
+@dataclass(frozen=True)
+class DeckLineSource:
+    position: int
+    description: str
+    quantity: Decimal
+    unit: str
+    net_unit_price: Decimal
+    discount_percent: Decimal
+    tax_rate: Decimal
+    line_subtotal: Decimal
+
+
+@dataclass(frozen=True)
+class DeckSource:
+    """What a proposal deck shows of a quote: the figures the customer sees, never internal notes,
+    approval details or the owner. Built from the record, so the deck and the quote can't differ."""
+
+    tenant_id: uuid.UUID
+    quote_id: uuid.UUID
+    number: str
+    title: str
+    status: str
+    customer: str
+    contact: str | None
+    issued: date
+    valid_until: date
+    currency: str
+    lines: tuple[DeckLineSource, ...]
+    gross_total: Decimal
+    discount_total: Decimal
+    subtotal: Decimal
+    tax_total: Decimal
+    total: Decimal
+    customer_note: str | None
+
+
+# A deck is made once the content can no longer change: the quote was approved (or went further).
+DECK_STATUSES = ("approved", "sent", "accepted", "declined")
+
+
+def _deck_source(session: Session, quote: Quote) -> DeckSource:
+    if quote.status == "superseded":
+        raise QuoteSupersededError(
+            "This quote was replaced by a newer revision. Create the deck from the newest one."
+        )
+    if quote.status not in DECK_STATUSES:
+        raise QuoteNotReadyForDeckError("A proposal deck is available once the quote is approved.")
+    t = quote.tenant_id
+    issued = quote.sent_at or quote.approved_at or quote.created_at
+    return DeckSource(
+        tenant_id=t,
+        quote_id=quote.id,
+        number=number_label(quote),
+        title=quote.title,
+        status=quote.status,
+        customer=accounts_api.account_name(session, t, quote.account_id) or "Customer",
+        contact=contacts_api.contact_name(session, t, quote.contact_id)
+        if quote.contact_id
+        else None,
+        issued=issued.date(),
+        valid_until=quote.valid_until,
+        currency=quote.currency,
+        lines=tuple(
+            DeckLineSource(
+                ln.position,
+                ln.description,
+                ln.quantity,
+                ln.unit,
+                ln.net_unit_price,
+                ln.discount_percent,
+                ln.tax_rate,
+                ln.line_subtotal,
+            )
+            for ln in repository.lines_of(session, quote)
+        ),
+        gross_total=quote.gross_total,
+        discount_total=quote.discount_total,
+        subtotal=quote.subtotal,
+        tax_total=quote.tax_total,
+        total=quote.total,
+        customer_note=quote.customer_note,
+    )
+
+
+def deck_source(
+    session: Session, principal: Principal, quote_id: uuid.UUID, *, create: bool
+) -> DeckSource:
+    """For a person: creating a deck needs the right to change the quote (404 for a quote they may
+    not see, 403 for one they may only read); reading one needs only the usual read policy."""
+    quote = (
+        _load_for_change(session, principal, quote_id)
+        if create
+        else get_quote(session, principal, quote_id)
+    )
+    return _deck_source(session, quote)
+
+
+def deck_source_for_job(session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID) -> DeckSource:
+    quote = repository.get_in_tenant(session, tenant_id, quote_id)
+    if quote is None:
+        raise PermanentJobError("quote not found")
+    return _deck_source(session, quote)
 
 
 def ensure_pdf(

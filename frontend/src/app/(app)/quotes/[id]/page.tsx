@@ -9,6 +9,7 @@ import {
   QuoteStatusBadge,
   QuoteTotals,
 } from "@/components/quote-view";
+import { DeckCard } from "@/components/deck-card";
 import { Card, Forbidden, SuccessAlert } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
 import type {
@@ -55,6 +56,7 @@ const DONE: Record<string, string> = {
   declined: "The decline was recorded.",
   revised: "A new revision was created.",
   ordered: "A draft order was created from this quote.",
+  "deck-queued": "The proposal deck is being made. It will appear in the card below.",
 };
 
 export default async function QuotePage({
@@ -154,6 +156,7 @@ export default async function QuotePage({
           )}
         </div>
         <div className="space-y-6">
+          <DeckCard quoteId={quote.id} canCreate={canWrite} />
           <Card>
             <h2 className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">Details</h2>
             <dl className="space-y-3 px-5 py-4 text-sm">

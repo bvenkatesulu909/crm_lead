@@ -104,3 +104,20 @@ quotes module's `api.py`.
    a quote sent to them? (Recommended: yes.)
 6. Do you have a logo file and brand colour to use for the demonstration organisation? (Only you can
    supply them; a made-up fictional logo is used for tests.)
+
+## 8. Amendment A (proposed 2026-11-14): the four follow-ups
+
+The owner asked to start the four things section 5 and the PD1-PD4 notes left open. Three are code,
+one is the owner's to supply. Nothing here changes the PDF deck, the quote or the approval rules.
+
+| Step | Content | Needs |
+|---|---|---|
+| PD5 | **Hindi and Telugu text in the deck.** Bundle Noto Sans Devanagari and Noto Sans Telugu (SIL OFL, like the Latin font), pick the font per run of text by script, and keep `?` only for characters no bundled font has. Complex-script shaping is the risk: ReportLab does not shape conjuncts, so v1 is checked by looking at real pages and a native speaker's read-through, and is labelled so. | Permission to download two fonts (about 0.5 MB each) |
+| PD6 | **PowerPoint (`.pptx`) output.** Same deck data, a second renderer using `python-pptx` (pure Python, MIT) through the security gate (BP-20): pinned, audited, one module imports it (guard test). Same rules as the PDF: built from plain data, text escaped, no links, no external pictures, content-unique storage, same signed links. A "Download PowerPoint" button beside the PDF one. | Permission to add `python-pptx` |
+| PD7 | **AI-written slides, through the approval queue.** One optional summary slide ("why this proposal") drafted by a model from the quote's facts only, never stored in the deck directly: it becomes a proposal in the approval queue (agent `deck_writer`, off by default, registry switch, budget, Sentinel, cleaning), and only an approved text is drawn into the next deck. The model never sees other customers' data and cannot change prices, discounts or terms. | An AI agent entry, owner approval of the design |
+| PD8 | **The real logo and colour.** Only the owner can supply them. Until then tests keep the made-up logo. The Branding page already takes the upload. | The owner's logo file and brand colour |
+
+Recommended answers: (1) PD5 first, then PD6, then PD7, one at a time. (2) Download the two Noto fonts.
+(3) Add `python-pptx`, pinned, with the BP-20 gate. (4) The summary slide is one slide, at most 120 words,
+needs approval by someone other than the asker, and is optional per deck. (5) Hindi and Telugu in the deck
+are for names and short phrases first; whole-page translation is not in scope.

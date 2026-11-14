@@ -11,29 +11,55 @@ import {
   deckSize,
   deckStateText,
   isWorkingOnDeck,
+  type DeckFormat,
   type DeckStatus,
 } from "@/lib/proposal-decks";
 
 type CreateAction = (state: DialogState) => Promise<DialogState>;
 
+/** The words of each format. The PDF keeps the wording it always had. */
+const WORDS: Record<
+  DeckFormat,
+  { testId: string; download: string; create: string; renew: string }
+> = {
+  pdf: {
+    testId: "deck-state",
+    download: "Download deck",
+    create: "Create proposal deck",
+    renew: "Make a new deck",
+  },
+  pptx: {
+    testId: "deck-state-pptx",
+    download: "Download PowerPoint",
+    create: "Create PowerPoint",
+    renew: "Make a new PowerPoint",
+  },
+};
+
 /**
  * The staff view of a quote's proposal deck: where it stands, the download (a plain link to a route
  * handler, so no token reaches the browser) and a button to make a new one. While a deck is being
- * made the card looks again every few seconds.
+ * made the card looks again every few seconds. One block per format (PDF or PowerPoint).
  */
 export function StaffDeck({
   deck,
   downloadHref,
   canCreate,
   action,
+  format = "pdf",
+  showNote = true,
   refreshMs = DECK_REFRESH_MS,
 }: {
   deck: DeckStatus;
   downloadHref: string;
   canCreate: boolean;
   action: CreateAction;
+  format?: DeckFormat;
+  /** The branding note is shown once per card: the second block leaves it out. */
+  showNote?: boolean;
   refreshMs?: number;
 }) {
+  const words = WORDS[format];
   const router = useRouter();
   const [state, formAction, pending] = useActionState(
     action,
@@ -54,7 +80,7 @@ export function StaffDeck({
         <ErrorAlert title="The deck could not be made" error={state.error} />
       )}
       <p
-        data-testid="deck-state"
+        data-testid={words.testId}
         className="text-sm text-slate-700"
         role={working ? "status" : undefined}
       >
@@ -70,7 +96,7 @@ export function StaffDeck({
       <div className="flex flex-wrap gap-2">
         {deck.status === "ready" && (
           <a href={downloadHref} download className={buttonClass("primary")}>
-            Download deck
+            {words.download}
           </a>
         )}
         {canCreate && !unavailable && (
@@ -85,13 +111,13 @@ export function StaffDeck({
               {pending || working
                 ? "Making…"
                 : deck.status === "ready"
-                  ? "Make a new deck"
-                  : "Create proposal deck"}
+                  ? words.renew
+                  : words.create}
             </button>
           </form>
         )}
       </div>
-      {!unavailable && (
+      {!unavailable && showNote && (
         <p className="text-xs text-slate-500">
           Uses your organisation&apos;s branding. A new deck is only needed when
           the branding changes.

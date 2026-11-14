@@ -18,7 +18,9 @@ import {
  * (approved at once, no discount), asks for a deck, the card shows the work in progress and updates by
  * itself when the worker has run, the deck downloads as a PDF. An administrator changes the branding
  * and a new deck is made; the customer sees the button only once the quote was sent to them and gets
- * the same newest file; another customer is refused. Creates clearly fictional "E2E" records and puts
+ * the same newest file; another customer is refused. The PowerPoint version (PD6c) has its own block
+ * on the card: made after the PDF, downloaded as a .pptx, never replacing the PDF, and also given to the
+ * customer; an unknown format is "not found". Creates clearly fictional "E2E" records and puts
  * the branding's about text back. Like the other journeys that run the worker themselves it expects NO
  * standing worker.
  */
@@ -130,6 +132,31 @@ test("a proposal deck is made for a quote, downloaded and shared with the custom
   expect(first.bytes.subarray(0, 5).toString()).toBe("%PDF-");
   expect(first.bytes.length).toBeGreaterThan(5000);
 
+  // 4b. The PowerPoint is a separate deck: the PDF stays as it was.
+  const ppt = card.getByRole("region", { name: "PowerPoint (editable)" });
+  await expect(ppt.getByTestId("deck-state-pptx")).toHaveText("No deck yet.");
+  await ppt.getByRole("button", { name: "Create PowerPoint" }).click();
+  await expect(ppt.getByRole("button", { name: "Making…" })).toBeDisabled();
+  runWorkerOnce();
+  await expect(ppt.getByTestId("deck-state-pptx")).toHaveText(
+    "The deck is ready.",
+    { timeout: 30_000 },
+  );
+  const pptx = await downloadDeck(agent, "Download PowerPoint");
+  expect(pptx.name).toMatch(/^QT-\d{4,}-proposal\.pptx$/);
+  expect(pptx.bytes.subarray(0, 2).toString()).toBe("PK");
+  expect(pptx.bytes.length).toBeGreaterThan(5000);
+  const pdfAgain = await downloadDeck(agent, "Download deck");
+  expect(pdfAgain.name).toMatch(/\.pdf$/);
+  expect(pdfAgain.bytes.equals(first.bytes)).toBe(true);
+  const unknown = await agent.request.get(
+    `/quotes/${quoteId}/deck?format=docx`,
+    {
+      maxRedirects: 0,
+    },
+  );
+  expect(unknown.status()).toBe(404);
+
   // 5. The customer sees nothing while the quote is not yet sent to them.
   const customer = await signedIn(
     browser,
@@ -178,6 +205,11 @@ test("a proposal deck is made for a quote, downloaded and shared with the custom
     await customer.goto(`/portal/quotes/${quoteId}`);
     const forCustomer = await downloadDeck(customer, "Download proposal deck");
     expect(forCustomer.bytes.equals(second.bytes)).toBe(true);
+    const pptxForCustomer = await downloadDeck(
+      customer,
+      "Download PowerPoint version",
+    );
+    expect(pptxForCustomer.bytes.equals(pptx.bytes)).toBe(true);
 
     // Another customer cannot fetch it, even with the address.
     const other = await signedIn(browser, USERS.customer2, "/portal");
@@ -186,6 +218,12 @@ test("a proposal deck is made for a quote, downloaded and shared with the custom
     });
     expect(refused.status()).toBe(307);
     expect(refused.headers()["location"]).toContain("file=missing");
+    const refusedPptx = await other.request.get(
+      `/portal/quotes/${quoteId}/deck?format=pptx`,
+      { maxRedirects: 0 },
+    );
+    expect(refusedPptx.status()).toBe(307);
+    expect(refusedPptx.headers()["location"]).toContain("file=missing");
   } finally {
     await admin.goto("/branding");
     await admin.getByLabel(/About us/).fill(originalAbout);

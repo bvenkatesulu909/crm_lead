@@ -9,9 +9,11 @@ import { initialDialogState } from "@/lib/dialog-state";
 import {
   DECK_REFRESH_MS,
   deckErrorText,
+  deckQuery,
   deckSize,
   deckStateText,
   isWorkingOnDeck,
+  parseDeckFormat,
   type DeckStatus,
 } from "@/lib/proposal-decks";
 
@@ -44,6 +46,13 @@ function deck(over: Partial<DeckStatus> = {}): DeckStatus {
 const READY = deck({
   status: "ready",
   file_name: "QT-0007-proposal.pdf",
+  size_bytes: 84_000,
+  created_at: "2026-11-13T09:00:00Z",
+});
+
+const READY_PPTX = deck({
+  status: "ready",
+  file_name: "QT-0007-proposal.pptx",
   size_bytes: 84_000,
   created_at: "2026-11-13T09:00:00Z",
 });
@@ -120,9 +129,9 @@ describe("helpers", () => {
 describe("createProposalDeck", () => {
   it("posts to the quote's deck address with no body and goes back to the card", async () => {
     apiFetch.mockResolvedValueOnce({});
-    await expect(createProposalDeck(QUOTE, initialDialogState)).rejects.toThrow(
-      `REDIRECT:/quotes/${QUOTE}?done=deck-queued#deck`,
-    );
+    await expect(
+      createProposalDeck(QUOTE, "pdf", initialDialogState),
+    ).rejects.toThrow(`REDIRECT:/quotes/${QUOTE}?done=deck-queued#deck`);
     const [path, init] = apiFetch.mock.calls[0];
     expect(path).toBe(`/quotes/${QUOTE}/deck`);
     expect(init).toEqual({ method: "POST" });
@@ -130,14 +139,14 @@ describe("createProposalDeck", () => {
 
   it("refuses an id that is not an id before anything is sent", async () => {
     await expect(
-      createProposalDeck("../x", initialDialogState),
+      createProposalDeck("../x", "pdf", initialDialogState),
     ).rejects.toThrow();
     expect(apiFetch).not.toHaveBeenCalled();
   });
 
   it("a refusal stays on the page, counts the attempt and explains in words", async () => {
     apiFetch.mockRejectedValueOnce(problem(409, "deck_pending"));
-    const result = await createProposalDeck(QUOTE, initialDialogState);
+    const result = await createProposalDeck(QUOTE, "pdf", initialDialogState);
     expect(result.attempt).toBe(1);
     expect(result.error?.message).toMatch(/already being made/);
   });
@@ -268,5 +277,112 @@ describe("looking again while a deck is being made", () => {
     );
     act(() => vi.advanceTimersByTime(DECK_REFRESH_MS * 5));
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("deck formats", () => {
+  it("only pdf and pptx are formats; no format means the PDF", () => {
+    expect(parseDeckFormat(null)).toBe("pdf");
+    expect(parseDeckFormat(undefined)).toBe("pdf");
+    expect(parseDeckFormat("")).toBe("pdf");
+    expect(parseDeckFormat("pdf")).toBe("pdf");
+    expect(parseDeckFormat("pptx")).toBe("pptx");
+    for (const bad of ["PPTX", "docx", "pdf,pptx", "../x", "pptx&x=1", " pptx"])
+      expect(parseDeckFormat(bad)).toBeNull();
+  });
+
+  it("the API query is empty for the PDF and fixed for the PowerPoint", () => {
+    expect(deckQuery("pdf")).toBe("");
+    expect(deckQuery("pptx")).toBe("?format=pptx");
+  });
+});
+
+describe("createProposalDeck for a PowerPoint", () => {
+  it("posts to the same address with the format and nothing else", async () => {
+    apiFetch.mockResolvedValueOnce({});
+    await expect(
+      createProposalDeck(QUOTE, "pptx", initialDialogState),
+    ).rejects.toThrow(`REDIRECT:/quotes/${QUOTE}?done=deck-queued#deck`);
+    const [path, init] = apiFetch.mock.calls[0];
+    expect(path).toBe(`/quotes/${QUOTE}/deck?format=pptx`);
+    expect(init).toEqual({ method: "POST" });
+  });
+
+  it("refuses a format that is not one before anything is sent", async () => {
+    await expect(
+      createProposalDeck(QUOTE, "docx" as never, initialDialogState),
+    ).rejects.toThrow();
+    expect(apiFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("StaffDeck for a PowerPoint", () => {
+  const noop = vi.fn();
+
+  function show(status: DeckStatus, canCreate = true) {
+    return render(
+      <StaffDeck
+        deck={status}
+        downloadHref={`/quotes/${QUOTE}/deck?format=pptx`}
+        canCreate={canCreate}
+        action={noop}
+        format="pptx"
+        showNote={false}
+      />,
+    );
+  }
+
+  it("has its own words, test id and link", () => {
+    show(READY_PPTX);
+    expect(screen.getByTestId("deck-state-pptx").textContent).toBe(
+      "The deck is ready.",
+    );
+    expect(screen.queryByTestId("deck-state")).toBeNull();
+    const link = screen.getByRole("link", { name: "Download PowerPoint" });
+    expect(link.getAttribute("href")).toBe(`/quotes/${QUOTE}/deck?format=pptx`);
+    expect(screen.getByText(/QT-0007-proposal\.pptx · 82 KB/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Make a new PowerPoint" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Download deck" })).toBeNull();
+  });
+
+  it("with none yet it offers to create one", () => {
+    show(deck());
+    expect(
+      screen.getByRole("button", { name: "Create PowerPoint" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Create proposal deck" }),
+    ).toBeNull();
+  });
+
+  it("while it is made the button says so and is disabled", () => {
+    show(deck({ status: "queued" }));
+    expect(
+      (screen.getByRole("button", { name: "Making…" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+
+  it("people who cannot change the quote can download but not create", () => {
+    show(READY_PPTX, false);
+    expect(
+      screen.getByRole("link", { name: "Download PowerPoint" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("the branding note can be left out so a card shows it once", () => {
+    show(deck());
+    expect(screen.queryByText(/Uses your organisation's branding/)).toBeNull();
+  });
+
+  it("the PDF block still shows the note and its old words by default", () => {
+    render(
+      <StaffDeck deck={deck()} downloadHref="/x" canCreate action={noop} />,
+    );
+    expect(screen.getByText(/Uses your organisation's branding/)).toBeTruthy();
+    expect(screen.getByTestId("deck-state")).toBeTruthy();
   });
 });

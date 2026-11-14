@@ -32,8 +32,15 @@ from app.core.models import (
 )
 
 STATUSES = ("pending", "approved", "rejected", "expired", "failed")
-TARGET_TYPES = ("lead", "account", "contact", "opportunity")
-AGENTS = ("staff_assistant", "mcp_client", "qualifier", "lead_agent", "deal_desk")
+TARGET_TYPES = ("lead", "account", "contact", "opportunity", "quote")
+AGENTS = (
+    "staff_assistant",
+    "mcp_client",
+    "qualifier",
+    "lead_agent",
+    "deal_desk",
+    "deck_writer",
+)
 REASON_MAX = 500
 
 

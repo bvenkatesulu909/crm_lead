@@ -32,9 +32,15 @@ Rules that make it safe and stable:
   `1,234.50 EUR`.
 - Everything a person typed is drawn as plain text (`<b>` prints as typed). Text too long for its box is
   shrunk, never cut.
-- The bundled font is **Noto Sans** (SIL Open Font License, text next to the files in
-  `app/modules/proposal_decks/fonts/`). It has the rupee sign but not Hindi or Telugu: those characters
-  print as `?` rather than empty boxes. Hindi and Telugu decks need extra fonts and are a later step.
+- The bundled fonts are **Noto Sans**, **Noto Sans Devanagari** (Hindi) and **Noto Sans Telugu**, regular
+  and bold (SIL Open Font License, text next to the files in `app/modules/proposal_decks/fonts/`).
+  Every run of text is drawn with the font of its script (`rules.script_runs`); digits, punctuation and
+  the rupee sign use the Latin face. Hindi and Telugu are shaped with HarfBuzz (`uharfbuzz`, pinned,
+  through the security gate) so vowel signs and conjuncts join (for example the 8 characters of
+  "क्षत्रिय" become 4 glyphs). A character no bundled font has (Chinese, emoji) still prints as `?`
+  rather than an empty box. Typed text is for names and short phrases first; the fixed words of the
+  deck ("What we propose", "Next steps") stay English. A native speaker should read a real deck before
+  it goes to a customer (ADR 0032 Amendment A, PD5).
 - The PDF has no links, scripts, attachments or outside pictures; the only image is the organisation's own
   re-encoded logo. The same data always gives the same bytes.
 

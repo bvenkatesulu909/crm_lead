@@ -35,6 +35,7 @@ pgvector==0.5.1
 minio==7.2.20
 # PDF generation (quote PDFs, ADR 0005). Pure Python, no system libraries needed on Windows.
 reportlab==5.0.1
+uharfbuzz==0.57.0
 # Images for ReportLab and fastembed. Pinned ourselves (BP-20): 12.x has 39 published security
 # advisories, fixed in 13.0.0 (fastembed 0.9.1 is the first release that allows 13).
 pillow==13.0.0

@@ -35,41 +35,89 @@ MARGIN = 60.0
 BODY_WIDTH = WIDTH - 2 * MARGIN
 REGULAR, BOLD = "NotoSans", "NotoSans-Bold"
 _FONT_DIR = Path(__file__).with_name("fonts")
+# (script, regular font name, bold font name): the Latin face also draws digits, punctuation and ₹.
+_FAMILIES = (
+    (rules.LATIN, REGULAR, BOLD),
+    (rules.DEVANAGARI, "NotoSansDevanagari", "NotoSansDevanagari-Bold"),
+    (rules.TELUGU, "NotoSansTelugu", "NotoSansTelugu-Bold"),
+)
 
 _lock = threading.Lock()
 _registered = False
-_glyphs: frozenset[int] = frozenset()
+_glyphs: dict[str, frozenset[int]] = {}
 
 
 def _register_fonts() -> None:
-    global _registered, _glyphs
+    global _registered
     with _lock:
         if _registered:
             return
-        for name, file in ((REGULAR, "NotoSans-Regular.ttf"), (BOLD, "NotoSans-Bold.ttf")):
-            font = TTFont(name, str(_FONT_DIR / file))
-            pdfmetrics.registerFont(font)
-            if name == REGULAR:
-                _glyphs = frozenset(font.face.charToGlyph)
-        pdfmetrics.registerFontFamily(
-            REGULAR, normal=REGULAR, bold=BOLD, italic=REGULAR, boldItalic=BOLD
-        )
+        for script, regular, bold in _FAMILIES:
+            for name in (regular, bold):
+                weight = "Bold" if name == bold else "Regular"
+                file = f"{regular.split('-')[0]}-{weight}.ttf"
+                font = TTFont(name, str(_FONT_DIR / file))
+                # HarfBuzz joins the letters (vowel signs, conjuncts) of Hindi and Telugu.
+                font.shapable = script != rules.LATIN
+                pdfmetrics.registerFont(font)
+                if name == regular:
+                    _glyphs[script] = frozenset(font.face.charToGlyph)
+            pdfmetrics.registerFontFamily(
+                regular, normal=regular, bold=bold, italic=regular, boldItalic=bold
+            )
         _registered = True
 
 
-def drawable_characters() -> frozenset[int]:
-    """The characters the bundled font can draw (for tests and callers that want to warn)."""
+def drawable_characters(script: str = rules.LATIN) -> frozenset[int]:
+    """The characters the bundled font of ``script`` can draw (for tests and callers that warn)."""
     _register_fonts()
-    return _glyphs
+    return _glyphs[script]
 
 
 def _text(value: str) -> str:
-    return rules.printable(value, _glyphs)
+    return rules.printable_scripts(value, _glyphs)
+
+
+def _markup(value: str, *, bold: bool) -> str:
+    """The cleaned, escaped text with each Hindi / Telugu run in the font of its script."""
+    parts: list[str] = []
+    for script, run in rules.script_runs(_text(value)):
+        safe = escape(run).replace("\n", "<br/>")
+        if script == rules.LATIN:
+            parts.append(safe)
+            continue
+        family = next(f for f in _FAMILIES if f[0] == script)
+        parts.append(f'<font name="{family[2] if bold else family[1]}">{safe}</font>')
+    return "".join(parts)
 
 
 def _para(value: str, style: ParagraphStyle) -> Paragraph:
     # Paragraph understands a little markup, so typed text is escaped: "<b>" prints as typed.
-    return Paragraph(escape(_text(value)).replace("\n", "<br/>"), style)
+    return Paragraph(_markup(value, bold=style.fontName == BOLD), style)
+
+
+def _line(
+    c: Canvas,
+    x: float,
+    y: float,
+    value: str,
+    *,
+    size: float,
+    bold: bool = False,
+    color: Color | None = None,
+    align: Literal["left", "right", "centre"] = "left",
+) -> None:
+    """One line of text with its baseline at ``y``. Drawn as a paragraph (not ``drawString``) so
+    Hindi and Telugu get shaped; ``x`` is the left edge, the right edge or the centre."""
+    style = _style(size, bold=bold, color="#000000", leading=size)
+    if color is not None:
+        style.textColor = color
+    paragraph = _para(value, style)
+    box = WIDTH - 2 * MARGIN
+    paragraph.wrap(box, size * 2)
+    width = max(paragraph.getActualLineWidths0(), default=0.0)
+    left = {"left": x, "right": x - width, "centre": x - width / 2}[align]
+    paragraph.drawOn(c, left, y)
 
 
 def _style(
@@ -87,6 +135,7 @@ def _style(
         leading=leading or size * 1.3,
         textColor=HexColor(color),
         alignment=align,
+        shaping=1,
     )
 
 
@@ -151,38 +200,36 @@ class _Deck:
         c.rect(0, HEIGHT - 10, WIDTH, 10, stroke=0, fill=1)
         c.setStrokeColor(Color(0.85, 0.87, 0.9))
         c.line(MARGIN, 44, WIDTH - MARGIN, 44)
-        c.setFillColor(HexColor("#5b6470"))
-        c.setFont(REGULAR, 10)
-        c.drawString(MARGIN, 26, _text(self.b.footer_line.strip() or self.b.organisation))
-        c.drawRightString(WIDTH - MARGIN, 26, f"{number} / {total}")
+        grey = HexColor("#5b6470")
+        _line(c, MARGIN, 26, self.b.footer_line.strip() or self.b.organisation, size=10, color=grey)
+        _line(c, WIDTH - MARGIN, 26, f"{number} / {total}", size=10, color=grey, align="right")
 
     def _heading(self, c: Canvas, text: str) -> None:
-        c.setFillColor(self.accent)
-        c.setFont(BOLD, 30)
-        c.drawString(MARGIN, HEIGHT - 82, _text(text))
+        _line(c, MARGIN, HEIGHT - 82, text, size=30, bold=True, color=self.accent)
 
     def cover(self, c: Canvas) -> None:
         c.setFillColor(self.accent)
         c.rect(0, 0, WIDTH, HEIGHT, stroke=0, fill=1)
         top = HEIGHT - MARGIN
+        on_accent = HexColor(self.on_accent)
         if self.b.logo_png:
             self._logo(c, MARGIN, top)
         else:
-            c.setFillColor(HexColor(self.on_accent))
-            c.setFont(BOLD, 22)
-            c.drawString(MARGIN, top - 22, _text(self.b.organisation))
+            _line(c, MARGIN, top - 22, self.b.organisation, size=22, bold=True, color=on_accent)
         title = _para(self.d.title, _style(40, bold=True, color=self.on_accent, leading=48))
         _fit(c, [title], MARGIN, 190, BODY_WIDTH, 190)
-        c.setFillColor(HexColor(self.on_accent))
-        c.setFont(REGULAR, 13)
-        c.drawString(MARGIN, 150, "Prepared for")
-        c.setFont(BOLD, 24)
-        c.drawString(MARGIN, 120, _text(self.d.customer)[:80])
+        _line(c, MARGIN, 150, "Prepared for", size=13, color=on_accent)
+        _line(c, MARGIN, 120, _text(self.d.customer)[:80], size=24, bold=True, color=on_accent)
         if self.d.contact:
-            c.setFont(REGULAR, 16)
-            c.drawString(MARGIN, 96, _text(self.d.contact)[:80])
-        c.setFont(REGULAR, 12)
-        c.drawString(MARGIN, 56, f"Proposal {self.d.number} · {rules.long_date(self.d.issued)}")
+            _line(c, MARGIN, 96, _text(self.d.contact)[:80], size=16, color=on_accent)
+        _line(
+            c,
+            MARGIN,
+            56,
+            f"Proposal {self.d.number} · {rules.long_date(self.d.issued)}",
+            size=12,
+            color=on_accent,
+        )
 
     def _logo(self, c: Canvas, x: float, top: float) -> None:
         """The logo on a white chip (logos are often dark), scaled to fit a 220 x 64 box."""
@@ -276,9 +323,15 @@ class _Deck:
         )
         _, height = table.wrapOn(c, 520, HEIGHT)
         table.drawOn(c, MARGIN, HEIGHT - 120 - height)
-        c.setFillColor(self.accent)
-        c.setFont(BOLD, 16)
-        c.drawString(MARGIN, 92, f"This proposal is valid until {rules.long_date(d.valid_until)}.")
+        _line(
+            c,
+            MARGIN,
+            92,
+            f"This proposal is valid until {rules.long_date(d.valid_until)}.",
+            size=16,
+            bold=True,
+            color=self.accent,
+        )
 
     def terms(self, c: Canvas) -> None:
         self._heading(c, "Notes and terms")
@@ -315,16 +368,21 @@ class _Deck:
         for number, step in enumerate(steps, start=1):
             c.setFillColor(self.accent)
             c.circle(MARGIN + 14, y + 5, 14, stroke=0, fill=1)
-            c.setFillColor(HexColor(self.on_accent))
-            c.setFont(BOLD, 14)
-            c.drawCentredString(MARGIN + 14, y, str(number))
+            _line(
+                c,
+                MARGIN + 14,
+                y,
+                str(number),
+                size=14,
+                bold=True,
+                color=HexColor(self.on_accent),
+                align="centre",
+            )
             _fit(c, [_para(step, _style(17, leading=23))], MARGIN + 46, y - 20, BODY_WIDTH - 46, 36)
             y -= 70
         contact = self.b.contact_line.strip()
         if contact:
-            c.setFillColor(self.accent)
-            c.setFont(BOLD, 14)
-            c.drawString(MARGIN, 120, "Contact")
+            _line(c, MARGIN, 120, "Contact", size=14, bold=True, color=self.accent)
             _fit(c, [_para(contact, _style(18, leading=24))], MARGIN, 70, BODY_WIDTH, 40)
 
 

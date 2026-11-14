@@ -247,9 +247,10 @@ def test_line_breaks_in_texts_are_kept() -> None:
 
 
 def test_text_in_a_script_the_font_lacks_becomes_question_marks_not_boxes() -> None:
-    pages = texts(render_deck(data(customer="తెలుగు Ltd")))
-    assert "????? Ltd" in pages[0] or "?" in pages[0]
-    assert "త" not in pages[0]
+    # Telugu and Hindi have their own fonts since PD5; a script with no bundled font still gets "?".
+    pages = texts(render_deck(data(customer="日本語 Ltd")))
+    assert "??? Ltd" in pages[0]
+    assert "日" not in pages[0]
 
 
 def test_a_text_with_many_short_lines_is_shrunk_to_fit_not_cut() -> None:

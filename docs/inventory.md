@@ -8,12 +8,12 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **258** operations over **208** paths and **313** schemas.
+- **268** operations over **214** paths and **318** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
 |---|---|
-| portal | 22 |
+| portal | 24 |
 | quotes | 18 |
 | leads | 13 |
 | catalogue | 11 |
@@ -34,6 +34,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | calls | 6 |
 | webcheck | 6 |
 | approvals | 5 |
+| branding | 5 |
 | notifications | 5 |
 | orders | 5 |
 | reports | 5 |
@@ -42,6 +43,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | customer relationships | 3 |
 | identity | 3 |
 | portal access | 3 |
+| proposal-decks | 3 |
 | voice | 3 |
 | account-research | 2 |
 | deal-desk | 2 |
@@ -58,18 +60,18 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0062**
-- Tables in the current schema: **75**
-- Tables with Row-Level Security: **71** (71 policies)
+- Alembic revision: **0064**
+- Tables in the current schema: **76**
+- Tables with Row-Level Security: **72** (72 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **62**
-- Heads: `0062`
+- Migration files: **64**
+- Heads: `0064`
 
 ## Web app (`frontend/src/app`)
 
-- 82 pages and 15 route handlers.
+- 83 pages and 15 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -96,6 +98,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/automation/agents` | page |
 | `/automation/new` | page |
 | `/automation/qualifier` | page |
+| `/branding` | page |
 | `/chat` | page |
 | `/communications` | page |
 | `/communications/templates` | page |
@@ -173,10 +176,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **213**
-- Frontend component test files: **46**
-- Playwright end-to-end specs: **40**
+- Backend test files: **217**
+- Frontend component test files: **48**
+- Playwright end-to-end specs: **42**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **94** (33 in `docs/adr/`)
+- Markdown documents under `docs/`: **97** (34 in `docs/adr/`)

@@ -43,3 +43,4 @@ Rules:
 | [0029](0029-site-visit-brief.md) | The rep's brief before a site visit | Accepted |
 | [0030](0030-call-recordings-clear-audio.md) | Call recordings: clear audio and transcripts in Hinglish and Telugu | Accepted |
 | [0031](0031-upi-payments-razorpay.md) | UPI payments on invoices through Razorpay payment links (BP-17) | Accepted |
+| [0032](0032-branded-proposal-decks.md) | Branded proposal decks from a quote | Accepted |

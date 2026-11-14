@@ -92,3 +92,34 @@ comes from the verified token (or, for the webhook, from the stored link).
   transport; they are **verified against Razorpay's test mode only in UP4**.
 - Caddy does not rate-limit the webhook path (the stock proxy has no such module); the signature check
   is cheap and the body is capped.
+
+## 6. UP4: the check with Razorpay's real test mode (on staging)
+
+Razorpay must be able to reach the webhook, so this runs on the staging server (`api.crmlead.co.in`), not
+on a PC. **You type the keys yourself; they are never sent to Claude, put in chat, committed or logged.**
+
+1. **Razorpay account (you):** sign up at razorpay.com, stay in **Test Mode** (the switch at the top of the
+   dashboard). No business verification is needed for test mode.
+2. **Keys (you):** Dashboard → Account & Settings → API Keys → *Generate Test Key*. You get a Key Id
+   starting `rzp_test_` and a Key Secret (shown once).
+3. **Webhook (you):** Dashboard → Account & Settings → Webhooks → *Add New Webhook*:
+   - URL `https://api.crmlead.co.in/api/v1/integrations/razorpay/webhook`
+   - a **webhook secret** you choose (different from the Key Secret; at least 20 random characters)
+   - events: *payment_link.paid*, *payment_link.expired*, *payment_link.cancelled*.
+4. **Server settings (you, over SSH):** in `deploy/one-host/.env` on the server add
+   `CRM_RAZORPAY_MODE=test`, `CRM_RAZORPAY_KEY_ID`, `CRM_RAZORPAY_KEY_SECRET` and
+   `CRM_RAZORPAY_WEBHOOK_SECRET`, and make sure the one-server compose file passes them to the API and
+   worker (Claude adds the lines to the compose file and `check_env.py` first; you only add the values).
+   Say "update the server" and Claude pulls the code and restarts; the settings validator refuses a live
+   key in test mode.
+5. **Check (Claude, with you watching):** switch *UPI payment links* on in the demo organisation, make an
+   INR invoice, create a link, open it, pay with Razorpay's **test UPI id `success@razorpay`** (or a test
+   card from Razorpay's docs), and confirm: the webhook arrives (200), the worker records the payment, the
+   invoice shows UPI paid and the creator is notified. Then pay a second link with the test id
+   `failure@razorpay` and confirm nothing is recorded.
+6. **What is verified here for the first time:** the field names Razorpay accepts (`amount` in paise,
+   `expire_by`, `accept_partial`, `reference_id`, `notes`) and the real `payment_link.paid` body. If
+   Razorpay differs from the fake, the client or the parser is fixed with a failing test first.
+
+Nothing here moves real money. Going live (a live key, `CRM_RAZORPAY_GO_LIVE=true`) is a separate decision
+after the whole go-live checklist, as ADR 0007 says.

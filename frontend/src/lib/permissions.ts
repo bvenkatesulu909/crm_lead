@@ -93,6 +93,8 @@ export const canWriteContracts = (me: Pick<Me, "permissions">) =>
 /** Activate, terminate and renew (managers and administrators). */
 export const canManageContracts = (me: Pick<Me, "permissions">) =>
   hasAny(me, "contract:manage");
+export const canManageBranding = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "branding:manage");
 export const canManageQuoteSettings = (me: Pick<Me, "permissions">) =>
   hasAny(me, "quote:settings:manage");
 
@@ -271,6 +273,8 @@ export function navigationFor(
       label: "AI agents",
       icon: "automation",
     });
+  if (canManageBranding(me))
+    items.push({ href: "/branding", label: "Branding", icon: "automation" });
   return items;
 }
 
@@ -368,6 +372,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "quote:write:own": "Create and change your own quotes",
   "quote:approve": "Approve quotes with large discounts",
   "quote:settings:manage": "Set the discount that needs approval",
+  "branding:manage": "Change the company's branding for proposal decks",
   "contract:read:all": "View all contracts",
   "contract:read:own": "View your own contracts",
   "contract:write:all": "Create and change all contracts",

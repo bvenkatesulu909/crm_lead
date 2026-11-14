@@ -9,6 +9,7 @@ from app.modules.agents.router import router as agents_router
 from app.modules.approvals.router import router as approvals_router
 from app.modules.assistant.router import router as assistant_router
 from app.modules.assistant.staff_router import router as staff_assistant_router
+from app.modules.branding.router import router as branding_router
 from app.modules.buyer_memory.router import router as buyer_memory_router
 from app.modules.calls.router import router as calls_router
 from app.modules.catalog.router import router as catalog_router
@@ -40,6 +41,8 @@ from app.modules.payment_links.router import portal_router as payment_links_port
 from app.modules.payment_links.router import router as payment_links_router
 from app.modules.payment_links.router import webhook_router as payment_links_webhook_router
 from app.modules.portal.router import router as portal_router
+from app.modules.proposal_decks.router import portal_router as proposal_decks_portal_router
+from app.modules.proposal_decks.router import router as proposal_decks_router
 from app.modules.public_chat.router import router as public_chat_router
 from app.modules.public_chat.router import staff_router as public_chat_staff_router
 from app.modules.qualifier.router import router as qualifier_router
@@ -74,6 +77,9 @@ api_router.include_router(notifications_router)
 api_router.include_router(communications_router)
 api_router.include_router(public_chat_router)
 api_router.include_router(payment_links_router)
+api_router.include_router(branding_router)
+api_router.include_router(proposal_decks_router)
+api_router.include_router(proposal_decks_portal_router)
 api_router.include_router(payment_links_portal_router)
 api_router.include_router(payment_links_webhook_router)
 api_router.include_router(public_chat_staff_router)

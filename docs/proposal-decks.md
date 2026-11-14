@@ -159,3 +159,13 @@ An optional slide after "About us" in both the PDF and the PowerPoint, drawn fro
 
 The model cannot change prices, discounts or terms (it writes one text and calls no other tool), sees
 no other customer's data and no internal notes, and cannot fetch anything.
+
+### 6a. On the screens (PD7)
+
+On the quote page the Proposal deck card has a third block, **Why this proposal (slide)**: the approved
+text as plain text (or "No summary slide yet."), and **Draft with the deck writer** / **Draft a new one**
+for people who may change the quote. Pressing it opens the proposal in the approval queue (the asker
+cannot approve it; the card shows no text until a different person approves). A text the safety check
+refuses is shown with its reason instead; a switched-off agent, a used-up budget or a limit are explained
+in plain words. The approval card names "the deck writer" and links to the quote. The block is hidden
+for a quote that is not yet approved. `GET /quotes/{id}/deck/summary` returns the approved text.

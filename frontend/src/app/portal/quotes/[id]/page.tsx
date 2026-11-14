@@ -48,7 +48,10 @@ export default async function PortalQuotePage({
   }
   const done = typeof query.done === "string" ? DONE[query.done] : undefined;
   // The proposal deck, if the supplier made one (ADR 0032). Information only: the page works without it.
-  const deck = await apiFetch<DeckStatus>(`/portal/quotes/${quote.id}/deck`).catch(() => null);
+  const [deck, pptx] = await Promise.all([
+    apiFetch<DeckStatus>(`/portal/quotes/${quote.id}/deck`).catch(() => null),
+    apiFetch<DeckStatus>(`/portal/quotes/${quote.id}/deck?format=pptx`).catch(() => null),
+  ]);
 
   return (
     <>
@@ -82,6 +85,11 @@ export default async function PortalQuotePage({
           {deck?.status === "ready" && (
             <a href={`/portal/quotes/${quote.id}/deck`} download className={buttonClass("secondary")}>
               Download proposal deck
+            </a>
+          )}
+          {pptx?.status === "ready" && (
+            <a href={`/portal/quotes/${quote.id}/deck?format=pptx`} download className={buttonClass("secondary")}>
+              Download PowerPoint version
             </a>
           )}
         </div>

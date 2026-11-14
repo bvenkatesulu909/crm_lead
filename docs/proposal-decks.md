@@ -97,8 +97,8 @@ next steps). The amounts come from the same `rules.money`, so the two files alwa
   size is chosen up front from a length estimate (`rules.fit_font_size`, never below 9 points).
 - The same data gives the same bytes (fixed file timestamps; python-pptx's printer-settings blob and
   blank thumbnail are dropped), so identical decks are stored once.
-- PD6a is the renderer. PD6b (below) adds the job, the stored file and the download links; the
-  "Download PowerPoint" button is PD6c.
+- PD6a is the renderer. PD6b (below) adds the job, the stored file and the download links; PD6c adds
+  the "Download PowerPoint" buttons (section 5b).
 
 ### 5a. The PowerPoint through the API (PD6b)
 
@@ -119,3 +119,17 @@ the worker job, the "already being made" check, the state and the newest file. T
 as a document with purpose `quote_deck_pptx` (migration 0065: the allowed purposes and a second unique
 index per quote and content), so a PowerPoint never replaces the PDF and each format shows its own
 newest file. The audit entries `deck.requested` and `deck.created` carry the format.
+
+### 5b. The PowerPoint on the screens (PD6c)
+
+- **Staff quote page:** the Proposal deck card now has two blocks, **PDF** and **PowerPoint (editable)**.
+  Each has its own state sentence, *Create* / *Make a new* button, download link and "being made" polling.
+  The PDF block keeps its old words (*Create proposal deck*, *Download deck*); the PowerPoint block says
+  *Create PowerPoint*, *Make a new PowerPoint*, *Download PowerPoint*. The branding note is shown once.
+- **Customer portal quote page:** *Download PowerPoint version* appears next to *Download proposal deck*
+  when a customer-visible PowerPoint exists for a quote sent to them.
+- **Downloads** go through the same route handlers as the PDF with `?format=pptx`
+  (`/quotes/<id>/deck?format=pptx`, `/portal/quotes/<id>/deck?format=pptx`): they redirect to a signed
+  link, so no token reaches the browser. Any other format value is "Page not found".
+- The Server Action sends only the quote id and the format (`pdf` or `pptx`; anything else is refused
+  before a request is made).

@@ -15,6 +15,25 @@ export type DeckStatus = {
   refresh_failed: boolean;
 };
 
+/** The two files a deck can be: the PDF (the default) and the PowerPoint version (PD6). */
+export type DeckFormat = "pdf" | "pptx";
+
+/**
+ * The format asked for in a web address: no value means the PDF, and anything but "pdf" or "pptx"
+ * is not a format (null), so a route handler can answer "not found" instead of passing it on.
+ */
+export function parseDeckFormat(
+  value: string | null | undefined,
+): DeckFormat | null {
+  if (value === null || value === undefined || value === "") return "pdf";
+  return value === "pdf" || value === "pptx" ? value : null;
+}
+
+/** The query the API takes for a format; the PDF is what it answers without one. */
+export function deckQuery(format: DeckFormat): string {
+  return format === "pptx" ? "?format=pptx" : "";
+}
+
 /** How often the card looks again while a deck is being made. */
 export const DECK_REFRESH_MS = 4000;
 

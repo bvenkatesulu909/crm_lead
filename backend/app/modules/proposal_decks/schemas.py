@@ -16,6 +16,16 @@ class DeckStatusRead(BaseModel):
     refresh_failed: bool = False
 
 
+class SummaryDraftRead(BaseModel):
+    """What asking the deck writer gave: a proposal waiting in the approval queue (nothing is
+    drawn into a deck until a different person approves it), or a refusal by the safety check."""
+
+    outcome: Literal["proposed", "blocked"]
+    proposal_id: str | None = None
+    proposal_link: str | None = None
+    blocked_message: str | None = None
+
+
 class DeckLinkRead(BaseModel):
     """Open ``url`` within a minute: it fetches the file (PDF or PowerPoint) from the file store."""
 

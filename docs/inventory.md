@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **268** operations over **214** paths and **318** schemas.
+- **269** operations over **215** paths and **319** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -39,11 +39,11 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | orders | 5 |
 | reports | 5 |
 | buyer-memory | 4 |
+| proposal-decks | 4 |
 | agents | 3 |
 | customer relationships | 3 |
 | identity | 3 |
 | portal access | 3 |
-| proposal-decks | 3 |
 | voice | 3 |
 | account-research | 2 |
 | deal-desk | 2 |
@@ -60,14 +60,14 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0065**
-- Tables in the current schema: **76**
-- Tables with Row-Level Security: **72** (72 policies)
+- Alembic revision: **0066**
+- Tables in the current schema: **77**
+- Tables with Row-Level Security: **73** (73 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **65**
-- Heads: `0065`
+- Migration files: **66**
+- Heads: `0066`
 
 ## Web app (`frontend/src/app`)
 
@@ -178,7 +178,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **220**
+- Backend test files: **224**
 - Frontend component test files: **49**
 - Playwright end-to-end specs: **43**
 

@@ -33,7 +33,6 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "lead_agent",
         "deck_writer",
         "deal_desk",
-        "deck_writer",
         "account_research",
     }
     assert {key for key, agent in AGENTS.items() if agent.uses_model} == models
@@ -85,7 +84,14 @@ def test_every_key_fits_the_database_rule() -> None:
 
 @pytest.mark.parametrize(
     "agent",
-    ["staff_assistant", "portal_assistant", "public_chat", "deal_desk", "account_research"],
+    [
+        "staff_assistant",
+        "portal_assistant",
+        "public_chat",
+        "deal_desk",
+        "account_research",
+        "deck_writer",
+    ],
 )
 def test_the_listed_tools_are_exactly_the_tools_the_code_gives(agent: str) -> None:
     """The catalogue cannot drift from the real tools: a new tool must be listed here."""

@@ -87,3 +87,42 @@ export function deckErrorText(code: string | null, fallback: string): string {
       return fallback;
   }
 }
+
+/** The approved text of a quote's "why this proposal" slide, or none (ADR 0032 Amendment A, PD7). */
+export type DeckSummary = { text: string | null };
+
+/** What asking the deck writer gave: a proposal that waits, or a refusal by the safety check. */
+export type SummaryDraft = {
+  outcome: "proposed" | "blocked";
+  proposal_id: string | null;
+  proposal_link: string | null;
+  blocked_message: string | null;
+};
+
+export function summaryErrorText(
+  code: string | null,
+  fallback: string,
+): string {
+  switch (code) {
+    case "agent_unavailable":
+      return "The deck writer is switched off. A tenant administrator can switch it on under AI agents.";
+    case "agent_budget_reached":
+      return "This month's AI budget is used up. A tenant administrator can raise it under AI agents.";
+    case "deck_writer_rate_limited":
+      return "A draft was made for this quote a moment ago. Try again later.";
+    case "deck_writer_invalid_answer":
+      return "The assistant's draft could not be used. Try again.";
+    case "agent_action_limit_reached":
+      return "You already have too many proposals waiting for approval. Wait for a decision first.";
+    case "quote_not_ready_for_deck":
+      return "A summary slide is available once the quote is approved.";
+    case "quote_superseded":
+      return "This quote was replaced by a newer revision. Draft the summary for the newest one.";
+    case "quote_not_found":
+      return "That quote was not found.";
+    case "forbidden":
+      return "You may view this quote but not change it, so you cannot draft a summary slide for it.";
+    default:
+      return fallback;
+  }
+}

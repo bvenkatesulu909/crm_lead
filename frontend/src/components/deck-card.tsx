@@ -1,10 +1,14 @@
-import { createProposalDeck } from "@/app/(app)/quotes/deck-actions";
-import { StaffDeck } from "@/components/deck-views";
+import {
+  createProposalDeck,
+  draftDeckSummary,
+} from "@/app/(app)/quotes/deck-actions";
+import { StaffDeck, SummaryBlock } from "@/components/deck-views";
 import { Card } from "@/components/ui";
 import {
   deckQuery,
   type DeckFormat,
   type DeckStatus,
+  type DeckSummary,
 } from "@/lib/proposal-decks";
 import { apiFetch } from "@/lib/server/api";
 
@@ -33,6 +37,9 @@ export async function DeckCard({
     ),
   );
   if (!decks[0]) return null;
+  const summary = await apiFetch<DeckSummary>(
+    `/quotes/${quoteId}/deck/summary`,
+  ).catch(() => null);
   return (
     <Card id="deck" aria-labelledby="deck-heading">
       <h2
@@ -59,6 +66,18 @@ export async function DeckCard({
             </section>
           );
         })}
+        {summary && (
+          <section aria-label="Why this proposal" className="space-y-2">
+            <h3 className="text-sm font-semibold text-slate-800">
+              Why this proposal (slide)
+            </h3>
+            <SummaryBlock
+              summary={summary.text}
+              canDraft={canCreate}
+              action={draftDeckSummary.bind(null, quoteId)}
+            />
+          </section>
+        )}
       </div>
     </Card>
   );

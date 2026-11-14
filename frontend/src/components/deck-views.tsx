@@ -126,3 +126,56 @@ export function StaffDeck({
     </div>
   );
 }
+
+/**
+ * The "why this proposal" slide of a quote's deck (ADR 0032 Amendment A, PD7): the approved text, as
+ * plain text, and a button that asks the deck writer for a draft. A draft is only a proposal: a
+ * different person approves it in the approval queue, and only an approved text is drawn into the
+ * next deck.
+ */
+export function SummaryBlock({
+  summary,
+  canDraft,
+  action,
+}: {
+  summary: string | null;
+  canDraft: boolean;
+  action: CreateAction;
+}) {
+  const [state, formAction, pending] = useActionState(
+    action,
+    initialDialogState,
+  );
+  return (
+    <div className="space-y-3">
+      {state.error && (
+        <ErrorAlert title="The draft could not be made" error={state.error} />
+      )}
+      <p
+        data-testid="deck-summary"
+        className="whitespace-pre-line text-sm text-slate-700"
+      >
+        {summary ?? "No summary slide yet."}
+      </p>
+      {canDraft && (
+        <form action={formAction}>
+          <button
+            type="submit"
+            disabled={pending}
+            className={buttonClass(summary ? "secondary" : "primary")}
+          >
+            {pending
+              ? "Drafting…"
+              : summary
+                ? "Draft a new one"
+                : "Draft with the deck writer"}
+          </button>
+        </form>
+      )}
+      <p className="text-xs text-slate-500">
+        The draft goes to the approval queue and a different person approves it.
+        Only approved text is drawn into the next deck.
+      </p>
+    </div>
+  );
+}

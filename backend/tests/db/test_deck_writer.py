@@ -429,3 +429,17 @@ def test_who_may_not_read_the_approved_text(api, auth, world, user, expected) ->
 def test_a_quote_not_yet_approved_has_no_text_to_read(api, auth, world) -> None:
     draft_quote = new_quote(api, auth, world)
     assert code_of(read_summary(api, auth, draft_quote)) == (409, "quote_not_ready_for_deck")
+
+
+@pytest.mark.parametrize(
+    ("written", "kept"),
+    [
+        ("Why this proposal: Quiet plots near a school.", "Quiet plots near a school."),
+        ("  WHY THIS PROPOSAL - Quiet plots.", "Quiet plots."),
+        ("Why this proposal is simple: it fits.", "Why this proposal is simple: it fits."),
+        ("Quiet plots. Why this proposal: they fit.", "Quiet plots. Why this proposal: they fit."),
+    ],
+)
+def test_a_repeated_title_at_the_start_is_dropped_and_nothing_else(written, kept) -> None:
+    uses = [ToolUse("a", "submit_summary", {"text": written, "reason": "r"})]
+    assert writer.parse(uses).text == kept

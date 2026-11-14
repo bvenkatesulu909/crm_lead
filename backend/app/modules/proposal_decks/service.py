@@ -1,7 +1,9 @@
 """Proposal decks of a quote (ADR 0032, PD3): ask for one, see its state, download it, and the
 worker job that draws and stores it. Never commits; the router (or the worker) commits once.
 
-A deck belongs to one quote and is stored as a document (purpose ``quote_deck``). It is drawn by
+A deck belongs to one quote and is stored as a document (purpose ``quote_deck`` for the PDF,
+``quote_deck_pptx`` for the PowerPoint version, ADR 0032 Amendment A; each format has its own job,
+state and newest file, so one never replaces the other). It is drawn by
 the worker from the quote record and the organisation's branding at that moment, so it stays true
 for ever like the quote PDF. The same quote with the same branding gives the same bytes, which are
 stored once; a changed branding gives a new deck and the newest one is the one shown.
@@ -26,14 +28,39 @@ from app.modules.documents import api as documents_api
 from app.modules.identity import api as identity_api
 from app.modules.proposal_decks.data import DeckBrand, DeckData, DeckLine
 from app.modules.proposal_decks.render import render_deck
+from app.modules.proposal_decks.render_pptx import render_pptx
 from app.modules.quotes import api as quotes_api
 
-JOB = "quote.deck"
-PURPOSE = "quote_deck"
 RECORD_TYPE = "quote"
 ENTITY = "quote"
 
 State = Literal["none", "queued", "ready", "failed", "not_available"]
+Format = Literal["pdf", "pptx"]
+
+
+@dataclass(frozen=True)
+class _Kind:
+    """What differs between the two formats: the worker job, the document purpose, the file type."""
+
+    job: str
+    purpose: str
+    content_type: str
+    suffix: str
+
+
+KINDS: dict[Format, _Kind] = {
+    "pdf": _Kind("quote.deck", "quote_deck", "application/pdf", "pdf"),
+    "pptx": _Kind(
+        "quote.deck_pptx",
+        "quote_deck_pptx",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "pptx",
+    ),
+}
+JOB = KINDS["pdf"].job
+JOB_PPTX = KINDS["pptx"].job
+JOBS = (JOB, JOB_PPTX)
+PURPOSE = KINDS["pdf"].purpose
 
 
 class DeckRateLimitedError(DomainError):
@@ -74,8 +101,10 @@ def _ids(principal: Principal) -> tuple[uuid.UUID, uuid.UUID]:
     return principal.tenant_id, principal.user_id
 
 
-def _job_state(session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID) -> str | None:
-    return latest_job_status(session, tenant_id, JOB, "quote_id", str(quote_id))
+def _job_state(
+    session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID, fmt: Format
+) -> str | None:
+    return latest_job_status(session, tenant_id, KINDS[fmt].job, "quote_id", str(quote_id))
 
 
 # --- people ---------------------------------------------------------------------------------
@@ -87,22 +116,23 @@ def request_deck(
     quote_id: uuid.UUID,
     settings: Settings,
     *,
+    fmt: Format = "pdf",
     now: datetime | None = None,
 ) -> DeckState:
-    """Queue the drawing of a deck. Needs the right to change the quote (the quote module decides);
-    refused for a quote that is not yet approved or was superseded, while one is already being made,
-    and past the hourly limit."""
+    """Queue the drawing of a deck in one format. Needs the right to change the quote (the quote
+    module decides); refused for a quote not yet approved or one that was superseded, while one of
+    the same format is already being made, and past the hourly limit (both formats count together)."""
     when = now or datetime.now(UTC)
     tenant_id, user_id = _ids(principal)
     source = quotes_api.deck_source(session, principal, quote_id, create=True)
-    if _job_state(session, tenant_id, source.quote_id) in ("pending", "running"):
+    if _job_state(session, tenant_id, source.quote_id, fmt) in ("pending", "running"):
         raise DeckPendingError()
     recent = session.scalar(
         select(func.count())
         .select_from(OutboxJob)
         .where(
             OutboxJob.tenant_id == tenant_id,
-            OutboxJob.kind == JOB,
+            OutboxJob.kind.in_(JOBS),
             OutboxJob.payload["requested_by"].astext == str(user_id),
             OutboxJob.created_at > when - timedelta(hours=1),
         )
@@ -112,7 +142,7 @@ def request_deck(
     enqueue(
         session,
         tenant_id=tenant_id,
-        kind=JOB,
+        kind=KINDS[fmt].job,
         payload={"quote_id": str(source.quote_id), "requested_by": str(user_id)},
     )
     record_audit(
@@ -121,14 +151,19 @@ def request_deck(
         action="deck.requested",
         entity_type=ENTITY,
         entity_id=source.quote_id,
-        changes={},
+        changes={"format": fmt},
     )
     session.flush()
     return DeckState("queued")
 
 
 def deck_state(
-    session: Session, principal: Principal, quote_id: uuid.UUID, *, customer: bool
+    session: Session,
+    principal: Principal,
+    quote_id: uuid.UUID,
+    *,
+    customer: bool,
+    fmt: Format = "pdf",
 ) -> DeckState:
     """Where the quote's deck stands. A customer sees only a finished deck (never the work in
     progress); staff also see "queued" and "failed"."""
@@ -137,8 +172,10 @@ def deck_state(
         source = quotes_api.deck_source(session, principal, quote_id, create=False)
     except (quotes_api.QuoteNotReadyForDeckError, quotes_api.QuoteSupersededError) as why:
         return DeckState("not_available", reason=why.detail)
-    doc = documents_api.latest_document(session, tenant_id, RECORD_TYPE, source.quote_id, PURPOSE)
-    job = _job_state(session, tenant_id, source.quote_id)
+    doc = documents_api.latest_document(
+        session, tenant_id, RECORD_TYPE, source.quote_id, KINDS[fmt].purpose
+    )
+    job = _job_state(session, tenant_id, source.quote_id, fmt)
     if customer:
         if doc is None or not doc.customer_visible:
             return DeckState("none")
@@ -164,11 +201,15 @@ def deck_link(
     quote_id: uuid.UUID,
     *,
     customer: bool,
+    fmt: Format = "pdf",
 ) -> documents_api.DownloadLink:
-    """A 60-second signed link to the newest deck, under the quote's own read rules (ADR 0025)."""
+    """A 60-second signed link to the newest deck of one format, under the quote's own read rules
+    (ADR 0025)."""
     tenant_id, _ = _ids(principal)
     source = quotes_api.deck_source(session, principal, quote_id, create=False)
-    doc = documents_api.latest_document(session, tenant_id, RECORD_TYPE, source.quote_id, PURPOSE)
+    doc = documents_api.latest_document(
+        session, tenant_id, RECORD_TYPE, source.quote_id, KINDS[fmt].purpose
+    )
     if doc is None or (customer and not doc.customer_visible):
         raise DeckNotFoundError()
     return documents_api.download_link(session, store, tenant_id, doc.id)
@@ -210,7 +251,10 @@ def _deck_data(source: quotes_api.DeckSource, brand: DeckBrand) -> DeckData:
 
 
 def run_job(session: Session, store: FileStore, job: Job) -> None:
-    """Draw and store the deck of one quote. Safe to run twice: the same bytes are stored once."""
+    """Draw and store the deck of one quote in the format of the job's kind. Safe to run twice: the
+    same bytes are stored once."""
+    fmt: Format = "pptx" if job.kind == JOB_PPTX else "pdf"
+    kind = KINDS[fmt]
     try:
         quote_id = uuid.UUID(str(job.payload["quote_id"]))
     except (KeyError, ValueError):
@@ -234,9 +278,9 @@ def run_job(session: Session, store: FileStore, job: Job) -> None:
             logo_png=brand.logo_png,
         ),
     )
-    pdf = render_deck(data)
+    content = render_pptx(data) if fmt == "pptx" else render_deck(data)
     existing = documents_api.find_by_content(
-        session, job.tenant_id, RECORD_TYPE, quote_id, PURPOSE, pdf
+        session, job.tenant_id, RECORD_TYPE, quote_id, kind.purpose, content
     )
     if existing is not None:
         return
@@ -252,10 +296,10 @@ def run_job(session: Session, store: FileStore, job: Job) -> None:
         tenant_id=job.tenant_id,
         record_type=RECORD_TYPE,
         record_id=quote_id,
-        purpose=PURPOSE,
-        file_name=f"{source.number.replace(' rev ', '-rev')}-proposal.pdf",
-        content_type="application/pdf",
-        data=pdf,
+        purpose=kind.purpose,
+        file_name=f"{source.number.replace(' rev ', '-rev')}-proposal.{kind.suffix}",
+        content_type=kind.content_type,
+        data=content,
         customer_visible=True,
         created_by_user_id=creator,
         unique_by_content=True,
@@ -271,6 +315,7 @@ def run_job(session: Session, store: FileStore, job: Job) -> None:
             "document_id": info.id,
             "size_bytes": info.size_bytes,
             "branding_version": brand.version,
+            "format": fmt,
         },
     )
     session.flush()

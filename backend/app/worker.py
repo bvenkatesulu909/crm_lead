@@ -81,6 +81,7 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
         calls_api.JOB_KIND: calls_api.job_handler(services.file_store, services.settings),
         payment_links_api.APPLY_JOB: payment_links_api.apply_job_handler(),
         proposal_decks_api.JOB: proposal_decks_api.job_handler(services.file_store),
+        proposal_decks_api.JOB_PPTX: proposal_decks_api.job_handler(services.file_store),
         webcheck_api.CHECK_JOB: webcheck_api.check_job_handler(services.settings),
         webcheck_api.COMPANY_JOB: webcheck_api.company_job_handler(services.settings),
         # Domain events (ADR 0006): every "event.<name>" job goes to its subscribers.

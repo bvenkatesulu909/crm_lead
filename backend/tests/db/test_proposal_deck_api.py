@@ -291,7 +291,7 @@ def test_the_deck_creation_is_audited_with_ids_and_sizes_only(
     run_jobs()
     bind_tenant(db_session, world.users["alpha.agent1"].tenant_id)
     row = db_session.scalars(select(AuditLog).where(AuditLog.action == "deck.created")).one()
-    assert set(row.changes) == {"document_id", "size_bytes", "branding_version"}
+    assert set(row.changes) == {"document_id", "size_bytes", "branding_version", "format"}
     assert str(row.entity_id) == quote["id"]
 
 

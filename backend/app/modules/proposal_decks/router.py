@@ -4,7 +4,7 @@ portal customer downloads the deck of a quote they can see. Thin: gate, call the
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
@@ -33,6 +33,11 @@ Writer = Annotated[
     Depends(require_any_permission(Permission.QUOTE_WRITE_ALL, Permission.QUOTE_WRITE_OWN)),
 ]
 Customer = Annotated[Principal, Depends(require_any_permission(Permission.PORTAL_QUOTE_READ))]
+# Which file: the PDF (the default, as before) or the PowerPoint version (ADR 0032 Amendment A).
+Format = Annotated[
+    service.Format,
+    Query(description="pdf (default) or pptx: the format of the deck."),
+]
 
 
 def _read(state: service.DeckState) -> DeckStatusRead:
@@ -55,10 +60,10 @@ def _read(state: service.DeckState) -> DeckStatusRead:
     responses=problem_responses(404, 409, 429),
 )
 def create_deck(
-    quote_id: uuid.UUID, request: Request, principal: Writer, session: Db
+    quote_id: uuid.UUID, request: Request, principal: Writer, session: Db, format: Format = "pdf"
 ) -> DeckStatusRead:
     settings: Settings = request.app.state.settings
-    state = service.request_deck(session, principal, quote_id, settings)
+    state = service.request_deck(session, principal, quote_id, settings, fmt=format)
     session.commit()
     return _read(state)
 
@@ -68,8 +73,10 @@ def create_deck(
     summary="Where the quote's proposal deck stands",
     responses=problem_responses(404),
 )
-def deck_status(quote_id: uuid.UUID, principal: Reader, session: Db) -> DeckStatusRead:
-    return _read(service.deck_state(session, principal, quote_id, customer=False))
+def deck_status(
+    quote_id: uuid.UUID, principal: Reader, session: Db, format: Format = "pdf"
+) -> DeckStatusRead:
+    return _read(service.deck_state(session, principal, quote_id, customer=False, fmt=format))
 
 
 @router.get(
@@ -77,8 +84,10 @@ def deck_status(quote_id: uuid.UUID, principal: Reader, session: Db) -> DeckStat
     summary="A 60-second link to the newest proposal deck (ADR 0025)",
     responses=problem_responses(404),
 )
-def deck_link(quote_id: uuid.UUID, principal: Reader, session: Db, files: Files) -> DeckLinkRead:
-    link = service.deck_link(session, principal, files, quote_id, customer=False)
+def deck_link(
+    quote_id: uuid.UUID, principal: Reader, session: Db, files: Files, format: Format = "pdf"
+) -> DeckLinkRead:
+    link = service.deck_link(session, principal, files, quote_id, customer=False, fmt=format)
     return DeckLinkRead(url=link.url, file_name=link.file_name, expires_at=link.expires_at)
 
 
@@ -87,8 +96,10 @@ def deck_link(quote_id: uuid.UUID, principal: Reader, session: Db, files: Files)
     summary="Whether the deck of one of my quotes is ready",
     responses=problem_responses(404),
 )
-def my_deck_status(quote_id: uuid.UUID, principal: Customer, session: Db) -> DeckStatusRead:
-    return _read(service.deck_state(session, principal, quote_id, customer=True))
+def my_deck_status(
+    quote_id: uuid.UUID, principal: Customer, session: Db, format: Format = "pdf"
+) -> DeckStatusRead:
+    return _read(service.deck_state(session, principal, quote_id, customer=True, fmt=format))
 
 
 @portal_router.get(
@@ -97,7 +108,7 @@ def my_deck_status(quote_id: uuid.UUID, principal: Customer, session: Db) -> Dec
     responses=problem_responses(404),
 )
 def my_deck_link(
-    quote_id: uuid.UUID, principal: Customer, session: Db, files: Files
+    quote_id: uuid.UUID, principal: Customer, session: Db, files: Files, format: Format = "pdf"
 ) -> DeckLinkRead:
-    link = service.deck_link(session, principal, files, quote_id, customer=True)
+    link = service.deck_link(session, principal, files, quote_id, customer=True, fmt=format)
     return DeckLinkRead(url=link.url, file_name=link.file_name, expires_at=link.expires_at)

@@ -7,9 +7,11 @@ from app.modules.proposal_decks.data import DeckBrand, DeckData, DeckLine
 from app.modules.proposal_decks.render import drawable_characters, render_deck
 
 JOB = service.JOB
+JOB_PPTX = service.JOB_PPTX
 
 __all__ = [
     "JOB",
+    "JOB_PPTX",
     "DeckBrand",
     "DeckData",
     "DeckLine",
@@ -20,5 +22,6 @@ __all__ = [
 
 
 def job_handler(store: FileStore) -> JobHandler:
-    """Worker handler for "quote.deck": draws and stores one quote's deck (safe to run twice)."""
+    """Worker handler for "quote.deck" and "quote.deck_pptx" (the job's kind says which format):
+    draws and stores one quote's deck (safe to run twice)."""
     return lambda session, job: service.run_job(session, store, job)

@@ -5692,7 +5692,7 @@
         "type": "object"
       },
       "DeckLinkRead": {
-        "description": "Open ``url`` within a minute: it fetches the PDF straight from the file store.",
+        "description": "Open ``url`` within a minute: it fetches the file (PDF or PowerPoint) from the file store.",
         "properties": {
           "expires_at": {
             "format": "date-time",
@@ -34429,6 +34429,22 @@
               "title": "Quote Id",
               "type": "string"
             }
+          },
+          {
+            "description": "pdf (default) or pptx: the format of the deck.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "pdf",
+              "description": "pdf (default) or pptx: the format of the deck.",
+              "enum": [
+                "pdf",
+                "pptx"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -34505,6 +34521,22 @@
             "schema": {
               "format": "uuid",
               "title": "Quote Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "pdf (default) or pptx: the format of the deck.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "pdf",
+              "description": "pdf (default) or pptx: the format of the deck.",
+              "enum": [
+                "pdf",
+                "pptx"
+              ],
+              "title": "Format",
               "type": "string"
             }
           }
@@ -37832,6 +37864,22 @@
               "title": "Quote Id",
               "type": "string"
             }
+          },
+          {
+            "description": "pdf (default) or pptx: the format of the deck.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "pdf",
+              "description": "pdf (default) or pptx: the format of the deck.",
+              "enum": [
+                "pdf",
+                "pptx"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -37907,6 +37955,22 @@
             "schema": {
               "format": "uuid",
               "title": "Quote Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "pdf (default) or pptx: the format of the deck.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "pdf",
+              "description": "pdf (default) or pptx: the format of the deck.",
+              "enum": [
+                "pdf",
+                "pptx"
+              ],
+              "title": "Format",
               "type": "string"
             }
           }
@@ -38005,6 +38069,22 @@
             "schema": {
               "format": "uuid",
               "title": "Quote Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "pdf (default) or pptx: the format of the deck.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "pdf",
+              "description": "pdf (default) or pptx: the format of the deck.",
+              "enum": [
+                "pdf",
+                "pptx"
+              ],
+              "title": "Format",
               "type": "string"
             }
           }

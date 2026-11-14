@@ -17,7 +17,7 @@ class DeckStatusRead(BaseModel):
 
 
 class DeckLinkRead(BaseModel):
-    """Open ``url`` within a minute: it fetches the PDF straight from the file store."""
+    """Open ``url`` within a minute: it fetches the file (PDF or PowerPoint) from the file store."""
 
     url: str
     file_name: str

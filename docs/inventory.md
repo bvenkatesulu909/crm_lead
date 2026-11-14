@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-11-13 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-11-14 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -60,18 +60,18 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0064**
+- Alembic revision: **0065**
 - Tables in the current schema: **76**
 - Tables with Row-Level Security: **72** (72 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **64**
-- Heads: `0064`
+- Migration files: **65**
+- Heads: `0065`
 
 ## Web app (`frontend/src/app`)
 
-- 83 pages and 15 route handlers.
+- 83 pages and 17 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -146,6 +146,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/portal/orders/[id]` | page |
 | `/portal/quotes` | page |
 | `/portal/quotes/[id]` | page |
+| `/portal/quotes/[id]/deck` | route handler |
 | `/portal/quotes/[id]/pdf` | route handler |
 | `/portal/tickets` | page |
 | `/portal/tickets/[id]` | page |
@@ -159,6 +160,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/profile` | page |
 | `/quotes` | page |
 | `/quotes/[id]` | page |
+| `/quotes/[id]/deck` | route handler |
 | `/quotes/[id]/edit` | page |
 | `/quotes/[id]/pdf` | route handler |
 | `/quotes/new` | page |
@@ -176,9 +178,9 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **217**
-- Frontend component test files: **48**
-- Playwright end-to-end specs: **42**
+- Backend test files: **220**
+- Frontend component test files: **49**
+- Playwright end-to-end specs: **43**
 
 ## Documentation
 

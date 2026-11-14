@@ -97,5 +97,25 @@ next steps). The amounts come from the same `rules.money`, so the two files alwa
   size is chosen up front from a length estimate (`rules.fit_font_size`, never below 9 points).
 - The same data gives the same bytes (fixed file timestamps; python-pptx's printer-settings blob and
   blank thumbnail are dropped), so identical decks are stored once.
-- PD6a is the renderer only. The job, stored file, download links and the "Download PowerPoint" button
-  are PD6b and PD6c.
+- PD6a is the renderer. PD6b (below) adds the job, the stored file and the download links; the
+  "Download PowerPoint" button is PD6c.
+
+### 5a. The PowerPoint through the API (PD6b)
+
+Every deck endpoint takes an optional query `format=pdf|pptx` (default `pdf`, so nothing changes for
+existing callers; any other value is a 422 before anything happens):
+
+| Call | With `format=pptx` |
+|---|---|
+| `POST /quotes/{id}/deck` | queues the job `quote.deck_pptx` (payload: quote id and who asked) |
+| `GET /quotes/{id}/deck` | the state of the PowerPoint only |
+| `GET /quotes/{id}/deck/link` | a 60-second signed link to the newest `.pptx` |
+| `GET /portal/quotes/{id}/deck` and `/link` | the same for a customer of a quote sent to them |
+
+Rules that are the same as for the PDF: the same permissions (the quote's own write/read rules, the
+portal customer's own quotes only, a draft or superseded quote refused), 30 asks per person per hour -
+**both formats count together** - and the bytes stored once per quote and content. What is separate:
+the worker job, the "already being made" check, the state and the newest file. The PowerPoint is stored
+as a document with purpose `quote_deck_pptx` (migration 0065: the allowed purposes and a second unique
+index per quote and content), so a PowerPoint never replaces the PDF and each format shows its own
+newest file. The audit entries `deck.requested` and `deck.created` carry the format.

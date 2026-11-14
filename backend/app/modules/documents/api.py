@@ -135,6 +135,16 @@ def latest_document(
     return _info(doc) if doc else None
 
 
+# The purposes whose files are stored once per distinct content, and the partial unique index each
+# one conflicts on. Fixed text, never built from input.
+_BY_CONTENT_PURPOSES = ("quote_deck", "quote_deck_pptx")
+_CONFLICT_WHERE = {
+    "quote_pdf": text("purpose = 'quote_pdf'"),
+    "quote_deck": text("purpose = 'quote_deck'"),
+    "quote_deck_pptx": text("purpose = 'quote_deck_pptx'"),
+}
+
+
 def store_generated_document(
     session: Session,
     store: FileStore,
@@ -159,6 +169,8 @@ def store_generated_document(
     a fresh key, and the database's unique index decides which row wins; the loser's upload is
     removed again. Runs in the caller's transaction.
     """
+    if unique_by_content and purpose not in _BY_CONTENT_PURPOSES:
+        raise ValueError(f"{purpose!r} documents are not stored by content")
     digest = hashlib.sha256(data).hexdigest()
     if unique_by_content:
         found = _find_by_content(session, tenant_id, record_type, record_id, purpose, digest)
@@ -193,9 +205,7 @@ def store_generated_document(
             index_elements=["tenant_id", "record_type", "record_id", "sha256"]
             if unique_by_content
             else ["tenant_id", "record_type", "record_id", "purpose"],
-            index_where=text(
-                "purpose = 'quote_deck'" if unique_by_content else "purpose = 'quote_pdf'"
-            ),
+            index_where=_CONFLICT_WHERE[purpose if unique_by_content else "quote_pdf"],
         )
         .returning(Document.id)
     )

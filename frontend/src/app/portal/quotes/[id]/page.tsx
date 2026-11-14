@@ -9,10 +9,11 @@ import {
   QuoteStatusBadge,
   QuoteTotals,
 } from "@/components/quote-view";
-import { ButtonLink, Card, SuccessAlert } from "@/components/ui";
+import { ButtonLink, Card, SuccessAlert, buttonClass } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
 import type { PortalQuote } from "@/lib/api-types";
 import { formatDate } from "@/lib/format";
+import type { DeckStatus } from "@/lib/proposal-decks";
 import { quoteNumber } from "@/lib/quotes";
 import { apiFetch } from "@/lib/server/api";
 
@@ -46,6 +47,8 @@ export default async function PortalQuotePage({
     throw error;
   }
   const done = typeof query.done === "string" ? DONE[query.done] : undefined;
+  // The proposal deck, if the supplier made one (ADR 0032). Information only: the page works without it.
+  const deck = await apiFetch<DeckStatus>(`/portal/quotes/${quote.id}/deck`).catch(() => null);
 
   return (
     <>
@@ -76,6 +79,11 @@ export default async function PortalQuotePage({
           )}
           <ButtonLink href={`/print/quotes/${quote.id}`} variant="secondary">Print</ButtonLink>
           <PdfDownload href={`/portal/quotes/${quote.id}/pdf`} />
+          {deck?.status === "ready" && (
+            <a href={`/portal/quotes/${quote.id}/deck`} download className={buttonClass("secondary")}>
+              Download proposal deck
+            </a>
+          )}
         </div>
       </div>
       <Card>

@@ -105,7 +105,7 @@ quotes module's `api.py`.
 6. Do you have a logo file and brand colour to use for the demonstration organisation? (Only you can
    supply them; a made-up fictional logo is used for tests.)
 
-## 8. Amendment A (proposed 2026-11-14): the four follow-ups
+## 8. Amendment A (accepted 2026-11-14, all recommended answers): the four follow-ups
 
 The owner asked to start the four things section 5 and the PD1-PD4 notes left open. Three are code,
 one is the owner's to supply. Nothing here changes the PDF deck, the quote or the approval rules.

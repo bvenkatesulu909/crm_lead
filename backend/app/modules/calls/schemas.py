@@ -74,3 +74,46 @@ class ListenLink(BaseModel):
     url: str
     expires_in_seconds: int
     which: Literal["original", "cleaned"]
+
+
+class ClipCreate(BaseModel):
+    """The moment (whole milliseconds, checked against the recording) and the typed texts. The
+    recording, the lead, the maker, the excerpt and the status are decided by the server."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    start_ms: Annotated[int, Field(strict=True)]
+    end_ms: Annotated[int, Field(strict=True)]
+    title: Annotated[str, StringConstraints(min_length=1, max_length=400)]
+    note: Annotated[str, StringConstraints(max_length=2000)] | None = None
+
+
+class ClipEdit(BaseModel):
+    """Only the title and the note can change."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: Annotated[str, StringConstraints(max_length=400)] | None = None
+    note: Annotated[str, StringConstraints(max_length=2000)] | None = None
+
+
+class ClipRead(BaseModel):
+    id: uuid.UUID
+    recording_id: uuid.UUID
+    lead_id: uuid.UUID
+    made_by_user_id: uuid.UUID
+    start_ms: int
+    end_ms: int
+    duration_ms: int
+    title: str
+    note: str | None
+    excerpt: str
+    status: Literal["queued", "ready", "failed"]
+    failure_code: str | None
+    created_at: datetime
+    audio_available: bool
+    audio_deleted_at: datetime | None
+
+
+class ClipPage(BaseModel):
+    items: list[ClipRead]

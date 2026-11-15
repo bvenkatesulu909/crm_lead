@@ -36,6 +36,8 @@ class Cleaner(Protocol):
 
     def clean(self, data: bytes, file_name: str) -> bytes: ...
 
+    def cut(self, data: bytes, file_name: str, start_ms: int, end_ms: int) -> bytes: ...
+
 
 def probe_args(command: str, path: str) -> list[str]:
     return [
@@ -70,6 +72,48 @@ def clean_args(command: str, source: str, target: str) -> list[str]:
         "libmp3lame",
         "-b:a",
         "48k",
+        "-y",
+        target,
+    ]
+
+
+# A clip (ADR 0033): mono mp3 at 64 kbit/s, at most two minutes.
+CLIP_BITRATE = "64k"
+MAX_CUT_MS = 120_000
+
+
+def _seconds(ms: object) -> str:
+    """Milliseconds as "12.345". Only whole numbers get here: a typed value never reaches ffmpeg."""
+    if isinstance(ms, bool) or not isinstance(ms, int):
+        raise ValueError("a time must be a whole number of milliseconds")
+    return f"{ms // 1000}.{ms % 1000:03d}"
+
+
+def cut_args(command: str, source: str, target: str, start_ms: int, end_ms: int) -> list[str]:
+    """The ffmpeg arguments that cut ``start_ms``..``end_ms`` out of the cleaned copy. The seek
+    comes after the input, so the cut is exact (not rounded to a key frame)."""
+    begin, end = _seconds(start_ms), _seconds(end_ms)
+    if start_ms < 0 or end_ms <= start_ms or end_ms - start_ms > MAX_CUT_MS:
+        raise ValueError("the range cannot be cut")
+    return [
+        command,
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        source,
+        "-ss",
+        begin,
+        "-to",
+        end,
+        "-vn",
+        "-ac",
+        "1",
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        CLIP_BITRATE,
         "-y",
         target,
     ]
@@ -136,4 +180,16 @@ class FfmpegCleaner:
             if done.returncode != 0 or not target.exists() or target.stat().st_size == 0:
                 logger.warning("ffmpeg could not clean a recording")
                 raise AudioUnreadableError("clean failed")
+            return target.read_bytes()
+
+    def cut(self, data: bytes, file_name: str, start_ms: int, end_ms: int) -> bytes:
+        """A short mp3 of ``start_ms``..``end_ms`` of ``data`` (the cleaned copy)."""
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / f"in{_suffix(file_name)}"
+            target = Path(directory) / f"clip{CLEAN_SUFFIX}"
+            source.write_bytes(data)
+            done = self._run(cut_args(self._ffmpeg, str(source), str(target), start_ms, end_ms))
+            if done.returncode != 0 or not target.exists() or target.stat().st_size == 0:
+                logger.warning("ffmpeg could not cut a clip")
+                raise AudioUnreadableError("cut failed")
             return target.read_bytes()

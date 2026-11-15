@@ -651,3 +651,113 @@ def test_keycloak_is_healthy_only_when_its_readiness_answers_200() -> None:
     assert "GET /health/ready HTTP/1.1" in test
     assert "head -n 1 <&3 | grep -q ' 200 '" in test
     assert '"UP"' not in test
+
+
+# --- UPI payments through Razorpay (ADR 0031, UP4) -----------------------------------------------
+
+RAZORPAY = (
+    "CRM_RAZORPAY_MODE",
+    "CRM_RAZORPAY_KEY_ID",
+    "CRM_RAZORPAY_KEY_SECRET",
+    "CRM_RAZORPAY_WEBHOOK_SECRET",
+)
+# Fictional values that only look like Razorpay's: a test key id, a key secret, a webhook secret.
+KEY_ID = "rzp_test_AbCdEf123456"
+FICTIONAL = {
+    "key_secret": "k3yS3cr3tFictional0000",
+    "webhook": "whs-Fictional-0123456789-abcdef",
+}
+
+
+def razorpay_on(text: str, over: dict[str, str] | None = None) -> str:
+    values = {
+        "CRM_RAZORPAY_MODE": "test",
+        "CRM_RAZORPAY_KEY_ID": KEY_ID,
+        "CRM_RAZORPAY_KEY_SECRET": FICTIONAL["key_secret"],
+        "CRM_RAZORPAY_WEBHOOK_SECRET": FICTIONAL["webhook"],
+        **(over or {}),
+    }
+    return text.rstrip("\n") + "\n" + "".join(f"{k}={v}\n" for k, v in values.items())
+
+
+def test_the_razorpay_settings_reach_the_api_and_the_worker_and_default_to_off() -> None:
+    # Without this the owner could type the keys into .env and nothing would happen on the server.
+    for name in ("api", "worker"):
+        env = environment_of(name)
+        assert env["CRM_RAZORPAY_MODE"] == "${CRM_RAZORPAY_MODE:-off}"
+        for secret in RAZORPAY[1:]:
+            assert env[secret] == f"${{{secret}:-}}"  # empty unless the owner fills it in
+        # The go-live flag is NOT passed: a live key needs a deliberate, separate step (ADR 0031).
+        assert "CRM_RAZORPAY_GO_LIVE" not in env
+
+
+def test_the_razorpay_names_are_in_the_env_template_but_never_with_a_value() -> None:
+    template = ENV_EXAMPLE.read_text(encoding="utf-8")
+    for name in RAZORPAY:
+        assert name in env_names()
+    for name in RAZORPAY[1:]:
+        assert not re.search(rf"^{name}=\S", template, flags=re.M)
+
+
+def test_a_file_without_razorpay_settings_is_fine() -> None:
+    assert problems(filled(fresh())) == []
+
+
+def test_mode_off_needs_no_keys() -> None:
+    assert problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_MODE": "off"})) == []
+
+
+def test_a_complete_test_mode_setup_passes() -> None:
+    assert problems(razorpay_on(filled(fresh()))) == []
+
+
+@pytest.mark.parametrize("name", RAZORPAY[1:])
+def test_test_mode_needs_all_three_values(name: str) -> None:
+    found = problems(razorpay_on(filled(fresh()), {name: ""}))
+    assert any(name in p for p in found), found
+
+
+def test_test_mode_refuses_a_live_key() -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_KEY_ID": "rzp_live_AbCdEf123456"}))
+    assert any("CRM_RAZORPAY_KEY_ID" in p and "test" in p for p in found)
+
+
+def test_test_mode_refuses_a_key_id_that_is_not_a_razorpay_test_key() -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_KEY_ID": "not-a-key"}))
+    assert any("CRM_RAZORPAY_KEY_ID" in p for p in found)
+
+
+def test_a_short_webhook_secret_is_refused() -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_WEBHOOK_SECRET": "short"}))
+    assert any("CRM_RAZORPAY_WEBHOOK_SECRET" in p and "20" in p for p in found)
+
+
+def test_the_webhook_secret_must_differ_from_the_key_secret() -> None:
+    same = "SameValue-0123456789-abcdef"
+    found = problems(
+        razorpay_on(
+            filled(fresh()), {"CRM_RAZORPAY_KEY_SECRET": same, "CRM_RAZORPAY_WEBHOOK_SECRET": same}
+        )
+    )
+    assert any("CRM_RAZORPAY_WEBHOOK_SECRET" in p and "differ" in p for p in found)
+
+
+def test_live_mode_is_not_set_up_through_this_file() -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_MODE": "live"}))
+    assert any("CRM_RAZORPAY_MODE" in p and "go-live" in p for p in found)
+
+
+@pytest.mark.parametrize("mode", ["fake", "sandbox", "TEST", "on", ""])
+def test_an_unknown_or_development_mode_is_refused(mode: str) -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_MODE": mode}))
+    assert any("CRM_RAZORPAY_MODE" in p for p in found), found
+
+
+def test_a_message_never_repeats_a_razorpay_value() -> None:
+    text = razorpay_on(
+        filled(fresh()),
+        {"CRM_RAZORPAY_KEY_ID": "rzp_live_LeakedKeyId99", "CRM_RAZORPAY_WEBHOOK_SECRET": "x"},
+    )
+    joined = "\n".join(problems(text))
+    for value in ("rzp_live_LeakedKeyId99", FICTIONAL["key_secret"]):
+        assert value not in joined

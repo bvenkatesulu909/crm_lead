@@ -325,7 +325,12 @@ function CallItem({
           const clipActions = clipActionsOf(actions, call.id);
           return clipActions ? (
             <ClipsPanel
-              call={detail}
+              call={{
+                ...detail,
+                // The transcript was read once; whether the audio is still there is not.
+                audio_available: call.audio_available,
+                audio_deleted_at: call.audio_deleted_at,
+              }}
               canWrite={canWrite}
               actions={clipActions}
             />

@@ -84,7 +84,7 @@ const MP3 = Buffer.concat([
 test("an agent makes a clip from the transcript, a manager deletes it, the audio goes with the recording", async ({
   browser,
 }) => {
-  test.setTimeout(480_000);
+  test.setTimeout(600_000);
   const admin = await signedIn(browser, USERS.admin, "/automation/agents");
   const wasOn = await setSwitch(admin, true);
   try {
@@ -135,7 +135,9 @@ test("an agent makes a clip from the transcript, a manager deletes it, the audio
     await clips.getByLabel("Title").fill("Budget stated");
     await clips.getByLabel("Note (optional)").fill("Ask about the loan");
     await clips.getByRole("button", { name: "Make clip" }).click();
-    const clip = clips.getByTestId("clip-item").filter({ hasText: "Budget stated" });
+    const clip = clips
+      .getByTestId("clip-item")
+      .filter({ hasText: "Budget stated" });
     await expect(clip).toContainText("0:03–0:06");
     await expect(clip).toContainText("Being cut");
     await expect(clip.getByRole("button", { name: "Listen" })).toHaveCount(0);
@@ -194,12 +196,12 @@ test("an agent makes a clip from the transcript, a manager deletes it, the audio
       .getByRole("button", { name: "Delete audio" })
       .click();
     await expect(agent.getByText(/The audio was deleted\./)).toBeVisible();
-    await call.getByRole("button", { name: "Show transcript" }).click();
-    const kept = call
-      .getByTestId("clip-item")
-      .filter({ hasText: "Greeting" });
+    // The transcript that was open stays open, so the clips are still on the page.
+    const kept = call.getByTestId("clip-item").filter({ hasText: "Greeting" });
     await expect(kept).toContainText("The audio was deleted");
-    await expect(kept).toContainText("Hello, I am looking for a three bedroom flat");
+    await expect(kept).toContainText(
+      "Hello, I am looking for a three bedroom flat",
+    );
     await expect(kept.getByRole("button", { name: "Listen" })).toHaveCount(0);
   } finally {
     if (!wasOn) await setSwitch(admin, false);

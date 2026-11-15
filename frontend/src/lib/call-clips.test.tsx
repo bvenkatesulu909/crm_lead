@@ -348,6 +348,43 @@ describe("ClipsPanel", () => {
     return render(<ClipsPanel call={detail} canWrite={canWrite} actions={a} />);
   }
 
+  it("looks at the clips again and drops the form when the recording's audio is deleted", async () => {
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, value: [clip()] })
+      .mockResolvedValue({
+        ok: true,
+        value: [
+          clip({
+            audio_available: false,
+            audio_deleted_at: "2026-11-16T00:00:00Z",
+          }),
+        ],
+      });
+    const a = actions({ list });
+    const view = show(a);
+    await screen.findByTestId("clip-item");
+    expect(screen.getByRole("button", { name: "Listen" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Make clip" })).toBeTruthy();
+    view.rerender(
+      <ClipsPanel
+        call={{
+          ...DETAIL,
+          audio_available: false,
+          audio_deleted_at: "2026-11-16T00:00:00Z",
+        }}
+        canWrite
+        actions={a}
+      />,
+    );
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Listen" })).toBeNull(),
+    );
+    expect(screen.getByText(/The audio was deleted/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Make clip" })).toBeNull();
+  });
+
   it("lists the clips with their range, status and lines as plain text", async () => {
     show(actions());
     const item = await screen.findByTestId("clip-item");

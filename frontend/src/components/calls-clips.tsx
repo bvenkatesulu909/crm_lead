@@ -263,8 +263,9 @@ export function ClipsPanel({
     return () => {
       stale = true;
     };
+    // Also look again when the recording's audio is deleted: its clips lose theirs with it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [call.id]);
+  }, [call.id, call.audio_deleted_at]);
 
   const waiting = clips?.some((c) => c.status === "queued") ?? false;
   useEffect(() => {

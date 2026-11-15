@@ -18,6 +18,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
     func,
     text,
@@ -34,6 +35,7 @@ _MAX_BYTES = 524_288_000
 class CallRecording(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     __tablename__ = "call_recordings"
     __table_args__ = (
+        UniqueConstraint("tenant_id", "id"),
         ForeignKeyConstraint(
             ["tenant_id", "lead_id"], ["leads.tenant_id", "leads.id"], ondelete="RESTRICT"
         ),
@@ -91,3 +93,49 @@ class CallRecording(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     engine: Mapped[str | None] = mapped_column(String(60))
     audio_deleted_at: Mapped[datetime | None] = mapped_column()
     finished_at: Mapped[datetime | None] = mapped_column()
+
+
+class CallClip(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
+    """A highlight clip of a recording (ADR 0033): the range, a title and note, the transcript lines
+    inside the range and the key of its small audio file. The range, excerpt, maker and recording
+    never change (a trigger, migration 0067); the title and note may be edited."""
+
+    __tablename__ = "call_clips"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "recording_id"],
+            ["call_recordings.tenant_id", "call_recordings.id"],
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "made_by_user_id"], ["users.tenant_id", "users.id"], ondelete="RESTRICT"
+        ),
+        CheckConstraint(
+            "start_ms >= 0 AND end_ms - start_ms BETWEEN 3000 AND 120000", name="range_allowed"
+        ),
+        CheckConstraint("status IN ('queued', 'ready', 'failed')", name="status_allowed"),
+        CheckConstraint("(status = 'failed') = (failure_code IS NOT NULL)", name="failed_has_code"),
+        CheckConstraint("status <> 'ready' OR clip_key IS NOT NULL", name="ready_has_file"),
+        CheckConstraint("char_length(title) BETWEEN 1 AND 100", name="title_length"),
+        CheckConstraint("note IS NULL OR char_length(note) <= 500", name="note_length"),
+        CheckConstraint("char_length(excerpt) <= 4000", name="excerpt_length"),
+        Index(
+            "ix_call_clips_tenant_id_recording_id_created_at",
+            "tenant_id",
+            "recording_id",
+            "created_at",
+        ),
+    )
+
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    recording_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    made_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    start_ms: Mapped[int] = mapped_column(Integer)
+    end_ms: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(100))
+    note: Mapped[str | None] = mapped_column(String(500))
+    excerpt: Mapped[str] = mapped_column(Text, server_default=text("''"))
+    status: Mapped[str] = mapped_column(String(10), server_default=text("'queued'"))
+    failure_code: Mapped[str | None] = mapped_column(String(40))
+    clip_key: Mapped[str | None] = mapped_column(Text)
+    audio_deleted_at: Mapped[datetime | None] = mapped_column()

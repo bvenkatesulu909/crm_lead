@@ -79,6 +79,7 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
         ),
         communications_api.EMAIL_JOB: communications_api.email_job_handler(services.mailer),
         calls_api.JOB_KIND: calls_api.job_handler(services.file_store, services.settings),
+        calls_api.CLIP_JOB_KIND: calls_api.clip_job_handler(services.file_store, services.settings),
         payment_links_api.APPLY_JOB: payment_links_api.apply_job_handler(),
         proposal_decks_api.JOB: proposal_decks_api.job_handler(services.file_store),
         proposal_decks_api.JOB_PPTX: proposal_decks_api.job_handler(services.file_store),
@@ -194,6 +195,7 @@ def dead_job_handlers() -> dict[str, DeadJobHandler]:
         quotes_api.EMAIL_JOB: quotes_api.email_failed_handler(),
         communications_api.EMAIL_JOB: communications_api.email_failed_handler(),
         calls_api.JOB_KIND: calls_api.dead_job_handler(),
+        calls_api.CLIP_JOB_KIND: calls_api.clip_dead_job_handler(),
     }
 
 

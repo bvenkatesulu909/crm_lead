@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agent_evals import desk, play
+from agent_evals import desk, play, writer
 from agent_evals.cases import Case
 from agent_evals.desk import DeskRun, ResearchRun
 from agent_evals.play import RAG_MIN_SIMILARITY, explain, invariants
@@ -18,6 +18,7 @@ from agent_evals.rag_cases import RagCase
 from agent_evals.runner import LeadAgentRun, PortalRun, PublicRun, QualifierRun, StaffRun
 from agent_evals.scoring import CaseResult
 from agent_evals.world import World as EvalWorld
+from agent_evals.writer import WriterRun
 from app.core.config import Settings
 from tests.auth_helpers import TEST_ISSUER
 from tests.conftest import UNREACHABLE_DATABASE_URL
@@ -122,3 +123,9 @@ def play_account_research(
     session: Session, world: World, case: Case, **options: Any
 ) -> tuple[CaseResult, ResearchRun]:
     return desk.play_account_research(session, eval_world(session, world), case, **options)
+
+
+def play_deck_writer(
+    session: Session, world: World, case: Case, **options: Any
+) -> tuple[CaseResult, WriterRun]:
+    return writer.play_deck_writer(session, eval_world(session, world), case, **options)

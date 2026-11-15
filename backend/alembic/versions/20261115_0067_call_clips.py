@@ -4,12 +4,12 @@ Revision ID: 0067
 Revises: 0066
 Create Date: 2026-11-15
 
-One new table, ``call_clips``: a short piece of a recorded call with a title, a note, the transcript
-lines inside the range and the key of its small audio file. ENABLE + FORCE row-level security
-and the tenant policy (ADR 0009). The database refuses a clip shorter than 3 or longer than 120
-seconds, an empty title, a ``ready`` clip without its file, a ``failed`` clip without a reason, and
-(by trigger) any change to the range, the excerpt, the maker, the recording or the time it was made: only the
-title, the note and the file / status fields can change.
+One new table, ``call_clips``: a short piece of a recorded call with a title, a note, the
+transcript lines inside the range and the key of its small audio file. ENABLE + FORCE row-level
+security and the tenant policy (ADR 0009). The database refuses a clip shorter than 3 or longer
+than 120 seconds, an empty title, a ``ready`` clip without its file, a ``failed`` clip without a
+reason, and (by trigger) any change to the range, the excerpt, the maker, the recording or the
+time it was made: only the title, the note and the file / status fields can change.
 
 ``call_recordings`` also gets a unique (tenant, id) pair so a clip's foreign key can name the
 organisation as well (a clip can never point at another organisation's recording).

@@ -147,6 +147,57 @@ def test_the_real_ffmpeg_cleans_a_generated_recording(tmp_path: Path) -> None:
     assert len(cleaned) < len(data)
 
 
+# --- cutting a clip (ADR 0033) -----------------------------------------------------------------
+
+
+def test_a_cut_clip_is_returned_from_our_own_arguments_and_the_temporary_files_are_removed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = FakeRun(write=b"CLIP")
+    assert cleaner(monkeypatch, fake).cut(b"SOURCE", "my call.M4A", 3_000, 8_500) == b"CLIP"
+    command = fake.commands[0]
+    assert command[0] == "ff" and command[command.index("-ss") + 1] == "3.000"
+    assert command[command.index("-to") + 1] == "8.500"
+    assert "my call" not in " ".join(command)  # never the person's file name
+    assert not fake.sources[0].parent.exists()  # removed
+
+
+def test_a_failed_or_empty_cut_is_unreadable(monkeypatch: pytest.MonkeyPatch) -> None:
+    for fake in (FakeRun(returncode=1, write=b"X"), FakeRun(write=None), FakeRun(write=b"")):
+        with pytest.raises(audio.AudioUnreadableError):
+            cleaner(monkeypatch, fake).cut(b"SOURCE", "a.mp3", 0, 5_000)
+
+
+def test_a_cut_with_no_ffmpeg_is_a_set_up_problem() -> None:
+    missing = audio.FfmpegCleaner(ffmpeg="no-such-ffmpeg-xyz", ffprobe="no-such-ffprobe-xyz")
+    with pytest.raises(audio.AudioToolMissingError):
+        missing.cut(b"SOURCE", "a.mp3", 0, 5_000)
+
+
+def test_an_impossible_cut_never_reaches_ffmpeg(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeRun(write=b"CLIP")
+    for start, end in ((5_000, 5_000), (9_000, 3_000), (-1, 5_000), (0, 200_000)):
+        with pytest.raises(ValueError):
+            cleaner(monkeypatch, fake).cut(b"SOURCE", "a.mp3", start, end)
+    assert fake.commands == []
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed here")
+def test_the_real_ffmpeg_cuts_the_asked_stretch_out_of_a_generated_recording(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "tone.wav"
+    with wave.open(str(path), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(16000)
+        out.writeframes(b" " * 16000 * 20)  # twenty seconds
+    real = audio.FfmpegCleaner()
+    clip = real.cut(path.read_bytes(), "tone.wav", 3_000, 8_500)
+    assert clip[:3] == b"ID3" or clip[0] == 0xFF  # an mp3
+    assert 5.2 < real.duration_seconds(clip, "clip.mp3") < 5.8  # the 5.5 seconds asked for
+
+
 # --- the speech service gives timed segments ----------------------------------------------------
 
 

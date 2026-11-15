@@ -4,12 +4,18 @@ import { redirect } from "next/navigation";
 
 import { toErrorInfo } from "@/lib/api-error";
 import {
+  CLIP_NOTE_MAX,
+  CLIP_TITLE_MAX,
   callErrorText,
   callsPath,
   checkNewCall,
+  checkNewClip,
+  clipErrorText,
   safeAudioUrl,
+  type CallClip,
   type CallDetail,
   type CallListen,
+  type ClipInput,
 } from "@/lib/calls";
 import { isUuid } from "@/lib/communications";
 import type { DialogState } from "@/lib/dialog-state";
@@ -168,5 +174,123 @@ export async function readCallTranscript(
   } catch (error) {
     const info = toErrorInfo(error);
     return { ok: false, message: callErrorText(info.code, info.message) };
+  }
+}
+
+// --- highlight clips (ADR 0033) ---------------------------------------------------------------
+
+const clipsPath = (leadId: string, callId: string) => {
+  callsPath(leadId);
+  if (!isUuid(callId)) throw new Error("invalid recording");
+  return `/leads/${leadId}/calls/${callId}/clips`;
+};
+
+function clipProblem(error: unknown): { ok: false; message: string } {
+  const info = toErrorInfo(error);
+  return { ok: false, message: clipErrorText(info.code, info.message) };
+}
+
+export async function readClips(
+  leadId: string,
+  callId: string,
+): Promise<Fetched<CallClip[]>> {
+  const path = clipsPath(leadId, callId);
+  try {
+    const page = await apiFetch<{ items: CallClip[] }>(path);
+    return { ok: true, value: page.items };
+  } catch (error) {
+    return clipProblem(error);
+  }
+}
+
+/** Only the moment and the two texts are sent; the server decides everything else. */
+export async function createClip(
+  leadId: string,
+  callId: string,
+  input: ClipInput,
+): Promise<Fetched<CallClip>> {
+  const path = clipsPath(leadId, callId);
+  const checked = checkNewClip({
+    start: String(input?.start ?? ""),
+    end: String(input?.end ?? ""),
+    title: String(input?.title ?? ""),
+    note: String(input?.note ?? ""),
+    duration: typeof input?.duration === "number" ? input.duration : null,
+  });
+  if (!checked.ok)
+    return { ok: false, message: Object.values(checked.fieldErrors)[0] };
+  try {
+    const made = await apiFetch<CallClip>(path, {
+      method: "POST",
+      body: JSON.stringify(checked.body),
+    });
+    return { ok: true, value: made };
+  } catch (error) {
+    return clipProblem(error);
+  }
+}
+
+export async function editClip(
+  leadId: string,
+  callId: string,
+  clipId: string,
+  input: { title: string; note: string },
+): Promise<Fetched<CallClip>> {
+  const path = clipsPath(leadId, callId);
+  if (!isUuid(clipId)) throw new Error("invalid clip");
+  const title = String(input?.title ?? "").trim();
+  const note = String(input?.note ?? "").trim();
+  if (!title) return { ok: false, message: "Give the clip a title." };
+  if (title.length > CLIP_TITLE_MAX)
+    return {
+      ok: false,
+      message: `The title is longer than ${CLIP_TITLE_MAX} characters.`,
+    };
+  if (note.length > CLIP_NOTE_MAX)
+    return {
+      ok: false,
+      message: `The note is longer than ${CLIP_NOTE_MAX} characters.`,
+    };
+  try {
+    const changed = await apiFetch<CallClip>(`${path}/${clipId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title, note: note || null }),
+    });
+    return { ok: true, value: changed };
+  } catch (error) {
+    return clipProblem(error);
+  }
+}
+
+export async function deleteClip(
+  leadId: string,
+  callId: string,
+  clipId: string,
+): Promise<Fetched<null>> {
+  const path = clipsPath(leadId, callId);
+  if (!isUuid(clipId)) throw new Error("invalid clip");
+  try {
+    await apiFetch(`${path}/${clipId}`, { method: "DELETE" });
+    return { ok: true, value: null };
+  } catch (error) {
+    return clipProblem(error);
+  }
+}
+
+/** A short link (60 seconds) to one clip. Each press asks again; nothing is kept. */
+export async function listenToClip(
+  leadId: string,
+  callId: string,
+  clipId: string,
+): Promise<Fetched<CallListen>> {
+  const path = clipsPath(leadId, callId);
+  if (!isUuid(clipId)) throw new Error("invalid clip");
+  try {
+    const link = await apiFetch<CallListen>(`${path}/${clipId}/listen`);
+    const url = safeAudioUrl(link.url);
+    if (!url) return { ok: false, message: "The audio could not be opened." };
+    return { ok: true, value: { ...link, url } };
+  } catch (error) {
+    return clipProblem(error);
   }
 }

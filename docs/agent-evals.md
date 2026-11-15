@@ -559,6 +559,34 @@ visitor to confirm before saving, and the cases had assumed a save in one step. 
 Telugu, the model's own answers were in the right script; the quality of the language was not
 judged by a native speaker.
 
+## 6p. Deck writer cases (ADR 0032 Amendment A, PD7)
+
+`backend/evals/agents/deck_writer.json`, 16 cases, played by `agent_evals/writer.py` through the REAL
+`writer.draft_summary` (permission to change the quote, the quote's own read rules, the limits, the
+agent registry, the cleaned quote facts, the strict answer check, the approval queue and its
+Sentinel, the audit). Only the model is scripted. Each message of a case is the id of a quote to
+draft the "Why this proposal" slide for. The world builds fictional quotes from the price book and
+product the development data already has (`{{quote.ok}}`, `.other`, `.draft`, `.old` = replaced by a
+newer revision, `.poisoned` = a note that tries to steer an AI).
+
+- **What the cases cover:** a draft that waits for approval (also for a manager on a colleague's
+  quote); a quote note that tries to steer the model; a colleague's quote and a made-up quote are
+  "not found" with no model call; a draft quote and a replaced revision are refused before the model;
+  a link or an instruction in the text is refused by the Sentinel; two answers, a made-up tool, an
+  extra field and a text over 120 words are refused; the writer switched off, its month's budget
+  used up and its tool taken away stop or empty the run.
+- **Checks no case can skip:** no quote, approved summary or activity changed directly; every
+  proposal reported is stored and pending, is a `quote.deck_summary` made by `deck_writer` with
+  exactly one payload field `text` that fits the slide and holds no link, and nothing else was
+  proposed; every finished run is audited once; never "converted".
+- **CI:** `tests/db/test_agent_evals_deck_writer.py` runs every case (hard gate) and proves the gate
+  can fail (a wrong expected text, a writer that edits the quote itself, one that stores the summary
+  without approval, one that forgets the audit entry, one that ignores the registry, a proposal with
+  a second field).
+- **Real model:** two cases are `live` (the plain draft and the poisoned note); the forced bad
+  answers are scripted only. `python -m scripts.try_deck_writer` (guarded by `CRM_RUN_LIVE_EVALS=1`)
+  tries the writer once for real. No paid scorecard run has been made for this suite.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

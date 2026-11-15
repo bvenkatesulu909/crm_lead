@@ -58,3 +58,32 @@ A bug the browser journey found and the unit tests now guard: a dialog whose ite
 
 ## Not yet
 Live calling (ADR 0030 CA1 is uploads only); any AI reading of the transcript (CA7: transcripts are untrusted and no model sees them in this version); the measured trial above.
+
+## Highlight clips (ADR 0033)
+
+A clip is a short piece of a recording (3 seconds to 2 minutes) with a title, an optional note and the
+transcript lines inside it, kept with the lead. A person picks the moment; no model reads the transcript.
+
+- **On the lead page**, under a recording whose transcript is open: the list of clips in the order of the
+  call (title, range such as `0:03-0:06`, status, the lines as plain text, the note), **Listen** (a 60-second
+  signed link), and for people who may change recordings **Make clip** (click *Start here* / *End here* on a
+  transcript line or type `m:ss` times), **Edit** (title and note) and **Delete** (asks first). A clip is
+  "Being cut" until the worker has cut it; the list looks again by itself every four seconds.
+- **API** (under `/api/v1/leads/{lead}/calls/{call}/clips`): `POST` make (body: `start_ms`, `end_ms`, `title`,
+  `note` only; whole numbers, nothing else is accepted), `GET` list, `GET /{clip}/listen`, `PATCH /{clip}`
+  (title and note), `DELETE /{clip}`. Making needs `call:write` and a recording that is `ready` with its
+  audio; reading and listening need `call:read`; the lead must be readable (else 404). Changing or
+  deleting is for the maker, managers and administrators (others: 403). Limits: 20 clips per recording,
+  100 per organisation per day.
+- **The worker** job `call.clip` cuts the clip with ffmpeg from the **cleaned copy** (never the original),
+  as a mono 64 kbit/s mp3, and stores it next to the recording. It is safe to run twice. A recording
+  whose audio was deleted, a file that cannot be cut and a machine without ffmpeg end the clip as
+  `failed` with a code (`audio_deleted`, `unreadable`, `audio_tool_missing`).
+- **Retention and consent are inherited.** Deleting a recording's audio (by hand or after 90 days) deletes
+  its clips' audio too; each clip keeps its title, note and transcript lines. Nothing leaves the CRM:
+  there is no public link. The `call_audio` switch covers clips.
+- **What the database guarantees** (migration 0067, forced row-level security): a clip is 3-120 seconds, has
+  a title of 1-100 characters, a `ready` clip has its file, a `failed` clip a reason, and the range,
+  excerpt, maker and recording can never change (a trigger).
+- **Audit** (ids, milliseconds and the kinds of finding only, never the title, note or lines):
+  `call_clip.created`, `.listened`, `.edited`, `.deleted`, `.failed`.

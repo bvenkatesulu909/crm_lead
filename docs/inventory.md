@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-11-14 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-11-15 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -8,7 +8,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **270** operations over **216** paths and **320** schemas.
+- **275** operations over **219** paths and **324** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
@@ -16,6 +16,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | portal | 24 |
 | quotes | 18 |
 | leads | 13 |
+| calls | 11 |
 | catalogue | 11 |
 | communications | 11 |
 | user administration | 11 |
@@ -31,7 +32,6 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | contacts | 7 |
 | qualifier | 7 |
 | workflows | 7 |
-| calls | 6 |
 | webcheck | 6 |
 | approvals | 5 |
 | branding | 5 |
@@ -60,14 +60,14 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Database (live)
 
-- Alembic revision: **0066**
-- Tables in the current schema: **77**
-- Tables with Row-Level Security: **73** (73 policies)
+- Alembic revision: **0067**
+- Tables in the current schema: **78**
+- Tables with Row-Level Security: **74** (74 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **66**
-- Heads: `0066`
+- Migration files: **67**
+- Heads: `0067`
 
 ## Web app (`frontend/src/app`)
 
@@ -178,10 +178,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **224**
-- Frontend component test files: **49**
-- Playwright end-to-end specs: **43**
+- Backend test files: **226**
+- Frontend component test files: **50**
+- Playwright end-to-end specs: **44**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **97** (34 in `docs/adr/`)
+- Markdown documents under `docs/`: **98** (35 in `docs/adr/`)

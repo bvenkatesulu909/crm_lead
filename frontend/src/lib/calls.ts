@@ -208,3 +208,136 @@ export function safeAudioUrl(raw: string): string | null {
     return null;
   }
 }
+
+// --- highlight clips (ADR 0033) ---------------------------------------------------------------
+
+export type CallClip = {
+  id: string;
+  recording_id: string;
+  lead_id: string;
+  made_by_user_id: string;
+  start_ms: number;
+  end_ms: number;
+  duration_ms: number;
+  title: string;
+  note: string | null;
+  excerpt: string;
+  status: "queued" | "ready" | "failed";
+  failure_code: string | null;
+  created_at: string;
+  audio_available: boolean;
+  audio_deleted_at: string | null;
+};
+
+export const CLIP_MIN_SECONDS = 3;
+export const CLIP_MAX_SECONDS = 120;
+export const CLIP_TITLE_MAX = 100;
+export const CLIP_NOTE_MAX = 500;
+
+/**
+ * "1:05", "1:02:05" or plain seconds ("75") -> seconds; anything else (empty, a minus, a decimal,
+ * seconds of 60 or more) -> null. At most a day.
+ */
+export function parseClock(text: string): number | null {
+  const t = text.trim();
+  let seconds: number | null = null;
+  let m: RegExpExecArray | null;
+  if ((m = /^(\d{1,2}):([0-5]\d):([0-5]\d)$/.exec(t)))
+    seconds = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+  else if ((m = /^(\d{1,4}):([0-5]\d)$/.exec(t)))
+    seconds = Number(m[1]) * 60 + Number(m[2]);
+  else if (/^\d{1,5}$/.test(t)) seconds = Number(t);
+  return seconds !== null && seconds <= 86_400 ? seconds : null;
+}
+
+export type ClipInput = {
+  start: string;
+  end: string;
+  title: string;
+  note: string;
+  duration: number | null;
+};
+
+export type NewClipCheck =
+  | {
+      ok: true;
+      body: {
+        start_ms: number;
+        end_ms: number;
+        title: string;
+        note: string | null;
+      };
+    }
+  | { ok: false; fieldErrors: Record<string, string> };
+
+/** The same rules as the API (the API decides, this only saves a round trip). */
+export function checkNewClip(input: ClipInput): NewClipCheck {
+  const errors: Record<string, string> = {};
+  const start = parseClock(input.start);
+  const end = parseClock(input.end);
+  if (start === null)
+    errors.start = "Enter the start as minutes and seconds, for example 0:45.";
+  if (end === null)
+    errors.end = "Enter the end as minutes and seconds, for example 1:10.";
+  if (start !== null && end !== null) {
+    const length = end - start;
+    if (end <= start) errors.end = "The end must be after the start.";
+    else if (length < CLIP_MIN_SECONDS)
+      errors.end = `A clip is at least ${CLIP_MIN_SECONDS} seconds long.`;
+    else if (length > CLIP_MAX_SECONDS)
+      errors.end = "A clip is at most 2 minutes long.";
+    else if (input.duration === null)
+      errors.end = "The length of the recording is not known yet.";
+    else if (end > input.duration)
+      errors.end = "The clip must end inside the recording.";
+  }
+  const title = input.title.trim();
+  if (!title) errors.title = "Give the clip a title.";
+  else if (title.length > CLIP_TITLE_MAX)
+    errors.title = `The title is longer than ${CLIP_TITLE_MAX} characters.`;
+  const note = input.note.trim();
+  if (note.length > CLIP_NOTE_MAX)
+    errors.note = `The note is longer than ${CLIP_NOTE_MAX} characters.`;
+  if (Object.keys(errors).length > 0 || start === null || end === null)
+    return { ok: false, fieldErrors: errors };
+  return {
+    ok: true,
+    body: {
+      start_ms: start * 1000,
+      end_ms: end * 1000,
+      title,
+      note: note || null,
+    },
+  };
+}
+
+/** 2000..9000 ms -> "0:02–0:09". */
+export function clipRange(clip: Pick<CallClip, "start_ms" | "end_ms">): string {
+  return `${formatDuration(clip.start_ms / 1000)}–${formatDuration(clip.end_ms / 1000)}`;
+}
+
+export function clipStatusLabel(
+  clip: Pick<CallClip, "status" | "audio_deleted_at">,
+): string {
+  if (clip.audio_deleted_at) return "The audio was deleted";
+  if (clip.status === "queued") return "Being cut…";
+  if (clip.status === "failed") return "Could not be cut";
+  return "Ready";
+}
+
+export function clipErrorText(code: string | null, fallback: string): string {
+  switch (code) {
+    case "clip_limit_reached":
+      return "A recording can have at most 20 clips, and an organisation a limited number a day. Delete a clip or try again tomorrow.";
+    case "call_audio_deleted":
+      return "The audio of this recording was deleted, so no clip can be made or played.";
+    case "call_not_ready":
+      return "The recording or the clip is not ready yet.";
+    case "clip_not_found":
+      return "That clip was not found.";
+    case "forbidden":
+      return "Only the person who made a clip, or a manager, may change or delete it.";
+    default:
+      return callErrorText(code, fallback);
+  }
+}

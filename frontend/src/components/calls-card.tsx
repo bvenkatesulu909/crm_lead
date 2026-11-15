@@ -1,8 +1,13 @@
 import {
+  createClip,
   deleteCallAudio,
+  deleteClip,
+  editClip,
   finishCallUpload,
   listenToCall,
+  listenToClip,
   readCallTranscript,
+  readClips,
   startCallUpload,
 } from "@/app/(app)/leads/[id]/call-actions";
 import { CallsView } from "@/components/calls-views";
@@ -43,6 +48,11 @@ export async function CallsCard({
             deleteAudio: deleteCallAudio.bind(null, leadId),
             listen: listenToCall.bind(null, leadId),
             read: readCallTranscript.bind(null, leadId),
+            listClips: readClips.bind(null, leadId),
+            createClip: createClip.bind(null, leadId),
+            editClip: editClip.bind(null, leadId),
+            deleteClip: deleteClip.bind(null, leadId),
+            listenToClip: listenToClip.bind(null, leadId),
           }}
         />
       </div>

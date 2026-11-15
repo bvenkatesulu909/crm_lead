@@ -30,7 +30,7 @@ from app.core.errors import ConflictError, DomainError, NotFoundError
 from app.core.outbox import enqueue
 from app.core.storage import FileStore, StoredFileMissingError, object_key, pending_key
 from app.modules.agents import api as agents_api
-from app.modules.calls import processing, repository, rules
+from app.modules.calls import clip_repository, processing, repository, rules
 from app.modules.calls.models import CallRecording
 from app.modules.calls.schemas import (
     CallDetail,
@@ -384,6 +384,7 @@ def delete_audio(
             if key:
                 store.delete(key)
         row.audio_deleted_at = when
+        clip_repository.forget_audio(session, store, tenant_id, row.id, when)
         session.flush()
         _audit(session, principal, row, "call.audio_deleted")
     return CallRead.model_validate(_read(row))
@@ -410,6 +411,7 @@ def delete_old_audio(
             if key:
                 store.delete(key)
         row.audio_deleted_at = now
+        clip_repository.forget_audio(session, store, tenant_id, row.id, now)
         session.flush()
         processing.audit_system(session, tenant_id, row, "call.audio_expired")
         deleted += 1

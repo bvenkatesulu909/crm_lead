@@ -7,10 +7,15 @@ with strict borders) and runs on one Windows PC with Docker Desktop.
 
 ## Live demo
 
-> **Not online yet.** Nothing in this project is deployed: the owner decides when it goes live,
-> and only after the hardening checklist in [docs/deployment.md](docs/deployment.md) is done
-> (ADR 0007 or the one-server path of ADR 0021). The link will be added here on that day.
-> Until then, run it on your own PC: see [Run it on your PC](#run-it-on-your-pc).
+**Staging site: <https://crm.crmlead.co.in>** (web app on Netlify; API and sign-in on one server, see
+[docs/deployment.md](docs/deployment.md) and ADR 0021).
+
+- It is a **staging** copy, not a production service: it holds only **fictional** data (an organisation
+  called `demo-fictional` with 1,000 accounts, 300 leads and 150 deals) and may be restarted or reset.
+- It needs a **sign-in**. Demo accounts are not published here; ask the owner for one, or run the project
+  on your own PC with the seeded users (see [Run it on your PC](#run-it-on-your-pc)).
+- The public website chat page (`/chat`) is built but **not switched on** yet, so it answers "page not
+  found"; the link will be added here the day it is. See [docs/public-chat.md](docs/public-chat.md).
 
 ## How it fits together
 

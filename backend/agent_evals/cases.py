@@ -35,6 +35,7 @@ Agent = Literal[
     "lead_agent",
     "deal_desk",
     "account_research",
+    "deck_writer",
 ]
 # The deal desk asks four models in one run (ADR 0024): each step of its script says which one
 # answers. Three reviewers run at the same time, so the order they are asked in is not fixed.
@@ -71,6 +72,8 @@ PERSONAS: dict[str, set[str]] = {
     # ADR 0024: the deal desk is for sales; account research also for support.
     "deal_desk": {"sales_agent", "sales_manager", "tenant_admin"},
     "account_research": {"sales_agent", "sales_manager", "tenant_admin", "support_agent"},
+    # ADR 0032 Amendment A: whoever may change a quote may ask the deck writer for its slide.
+    "deck_writer": {"sales_agent", "sales_manager"},
 }
 # After these outcomes nothing in the CRM has changed (or may only wait for approval): the
 # answer must not claim otherwise.
@@ -118,6 +121,10 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.deal_desk import research_rules
 
         return {research_rules.TOOL}
+    if agent == "deck_writer":
+        from app.modules.proposal_decks import writer
+
+        return {writer.TOOL_NAME}
     if agent == "deck_writer":
         from app.modules.proposal_decks import writer
 
@@ -344,10 +351,12 @@ class Case(BaseModel):
         if self.agent not in ("qualifier", "lead_agent") and self.qualifier:
             raise ValueError("qualifier: only for the qualifier and the lead agent")
         if (
-            self.agent not in ("qualifier", "lead_agent", "deal_desk")
+            self.agent not in ("qualifier", "lead_agent", "deal_desk", "deck_writer")
             and self.expect.proposals is not None
         ):
-            raise ValueError("expect.proposals: only for the qualifier, lead agent and deal desk")
+            raise ValueError(
+                "expect.proposals: only for the qualifier, lead agent, deal desk and deck writer"
+            )
         roles = [step.role for step in self.script]
         if self.agent == "deal_desk" and any(role is None for role in roles):
             raise ValueError("script: every deal desk step must say which role answers")

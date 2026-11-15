@@ -41,6 +41,11 @@ class ScriptedCleaner:
     def clean(self, data: bytes, file_name: str) -> bytes:
         return data
 
+    def cut(self, data: bytes, file_name: str, start_ms: int, end_ms: int) -> bytes:
+        # Not a real cut: a small fixed-looking file that depends on the range, so tests can tell
+        # two clips apart.
+        return b"ID3clip-" + f"{start_ms}-{end_ms}".encode()
+
 
 class ScriptedSpeech:
     async def transcribe_timed(

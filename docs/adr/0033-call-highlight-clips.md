@@ -1,6 +1,6 @@
 # ADR 0033 — Highlight clips from recorded sales calls
 
-- **Status:** Proposed (2026-11-15; waits for the owner's answers in section 6)
+- **Status:** Accepted (2026-11-15, owner approved all six recommended answers in section 6)
 - **Date:** 2026-11-15
 - **Deciders:** Project owner
 - **Depends on:** ADR 0030 (call recordings, the cleaned copy and the timestamped transcript), ADR 0025

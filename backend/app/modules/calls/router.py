@@ -16,11 +16,15 @@ from app.core.config import Settings
 from app.core.db import get_db_session
 from app.core.errors import problem_responses
 from app.core.storage import FileStore, get_file_store
-from app.modules.calls import service
+from app.modules.calls import clips, service
 from app.modules.calls.schemas import (
     CallDetail,
     CallPage,
     CallRead,
+    ClipCreate,
+    ClipEdit,
+    ClipPage,
+    ClipRead,
     ListenLink,
     UploadStart,
     UploadTicket,
@@ -132,3 +136,83 @@ def delete_audio(
     result = service.delete_audio(session, principal, store, lead_id, call_id)
     session.commit()
     return result
+
+
+# --- highlight clips (ADR 0033) ---------------------------------------------------------------
+
+
+@router.post(
+    "/{lead_id}/calls/{call_id}/clips",
+    status_code=status.HTTP_201_CREATED,
+    summary="Make a highlight clip of a recording (3-120 seconds, cut in the background)",
+    responses=problem_responses(404, 409, 410, 422, 429),
+)
+def create_clip(
+    lead_id: uuid.UUID, call_id: uuid.UUID, body: ClipCreate, principal: Writer, session: Db
+) -> ClipRead:
+    clip = clips.create_clip(session, principal, lead_id, call_id, body)
+    session.commit()
+    return clip
+
+
+@router.get(
+    "/{lead_id}/calls/{call_id}/clips",
+    summary="The clips of a recording, in the order they appear in the call",
+    responses=problem_responses(404),
+)
+def list_clips(lead_id: uuid.UUID, call_id: uuid.UUID, principal: Reader, session: Db) -> ClipPage:
+    return clips.list_clips(session, principal, lead_id, call_id)
+
+
+@router.get(
+    "/{lead_id}/calls/{call_id}/clips/{clip_id}/listen",
+    summary="A 60-second link to listen to a clip",
+    responses=problem_responses(404, 409, 410),
+)
+def listen_clip(
+    lead_id: uuid.UUID,
+    call_id: uuid.UUID,
+    clip_id: uuid.UUID,
+    principal: Reader,
+    session: Db,
+    store: Store,
+) -> ListenLink:
+    link = clips.listen_clip(session, principal, store, lead_id, call_id, clip_id)
+    session.commit()  # the audit entry
+    return link
+
+
+@router.patch(
+    "/{lead_id}/calls/{call_id}/clips/{clip_id}",
+    summary="Change the title and/or the note of a clip (its maker or a manager)",
+    responses=problem_responses(403, 404, 422),
+)
+def edit_clip(
+    lead_id: uuid.UUID,
+    call_id: uuid.UUID,
+    clip_id: uuid.UUID,
+    body: ClipEdit,
+    principal: Writer,
+    session: Db,
+) -> ClipRead:
+    clip = clips.edit_clip(session, principal, lead_id, call_id, clip_id, body)
+    session.commit()
+    return clip
+
+
+@router.delete(
+    "/{lead_id}/calls/{call_id}/clips/{clip_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a clip and its audio (its maker or a manager)",
+    responses=problem_responses(403, 404),
+)
+def delete_clip(
+    lead_id: uuid.UUID,
+    call_id: uuid.UUID,
+    clip_id: uuid.UUID,
+    principal: Writer,
+    session: Db,
+    store: Store,
+) -> None:
+    clips.delete_clip(session, principal, store, lead_id, call_id, clip_id)
+    session.commit()

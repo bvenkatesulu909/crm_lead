@@ -108,10 +108,12 @@ on a PC. **You type the keys yourself; they are never sent to Claude, put in cha
    - events: *payment_link.paid*, *payment_link.expired*, *payment_link.cancelled*.
 4. **Server settings (you, over SSH):** in `deploy/one-host/.env` on the server add
    `CRM_RAZORPAY_MODE=test`, `CRM_RAZORPAY_KEY_ID`, `CRM_RAZORPAY_KEY_SECRET` and
-   `CRM_RAZORPAY_WEBHOOK_SECRET`, and make sure the one-server compose file passes them to the API and
-   worker (Claude adds the lines to the compose file and `check_env.py` first; you only add the values).
-   Say "update the server" and Claude pulls the code and restarts; the settings validator refuses a live
-   key in test mode.
+   `CRM_RAZORPAY_WEBHOOK_SECRET`, (the one-server compose file already passes
+   them to the API and worker; they default to `off` and empty, and the go-live flag is deliberately not
+   passed). `bin/check_env.py` refuses `fake` and `live` mode, a key id that does not start with
+   `rzp_test_`, missing values, and a webhook secret that is short or equal to the key secret; its
+   messages never repeat a value. Type the values yourself; Claude never sees them. Then say "update the
+   server" and Claude pulls the code and restarts.
 5. **Check (Claude, with you watching):** switch *UPI payment links* on in the demo organisation, make an
    INR invoice, create a link, open it, pay with Razorpay's **test UPI id `success@razorpay`** (or a test
    card from Razorpay's docs), and confirm: the webhook arrives (200), the worker records the payment, the

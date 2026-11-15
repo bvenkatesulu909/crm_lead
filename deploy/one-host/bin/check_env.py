@@ -39,6 +39,7 @@ DEVELOPMENT_ONLY: dict[str, Callable[[str], bool]] = {
     "CRM_AI_PROVIDER": lambda v: v == "fake",
     "CRM_PUBLIC_CHAT_PROVIDER": lambda v: v == "fake",
     "CRM_WEBCHECK_DEMO": lambda v: v.lower() in {"1", "true", "yes", "on"},
+    "CRM_RAZORPAY_MODE": lambda v: v == "fake",
     "CRM_DOCS_ENABLED": lambda v: v.lower() in {"1", "true", "yes", "on"},
     "CRM_FILES_S3_SECURE": lambda v: v.lower() in {"0", "false", "no", "off"},
     "BACKUP_S3_SECURE": lambda v: v.lower() in {"0", "false", "no", "off"},
@@ -108,6 +109,7 @@ def check(text: str) -> Iterator[str]:
             yield f"{name}: not a real e-mail address"
 
     yield from _admin_addresses(values.get("ADMIN_ALLOWED_IPS", ""))
+    yield from _razorpay(values)
 
     for name in ("CRM_FILES_S3_ENDPOINT", "BACKUP_S3_ENDPOINT"):
         if _missing(values, name):
@@ -152,6 +154,39 @@ def check(text: str) -> Iterator[str]:
     for name, value in values.items():
         if value == PLACEHOLDER and name not in SECRETS:
             yield f"{name}: still CHANGE_ME"
+
+
+RAZORPAY_MODES = ("off", "test", "live")
+MIN_WEBHOOK_SECRET = 20
+
+
+def _razorpay(values: dict[str, str]) -> Iterator[str]:
+    """UPI payments (ADR 0031): off, or "test" with three values typed by the owner. Live is not set up
+    through this file: it needs the go-live checklist. A message names the variable, never the value."""
+    if "CRM_RAZORPAY_MODE" not in values:
+        return
+    mode = values["CRM_RAZORPAY_MODE"]
+    if mode == "fake":
+        return  # already refused as a development setting
+    if mode not in RAZORPAY_MODES:
+        yield "CRM_RAZORPAY_MODE: must be off or test"
+        return
+    if mode == "live":
+        yield "CRM_RAZORPAY_MODE: live is not set up through this file - finish the go-live checklist first"
+        return
+    if mode == "off":
+        return
+    for name in ("CRM_RAZORPAY_KEY_ID", "CRM_RAZORPAY_KEY_SECRET", "CRM_RAZORPAY_WEBHOOK_SECRET"):
+        if not values.get(name):
+            yield f"{name}: type the value from the Razorpay dashboard (Test Mode)"
+    key_id = values.get("CRM_RAZORPAY_KEY_ID", "")
+    if key_id and not key_id.startswith("rzp_test_"):
+        yield "CRM_RAZORPAY_KEY_ID: test mode needs a test key (starting rzp_test_), never a live key"
+    webhook = values.get("CRM_RAZORPAY_WEBHOOK_SECRET", "")
+    if webhook and len(webhook) < MIN_WEBHOOK_SECRET:
+        yield f"CRM_RAZORPAY_WEBHOOK_SECRET: at least {MIN_WEBHOOK_SECRET} characters"
+    if webhook and webhook == values.get("CRM_RAZORPAY_KEY_SECRET"):
+        yield "CRM_RAZORPAY_WEBHOOK_SECRET: must differ from the key secret"
 
 
 def _admin_addresses(raw: str) -> Iterator[str]:

@@ -8,3 +8,5 @@
 # backend/tests/test_one_host_files.py fills .env.example with an obviously fake Razorpay webhook secret
 # to test the configuration checker (UP4, 2026-11-15).
 196255dcc149eef425234f97f8d3c626d5e04644:backend/tests/test_one_host_files.py:generic-api-key:667
+# Same made-up Razorpay value, as it appears in the squash-merge commit of PR 161 (UP4, 2026-11-15).
+12daec9ca326213bbc2f2804937082d527e148cf:backend/tests/test_one_host_files.py:generic-api-key:667

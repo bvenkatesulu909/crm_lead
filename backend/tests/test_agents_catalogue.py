@@ -31,10 +31,20 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "knowledge_answers",
         "qualifier",
         "lead_agent",
+        "deck_writer",
+        "deal_desk",
+        "account_research",
     }
     assert {key for key, agent in AGENTS.items() if agent.uses_model} == models
     # The web check is governed like an agent but calls no language model (ADR 0019).
-    assert set(AGENTS) == models | {"web_check", "mcp_client", "voice"}
+    assert set(AGENTS) == models | {
+        "web_check",
+        "company_details",
+        "mcp_client",
+        "voice",
+        "call_audio",
+        "payment_links",
+    }
     assert AGENTS["web_check"].uses_model is False
     # An outside AI client: no model of ours to meter, the platform switch still stops it, and an
     # organisation must switch it ON (ADR 0020).
@@ -42,20 +52,47 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
     assert (mcp.uses_model, mcp.platform_switch, mcp.default_enabled) == (False, True, False)
     assert AGENTS["web_check"].platform_switch is False
     # The outside client, the optional lead agent and voice start OFF (ADR 0020, 0022, 0023).
+    # The deal desk starts ON (ADR 0024, owner's decision of 2026-11-08 replacing Q8).
     assert not AGENTS["lead_agent"].default_enabled
+    assert AGENTS["deal_desk"].default_enabled
+    assert not AGENTS["deck_writer"].default_enabled  # ADR 0032 Amendment A: off until switched on
+    assert not AGENTS["account_research"].default_enabled  # ADR 0024 Q8 still applies to it
     assert not AGENTS["voice"].default_enabled and AGENTS["voice"].platform_switch is False
-    assert all(
-        a.default_enabled
-        for key, a in AGENTS.items()
-        if key not in ("mcp_client", "lead_agent", "voice")
+    # Company details read outside sites for a lead: OFF until switched on (ADR 0026 Q4).
+    details = AGENTS["company_details"]
+    assert (details.uses_model, details.platform_switch, details.default_enabled) == (
+        False,
+        False,
+        False,
     )
+    starts_off = (
+        "mcp_client",
+        "lead_agent",
+        "deck_writer",
+        "voice",
+        "account_research",
+        "company_details",
+        "call_audio",
+        "payment_links",
+    )
+    assert all(a.default_enabled for key, a in AGENTS.items() if key not in starts_off)
 
 
 def test_every_key_fits_the_database_rule() -> None:
     assert all(re.fullmatch(KEY_PATTERN, key) for key in AGENTS)
 
 
-@pytest.mark.parametrize("agent", ["staff_assistant", "portal_assistant", "public_chat"])
+@pytest.mark.parametrize(
+    "agent",
+    [
+        "staff_assistant",
+        "portal_assistant",
+        "public_chat",
+        "deal_desk",
+        "account_research",
+        "deck_writer",
+    ],
+)
 def test_the_listed_tools_are_exactly_the_tools_the_code_gives(agent: str) -> None:
     """The catalogue cannot drift from the real tools: a new tool must be listed here."""
     assert set(AGENTS[agent].tools) == known_tools(agent)

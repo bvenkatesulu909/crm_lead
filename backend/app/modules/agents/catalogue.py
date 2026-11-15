@@ -106,6 +106,44 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="deal_desk",
+            title="Deal desk",
+            description=(
+                "Three AI reviewers look at one deal at the same time (pricing, account, "
+                "momentum) and a desk lead writes a short brief. It may SUGGEST at most two "
+                "follow-up tasks; they wait in the approval queue. On for every organisation "
+                "unless an administrator switches it off (owner's decision, 2026-11-08)."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_findings", "submit_brief"),
+        ),
+        AgentDef(
+            key="account_research",
+            title="Account research",
+            description=(
+                "Writes a one-page brief about one account from the CRM's own records (deals, "
+                "support, interactions, registry checks on file), every sentence with its source. "
+                "It reads only; it proposes nothing and does not browse the web. Off until "
+                "switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_account_brief",),
+            default_enabled=False,
+        ),
+        AgentDef(
+            key="deck_writer",
+            title="Deck writer",
+            description=(
+                'Drafts one short "why this proposal" slide (at most 120 words) for a quote\'s '
+                "proposal deck, from the quote's own facts. It never changes a deck: the draft "
+                "waits in the approval queue for a different person, and only an approved text is "
+                "drawn into the next deck. Off until an administrator switches it on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_summary",),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="web_check",
             title="Web check",
             description=(
@@ -118,12 +156,55 @@ AGENTS: dict[str, AgentDef] = {
             platform_switch=False,
         ),
         AgentDef(
+            key="company_details",
+            title="Company details",
+            description=(
+                "Reads a lead's company website (home page and About page) and suggests its "
+                "website, industry and size; the person decides what to save. No language model, "
+                "nothing about the person is sent. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
             key="voice",
             title="Voice conversation",
             description=(
                 "Lets staff talk to the assistant and hear its answers. The answers come from the "
                 "staff assistant (its switch and budget apply too). Counts minutes of server "
                 "speech; the browser's own speech is free and not counted. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
+            key="call_audio",
+            title="Call recordings",
+            description=(
+                "Lets staff add a recording of a call with a buyer (with the buyer's consent) to a "
+                "lead, cleans it up and writes a transcript in Hindi, Telugu or English. Counts "
+                "the minutes of audio it processes. Calls no language model. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
+            key="payment_links",
+            title="UPI payment links",
+            description=(
+                "Lets staff create a Razorpay payment link for an issued invoice so the buyer can "
+                "pay by UPI; a verified payment confirmation then marks the money received. "
+                "Calls no language model. Off until switched on; payments already on their way "
+                "are still recorded when it is off."
             ),
             owner_role="tenant_admin",
             tools=(),

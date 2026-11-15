@@ -23,6 +23,7 @@ from app.core.events import publish
 from app.core.screening import screen
 from app.modules.agents import api as agents_api
 from app.modules.assistant import api as assistant_api
+from app.modules.buyer_memory import api as buyer_memory_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 from app.modules.public_chat import repository, rules
@@ -116,6 +117,7 @@ def _save_lead(
     tenant_id: uuid.UUID,
     conversation: PublicChatSession,
     arguments: Any,
+    language: str = "en",
 ) -> tuple[str, bool]:
     """Run save_lead. Returns (content for the model, is_error)."""
     if conversation.lead_id is not None:
@@ -160,9 +162,21 @@ def _save_lead(
         budget_max_inr=args.budget_max_inr,
         location=location,
         notes=notes,
+        preferred_language=language,
         cleaned_codes=codes,
     )
     session.flush()
+    # What the visitor gave becomes buyer memory facts that cite this conversation (ADR 0028).
+    buyer_memory_api.record_from_website_chat(
+        session,
+        automation,
+        conversation.lead_id,
+        conversation.id,
+        property_type=args.property_type,
+        budget_min_inr=args.budget_min_inr,
+        budget_max_inr=args.budget_max_inr,
+        location=location,
+    )
     repository.count_event(session, tenant_id, _now().date(), leads=1)
     # Sales managers hear about it through the worker (notifications, ADR 0006): IDs only.
     publish(
@@ -232,7 +246,9 @@ def handle_message(
         {"role": "user" if m.role == "visitor" else "assistant", "content": m.content}
         for m in repository.recent_messages(session, conversation, rules.HISTORY_MESSAGES)
     ]
-    system = rules.SYSTEM_PROMPT.format(organisation=organisation)
+    system = rules.SYSTEM_PROMPT.format(
+        organisation=organisation, language_rule=rules.LANGUAGE_RULES[data.language]
+    )
 
     model = agents_api.governed(
         model, session, tenant_id, "public_chat", agents_api.Limits.from_settings(settings)
@@ -252,7 +268,9 @@ def handle_message(
         results = []
         for use in reply.tool_uses:
             if use.name == "save_lead":
-                content, is_error = _save_lead(session, tenant_id, conversation, use.input)
+                content, is_error = _save_lead(
+                    session, tenant_id, conversation, use.input, data.language
+                )
             else:
                 content, is_error = "This tool doesn't exist. Only save_lead is available.", True
             results.append(

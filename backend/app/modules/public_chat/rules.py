@@ -4,9 +4,17 @@ import hashlib
 import hmac
 import re
 import secrets
+import unicodedata
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 
 # The model gets this many tool rounds per visitor message, then must answer in words.
 MAX_TOOL_ROUNDS = 2
@@ -30,12 +38,35 @@ Ask for missing details one or two at a time. Convert budgets to whole rupees
 (1 crore = 10000000, 1 lakh = 100000). Never invent prices, projects or availability.
 When the visitor has confirmed their name and phone number, call the save_lead tool once.
 Afterwards thank them and say an advisor will call. You can't look anything up in the CRM.
-Answer in plain text only - no links, no images, no Markdown."""
+Answer in plain text only - no links, no images, no Markdown.
+{language_rule}"""
+
+# What the visitor chose on the page (ADR 0027). Fixed texts: nothing the visitor or a model typed
+# is ever put into the prompt here.
+LANGUAGE_RULES = {
+    "en": "Answer the visitor in English.",
+    "hi": (
+        "Answer the visitor in Hindi, written in Devanagari script (even when they type Hindi in "
+        "Latin letters). Write the notes you give to save_lead in English; keep the visitor's own "
+        "words only for names and places."
+    ),
+    "te": (
+        "Answer the visitor in Telugu, written in Telugu script (even when they type Telugu in "
+        "Latin letters). Write the notes you give to save_lead in English; keep the visitor's "
+        "own words only for names and places."
+    ),
+}
 
 # Cleaning that does not make a name suspicious (a link or an image in a name does).
 HARMLESS_NAME_FINDINGS = {"hidden_characters", "control_characters", "repeated_text"}
 
 _PHONE = r"^\+?[0-9][0-9\s-]{6,18}[0-9]$"
+
+
+def ascii_digits(text: str) -> str:
+    """Devanagari, Telugu and other decimal digits as 0-9, so a phone number a visitor spoke or
+    typed in their own script passes the same check as one written with 0-9 (ADR 0027)."""
+    return "".join(str(unicodedata.digit(ch)) if ch.isdecimal() else ch for ch in text)
 
 
 class SaveLeadArgs(BaseModel):
@@ -46,7 +77,9 @@ class SaveLeadArgs(BaseModel):
     full_name: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=2, max_length=120)
     ]
-    phone: Annotated[str, StringConstraints(strip_whitespace=True, pattern=_PHONE)]
+    phone: Annotated[
+        str, BeforeValidator(ascii_digits), StringConstraints(strip_whitespace=True, pattern=_PHONE)
+    ]
     email: (
         Annotated[
             str,

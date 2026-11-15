@@ -55,6 +55,9 @@ export default async function EditLeadPage({
     budget_min_inr: lead.budget_min_inr != null ? String(lead.budget_min_inr) : "",
     budget_max_inr: lead.budget_max_inr != null ? String(lead.budget_max_inr) : "",
     location: lead.location ?? "",
+    company_website: lead.company_website ?? "",
+    company_industry: lead.company_industry ?? "",
+    company_size: lead.company_size ?? "",
   };
 
   return (

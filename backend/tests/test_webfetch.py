@@ -539,6 +539,7 @@ KNOWN_CLIENTS = {
     "core/storage.py",  # the file store
     "modules/assistant/llm.py",  # the AI providers
     "modules/voice/provider.py",  # the voice provider
+    "modules/payment_links/razorpay.py",  # Razorpay API, one fixed host (ADR 0031)
     "core/webfetch.py",  # the one fetcher for pages (this step)
 }
 

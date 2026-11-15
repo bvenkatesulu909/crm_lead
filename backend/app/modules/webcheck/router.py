@@ -16,8 +16,13 @@ from app.core.auth.rbac import Permission
 from app.core.db import get_db_session
 from app.core.errors import problem_responses
 from app.modules.identity.api import require_any_permission
-from app.modules.webcheck import service
+from app.modules.webcheck import company_details, service
 from app.modules.webcheck.schemas import (
+    CompanyCurrent,
+    CompanyDetailsApply,
+    CompanyDetailsAsk,
+    CompanyDetailsRead,
+    CompanySuggestionRead,
     WebCheckAccepted,
     WebCheckRequest,
     WebCheckSourcePage,
@@ -80,3 +85,87 @@ def list_evidence(
 ) -> WebEvidencePage:
     rows = service.list_evidence(session, principal, target_type, target_id)
     return WebEvidencePage(items=[WebEvidenceRead.model_validate(row) for row in rows])
+
+
+# --- company details on a lead (BP-02, ADR 0026) -------------------------------------------------
+
+
+def _details(found: company_details.CompanyDetails) -> CompanyDetailsRead:
+    current = found.current
+    row = found.latest
+    latest = None
+    if row is not None:
+        suggestions = row.suggestions if isinstance(row.suggestions, dict) else {}
+
+        def text(key: str) -> str | None:
+            value = suggestions.get(key)
+            return value if isinstance(value, str) else None
+
+        pages = suggestions.get("pages")
+        latest = CompanySuggestionRead(
+            id=row.id,
+            created_at=row.created_at,
+            verdict=row.verdict,
+            error_code=row.error_code,
+            company_website=text("website"),
+            company_industry=text("industry"),
+            company_size=text("size"),
+            name=row.registered_name,
+            excerpt=row.excerpt,
+            pages=[p for p in pages if isinstance(p, str)] if isinstance(pages, list) else [],
+            cleaned=list(row.cleaned),
+        )
+    return CompanyDetailsRead(
+        current=CompanyCurrent(
+            company_website=current.website,
+            company_industry=current.industry,
+            company_size=current.size,
+            version=current.version,
+        ),
+        latest=latest,
+    )
+
+
+@router.post(
+    "/company-details",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Look up the company of a lead on its own website (read in the background)",
+    responses=problem_responses(404, 422, 429, 503),
+)
+def ask_company_details(
+    body: CompanyDetailsAsk, request: Request, principal: Runner, session: Db
+) -> WebCheckAccepted:
+    asked = company_details.request_lookup(
+        session, principal, body.lead_id, settings=request.app.state.settings
+    )
+    session.commit()
+    return WebCheckAccepted(request_id=asked.request_id)
+
+
+@router.get(
+    "/company-details",
+    summary="A lead's company fields next to the newest suggestions from its website",
+    responses=problem_responses(404),
+)
+def read_company_details(principal: Reader, session: Db, lead_id: uuid.UUID) -> CompanyDetailsRead:
+    return _details(company_details.company_details(session, principal, lead_id))
+
+
+@router.post(
+    "/company-details/apply",
+    summary="Save chosen suggestions on the lead (values come from the stored evidence)",
+    responses=problem_responses(404, 409, 422),
+)
+def apply_company_details(
+    body: CompanyDetailsApply, principal: Runner, session: Db
+) -> CompanyDetailsRead:
+    company_details.apply_suggestions(
+        session,
+        principal,
+        body.lead_id,
+        evidence_id=body.evidence_id,
+        fields=list(body.fields),
+        version=body.version,
+    )
+    session.commit()
+    return _details(company_details.company_details(session, principal, body.lead_id))

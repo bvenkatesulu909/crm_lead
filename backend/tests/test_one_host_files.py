@@ -227,6 +227,14 @@ def test_the_ai_and_website_chat_settings_reach_the_api_and_the_worker() -> None
         assert env["CRM_DEEPSEEK_BASE_URL"].endswith(":-https://api.deepseek.com}")
         assert env["CRM_DEEPSEEK_MODEL"] == "${CRM_DEEPSEEK_MODEL:-deepseek-chat}"
         assert env["CRM_DEEPSEEK_FALLBACK_MODELS"] == "${CRM_DEEPSEEK_FALLBACK_MODELS:-}"
+        # Found on staging (2026-11-08): a free "thinking" model used all 1024 output tokens before
+        # writing the account brief, and the limit could not be raised on the server.
+        assert env["CRM_ASSISTANT_MAX_TOKENS"] == "${CRM_ASSISTANT_MAX_TOKENS:-1024}"
+        # Go-live check (2026-11-09): the browser's own speech engine sends spoken words to
+        # Google/Apple/Microsoft, so on the server it is OFF unless the owner switches it on.
+        assert env["CRM_VOICE_BROWSER_ENGINE"] == "${CRM_VOICE_BROWSER_ENGINE:-false}"
+        # The web check (ADR 0019): no real registry is contacted unless the owner names it.
+        assert env["CRM_WEBCHECK_SOURCES"] == "${CRM_WEBCHECK_SOURCES:-}"
         # The website chat stays off unless the owner sets both values.
         assert env["CRM_PUBLIC_CHAT_TENANT_SLUG"] == "${CRM_PUBLIC_CHAT_TENANT_SLUG:-}"
         assert env["CRM_PUBLIC_CHAT_SERVER_KEY"] == "${CRM_PUBLIC_CHAT_SERVER_KEY:-}"
@@ -589,3 +597,167 @@ def test_the_api_and_worker_send_keycloak_admin_calls_inside_the_stack() -> None
     # (creating an organisation's first administrator) got 403 on the first real server.
     for name in ("api", "worker"):
         assert environment_of(name).get("CRM_IDENTITY_ADMIN_URL") == "http://keycloak:8080", name
+
+
+def test_the_proxy_image_is_one_without_the_known_critical_flaws() -> None:
+    """Go-live scan (2026-11-09): caddy 2.10.2 had 6 critical and 99 high findings that 2.11.4+
+    fixes. The proxy is the only part the internet talks to, so it may not fall behind again."""
+    image = services()["caddy"]["image"]
+    name, tag = image.split(":")
+    major, minor, patch = (int(part) for part in tag.removesuffix("-alpine").split("."))
+    assert name == "caddy" and tag.endswith("-alpine")
+    assert (major, minor, patch) >= (2, 11, 6)
+
+
+# --- Keycloak 26.7 (go-live checks, 2026-11-10) ---------------------------------------------------
+
+
+def test_keycloak_is_the_version_without_the_known_critical_flaws() -> None:
+    """Keycloak 26.4.7 had 8 critical findings (Trivy, 2026-11-09); 26.7.5 has one, in the
+    operating system's ca-certificates. Development and production must stay on one version."""
+    production = ROOT / "infrastructure/keycloak/Dockerfile.production"
+    dockerfile = production.read_text(encoding="utf-8")
+    development = (ROOT / "infrastructure/docker-compose.yml").read_text(encoding="utf-8")
+    assert "FROM quay.io/keycloak/keycloak:26.7.5\n" in dockerfile
+    assert "image: quay.io/keycloak/keycloak:26.7.5\n" in development
+    assert services()["keycloak"]["image"] == "crm-lead-keycloak:26.7.5-production"
+
+
+def test_keycloak_has_time_to_shut_down_cleanly() -> None:
+    # Keycloak 26.7 waits 10 s for requests to finish before it stops; Docker must wait longer.
+    assert services()["keycloak"]["stop_grace_period"] == "30s"
+
+
+def test_keycloak_logs_no_staff_addresses_in_its_logout_warnings() -> None:
+    level = services()["keycloak"]["environment"]["KC_LOG_LEVEL"]
+    assert level == "info,org.keycloak.services.managers.AuthenticationManager:error"
+
+
+def test_the_proxy_drops_a_forwarded_prefix_that_a_visitor_sends() -> None:
+    """Keycloak 26.6+ trusts X-Forwarded-Prefix when it trusts X-Forwarded-*; a visitor must not
+    be able to choose the paths Keycloak builds into its pages."""
+    caddyfile = (FOLDER / "Caddyfile").read_text(encoding="utf-8")
+    login = caddyfile[caddyfile.index("{$LOGIN_HOST} {") :]
+    login = login[: login.index("\n}\n")]
+    assert "reverse_proxy keycloak:8080 {\n\t\theader_up -X-Forwarded-Prefix\n\t}" in login
+
+
+def test_keycloak_is_healthy_only_when_its_readiness_answers_200() -> None:
+    """Found on the server (2026-11-10): during the 26.7 database update /health/ready answered
+    503 with an overall "DOWN", but its "Graceful Shutdown" sub-check said "UP" - and the old check
+    looked for "UP" anywhere, so Docker called Keycloak healthy too early. Only the status line
+    tells the truth: 200 means ready, 503 means not."""
+    test = " ".join(services()["keycloak"]["healthcheck"]["test"])
+    assert "GET /health/ready HTTP/1.1" in test
+    assert "head -n 1 <&3 | grep -q ' 200 '" in test
+    assert '"UP"' not in test
+
+
+# --- UPI payments through Razorpay (ADR 0031, UP4) -----------------------------------------------
+
+RAZORPAY = (
+    "CRM_RAZORPAY_MODE",
+    "CRM_RAZORPAY_KEY_ID",
+    "CRM_RAZORPAY_KEY_SECRET",
+    "CRM_RAZORPAY_WEBHOOK_SECRET",
+)
+# Fictional values that only look like Razorpay's: a test key id, a key secret, a webhook secret.
+KEY_ID = "rzp_test_AbCdEf123456"
+FICTIONAL = {
+    "key_secret": "k3yS3cr3tFictional0000",
+    "webhook": "whs-Fictional-0123456789-abcdef",
+}
+
+
+def razorpay_on(text: str, over: dict[str, str] | None = None) -> str:
+    values = {
+        "CRM_RAZORPAY_MODE": "test",
+        "CRM_RAZORPAY_KEY_ID": KEY_ID,
+        "CRM_RAZORPAY_KEY_SECRET": FICTIONAL["key_secret"],
+        "CRM_RAZORPAY_WEBHOOK_SECRET": FICTIONAL["webhook"],
+        **(over or {}),
+    }
+    return text.rstrip("\n") + "\n" + "".join(f"{k}={v}\n" for k, v in values.items())
+
+
+def test_the_razorpay_settings_reach_the_api_and_the_worker_and_default_to_off() -> None:
+    # Without this the owner could type the keys into .env and nothing would happen on the server.
+    for name in ("api", "worker"):
+        env = environment_of(name)
+        assert env["CRM_RAZORPAY_MODE"] == "${CRM_RAZORPAY_MODE:-off}"
+        for secret in RAZORPAY[1:]:
+            assert env[secret] == f"${{{secret}:-}}"  # empty unless the owner fills it in
+        # The go-live flag is NOT passed: a live key needs a deliberate, separate step (ADR 0031).
+        assert "CRM_RAZORPAY_GO_LIVE" not in env
+
+
+def test_the_razorpay_names_are_in_the_env_template_but_never_with_a_value() -> None:
+    template = ENV_EXAMPLE.read_text(encoding="utf-8")
+    for name in RAZORPAY:
+        assert name in env_names()
+    for name in RAZORPAY[1:]:
+        assert not re.search(rf"^{name}=\S", template, flags=re.M)
+
+
+def test_a_file_without_razorpay_settings_is_fine() -> None:
+    assert problems(filled(fresh())) == []
+
+
+def test_mode_off_needs_no_keys() -> None:
+    assert problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_MODE": "off"})) == []
+
+
+def test_a_complete_test_mode_setup_passes() -> None:
+    assert problems(razorpay_on(filled(fresh()))) == []
+
+
+@pytest.mark.parametrize("name", RAZORPAY[1:])
+def test_test_mode_needs_all_three_values(name: str) -> None:
+    found = problems(razorpay_on(filled(fresh()), {name: ""}))
+    assert any(name in p for p in found), found
+
+
+def test_test_mode_refuses_a_live_key() -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_KEY_ID": "rzp_live_AbCdEf123456"}))
+    assert any("CRM_RAZORPAY_KEY_ID" in p and "test" in p for p in found)
+
+
+def test_test_mode_refuses_a_key_id_that_is_not_a_razorpay_test_key() -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_KEY_ID": "not-a-key"}))
+    assert any("CRM_RAZORPAY_KEY_ID" in p for p in found)
+
+
+def test_a_short_webhook_secret_is_refused() -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_WEBHOOK_SECRET": "short"}))
+    assert any("CRM_RAZORPAY_WEBHOOK_SECRET" in p and "20" in p for p in found)
+
+
+def test_the_webhook_secret_must_differ_from_the_key_secret() -> None:
+    same = "SameValue-0123456789-abcdef"
+    found = problems(
+        razorpay_on(
+            filled(fresh()), {"CRM_RAZORPAY_KEY_SECRET": same, "CRM_RAZORPAY_WEBHOOK_SECRET": same}
+        )
+    )
+    assert any("CRM_RAZORPAY_WEBHOOK_SECRET" in p and "differ" in p for p in found)
+
+
+def test_live_mode_is_not_set_up_through_this_file() -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_MODE": "live"}))
+    assert any("CRM_RAZORPAY_MODE" in p and "go-live" in p for p in found)
+
+
+@pytest.mark.parametrize("mode", ["fake", "sandbox", "TEST", "on", ""])
+def test_an_unknown_or_development_mode_is_refused(mode: str) -> None:
+    found = problems(razorpay_on(filled(fresh()), {"CRM_RAZORPAY_MODE": mode}))
+    assert any("CRM_RAZORPAY_MODE" in p for p in found), found
+
+
+def test_a_message_never_repeats_a_razorpay_value() -> None:
+    text = razorpay_on(
+        filled(fresh()),
+        {"CRM_RAZORPAY_KEY_ID": "rzp_live_LeakedKeyId99", "CRM_RAZORPAY_WEBHOOK_SECRET": "x"},
+    )
+    joined = "\n".join(problems(text))
+    for value in ("rzp_live_LeakedKeyId99", FICTIONAL["key_secret"]):
+        assert value not in joined

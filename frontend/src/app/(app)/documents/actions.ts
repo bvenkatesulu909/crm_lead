@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { toErrorInfo } from "@/lib/api-error";
 import type { DialogState } from "@/lib/dialog-state";
+import type { UploadTicket } from "@/lib/direct-upload";
 import { apiFetch } from "@/lib/server/api";
 
 /**
@@ -20,40 +21,76 @@ function recordPath(type: RecordType, id: string) {
   return type === "account" ? `/accounts/${id}` : `/opportunities/${id}`;
 }
 
-const failed = (
-  previous: DialogState,
-  fieldErrors: Record<string, string>,
-): DialogState => ({
-  attempt: previous.attempt + 1,
-  fieldErrors,
-  error: null,
-});
+/** What the browser tells us before it sends a file straight to the store (ADR 0025). */
+export type UploadInfo = {
+  fileName: string;
+  size: number;
+  description: string;
+  customerVisible: boolean;
+};
 
-export async function uploadDocument(
+/** Either a ticket for the store, or why not (field errors and/or the API's explanation). */
+export type StartResult =
+  | { ticket: UploadTicket }
+  | { fieldErrors: Record<string, string>; error: DialogState["error"] };
+
+/**
+ * Step 1 of a direct upload. Only the file's NAME and SIZE reach the web app - the bytes go
+ * from the browser to the store, so Netlify's 6 MB request limit does not apply. The API checks
+ * permission, the record, the name, the size and the type before it hands out a link.
+ */
+export async function startDocumentUpload(
   recordType: RecordType,
   recordId: string,
+  info: UploadInfo,
+): Promise<StartResult> {
+  recordPath(recordType, recordId);
+  const fileName = String(info?.fileName ?? "");
+  const size = Number(info?.size);
+  if (!fileName || !Number.isInteger(size) || size <= 0)
+    return { fieldErrors: { file: "Choose a file." }, error: null };
+  if (size > MAX_BYTES)
+    return {
+      fieldErrors: { file: "The file is larger than 20 MB." },
+      error: null,
+    };
+  const description = String(info?.description ?? "").trim();
+  if (description.length > 500)
+    return {
+      fieldErrors: { description: "At most 500 characters." },
+      error: null,
+    };
+  try {
+    const ticket = await apiFetch<UploadTicket>("/documents/uploads", {
+      method: "POST",
+      body: JSON.stringify({
+        record_type: recordType,
+        record_id: recordId,
+        file_name: fileName,
+        size_bytes: size,
+        customer_visible:
+          recordType === "account" && info?.customerVisible === true,
+        ...(description ? { description } : {}),
+      }),
+    });
+    return { ticket };
+  } catch (error) {
+    const problem = toErrorInfo(error);
+    return { fieldErrors: problem.fieldErrors, error: problem };
+  }
+}
+
+/** Step 3: the file is in the store; the API reads it back, checks it and records it. */
+export async function finishDocumentUpload(
+  recordType: RecordType,
+  recordId: string,
+  uploadId: string,
   previous: DialogState,
-  formData: FormData,
 ): Promise<DialogState> {
   const back = recordPath(recordType, recordId);
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0)
-    return failed(previous, { file: "Choose a file." });
-  if (file.size > MAX_BYTES)
-    return failed(previous, { file: "The file is larger than 20 MB." });
-  const description = String(formData.get("description") ?? "").trim();
-  if (description.length > 500)
-    return failed(previous, { description: "At most 500 characters." });
-
-  const body = new FormData();
-  body.set("record_type", recordType);
-  body.set("record_id", recordId);
-  body.set("file", file, file.name);
-  if (description) body.set("description", description);
-  if (recordType === "account" && formData.get("customer_visible") === "on")
-    body.set("customer_visible", "true");
+  if (!UUID.test(uploadId)) throw new Error("invalid upload");
   try {
-    await apiFetch("/documents", { method: "POST", body });
+    await apiFetch(`/documents/uploads/${uploadId}/finish`, { method: "POST" });
   } catch (error) {
     const info = toErrorInfo(error);
     return {

@@ -5,6 +5,7 @@ Invalid values stop the application at startup instead of failing later at runti
 """
 
 import re
+from decimal import Decimal
 from functools import lru_cache
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
@@ -161,6 +162,9 @@ class Settings(BaseSettings):
     # S3-compatible file store (ADR 0005; SeaweedFS locally). Without keys, features that store
     # files answer 503 and everything else keeps working.
     files_s3_endpoint: str = Field(default="127.0.0.1:9333", pattern=r"^[A-Za-z0-9.\-]+:\d{1,5}$")
+    # The address a BROWSER uses to reach the store (signed links, ADR 0025). Empty = the same as
+    # files_s3_endpoint, which is right when the API and the browser see the store at one address.
+    files_s3_public_endpoint: str = Field(default="", pattern=r"^([A-Za-z0-9.\-]+:\d{1,5})?$")
     files_s3_secure: bool = False
     files_s3_access_key: SecretStr | None = None
     files_s3_secret_key: SecretStr | None = None
@@ -169,6 +173,32 @@ class Settings(BaseSettings):
     )
     # Largest file the API will store or serve.
     files_max_bytes: int = Field(default=20 * 1024 * 1024, ge=1024, le=200 * 1024 * 1024)
+    # Direct uploads (ADR 0025): how many one person may START per hour, and how long a started
+    # upload may wait for "finish" (the signed link itself lives five minutes).
+    files_uploads_per_user_hour: int = Field(default=60, ge=1, le=10_000)
+    files_upload_finish_minutes: int = Field(default=60, ge=5, le=1440)
+
+    # Call recordings (ADR 0030): large audio files go straight to the store, so their own size
+    # limit applies (the usual files_max_bytes does not). A recording may be at most
+    # ``calls_max_minutes`` long (checked by the worker, step CA2) and the audio is deleted after
+    # ``calls_retention_days`` (the transcript stays with the lead).
+    calls_max_bytes: int = Field(default=100 * 1024 * 1024, ge=1024 * 1024, le=500 * 1024 * 1024)
+    calls_max_minutes: int = Field(default=60, ge=1, le=240)
+    calls_retention_days: int = Field(default=90, ge=1, le=3650)
+    calls_uploads_per_user_hour: int = Field(default=20, ge=1, le=1_000)
+    calls_uploads_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
+    calls_upload_finish_minutes: int = Field(default=180, ge=5, le=1440)
+    # The worker (step CA2): a Whisper-class transcription model that gives timestamps (the
+    # voice model for chat replies does not), the month's minutes per organisation (estimated
+    # from the audio length), the ffmpeg / ffprobe programs and a time limit for one cleaning.
+    calls_stt_model: str = "whisper-1"
+    calls_monthly_minutes: int = Field(default=600, ge=1, le=1_000_000)
+    calls_ffmpeg_command: str = "ffmpeg"
+    calls_ffprobe_command: str = "ffprobe"
+    calls_clean_timeout_seconds: int = Field(default=900, ge=30, le=7200)
+    # "fake" = no ffmpeg and no speech vendor: a fixed fictional transcript (tests and local demos);
+    # refused in production.
+    calls_engine: Literal["real", "fake"] = "real"
 
     # Outgoing e-mail via SMTP (ADR 0005). Locally Mailpit catches everything (127.0.0.1:2525).
     smtp_host: str = "127.0.0.1"
@@ -186,6 +216,23 @@ class Settings(BaseSettings):
     agent_action_expiry_days: int = Field(default=7, ge=1, le=90)
     agent_action_pending_per_user: int = Field(default=20, ge=1, le=1_000)
 
+    # UPI payments through Razorpay payment links (ADR 0031). ``off`` (the default) means no
+    # provider: links can't be created and the webhook refuses everything. ``fake`` runs the whole
+    # flow inside the CRM with no network (tests, demos; refused in production). ``test`` uses
+    # Razorpay's test keys. ``live`` also needs ``razorpay_go_live`` - the owner's explicit
+    # "go live" (ADR 0007).
+    # The three secrets are never logged; the webhook secret is NOT the API key secret.
+    razorpay_mode: Literal["off", "fake", "test", "live"] = "off"
+    razorpay_go_live: bool = False
+    razorpay_key_id: str | None = Field(default=None, max_length=80)
+    razorpay_key_secret: SecretStr | None = None
+    razorpay_webhook_secret: SecretStr | None = None
+    razorpay_link_expiry_days: int = Field(default=7, ge=1, le=90)
+    razorpay_links_per_user_hour: int = Field(default=30, ge=1, le=1_000)
+
+    # Proposal decks (ADR 0032): decks one person may ask for per hour.
+    proposal_decks_per_user_hour: int = Field(default=30, ge=1, le=1_000)
+
     # Live web check (ADR 0019). Sources are OFF until listed here (comma-separated keys from the
     # catalogue); ``webcheck_demo`` switches on the fictional demo sources served inside the CRM
     # (never in production). ``webcheck_disabled`` is the platform-wide kill switch.
@@ -194,6 +241,10 @@ class Settings(BaseSettings):
     webcheck_demo: bool = False
     webcheck_per_user_hour: int = Field(default=10, ge=1, le=1_000)
     webcheck_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # Company details from a company's own website (ADR 0026): asks per person per hour
+    # and per organisation per day (the platform switch and the demo are the web check's).
+    company_details_per_user_hour: int = Field(default=20, ge=1, le=1_000)
+    company_details_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
     # The Qualifier (docs/qualifier.md): at most this many assessments of one lead per hour, by
     # one person per hour, and by one organisation per day.
     qualifier_per_lead_hour: int = Field(default=1, ge=1, le=100)
@@ -202,6 +253,15 @@ class Settings(BaseSettings):
     # The optional lead agent (ADR 0022): how often it may run.
     lead_agent_per_lead_hour: int = Field(default=1, ge=1, le=100)
     lead_agent_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # The deck writer (ADR 0032 Amendment A, PD7): drafts of the summary slide.
+    deck_writer_per_quote_hour: int = Field(default=3, ge=1, le=100)
+    deck_writer_per_tenant_day: int = Field(default=100, ge=1, le=100_000)
+    # The deal desk (ADR 0024): reviews per deal per hour and per organisation per day.
+    deal_desk_per_deal_hour: int = Field(default=1, ge=1, le=100)
+    deal_desk_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # Account research (ADR 0024): briefs per account per hour and per organisation per day.
+    account_research_per_account_hour: int = Field(default=1, ge=1, le=100)
+    account_research_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
     # Let the lead agent look at every new website lead as the Automation identity. Off by default;
     # read when the worker starts. The agent's own switch (also off by default), budget and limits
     # still apply.
@@ -233,8 +293,9 @@ class Settings(BaseSettings):
     otel_service_name: str = "crm-lead-api"
     otel_sample_ratio: float = Field(default=0.1, ge=0.0, le=1.0)
     # Price per 1M tokens, used only to ESTIMATE cost (model prices change; set from the provider).
-    ai_input_price_per_million: float = Field(default=0.0, ge=0.0)
-    ai_output_price_per_million: float = Field(default=0.0, ge=0.0)
+    # Decimal like all money (BP-20): "0.28" stays 0.28, never 0.28000000000000003.
+    ai_input_price_per_million: Decimal = Field(default=Decimal(0), ge=0)
+    ai_output_price_per_million: Decimal = Field(default=Decimal(0), ge=0)
     # AI governance (ADR 0016). The platform switch refuses EVERY AI call for every organisation
     # (a leaked key, a runaway); the default budget is tokens per agent and organisation per month
     # for agents nobody has configured. There is no "unlimited": a cap is always in force.
@@ -286,6 +347,28 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _razorpay_is_safe(self) -> "Settings":
+        if self.razorpay_mode == "off":
+            return self
+        if self.razorpay_mode == "fake":
+            if self.environment == "production":
+                raise ValueError("The fake payment provider can't be used in production.")
+            return self
+        if self.razorpay_mode == "live" and not self.razorpay_go_live:
+            raise ValueError("Razorpay live mode needs razorpay_go_live (the owner's go-live).")
+        if self.razorpay_mode == "test" and (self.razorpay_key_id or "").startswith("rzp_live_"):
+            raise ValueError("Razorpay test mode can't use a live key.")
+        if self.razorpay_mode == "live" and not (self.razorpay_key_id or "").startswith(
+            "rzp_live_"
+        ):
+            raise ValueError("Razorpay live mode needs a live key.")
+        if not (self.razorpay_key_id and self.razorpay_key_secret and self.razorpay_webhook_secret):
+            raise ValueError(
+                "Razorpay needs razorpay_key_id, razorpay_key_secret and razorpay_webhook_secret."
+            )
+        return self
+
+    @model_validator(mode="after")
     def _webcheck_demo_is_not_for_production(self) -> "Settings":
         if self.environment == "production" and self.webcheck_demo:
             raise ValueError("The demo web check sources can't be used in production.")
@@ -295,6 +378,8 @@ class Settings(BaseSettings):
     def _public_chat_is_safe(self) -> "Settings":
         if self.environment == "production" and self.public_chat_provider == "fake":
             raise ValueError("The fake public chat provider can't be used in production.")
+        if self.environment == "production" and self.calls_engine == "fake":
+            raise ValueError("The fake call engine (calls_engine) can't be used in production.")
         if self.environment == "production" and self.ai_provider == "fake":
             raise ValueError(
                 "The fake assistant provider (ai_provider) can't be used in production."

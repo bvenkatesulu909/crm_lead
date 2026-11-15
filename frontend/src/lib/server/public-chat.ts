@@ -2,7 +2,11 @@ import "server-only";
 
 import { isIP } from "node:net";
 
-import type { ChatAnswer, ChatProblem } from "@/lib/public-chat";
+import {
+  isChatLanguage,
+  type ChatAnswer,
+  type ChatProblem,
+} from "@/lib/public-chat";
 
 /**
  * The Next.js side of the public website chat (ADR 0013, decisions 3 and 4).
@@ -61,6 +65,8 @@ export async function forwardChat(
   input: {
     message: string;
     website: string;
+    /** The visitor's language switch; anything but the three codes is sent as English. */
+    language?: string;
     token: string | null | undefined;
     ip: string;
     key: string;
@@ -80,6 +86,7 @@ export async function forwardChat(
         ...(token ? { token } : {}),
         message: input.message,
         website: input.website,
+        language: isChatLanguage(input.language) ? input.language : "en",
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(60000),

@@ -9,7 +9,7 @@ import uuid
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class WebCheckRequest(BaseModel):
@@ -63,3 +63,62 @@ class WebEvidenceRead(BaseModel):
 
 class WebEvidencePage(BaseModel):
     items: list[WebEvidenceRead]
+
+
+# --- company details on a lead (BP-02, ADR 0026) -------------------------------------------------
+
+CompanyField = Literal["company_website", "company_industry", "company_size"]
+
+
+class CompanyDetailsAsk(BaseModel):
+    """Only the lead: the website to read is worked out by the server from the lead itself."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    lead_id: uuid.UUID
+
+
+class CompanyDetailsApply(BaseModel):
+    """Which suggestions to keep. The values come from the stored evidence, never from here."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    lead_id: uuid.UUID
+    evidence_id: uuid.UUID
+    fields: list[CompanyField] = Field(min_length=1, max_length=3)
+    version: int = Field(ge=1, description="The lead's version from your last read.")
+
+    @field_validator("fields")
+    @classmethod
+    def _once_each(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("name each field once")
+        return value
+
+
+class CompanyCurrent(BaseModel):
+    company_website: str | None
+    company_industry: str | None
+    company_size: str | None
+    version: int
+
+
+class CompanySuggestionRead(BaseModel):
+    """One lookup of the company's website: what it suggests and what that rests on (cleaned)."""
+
+    id: uuid.UUID
+    created_at: datetime
+    verdict: Literal["found", "not_found", "unclear", "error"]
+    error_code: str | None
+    company_website: str | None
+    company_industry: str | None
+    company_size: str | None
+    name: str | None
+    excerpt: str
+    pages: list[str]
+    cleaned: list[str]
+
+
+class CompanyDetailsRead(BaseModel):
+    current: CompanyCurrent
+    latest: CompanySuggestionRead | None

@@ -49,6 +49,8 @@ EVENT_NAMES = frozenset(
         "agent.switched",
         "agent.budget_warning",
         "webcheck.completed",
+        "payment_link.paid",
+        "payment_link.needs_review",
     }
 )
 MAX_DEPTH = 3

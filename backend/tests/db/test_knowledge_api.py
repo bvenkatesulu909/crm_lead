@@ -215,14 +215,14 @@ def test_rls_policies_exist_on_knowledge_tables(db_session):
     rows = db_session.execute(
         text("select tablename from pg_policies where tablename like 'kb_%'")
     ).all()
-    assert sorted(row[0] for row in rows) == ["kb_chunks", "kb_documents"]
+    assert sorted(row[0] for row in rows) == ["kb_chunks", "kb_documents", "kb_uploads"]
     flags = db_session.execute(
         text(
             "select relrowsecurity, relforcerowsecurity from pg_class "
-            "where relname in ('kb_documents', 'kb_chunks')"
+            "where relname in ('kb_documents', 'kb_chunks', 'kb_uploads')"
         )
     ).all()
-    assert len(flags) == 2
+    assert len(flags) == 3  # kb_uploads: direct uploads (ADR 0025)
     assert all(row[0] and row[1] for row in flags)
 
 

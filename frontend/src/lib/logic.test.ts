@@ -7,6 +7,7 @@ import {
 } from "@/app/(app)/accounts/list-params";
 import {
   apiQuery,
+  hasFilters,
   pageHref,
   parseListParams,
 } from "@/app/(app)/leads/list-params";
@@ -131,6 +132,7 @@ describe("lead list URL parameters", () => {
       status: "",
       source: "",
       priority: "",
+      language: "",
       sort: "-created_at",
       page: 1,
     });
@@ -142,6 +144,21 @@ describe("lead list URL parameters", () => {
     expect(apiQuery(params)).toBe(
       "limit=20&offset=40&sort=-created_at&q=acme&status=new",
     );
+  });
+
+  it("keeps a call-in language filter only for the three known codes (ADR 0027)", () => {
+    expect(parseListParams({ language: "te" }).language).toBe("te");
+    expect(parseListParams({ language: "hi" }).language).toBe("hi");
+    for (const bad of ["fr", "HI", "hi;drop", ""])
+      expect(parseListParams({ language: bad }).language).toBe("");
+  });
+
+  it("sends the language filter to the API and keeps it in list links", () => {
+    const params = parseListParams({ language: "te", page: "2" });
+    expect(apiQuery(params)).toContain("preferred_language=te");
+    expect(pageHref(params, 1)).toBe("/leads?language=te");
+    expect(hasFilters(params)).toBe(true);
+    expect(apiQuery(parseListParams({}))).not.toContain("preferred_language");
   });
 
   it("builds short list links that keep the filters", () => {

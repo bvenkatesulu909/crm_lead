@@ -40,6 +40,12 @@ disallow_untyped_defs = false
 disallow_incomplete_defs = false
 check_untyped_defs = true
 
+[[tool.mypy.overrides]]
+# python-pptx is only partly typed: its colour, table and paragraph helpers are untyped calls.
+module = "app.modules.proposal_decks.render_pptx"
+disallow_untyped_calls = false
+warn_return_any = false
+
 # ---------- Architecture boundaries (import-linter) ----------
 # Run: lint-imports   (in backend, venv active). See CLAUDE.md "Architecture rules".
 [tool.importlinter]
@@ -60,6 +66,8 @@ modules = [
     "app.modules.assistant",
     "app.modules.catalog",
     "app.modules.approvals",
+    "app.modules.buyer_memory",
+    "app.modules.calls",
     "app.modules.communications",
     "app.modules.contacts",
     "app.modules.contracts",
@@ -76,6 +84,7 @@ modules = [
     "app.modules.relationships",
     "app.modules.reports",
     "app.modules.sales",
+    "app.modules.site_brief",
     "app.modules.support",
     "app.modules.workflows",
 ]

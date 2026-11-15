@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import type { NextRequest } from "next/server";
 
-import { apiFile } from "@/lib/server/api";
-import { fileResponse } from "@/lib/server/file-response";
+import { apiDownloadLink } from "@/lib/server/api";
+import { linkResponse } from "@/lib/server/file-response";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -13,8 +13,8 @@ export async function GET(
 ) {
   const { id } = await params;
   if (!UUID.test(id)) notFound();
-  return fileResponse(
-    await apiFile(`/portal/quotes/${id}/pdf`),
+  return linkResponse(
+    await apiDownloadLink(`/portal/quotes/${id}/pdf-link`),
     new URL(`/portal/quotes/${id}`, request.nextUrl),
   );
 }

@@ -226,14 +226,27 @@ Tick **every** item of the checklist below, remove the staging password, announc
         (2026-11-06: 1,000 accounts, 1,000 contacts, 301 leads restored).
   - [ ] A copy of the server's `.env` is in your password manager (a backup does not contain it).
   - [x] The Keycloak administration console is closed again (`ADMIN_ALLOWED_IPS=127.0.0.1`; 403 from outside, 2026-11-06).
-- [ ] **Upload/PDF sizes verified** on the chosen hosts: Netlify functions limit request and response
-      sizes and run time, and our files can be 20 MB. If too small: browser → bucket uploads with
-      signed URLs (a small design change, to be done in D1b before staging).
+- [x] **Upload/PDF sizes verified** on the chosen hosts. Netlify refuses requests of 6 MB or more
+      (measured 2026-11-09), so files go between the browser and the documents bucket through signed
+      links (ADR 0025). Checked on staging 2026-11-10: a fictional 15 MB PDF uploaded through the real
+      dialog on `crm.crmlead.co.in` (progress bar, "The document was uploaded."), stored once in the
+      bucket at 15,728,640 bytes with its "save as" name, nothing left in `pending/`, and downloaded
+      back with the same name, size and SHA-256. The bucket's CORS rule allows only the web app's
+      address and `pending/` is emptied after a day (`deploy/one-host/bucket/`).
 - [ ] Rate limiting and security headers at the edge; logs checked for personal data.
-- [ ] Voice (ADR 0023): `CRM_VOICE_BROWSER_ENGINE=false` once real customers' data is spoken (otherwise
+- [ ] Voice (ADR 0023): `CRM_VOICE_BROWSER_ENGINE=false` (the one-server compose file makes `false` the
+  default since 2026-11-09) once real customers' data is spoken (otherwise
   Google/Apple/Microsoft hear the audio); a speech key (`CRM_VOICE_API_KEY`) only if the owner accepts that
   vendor; the `voice` agent stays off until an administrator switches it on.
 - [ ] Dependency and image scan (`docker-skills:scan` / Trivy) with no high findings.
+  Scan of 2026-11-09 (Trivy 0.58.1): pypdf 6.21.1 had 10 high findings -> **6.21.4** (0 left); Caddy
+  2.10.2 had 6 critical / 99 high -> **2.11.6** (1 critical in the unused brotli library, 12 high);
+  the web app's packages: none; postgres:16-alpine 1 critical / 28 high (musl, zlib, a Go helper);
+  Keycloak 26.4.7 had 8 critical / 84 high -> **26.7.5** (1 critical in the operating system's
+  ca-certificates, 9 high), rehearsed 2026-11-10 on a PC: the upgrade from 26.4.7 on the same database
+  migrated both realms automatically, kept users and required actions, the CRM's admin service account
+  still worked and the smoke test passed 22/22 before and after. **There is no way back without the
+  backup** (Keycloak does not undo its database changes): `update.sh` takes one first.
 - [ ] Phase 21 hardening list in `implementation-plan.md` completed.
 - [ ] Monthly cost understood (Netlify credits plan + API host + database + Keycloak host + bucket +
       mail). Exact amounts depend on your provider choices.

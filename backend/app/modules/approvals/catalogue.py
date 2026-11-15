@@ -21,6 +21,7 @@ from app.modules.activities import api as activities_api
 from app.modules.approvals.artifact import Change, Plan
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
+from app.modules.proposal_decks import api as proposal_decks_api
 
 
 class _Payload(BaseModel):
@@ -43,6 +44,12 @@ class TaskPayload(_Payload):
     assignee_id: uuid.UUID | None = None
 
 
+class DeckSummaryPayload(_Payload):
+    """The text of a quote deck's "why this proposal" slide (ADR 0032 Amendment A, PD7)."""
+
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
 @dataclass(frozen=True)
 class Proposal:
     """What the service knows when it checks or runs an action."""
@@ -52,6 +59,8 @@ class Proposal:
     target_id: uuid.UUID
     requested_by_user_id: uuid.UUID
     reason: str
+    # Known once the proposal is stored (it is not yet when the proposal is checked).
+    action_id: uuid.UUID | None = None
 
 
 # Returns an error text for the proposer (None = fine). Visibility is checked before.
@@ -135,6 +144,7 @@ def _run_task(session: Session, me: Principal, proposal: Proposal, payload: Task
         lead_id=link.get("lead_id"),
         account_id=link.get("account_id"),
         contact_id=link.get("contact_id"),
+        opportunity_id=link.get("opportunity_id"),
     )
     return Ran("Task created.", created)
 
@@ -201,6 +211,44 @@ def _observe_task(
     return [Change("task", None, seen)]
 
 
+def _check_summary(session: Session, proposal: Proposal, payload: DeckSummaryPayload) -> str | None:
+    return proposal_decks_api.summary_problem(
+        session, proposal.tenant_id, proposal.target_id, payload.text
+    )
+
+
+def _run_summary(
+    session: Session, me: Principal, proposal: Proposal, payload: DeckSummaryPayload
+) -> Ran:
+    if me.user_id is None:
+        raise LookupError("only a person can approve")
+    summary_id = proposal_decks_api.add_summary(
+        session,
+        proposal.tenant_id,
+        proposal.target_id,
+        payload.text,
+        me.user_id,
+        proposal.action_id,
+    )
+    return Ran("Deck summary slide saved.", summary_id)
+
+
+def _spec_summary(
+    session: Session, me: Principal, proposal: Proposal, payload: DeckSummaryPayload
+) -> Plan:
+    current = proposal_decks_api.latest_summary(session, proposal.tenant_id, proposal.target_id)
+    return Plan(
+        [Change("deck_summary", current, payload.text)], {"quote_id": str(proposal.target_id)}
+    )
+
+
+def _observe_summary(
+    session: Session, me: Principal, proposal: Proposal, payload: DeckSummaryPayload, ran: Ran
+) -> list[Change]:
+    now = proposal_decks_api.latest_summary(session, proposal.tenant_id, proposal.target_id)
+    return [Change("deck_summary", None, now)]
+
+
 def _describe_status(payload: LeadStatusPayload) -> str:
     return f"Change the lead's status to {payload.status}"
 
@@ -234,13 +282,23 @@ KINDS: dict[str, ActionKind] = {
         ),
         ActionKind(
             "activity.create_task",
-            ("lead", "account", "contact"),
+            ("lead", "account", "contact", "opportunity"),
             TaskPayload,
             _describe_task,
             _check_assignee,
             _run_task,
             _spec_task,
             _observe_task,
+        ),
+        ActionKind(
+            "quote.deck_summary",
+            ("quote",),
+            DeckSummaryPayload,
+            lambda payload: 'Add a "Why this proposal" slide to the quote\'s proposal deck',
+            _check_summary,
+            _run_summary,
+            _spec_summary,
+            _observe_summary,
         ),
     )
 }

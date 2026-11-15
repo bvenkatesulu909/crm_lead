@@ -114,6 +114,52 @@ export async function apiFile(path: string): Promise<ApiFile> {
   };
 }
 
+/** A short-lived link to a file in the file store (ADR 0025), or the error status. */
+export type ApiLink = { ok: true; url: string } | { ok: false; status: number };
+
+/** Only an absolute http(s) address may be followed: never `javascript:`, a relative path or
+ * anything else an unexpected answer might hold. */
+export function safeDownloadUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Asks the API for a signed link to one file (the API checks access first). The browser then
+ * fetches the file straight from the file store, so large files never pass through this host.
+ */
+export async function apiDownloadLink(path: string): Promise<ApiLink> {
+  const config = serverConfig();
+  const session = await decryptSession(
+    (await cookies()).get(SESSION_COOKIE)?.value,
+    config.SESSION_SECRET,
+  );
+  if (!session) return { ok: false, status: 401 };
+  let response: Response;
+  try {
+    response = await fetch(`${config.API_BASE_URL}${path}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    return { ok: false, status: 503 };
+  }
+  if (!response.ok) return { ok: false, status: response.status };
+  const body = (await response.json().catch(() => null)) as {
+    url?: unknown;
+  } | null;
+  const url = safeDownloadUrl(body?.url);
+  return url ? { ok: true, url } : { ok: false, status: 503 };
+}
+
 /** The signed-in user, loaded once per request (React `cache`). */
 export const getMe = cache(() => apiFetch<Me>("/me"));
 

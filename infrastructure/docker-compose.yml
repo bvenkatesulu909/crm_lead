@@ -50,7 +50,7 @@ services:
   keycloak:
     # Identity provider: login pages, passwords, MFA and signed tokens. The CRM never stores
     # passwords itself. Pinned to an exact version so upgrades are deliberate.
-    image: quay.io/keycloak/keycloak:26.4.7
+    image: quay.io/keycloak/keycloak:26.7.5
     restart: unless-stopped
     # start-dev: development mode (HTTP allowed).
     # --import-realm: loads keycloak/realm-crm.json on the FIRST start (when the realm does not

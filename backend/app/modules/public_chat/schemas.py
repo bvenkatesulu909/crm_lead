@@ -23,6 +23,9 @@ class PublicChatRequest(BaseModel):
     message: Annotated[str, StringConstraints(min_length=1, max_length=4000)]
     # A hidden form field people never fill in; bots that fill it are refused.
     website: Annotated[str, StringConstraints(max_length=500)] = ""
+    # The language switch on the page (ADR 0027): a fixed list, never free text. It chooses the
+    # language of the answer and is written on the lead.
+    language: Literal["en", "hi", "te"] = "en"
 
 
 class PublicChatReply(BaseModel):

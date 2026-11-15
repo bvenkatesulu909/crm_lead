@@ -20,6 +20,7 @@ from app.modules.quotes.repository import QuoteFilters
 from app.modules.quotes.schemas import (
     ConvertToOrder,
     EmailQuote,
+    PdfLink,
     PortalQuotePage,
     PortalQuoteRead,
     PortalQuoteSummary,
@@ -326,3 +327,27 @@ def my_quote_pdf(quote_id: uuid.UUID, principal: Customer, session: Db, files: F
     info, data = service.quote_pdf(session, principal, files, quote_id)
     session.commit()
     return _pdf_response(info.file_name, data)
+
+
+@router.get(
+    "/{quote_id}/pdf-link",
+    summary="A 60-second link to the PDF of a sent quote (ADR 0025)",
+    responses=PDF,
+)
+def quote_pdf_link(quote_id: uuid.UUID, principal: Reader, session: Db, files: Files) -> PdfLink:
+    link = service.quote_pdf_link(session, principal, files, quote_id)
+    session.commit()  # keeps the document row if it was created just now
+    return PdfLink(url=link.url, file_name=link.file_name, expires_at=link.expires_at)
+
+
+@portal_router.get(
+    "/{quote_id}/pdf-link",
+    summary="A 60-second link to the PDF of one of my quotes (ADR 0025)",
+    responses=PDF,
+)
+def my_quote_pdf_link(
+    quote_id: uuid.UUID, principal: Customer, session: Db, files: Files
+) -> PdfLink:
+    link = service.quote_pdf_link(session, principal, files, quote_id)
+    session.commit()
+    return PdfLink(url=link.url, file_name=link.file_name, expires_at=link.expires_at)

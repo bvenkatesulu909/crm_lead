@@ -1,8 +1,13 @@
 import Link from "next/link";
 
 import { STATUS_LABELS, buttonClass } from "@/components/ui";
-import { LEAD_SORTS, LEAD_SOURCES, LEAD_STATUSES } from "@/lib/api-types";
-import { SOURCE_LABELS } from "@/lib/format";
+import {
+  LEAD_SORTS,
+  LEAD_SOURCES,
+  LEAD_STATUSES,
+  PREFERRED_LANGUAGES,
+} from "@/lib/api-types";
+import { LANGUAGE_LABELS, SOURCE_LABELS } from "@/lib/format";
 
 import { hasFilters, type LeadListParams } from "./list-params";
 
@@ -15,7 +20,7 @@ export function LeadFilters({ params }: { params: LeadListParams }) {
     <form
       role="search"
       aria-label="Filter leads"
-      className="grid gap-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]"
+      className="grid gap-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]"
     >
       <div>
         <label htmlFor="lead-q" className="text-sm font-medium text-slate-700">
@@ -69,6 +74,27 @@ export function LeadFilters({ params }: { params: LeadListParams }) {
           {LEAD_SOURCES.map((s) => (
             <option key={s} value={s}>
               {SOURCE_LABELS[s]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label
+          htmlFor="lead-language"
+          className="text-sm font-medium text-slate-700"
+        >
+          Call in
+        </label>
+        <select
+          id="lead-language"
+          name="language"
+          defaultValue={params.language}
+          className={field}
+        >
+          <option value="">Any language</option>
+          {PREFERRED_LANGUAGES.map((l) => (
+            <option key={l} value={l}>
+              {LANGUAGE_LABELS[l]}
             </option>
           ))}
         </select>

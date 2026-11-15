@@ -1,6 +1,7 @@
 """Public interface of the activities module."""
 
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -18,6 +19,10 @@ from app.modules.activities.policies import readable_activities
 from app.modules.activities.schemas import ActivityCreate
 
 __all__ = [
+    "DealActivity",
+    "OpenTask",
+    "open_tasks_of_lead",
+    "deal_activity",
     "EXPORT",
     "export_table",
     "overdue_tasks",
@@ -42,6 +47,59 @@ def _linked(
         Activity.contact_id.in_(contact_ids) if contact_ids else false(),
         Activity.opportunity_id.in_(opportunity_ids) if opportunity_ids else false(),
     )
+
+
+@dataclass(frozen=True)
+class DealActivity:
+    """What happened on one deal, as counts and dates (the deal desk, ADR 0024). Only the
+    activities this person may read are counted."""
+
+    last_done_at: datetime | None
+    open_tasks: int
+    overdue_tasks: int
+
+
+def deal_activity(
+    session: Session, principal: Principal, opp_id: uuid.UUID, now: datetime
+) -> DealActivity:
+    on_deal = (Activity.opportunity_id == opp_id, readable_activities(principal))
+    last = session.scalar(
+        select(func.max(Activity.completed_at)).where(*on_deal, Activity.status == "done")
+    )
+    is_open = Activity.status == "open"
+    open_tasks, overdue = session.execute(
+        select(
+            func.count().filter(is_open),
+            func.count().filter(is_open, Activity.due_at.is_not(None), Activity.due_at < now),
+        ).where(*on_deal, Activity.kind == "task")
+    ).one()
+    return DealActivity(last_done_at=last, open_tasks=open_tasks, overdue_tasks=overdue)
+
+
+@dataclass(frozen=True)
+class OpenTask:
+    subject: str
+    due_at: datetime | None
+    priority: str
+
+
+def open_tasks_of_lead(
+    session: Session, principal: Principal, lead_id: uuid.UUID, limit: int = 10
+) -> list[OpenTask]:
+    """Open tasks and follow-ups on one lead that this person may read (soonest due first, the
+    undated last)."""
+    rows = session.scalars(
+        select(Activity)
+        .where(
+            Activity.lead_id == lead_id,
+            Activity.status == "open",
+            Activity.kind != "note",
+            readable_activities(principal),
+        )
+        .order_by(Activity.due_at.asc().nulls_last(), Activity.created_at.asc())
+        .limit(limit)
+    ).all()
+    return [OpenTask(r.subject, r.due_at, r.priority) for r in rows]
 
 
 def last_interaction_by_account(
@@ -219,9 +277,10 @@ def create_task(
     lead_id: uuid.UUID | None,
     account_id: uuid.UUID | None,
     contact_id: uuid.UUID | None = None,
+    opportunity_id: uuid.UUID | None = None,
 ) -> uuid.UUID:
     """Create an open task with the activities module's own checks (links, assignee, audit).
-    Linked to one record: the lead if given, else the contact, else the account."""
+    Linked to one record: the lead if given, else the deal, else the contact, else the account."""
     activity = service.create_activity(
         session,
         principal,
@@ -231,8 +290,13 @@ def create_task(
             due_at=due_at,
             assignee_id=assignee_id,
             lead_id=lead_id,
-            contact_id=contact_id if lead_id is None else None,
-            account_id=account_id if lead_id is None and contact_id is None else None,
+            opportunity_id=opportunity_id if lead_id is None else None,
+            contact_id=contact_id if lead_id is None and opportunity_id is None else None,
+            account_id=(
+                account_id
+                if lead_id is None and opportunity_id is None and contact_id is None
+                else None
+            ),
         ),
     )
     return activity.id

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import type { NextRequest } from "next/server";
 
-import { apiFile } from "@/lib/server/api";
-import { fileResponse } from "@/lib/server/file-response";
+import { apiDownloadLink } from "@/lib/server/api";
+import { linkResponse } from "@/lib/server/file-response";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,5 +19,8 @@ export async function GET(
     referer && new URL(referer).origin === request.nextUrl.origin
       ? new URL(new URL(referer).pathname, request.nextUrl)
       : new URL("/", request.nextUrl);
-  return fileResponse(await apiFile(`/documents/${id}/download`), back);
+  return linkResponse(
+    await apiDownloadLink(`/documents/${id}/download-link`),
+    back,
+  );
 }

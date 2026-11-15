@@ -2,6 +2,7 @@ import {
   LEAD_SORTS,
   LEAD_SOURCES,
   LEAD_STATUSES,
+  PREFERRED_LANGUAGES,
   type LeadSort,
 } from "@/lib/api-types";
 
@@ -12,6 +13,7 @@ export type LeadListParams = {
   status: string;
   source: string;
   priority: string;
+  language: string;
   sort: LeadSort;
   page: number;
 };
@@ -26,6 +28,7 @@ export function parseListParams(raw: RawParams): LeadListParams {
   const status = one(raw.status);
   const source = one(raw.source);
   const priority = one(raw.priority);
+  const language = one(raw.language);
   const sort = one(raw.sort);
   const page = Number.parseInt(one(raw.page), 10);
   return {
@@ -33,6 +36,9 @@ export function parseListParams(raw: RawParams): LeadListParams {
     status: (LEAD_STATUSES as readonly string[]).includes(status) ? status : "",
     source: (LEAD_SOURCES as readonly string[]).includes(source) ? source : "",
     priority: ["hot", "warm", "cold"].includes(priority) ? priority : "",
+    language: (PREFERRED_LANGUAGES as readonly string[]).includes(language)
+      ? language
+      : "",
     sort: sort in LEAD_SORTS ? (sort as LeadSort) : "-created_at",
     page: Number.isFinite(page) && page > 0 && page <= 5000 ? page : 1,
   };
@@ -49,6 +55,7 @@ export function apiQuery(params: LeadListParams): string {
   if (params.status) query.set("status", params.status);
   if (params.source) query.set("source", params.source);
   if (params.priority) query.set("priority", params.priority);
+  if (params.language) query.set("preferred_language", params.language);
   return query.toString();
 }
 
@@ -59,6 +66,7 @@ export function pageHref(params: LeadListParams, page: number): string {
   if (params.status) query.set("status", params.status);
   if (params.source) query.set("source", params.source);
   if (params.priority) query.set("priority", params.priority);
+  if (params.language) query.set("language", params.language);
   if (params.sort !== "-created_at") query.set("sort", params.sort);
   if (page > 1) query.set("page", String(page));
   const text = query.toString();
@@ -66,4 +74,4 @@ export function pageHref(params: LeadListParams, page: number): string {
 }
 
 export const hasFilters = (p: LeadListParams) =>
-  Boolean(p.q || p.status || p.source || p.priority);
+  Boolean(p.q || p.status || p.source || p.priority || p.language);

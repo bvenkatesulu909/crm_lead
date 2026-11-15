@@ -41,7 +41,7 @@ from app.core.models import (
 )
 
 INVOICE_STATUSES = ("draft", "issued", "discarded")
-PAYMENT_METHODS = ("bank_transfer", "card", "cash", "other")
+PAYMENT_METHODS = ("bank_transfer", "card", "cash", "other", "upi")
 SERIES = ("invoice", "credit_note")
 
 
@@ -223,6 +223,15 @@ class Payment(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
             name="reversal_consistent",
         ),
         Index("ix_payments_tenant_id_invoice_id_seq", "tenant_id", "invoice_id", "seq"),
+        # A UPI payment is identified by the gateway's payment id, kept in ``reference``: the same
+        # one can never be added twice, whatever event or retry brings it (ADR 0031).
+        Index(
+            "uq_payments_upi_reference",
+            "tenant_id",
+            "reference",
+            unique=True,
+            postgresql_where=text("method = 'upi' AND reverses_payment_id IS NULL"),
+        ),
     )
 
     invoice_id: Mapped[uuid.UUID] = mapped_column(Uuid)

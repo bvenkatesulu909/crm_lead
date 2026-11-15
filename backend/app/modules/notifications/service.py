@@ -31,6 +31,7 @@ from app.modules.approvals import api as approvals_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.identity import api as identity_api
+from app.modules.invoices import api as invoices_api
 from app.modules.leads import api as leads_api
 from app.modules.notifications.models import Notification, NotificationPreference
 from app.modules.notifications.schemas import (
@@ -39,6 +40,7 @@ from app.modules.notifications.schemas import (
     PreferenceRead,
     PreferencesUpdate,
 )
+from app.modules.payment_links import api as payment_links_api
 from app.modules.quotes import api as quotes_api
 from app.modules.support import api as support_api
 
@@ -65,6 +67,8 @@ TYPES: dict[str, str] = {
     "agent.switched": "An AI agent was switched on or off",
     "agent.budget_warning": "An AI agent is close to its monthly limit",
     "webcheck.completed": "A web check you asked for has finished",
+    "payment_link.paid": "A UPI payment arrived on an invoice",
+    "payment_link.needs_review": "A UPI payment needs a person to look at it",
     "workflow.message": "A message from an automation rule",
 }
 RULE_MESSAGE = "workflow.message"
@@ -301,6 +305,43 @@ def _proposal_requester(session: Session, event: Event) -> set[uuid.UUID]:
     return {person} if person else set()
 
 
+_PAYMENT_REASONS = {
+    "amount_mismatch": "the amount paid differs from the link",
+    "currency_mismatch": "the currency is not INR",
+    "invoice_closed": "the invoice no longer has a balance",
+}
+
+
+def _payment_link_creator(session: Session, event: Event) -> set[uuid.UUID]:
+    person = payment_links_api.link_creator(
+        session, event.tenant_id, uuid_of(event, "payment_link_id")
+    )
+    return {person} if person else set()
+
+
+def _payment_reviewers(session: Session, event: Event) -> set[uuid.UUID]:
+    """Everyone who may record payments, plus whoever made the link."""
+    people = set(
+        identity_api.staff_with_permission(session, event.tenant_id, Permission.PAYMENT_RECORD)
+    )
+    return people | _payment_link_creator(session, event)
+
+
+def _payment_paid(session: Session, me: Principal, event: Event) -> Draft | None:
+    invoice_id = uuid_of(event, "invoice_id")
+    brief = invoices_api.invoice_brief(session, me, invoice_id)
+    return Draft(f"UPI payment received: {brief[0]}", f"/invoices/{invoice_id}") if brief else None
+
+
+def _payment_review(session: Session, me: Principal, event: Event) -> Draft | None:
+    invoice_id = uuid_of(event, "invoice_id")
+    brief = invoices_api.invoice_brief(session, me, invoice_id)
+    reason = _PAYMENT_REASONS.get(str(event.data.get("reason")))
+    if brief is None or reason is None:
+        return None
+    return Draft(f"UPI payment on {brief[0]} was not recorded: {reason}", f"/invoices/{invoice_id}")
+
+
 Recipients = Callable[[Session, Event], set[uuid.UUID]]
 RULES: dict[str, tuple[Recipients, Describe]] = {
     "lead.assigned": (_assignee, _lead),
@@ -322,6 +363,8 @@ RULES: dict[str, tuple[Recipients, Describe]] = {
     "agent.switched": (_agent_admins, _agent_switched),
     "agent.budget_warning": (_agent_admins, _agent_warning),
     "webcheck.completed": (_requester, _webcheck_done),
+    "payment_link.paid": (_payment_link_creator, _payment_paid),
+    "payment_link.needs_review": (_payment_reviewers, _payment_review),
 }
 
 

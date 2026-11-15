@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useActionState, useRef, useState, type FormEvent } from "react";
 
 import { ErrorAlert, buttonClass, cx } from "@/components/ui";
-import { LEAD_SOURCES, PROPERTY_TYPES } from "@/lib/api-types";
+import {
+  COMPANY_INDUSTRIES,
+  COMPANY_INDUSTRY_KEYS,
+  COMPANY_SIZES,
+  LEAD_SOURCES,
+  PROPERTY_TYPES,
+} from "@/lib/api-types";
 import { PROPERTY_TYPE_LABELS, SOURCE_LABELS } from "@/lib/format";
 import {
   type FieldErrors,
@@ -39,6 +45,50 @@ type FieldProps = {
   error?: string;
   defaultValue?: string;
 };
+
+/** An optional pick list: "Not specified" first, then the given [value, label] pairs. */
+function ChoiceField({
+  name,
+  label,
+  value,
+  error,
+  options,
+}: {
+  name: string;
+  label: string;
+  value: string | undefined;
+  error: string | undefined;
+  options: [string, string][];
+}) {
+  const id = `lead-${name}`;
+  return (
+    <div>
+      <label htmlFor={id} className="text-sm font-medium text-slate-700">
+        {label} <span className="font-normal text-slate-500">(optional)</span>
+      </label>
+      <select
+        id={id}
+        name={name}
+        defaultValue={value ?? ""}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        className={inputClass(Boolean(error))}
+      >
+        <option value="">Not specified</option>
+        {options.map(([v, text]) => (
+          <option key={v} value={v}>
+            {text}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <p id={`${id}-error`} className="mt-1 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function TextField({
   name,
@@ -105,6 +155,9 @@ const LABELS: Record<LeadField, string> = {
   budget_min_inr: "Minimum budget",
   budget_max_inr: "Maximum budget",
   location: "Location",
+  company_website: "Website",
+  company_industry: "Industry",
+  company_size: "Employees",
 };
 
 /**
@@ -260,6 +313,34 @@ export function LeadForm({
             </p>
           )}
         </div>
+      </fieldset>
+
+      <fieldset className="grid gap-5 sm:grid-cols-2">
+        <legend className="mb-3 text-sm font-semibold text-slate-900">
+          About the company
+        </legend>
+        <TextField
+          name="company_website"
+          label={LABELS.company_website}
+          autoComplete="off"
+          hint="Only the address, e.g. example.com"
+          error={errors.company_website}
+          defaultValue={values.company_website}
+        />
+        <ChoiceField
+          name="company_industry"
+          label={LABELS.company_industry}
+          value={values.company_industry}
+          error={errors.company_industry}
+          options={COMPANY_INDUSTRY_KEYS.map((k) => [k, COMPANY_INDUSTRIES[k]])}
+        />
+        <ChoiceField
+          name="company_size"
+          label={LABELS.company_size}
+          value={values.company_size}
+          error={errors.company_size}
+          options={COMPANY_SIZES.map((s) => [s, `${s} employees`])}
+        />
       </fieldset>
 
       <fieldset className="grid gap-5 sm:grid-cols-2">

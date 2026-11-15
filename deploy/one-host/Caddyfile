@@ -54,5 +54,8 @@
 	}
 	respond @closed 403
 
-	reverse_proxy keycloak:8080
+	# Keycloak 26.6+ trusts X-Forwarded-Prefix along with X-Forwarded-*: never take it from a visitor.
+	reverse_proxy keycloak:8080 {
+		header_up -X-Forwarded-Prefix
+	}
 }

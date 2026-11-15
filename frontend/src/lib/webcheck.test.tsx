@@ -81,6 +81,7 @@ describe("plain words", () => {
 
   it("names each status and never fails on a new one", () => {
     expect(statusLabel("active")).toBe("Active");
+    expect(statusLabel("registered")).toBe("Registered"); // AP RERA (ADR 0019, Amendment A)
     expect(statusLabel("struck_off")).toBe("Struck off");
     expect(statusLabel("liquidation")).toBe("In liquidation");
     expect(statusLabel("something_new")).toBe("something new");

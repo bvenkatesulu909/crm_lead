@@ -89,14 +89,40 @@ def create_account(
     website: str | None,
     phone: str | None,
     owner_id: uuid.UUID | None,
+    industry: str | None = None,
 ) -> uuid.UUID:
     """Insert an account in the caller's transaction (authorization is the caller's job)."""
     account = Account(
-        tenant_id=tenant_id, name=name, website=website, phone=phone, owner_id=owner_id
+        tenant_id=tenant_id,
+        name=name,
+        website=website,
+        phone=phone,
+        owner_id=owner_id,
+        industry=industry,
     )
     session.add(account)
     session.flush()
     return account.id
+
+
+def fill_empty_company_details(
+    session: Session,
+    *,
+    tenant_id: uuid.UUID,
+    account_id: uuid.UUID,
+    website: str | None,
+    industry: str | None,
+) -> None:
+    """Copy a converted lead's company website / industry to an existing account, but only into
+    fields the account leaves empty (ADR 0026 E3). Authorization is the caller's job."""
+    account = session.get(Account, account_id)
+    if account is None or account.tenant_id != tenant_id:
+        return
+    if website and not account.website:
+        account.website = website
+    if industry and not account.industry:
+        account.industry = industry
+    session.flush()
 
 
 def owned_account_ids(principal: Principal) -> Select[uuid.UUID]:

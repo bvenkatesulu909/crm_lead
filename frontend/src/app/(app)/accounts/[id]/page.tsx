@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AccountResearchCard } from "@/components/account-research-card";
 import { ActivityPanel } from "@/components/activity-panel";
 import { EmailCard } from "@/components/email-card";
 import { RecordProposals } from "@/components/record-proposals";
@@ -115,6 +116,7 @@ function section<T>(
 const DONE: Record<string, string> = {
   "email-sent": "The e-mail is on its way. Its status is shown under E-mails.",
   "email-logged": "The received e-mail was saved in the history.",
+  "account-researched": "The brief was written from this account's records.",
   "webcheck-queued":
     "The web check was queued. The result appears under Web check and you get a notification.",
   invited: "The invitation was sent. The customer sets a password and then sees this account.",
@@ -411,6 +413,7 @@ export default async function AccountPage({
 
           <RecordProposals me={me} targetId={a} />
           <WebCheckCard me={me} record={{ type: "account", id: a }} />
+          <AccountResearchCard me={me} accountId={a} />
 
           <EmailCard me={me} record={{ type: "account", id: a }} accountId={a} />
 

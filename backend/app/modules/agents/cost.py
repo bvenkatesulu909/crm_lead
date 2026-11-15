@@ -16,8 +16,8 @@ def estimate_cost_usd(
     input_tokens: int,
     output_tokens: int,
     *,
-    input_price_per_million: float,
-    output_price_per_million: float,
+    input_price_per_million: Decimal,
+    output_price_per_million: Decimal,
     uses_model: bool,
 ) -> Decimal | None:
     """Dollars for these tokens, rounded half up to four places - or ``None`` when there is
@@ -27,9 +27,8 @@ def estimate_cost_usd(
         raise ValueError("token counts cannot be negative")
     if not uses_model:
         return None
-    # str() first: Decimal(0.1) would carry the float's error, Decimal("0.1") does not.
-    price_in = Decimal(str(input_price_per_million))
-    price_out = Decimal(str(output_price_per_million))
+    price_in = Decimal(input_price_per_million)
+    price_out = Decimal(output_price_per_million)
     if price_in == 0 and price_out == 0:
         return None
     total = (Decimal(input_tokens) * price_in + Decimal(output_tokens) * price_out) / _MILLION

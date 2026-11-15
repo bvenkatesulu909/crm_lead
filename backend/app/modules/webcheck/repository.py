@@ -27,21 +27,26 @@ def get_by_request(
 
 
 def list_for_target(
-    session: Session, tenant_id: uuid.UUID, target_type: str, target_id: uuid.UUID, limit: int
+    session: Session,
+    tenant_id: uuid.UUID,
+    target_type: str,
+    target_id: uuid.UUID,
+    limit: int,
+    *,
+    source_key: str | None = None,
+    without_source: str | None = None,
 ) -> list[WebEvidence]:
     """Newest first. ``seq`` orders rows that were written in one transaction."""
-    return list(
-        session.scalars(
-            select(WebEvidence)
-            .where(
-                WebEvidence.tenant_id == tenant_id,
-                WebEvidence.target_type == target_type,
-                WebEvidence.target_id == target_id,
-            )
-            .order_by(WebEvidence.seq.desc())
-            .limit(limit)
-        )
+    query = select(WebEvidence).where(
+        WebEvidence.tenant_id == tenant_id,
+        WebEvidence.target_type == target_type,
+        WebEvidence.target_id == target_id,
     )
+    if source_key is not None:
+        query = query.where(WebEvidence.source_key == source_key)
+    if without_source is not None:
+        query = query.where(WebEvidence.source_key != without_source)
+    return list(session.scalars(query.order_by(WebEvidence.seq.desc()).limit(limit)))
 
 
 def count_requests(

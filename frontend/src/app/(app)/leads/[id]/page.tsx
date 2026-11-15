@@ -8,10 +8,20 @@ import { EmailCard } from "@/components/email-card";
 import { RecordProposals } from "@/components/record-proposals";
 import { LeadAgentSection } from "@/components/lead-agent-section";
 import { QualifierCard } from "@/components/qualifier-card";
+import { BuyerMemoryCard } from "@/components/buyer-memory-card";
+import { CallsCard } from "@/components/calls-card";
+import { CompanyDetailsCard } from "@/components/company-details-card";
 import { WebCheckCard } from "@/components/webcheck-card";
 import { LeadScoreCard } from "@/components/lead-score";
-import { Card, Forbidden, StatusBadge, SuccessAlert } from "@/components/ui";
+import {
+  ButtonLink,
+  Card,
+  Forbidden,
+  StatusBadge,
+  SuccessAlert,
+} from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
+import { COMPANY_INDUSTRIES } from "@/lib/api-types";
 import type {
   Account,
   AccountPage,
@@ -24,6 +34,7 @@ import type {
 } from "@/lib/api-types";
 import {
   PROPERTY_TYPE_LABELS,
+  LANGUAGE_LABELS,
   SOURCE_LABELS,
   formatBudget,
   formatDate,
@@ -31,7 +42,7 @@ import {
   leadName,
 } from "@/lib/format";
 import { availableActions } from "@/lib/lead-rules";
-import { hasAny } from "@/lib/permissions";
+import { canReadBuyerMemory, hasAny } from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
 import {
@@ -61,6 +72,18 @@ const DONE: Record<string, string> = {
     "The lead agent made a suggestion, but the safety check refused it, so nothing was created.",
   "webcheck-queued":
     "The web check was queued. The result appears under Web check and you get a notification.",
+  "company-queued":
+    "The look-up was queued. The suggestions appear under Company details and you get a notification.",
+  "company-saved": "The chosen company details were saved on the lead.",
+  "call-added":
+    "The recording was added. It is being cleaned and written out; this card updates by itself.",
+  "call-audio-deleted":
+    "The audio was deleted. The transcript and the record of the buyer's agreement stay.",
+  "memory-added": "The detail was added to the buyer memory.",
+  "memory-confirmed":
+    "The assumption was confirmed. It is now a fact; the assumption stays in the history.",
+  "memory-copied":
+    "The lead form was copied into the buyer memory (only details that had no answer yet).",
   "email-logged": "The received e-mail was saved in the history.",
   updated: "The lead was updated.",
   assigned: "The lead was assigned.",
@@ -147,10 +170,20 @@ export default async function LeadPage({
 
   const details: [string, string][] = [
     ["Company", lead.company_name ?? "—"],
+    ["Website", lead.company_website ?? "—"],
+    [
+      "Industry",
+      lead.company_industry ? COMPANY_INDUSTRIES[lead.company_industry] : "—",
+    ],
+    ["Employees", lead.company_size ?? "—"],
     ["Job title", lead.job_title ?? "—"],
     ["E-mail", lead.email ?? "—"],
     ["Phone", lead.phone ?? "—"],
     ["Source", lead.source ? SOURCE_LABELS[lead.source] : "—"],
+    [
+      "Call in",
+      lead.preferred_language ? LANGUAGE_LABELS[lead.preferred_language] : "—",
+    ],
     [
       "Property type",
       lead.property_type ? PROPERTY_TYPE_LABELS[lead.property_type] : "—",
@@ -190,6 +223,16 @@ export default async function LeadPage({
           <p className="mt-1 text-sm text-slate-600">
             {lead.company_name ?? "No company"} · Owner: {nameOf(lead.owner_id)}
           </p>
+          {canReadBuyerMemory(me) && (
+            <div className="mt-3">
+              <ButtonLink
+                variant="secondary"
+                href={`/print/leads/${lead.id}/brief`}
+              >
+                Site visit brief
+              </ButtonLink>
+            </div>
+          )}
         </div>
         {/* key: after any change the version changes, so dialogs re-mount closed. */}
         <LeadActionBar
@@ -288,6 +331,9 @@ export default async function LeadPage({
           <RecordProposals me={me} targetId={lead.id} />
           <QualifierCard me={me} leadId={lead.id} />
           <LeadAgentSection me={me} leadId={lead.id} />
+          <BuyerMemoryCard me={me} leadId={lead.id} />
+          <CallsCard me={me} leadId={lead.id} />
+          <CompanyDetailsCard me={me} leadId={lead.id} />
           <WebCheckCard me={me} record={{ type: "lead", id: lead.id }} />
           <EmailCard
             me={me}

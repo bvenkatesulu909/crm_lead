@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://crm.yourcompany.in"],
+    "method": ["POST", "PUT", "GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Disposition", "Content-Length", "ETag"],
+    "maxAgeSeconds": 3600
+  }
+]

@@ -39,6 +39,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   card: "Card",
   cash: "Cash",
   other: "Other",
+  upi: "UPI",
 };
 
 const pill =

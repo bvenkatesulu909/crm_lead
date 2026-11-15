@@ -209,3 +209,11 @@ class QuoteSettingsRead(BaseModel):
 class QuoteSettingsUpdate(_Input):
     version: int = Field(ge=0, description="The version you read (0 for the defaults).")
     approval_limit_percent: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)]
+
+
+class PdfLink(BaseModel):
+    """Open ``url`` within a minute: it fetches the PDF straight from the file store."""
+
+    url: str
+    file_name: str
+    expires_at: datetime

@@ -55,5 +55,5 @@ export const orderHeaderSchema = z.object({
   internal_note: optional(2000, "Internal note"),
 });
 
-export const CURRENCIES = ["EUR", "USD", "GBP", "CHF"] as const;
+export const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "INR"] as const;
 export const MAX_LINES = 100;

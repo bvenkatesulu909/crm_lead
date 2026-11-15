@@ -1,9 +1,17 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PublicChat } from "@/components/public-chat";
-import { chatErrorText, checkVisitorMessage } from "@/lib/public-chat";
+import {
+  CHAT_LANGUAGES,
+  CHAT_TEXT,
+  SPEECH_LANG,
+  chatErrorText,
+  checkVisitorMessage,
+  isChatLanguage,
+  pickLanguage,
+} from "@/lib/public-chat";
 import {
   CHAT_COOKIE,
   chatCookieOptions,
@@ -120,7 +128,11 @@ describe("forwardChat", () => {
       "X-Public-Chat-Key": KEY,
       "X-Visitor-Ip": "203.0.113.7",
     });
-    expect(JSON.parse(init.body)).toEqual({ message: "Hello", website: "" });
+    expect(JSON.parse(init.body)).toEqual({
+      message: "Hello",
+      website: "",
+      language: "en",
+    });
     expect(result.status).toBe(200);
     expect(result.body).toEqual({
       reply: "Hi! Your phone number?",
@@ -228,6 +240,7 @@ describe("PublicChat", () => {
     expect(JSON.parse(String(init?.body))).toEqual({
       message: "Hi, I want a flat",
       website: "",
+      language: "en",
     });
     expect(screen.getByLabelText("Your message")).toHaveValue("");
   });
@@ -279,5 +292,240 @@ describe("PublicChat", () => {
     expect(trap).not.toBeNull();
     expect(trap?.tabIndex).toBe(-1);
     expect(trap?.closest("[aria-hidden='true']")).not.toBeNull();
+  });
+});
+
+// --- languages and speech (ADR 0027, step VL2) ---------------------------------------------
+
+describe("chat languages", () => {
+  it("knows exactly three languages and refuses anything else", () => {
+    expect([...CHAT_LANGUAGES]).toEqual(["en", "hi", "te"]);
+    for (const ok of CHAT_LANGUAGES) expect(isChatLanguage(ok)).toBe(true);
+    for (const bad of ["fr", "HI", "", "hi\nx", 5, null, undefined])
+      expect(isChatLanguage(bad)).toBe(false);
+  });
+
+  it("picks the browser's language when it is one of the three, else English", () => {
+    expect(pickLanguage(["hi-IN", "en-US"])).toBe("hi");
+    expect(pickLanguage(["te"])).toBe("te");
+    expect(pickLanguage(["fr-FR", "te-IN"])).toBe("te");
+    expect(pickLanguage(["fr-FR", "de"])).toBe("en");
+    expect(pickLanguage([])).toBe("en");
+    expect(pickLanguage(undefined)).toBe("en");
+  });
+
+  it("has every word for every language, and speech tags for India", () => {
+    const keys = Object.keys(CHAT_TEXT.en).sort();
+    for (const code of CHAT_LANGUAGES) {
+      expect(Object.keys(CHAT_TEXT[code]).sort()).toEqual(keys);
+      for (const value of Object.values(CHAT_TEXT[code]))
+        expect(value.length).toBeGreaterThan(2);
+    }
+    expect(SPEECH_LANG).toEqual({ en: "en-IN", hi: "hi-IN", te: "te-IN" });
+  });
+});
+
+describe("forwardChat with a language", () => {
+  const base = {
+    message: "Hello",
+    website: "",
+    ip: "203.0.113.7",
+    key: KEY,
+    apiBaseUrl: "http://api.test/api/v1",
+    token: null,
+  };
+
+  it("passes the chosen language on to the API", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(
+        reply(200, { token: TOKEN, reply: "ok", lead_saved: false }),
+      );
+    await forwardChat({ ...base, language: "te" }, fetcher);
+    expect(JSON.parse(fetcher.mock.calls[0][1].body).language).toBe("te");
+  });
+});
+
+describe("PublicChat in Hindi and Telugu", () => {
+  function fakeRecognition() {
+    const instances: {
+      lang: string;
+      interimResults: boolean;
+      continuous: boolean;
+      start: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+      onresult: ((e: unknown) => void) | null;
+      onend: (() => void) | null;
+      onerror: (() => void) | null;
+    }[] = [];
+    class Recognition {
+      lang = "";
+      interimResults = false;
+      continuous = false;
+      start = vi.fn();
+      stop = vi.fn();
+      onresult: ((e: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        instances.push(this);
+      }
+    }
+    vi.stubGlobal("webkitSpeechRecognition", Recognition);
+    return instances;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("starts in English and shows the three languages written in themselves", () => {
+    render(<PublicChat />);
+    expect(
+      screen.getByText(/Hello! I can help you find a home/),
+    ).toBeInTheDocument();
+    const group = screen.getByRole("group", { name: "Language" });
+    expect(group).toHaveTextContent("English");
+    expect(group).toHaveTextContent("हिन्दी");
+    expect(group).toHaveTextContent("తెలుగు");
+  });
+
+  it("switches the greeting, buttons and placeholder to Hindi", async () => {
+    render(<PublicChat />);
+    await userEvent.click(screen.getByRole("button", { name: "हिन्दी" }));
+    expect(screen.getByText(/नमस्ते!/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "भेजें" })).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("अपना संदेश लिखें…"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "हिन्दी" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("sends the chosen language with the message", async () => {
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(reply(200, { reply: "ठीक है", lead_saved: false }));
+    render(<PublicChat />);
+    await userEvent.click(screen.getByRole("button", { name: "తెలుగు" }));
+    await userEvent.type(
+      screen.getByLabelText("మీ సందేశం"),
+      "నాకు ఫ్లాట్ కావాలి",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "పంపండి" }));
+    await screen.findByText("ठीक है");
+    expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body)).language).toBe(
+      "te",
+    );
+  });
+
+  it("shows no microphone when the browser has no speech recognition", () => {
+    render(<PublicChat />);
+    expect(screen.queryByRole("button", { name: "Speak" })).toBeNull();
+  });
+
+  it("listens in the chosen language and puts what it heard in the message box", async () => {
+    const instances = fakeRecognition();
+    render(<PublicChat />);
+    await userEvent.click(screen.getByRole("button", { name: "हिन्दी" }));
+    await userEvent.click(screen.getByRole("button", { name: "बोलें" }));
+    expect(instances).toHaveLength(1);
+    expect(instances[0].lang).toBe("hi-IN");
+    expect(instances[0].start).toHaveBeenCalled();
+    act(() =>
+      instances[0].onresult?.({
+        results: {
+          length: 1,
+          0: { 0: { transcript: "मुझे फ्लैट चाहिए" }, isFinal: true },
+        },
+      }),
+    );
+    expect(screen.getByLabelText("आपका संदेश")).toHaveValue("मुझे फ्लैट चाहिए");
+    // Nothing was sent: the visitor reads it and presses Send.
+    act(() => instances[0].onend?.());
+  });
+
+  it("explains when the browser could not hear or does not know the language", async () => {
+    const instances = fakeRecognition();
+    render(<PublicChat />);
+    await userEvent.click(screen.getByRole("button", { name: "తెలుగు" }));
+    await userEvent.click(screen.getByRole("button", { name: "మాట్లాడండి" }));
+    act(() => instances[0].onerror?.());
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "మీ గొంతు వినిపించలేదు",
+    );
+  });
+
+  it("says who hears the voice before the microphone is used", () => {
+    fakeRecognition();
+    render(<PublicChat />);
+    expect(
+      screen.getByText(/may send your voice to its provider/),
+    ).toBeInTheDocument();
+  });
+
+  describe("reading replies aloud", () => {
+    function fakeSpeech() {
+      const spoken: { text: string; lang: string }[] = [];
+      const cancel = vi.fn();
+      vi.stubGlobal("speechSynthesis", {
+        speak: (u: { text: string; lang: string }) => spoken.push(u),
+        cancel,
+      });
+      vi.stubGlobal(
+        "SpeechSynthesisUtterance",
+        class {
+          lang = "";
+          constructor(public text: string) {}
+        },
+      );
+      return { spoken, cancel };
+    }
+
+    async function ask() {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        reply(200, { reply: "जी, बताइए", lead_saved: false }),
+      );
+      await userEvent.type(screen.getByLabelText("आपका संदेश"), "नमस्ते");
+      await userEvent.click(screen.getByRole("button", { name: "भेजें" }));
+      await screen.findByText("जी, बताइए");
+    }
+
+    it("is off until the visitor asks for it", async () => {
+      const { spoken } = fakeSpeech();
+      render(<PublicChat />);
+      await userEvent.click(screen.getByRole("button", { name: "हिन्दी" }));
+      expect(screen.getByLabelText("जवाब बोलकर सुनाएँ")).not.toBeChecked();
+      await ask();
+      expect(spoken).toEqual([]);
+    });
+
+    it("reads the answer in the chosen language once it is switched on", async () => {
+      const { spoken } = fakeSpeech();
+      render(<PublicChat />);
+      await userEvent.click(screen.getByRole("button", { name: "हिन्दी" }));
+      await userEvent.click(screen.getByLabelText("जवाब बोलकर सुनाएँ"));
+      await ask();
+      expect(spoken).toHaveLength(1);
+      expect(spoken[0]).toMatchObject({ text: "जी, बताइए", lang: "hi-IN" });
+    });
+
+    it("stops speaking when it is switched off", async () => {
+      const { cancel } = fakeSpeech();
+      render(<PublicChat />);
+      const box = screen.getByLabelText("Read replies aloud");
+      await userEvent.click(box);
+      cancel.mockClear();
+      await userEvent.click(box);
+      expect(cancel).toHaveBeenCalled();
+    });
+
+    it("offers no read-aloud switch when the browser cannot speak", () => {
+      render(<PublicChat />);
+      expect(screen.queryByLabelText("Read replies aloud")).toBeNull();
+    });
   });
 });

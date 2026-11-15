@@ -30,8 +30,18 @@ Rules:
 | [0016](0016-agent-registry-budgets-kill-switch.md) | Agent registry, monthly token budgets and a kill switch (BP-14) | Accepted |
 | [0017](0017-sentinel-action-verifier.md) | Sentinel: rule-based second check on AI proposals and input screening (BP-21) | Accepted |
 | [0018](0018-verification-artifacts-and-injection-defences.md) | Verification artifacts and the ForcedLeak / BodySnatcher defences (BP-29) | Accepted |
-| [0019](0019-live-web-check-rera-and-company.md) | Live web check of a RERA number or a company (BP-15) | Accepted |
+| [0019](0019-live-web-check-rera-and-company.md) | Live web check of a RERA number or a company (BP-15) | Accepted; Amendment A (form search, AP RERA) accepted 2026-11-09; Amendment B (host from the lead, BP-02) accepted 2026-11-10 |
 | [0020](0020-mcp-propose-tools.md) | Propose-only tools in the CRM MCP server (BP-11, step MCP5) | Accepted |
 | [0021](0021-one-host-deployment.md) | One-host deployment: API, worker, database and sign-in on one server (CRM-112; amends 0007) | Accepted |
 | [0022](0022-lead-agent-langgraph.md) | An optional lead agent built with LangGraph (CRM-114) | Proposed |
 | [0023](0023-live-voice-assistant.md) | Live voice mode for the staff AI Assistant (Phase 20c) | Accepted |
+| [0024](0024-deal-desk-and-account-research.md) | Deal desk: several AI reviewers on one deal, plus parallel account research (CRM-114) | Accepted |
+| [0025](0025-direct-uploads-signed-links.md) | Large files go straight to the file store through short-lived signed links | Accepted |
+| [0026](0026-lead-company-enrichment.md) | One-click company details on a lead from the company's own website (BP-02) | Accepted |
+| [0027](0027-hindi-telugu-voice-lead-capture.md) | Hindi and Telugu voice lead capture on the website chat | Accepted |
+| [0028](0028-buyer-memory.md) | Buyer memory: every detail labelled a fact, an assumption or a gap | Accepted |
+| [0029](0029-site-visit-brief.md) | The rep's brief before a site visit | Accepted |
+| [0030](0030-call-recordings-clear-audio.md) | Call recordings: clear audio and transcripts in Hinglish and Telugu | Accepted |
+| [0031](0031-upi-payments-razorpay.md) | UPI payments on invoices through Razorpay payment links (BP-17) | Accepted |
+| [0032](0032-branded-proposal-decks.md) | Branded proposal decks from a quote | Accepted |
+| [0033](0033-call-highlight-clips.md) | Highlight clips from recorded sales calls (BP-25) | Accepted |

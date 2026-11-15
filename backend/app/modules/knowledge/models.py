@@ -192,3 +192,48 @@ class RagFeedback(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     helpful: Mapped[bool] = mapped_column(Boolean)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class KnowledgeUpload(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
+    """A knowledge upload a manager started (ADR 0025): checked before the bytes arrive; the file
+    then goes straight to ``pending/{tenant}/{id}`` in the store, and ``finish`` indexes it like a
+    normal upload. Short-lived: the worker deletes rows a day old."""
+
+    __tablename__ = "kb_uploads"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "id"),
+        CheckConstraint(
+            "visibility IN ('internal', 'customer_visible')", name="visibility_allowed"
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'finished', 'failed', 'expired')", name="status_allowed"
+        ),
+        CheckConstraint("declared_size >= 1", name="declared_size_positive"),
+        CheckConstraint(
+            "(status = 'finished') = (document_id IS NOT NULL)", name="finished_has_document"
+        ),
+        Index(
+            "ix_kb_uploads_tenant_id_user_created",
+            "tenant_id",
+            "created_by_user_id",
+            "created_at",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "created_by_user_id"],
+            ["users.tenant_id", "users.id"],
+            ondelete="CASCADE",
+        ),
+    )
+
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    title: Mapped[str] = mapped_column(String(200))
+    file_name: Mapped[str] = mapped_column(String(200))
+    content_type: Mapped[str] = mapped_column(String(100))
+    declared_size: Mapped[int] = mapped_column(BigInteger)
+    visibility: Mapped[str] = mapped_column(String(20))
+    account_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, default=None)
+    replaces_document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, default=None)
+    status: Mapped[str] = mapped_column(String(20), server_default=sa_text("'pending'"))
+    document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, default=None)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(default=None)

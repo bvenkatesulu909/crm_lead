@@ -1,6 +1,7 @@
 import {
   deleteDocument,
-  uploadDocument,
+  finishDocumentUpload,
+  startDocumentUpload,
   type RecordType,
 } from "@/app/(app)/documents/actions";
 import {
@@ -55,7 +56,7 @@ export async function DocumentsCard({
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
         <h2 id={`documents-${recordId}`} className="text-base font-semibold text-slate-900">Documents</h2>
         {canWriteDocuments(me) && (
-          <UploadDocumentDialog action={uploadDocument.bind(null, recordType, recordId)} allowCustomerVisible={recordType === "account"} />
+          <UploadDocumentDialog start={startDocumentUpload.bind(null, recordType, recordId)} finish={finishDocumentUpload.bind(null, recordType, recordId)} allowCustomerVisible={recordType === "account"} />
         )}
       </div>
       {list.items.length === 0 ? (

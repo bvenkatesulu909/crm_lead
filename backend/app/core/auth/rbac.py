@@ -114,6 +114,7 @@ class Permission(StrEnum):
     QUOTE_APPROVE = "quote:approve"
     # Organisation settings for quotes (e.g. the discount that needs approval).
     QUOTE_SETTINGS_MANAGE = "quote:settings:manage"
+    BRANDING_MANAGE = "branding:manage"
     # Customer portal: see quotes sent to their company and accept or decline them.
     PORTAL_QUOTE_READ = "portal:quote:read"
     PORTAL_QUOTE_RESPOND = "portal:quote:respond"
@@ -168,9 +169,22 @@ class Permission(StrEnum):
     # evidence. Both still need the right to read the lead or account the check is about.
     WEBCHECK_RUN = "webcheck:run"
     WEBCHECK_READ = "webcheck:read"
+    # Buyer memory (ADR 0028): what we know about a buyer. The lead's own read rules still decide
+    # which leads a person may open.
+    BUYER_MEMORY_READ = "buyer_memory:read"
+    BUYER_MEMORY_WRITE = "buyer_memory:write"
+    # Call recordings (ADR 0030): listen to and read the transcript of a call with a buyer / add
+    # or delete one. The lead's own read rules still decide which leads a person may open.
+    CALL_READ = "call:read"
+    CALL_WRITE = "call:write"
     QUALIFIER_RUN = "qualifier:run"
     QUALIFIER_READ = "qualifier:read"
     QUALIFIER_MANAGE = "qualifier:manage"
+    # The deal desk (ADR 0024): ask the AI reviewers to look at a deal. A sales agent may ask only
+    # about deals they own; the deal must be readable either way.
+    DEAL_DESK_RUN = "deal_desk:run"
+    # Account research (ADR 0024): a one-page brief about an account the person may read.
+    ACCOUNT_RESEARCH_RUN = "account_research:run"
 
 
 _P = Permission
@@ -189,7 +203,10 @@ _SALES_ALL = frozenset(
         _P.COMMUNICATION_SEND, _P.COMMUNICATION_READ_ALL, _P.COMMUNICATION_TEMPLATE_MANAGE,
         _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE, _P.AGENT_READ,
         _P.WEBCHECK_RUN, _P.WEBCHECK_READ,
+        _P.BUYER_MEMORY_READ, _P.BUYER_MEMORY_WRITE,
+        _P.CALL_READ, _P.CALL_WRITE,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
+        _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN,
     }
 )  # fmt: skip
 
@@ -204,6 +221,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.TENANT_ADMIN: _SALES_ALL
     | {_P.TENANT_USER_READ, _P.TENANT_USER_MANAGE, _P.PORTAL_USER_INVITE}
     | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE, _P.AGENT_MANAGE, _P.QUALIFIER_MANAGE}
+    | {_P.BRANDING_MANAGE}
     | {_P.TICKET_READ_ALL, _P.TICKET_MANAGE}
     | _ORDERS_ALL
     | _BILLING_ALL
@@ -223,6 +241,10 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.LEAD_READ_OWN,
             _P.LEAD_WRITE_OWN,
             _P.LEAD_CONVERT,
+            _P.BUYER_MEMORY_READ,
+            _P.BUYER_MEMORY_WRITE,
+            _P.CALL_READ,
+            _P.CALL_WRITE,
             _P.OPPORTUNITY_READ_OWN,
             _P.OPPORTUNITY_WRITE_OWN,
             _P.ACTIVITY_READ_OWN,
@@ -248,6 +270,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.WEBCHECK_RUN,
             _P.WEBCHECK_READ,
             _P.QUALIFIER_RUN,
+            _P.DEAL_DESK_RUN,
+            _P.ACCOUNT_RESEARCH_RUN,
         }
     ),  # fmt: skip
     Role.SUPPORT_AGENT: frozenset(
@@ -268,6 +292,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.AGENT_ACTION_PROPOSE,
             _P.WEBCHECK_RUN,
             _P.WEBCHECK_READ,
+            _P.ACCOUNT_RESEARCH_RUN,
         }
     ),
     Role.CUSTOMER: frozenset(

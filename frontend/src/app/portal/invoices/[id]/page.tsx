@@ -10,10 +10,12 @@ import {
   invoiceNumber,
 } from "@/components/invoices";
 import { OrderLinesTable, formatMoney } from "@/components/orders";
+import { PortalPayByUpi } from "@/components/payment-link-views";
 import { ButtonLink, Card } from "@/components/ui";
 import { ApiError } from "@/lib/api-error";
 import type { PortalAccount, PortalInvoice } from "@/lib/api-types";
 import { formatDate } from "@/lib/format";
+import { openLink, type PaymentLink } from "@/lib/payment-links";
 import { apiFetch } from "@/lib/server/api";
 
 export const metadata: Metadata = { title: "Invoice" };
@@ -45,6 +47,12 @@ export default async function PortalInvoicePage({
   ).catch(() => null);
   const money = (v: string) => formatMoney(v, invoice.currency);
   const owed = invoice.balance_due !== "0.00";
+  // The open UPI link, if staff made one (ADR 0031). Information only: the page works without it.
+  const payLink = owed
+    ? await apiFetch<{ items: PaymentLink[] }>(`/portal/payment-links?invoice_id=${invoice.id}`)
+        .then((data) => openLink(data.items, new Date()))
+        .catch(() => null)
+    : null;
 
   return (
     <>
@@ -59,6 +67,7 @@ export default async function PortalInvoicePage({
         <ButtonLink href={`/portal/tickets/new?account=${invoice.account_id}`} variant="secondary">Question about this invoice?</ButtonLink>
       </div>
 
+      {payLink && <PortalPayByUpi link={payLink} />}
       {owed && (
         <div role="note" className={invoice.payment_state === "overdue" ? "mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-900" : "mb-6 rounded-md border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900"}>
           <p className="font-medium">

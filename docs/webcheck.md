@@ -116,6 +116,37 @@ A real source is added only after the owner has read that site's terms of use an
 against saved copies of the page's layout, and a `terms_note` that records what the terms say. It
 is then switched on per deployment in `CRM_WEBCHECK_SOURCES`. Version 1 ships with demo sources only.
 
+The first real source proposed is **AP RERA** (Andhra Pradesh). Its search is a form that must be
+POSTed back, which the fetcher cannot do yet: [ADR 0019, Amendment A](adr/0019-live-web-check-rera-and-company.md)
+(section 7, accepted 2026-11-09) adds a narrow "form search" shape and the steps WC6a-c.
+
+WC6a is built: `app/core/webfetch.py` has `form_search(spec, query, host=...)` beside `fetch`. It reads
+robots.txt, GETs the source's fixed page, finds the POST form that targets the same path on the same host,
+keeps only the hidden fields on the source's allow-list (each at most 64 KB, the whole form at most 128 KB),
+adds the one query field and the submit button, and POSTs to the same pinned address. A redirect is never
+followed; the answer must be plain, small HTML; one deadline covers the whole check; the per-host limiter
+counts every request. Tests: `tests/test_webfetch_form.py` (and the POST in `test_webfetch_transport.py`).
+
+WC6b is built: the source **`rera_andhra_pradesh`** ("AP RERA (Andhra Pradesh)") in
+`app/modules/webcheck/sources.py`.
+
+- **Query:** one registration number, `P` + 11 digits (stored in capitals). A keyword search is not allowed.
+- **How:** `form_search` on `/RERA/Views/Reports/ApprovedProjectSearch.aspx` (form `HomeForm`; the hidden
+  fields of ADR 0019 7.2 only - the page's sorting fields are never sent).
+- **Reading the answer** (`parse_aprera_results`): the table `ContentPlaceHolder1_gvApprovedProject` must have
+  exactly the seven columns S.No., Application No, Registration No, Project Name, Promoter Name, Place, Status.
+  The one row whose Registration No equals the query and whose Status is "APRERA Registered" is **found**,
+  stored as status **`registered`** (what the page says - not "active"); the message "No Data found on your
+  entered text", or a table without that number, is **not found**; anything else (a changed column, the number
+  twice, another status, another message, more than 50 rows) is **unclear**. The page gives no expiry date.
+  Project, promoter and place are cleaned like every page text.
+- **Tests** run on pages with the real site's structure but invented content (`backend/agent_evals/aprera_site.py`); no real
+  project data is kept in the repository.
+- **Switched on** only by `CRM_WEBCHECK_SOURCES=rera_andhra_pradesh` (also passed by the one-server compose
+  file, empty by default), after the live test of WC6c and the owner's yes.
+- **Live check (WC6c, 2026-11-09, from the development PC):** a public registration number was found and
+  read correctly (status registered), a made-up number came back not found; about 3 seconds per check.
+
 ## Tests
 
 - `tests/test_webfetch.py`, `tests/test_webfetch_transport.py` - the fetcher (fake network, and a
@@ -124,9 +155,80 @@ is then switched on per deployment in `CRM_WEBCHECK_SOURCES`. Version 1 ships wi
 - `tests/db/test_webcheck.py` - requests, record-level denial, tenant isolation, limits, the worker
   job, the insert-only table and retention.
 - `tests/db/test_webcheck_api.py` - the API and the notification.
+- `backend/evals/agents/staff_webcheck.json` - 9 evaluation cases for the assistant's `check_rera`
+  tool: a poisoned registry page, an internal address, a blocked source, the switches, a colleague's
+  lead (docs/agent-evals.md, section 6l). `tests/db/test_agent_evals_webcheck.py` breaks the
+  protections on purpose and expects a case to fail.
 - `frontend/src/lib/webcheck.test.tsx` - words, form and evidence list.
 - `frontend/e2e/webcheck.spec.ts` - the journey in a real browser. Set `CRM_WEBCHECK_DEMO=true` for
   the API and the worker and `E2E_WEBCHECK_DEMO=1` for the test. The test agent asks for several
   checks per run, so set `CRM_WEBCHECK_PER_USER_HOUR=1000` as well when you run it more than once an
   hour (the real limit is 10 per person per hour). Like the other journeys that run the worker
   themselves it expects no standing worker.
+
+## Company details from the company's own website (ADR 0026, step EN2, 2026-11-11)
+
+`app/modules/webcheck/company_site.py` - no database, no model; the API and screens come in EN3/EN4.
+
+- **Which host** (`company_host`, ADR 0019 Amendment B): the lead's website (`https://host`), else
+  the domain of its work e-mail. Refused, each with a fixed message and a stable code: no source
+  (`no_source`), a free mail provider (`free_mail`: gmail, yahoo, outlook, rediffmail, …), an IP
+  address in any spelling - dotted, octal, hex, one big number, IPv6, in brackets (`ip_literal`),
+  a reserved or internal name - `localhost`, `.local`, `.internal`, `.corp`, `.lan`, `.test`,
+  `.example`, `.invalid`, `.arpa`, `.onion`, a single label (`internal_name`), a user name, port or
+  path (`bad_name`), and our own or shared cloud names - `crmlead.co.in`, `googleapis.com`,
+  `amazonaws.com`, `netlify.app`, … (`denied`). Demo sites under `.demo.example` pass only with the
+  demo switched on.
+- **What is read** (`parse_company_page`): schema.org `Organization` data (name, description,
+  `numberOfEmployees`, locality), `og:site_name`, meta description, title - nothing else on the
+  page. Industry only when at least two words of one industry appear and no other industry has as
+  many; size only from a whole employee number between 1 and 5,000,000. All text through
+  `screen()`, capped (name 200, description 300, place 100).
+- **The fetch** (`lookup_company`): home page, then `/about`, through the unchanged `fetch()`
+  (https, port 443, public pinned addresses, robots.txt, 10 s / 1 MB, HTML only, redirects inside
+  the host). A redirect from `example.com` to `www.example.com` is answered by asking
+  `www.example.com` itself; any other refusal is final (no other name is looked up). Result:
+  `found` (an industry or a size), `not_found` (the site answered, nothing to suggest - the website
+  itself is still known) or `unclear` with the fetcher's code.
+
+### The API (step EN3, 2026-11-11)
+
+| Endpoint | Who | What |
+|---|---|---|
+| `POST /api/v1/webcheck/company-details` `{lead_id}` | `webcheck:run` and the lead readable (else 404) | 202; the host is worked out on the server from the lead (website, else work e-mail domain); refused with `422 company_host_<code>` (`no_source`, `free_mail`, `ip_literal`, `internal_name`, `bad_name`, `denied`); `503 company_details_unavailable` while the organisation has it off; `429 company_details_limit_reached` |
+| `GET /api/v1/webcheck/company-details?lead_id=` | `webcheck:read` and the lead readable | the lead's three fields and version, and the newest lookup: verdict, suggested website / industry / size, name, excerpt, pages read, kinds of cleaning |
+| `POST /api/v1/webcheck/company-details/apply` `{lead_id, evidence_id, fields, version}` | `webcheck:run` and the lead writable | saves the named fields with the values **from the stored evidence** (a value in the request is refused) through the normal lead update (`lead.updated`), then audits `lead.enriched` with the fields and the evidence id; `422 field_not_suggested`, `404` for evidence of another lead, `409` for a stale version |
+
+- The worker job `webcheck.company_details` reads the site (`lookup_company`), stores the evidence
+  under source `company_site` (insert-only, 12 months) with `suggestions` (migration 0057) and
+  tells the person (`webcheck.completed`). A refused or unreadable site is stored as an `error`
+  with the fetcher's code; a temporary failure is retried.
+- Company lookups are not listed with the registry checks (`GET /webcheck/evidence`).
+- Registry entry **Company details** (`company_details`): no model, **off** until a tenant
+  administrator switches it on; the web check's platform switch (`CRM_WEBCHECK_DISABLED`) and demo
+  (`CRM_WEBCHECK_DEMO`, the `.demo.example` sites) apply. Limits:
+  `CRM_COMPANY_DETAILS_PER_USER_HOUR` (20) and `CRM_COMPANY_DETAILS_PER_TENANT_DAY` (300).
+
+
+### The screen (EN4, 2026-11-12)
+
+The lead page has a **Company details** card (people who may run or read web checks; hidden when
+the lead cannot be read). "Find company details" asks for the look-up and sends only the lead.
+The newest result lists the website, industry and employee band as *Now* and *Suggested*; a box is
+ticked where the suggestion differs. "Save the ticked details" sends the lead, the evidence id, the
+version and the **names** of the ticked fields - never values: the server takes them from the
+stored evidence, so a changed form cannot put its own value on the lead. Readers without run
+permission see the suggestions but no boxes or buttons. Everything the page said is plain text
+(no links), and a note says what was cleaned. A look-up that failed is explained in words (a
+free-mail address, an internal name, a site that could not be read, the feature switched off).
+
+### How it is tested (EN5, 2026-11-12)
+
+The BP-10 evaluation harness plays conversations of agents that use a model; company details has
+no model and no assistant tool, so it is checked by database tests that play whole demo sites
+through the real API, worker, fetcher and parser (only the network is the in-process demo):
+`tests/db/test_company_details_api.py` (rules, roles, limits, saving) and
+`tests/db/test_company_details_sites.py` (a page with no facts, a redirect to `www.`, a redirect
+to another site, robots refusal, free-mail leads, a forged job with a private host, the same
+request read only once). `frontend/e2e/company-details.spec.ts` runs the journey in a browser
+(needs `CRM_WEBCHECK_DEMO=true` and `E2E_WEBCHECK_DEMO=1`, and no standing worker).

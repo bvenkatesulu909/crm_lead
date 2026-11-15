@@ -8,6 +8,7 @@ counts, and without a price the field is ``null``.
 
 import re
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from app.modules.agents import api as agents_api
@@ -26,8 +27,8 @@ def price(api: Any, input_price: float, output_price: float) -> None:
     settings = api.app.state.settings
     api.app.state.settings = settings.model_copy(
         update={
-            "ai_input_price_per_million": input_price,
-            "ai_output_price_per_million": output_price,
+            "ai_input_price_per_million": Decimal(str(input_price)),
+            "ai_output_price_per_million": Decimal(str(output_price)),
         }
     )
 

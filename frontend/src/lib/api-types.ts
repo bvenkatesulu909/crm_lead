@@ -45,6 +45,52 @@ export const PROPERTY_TYPES = [
 ] as const;
 export type PropertyType = (typeof PROPERTY_TYPES)[number];
 
+/** The company behind a lead (BP-02, ADR 0026): the same keys and bands as the API. */
+export const COMPANY_INDUSTRIES = {
+  agriculture: "Agriculture",
+  automotive: "Automotive",
+  banking_finance: "Banking and finance",
+  construction: "Construction",
+  consulting: "Consulting",
+  education: "Education",
+  energy: "Energy",
+  government: "Government",
+  healthcare: "Healthcare",
+  hospitality: "Hospitality",
+  information_technology: "Information technology",
+  insurance: "Insurance",
+  legal: "Legal",
+  logistics: "Logistics",
+  manufacturing: "Manufacturing",
+  media: "Media and entertainment",
+  non_profit: "Non-profit",
+  pharmaceuticals: "Pharmaceuticals",
+  real_estate: "Real estate",
+  retail: "Retail",
+  telecom: "Telecom",
+  textiles: "Textiles",
+  travel: "Travel and tourism",
+  wholesale: "Wholesale",
+  other: "Other",
+} as const;
+export type CompanyIndustry = keyof typeof COMPANY_INDUSTRIES;
+export const COMPANY_INDUSTRY_KEYS = Object.keys(COMPANY_INDUSTRIES) as [
+  CompanyIndustry,
+  ...CompanyIndustry[],
+];
+export const COMPANY_SIZES = [
+  "1-10",
+  "11-50",
+  "51-200",
+  "201-1000",
+  "1001+",
+] as const;
+export type CompanySize = (typeof COMPANY_SIZES)[number];
+
+/** The language an advisor should call a lead in (ADR 0027). */
+export const PREFERRED_LANGUAGES = ["en", "hi", "te"] as const;
+export type PreferredLanguage = (typeof PREFERRED_LANGUAGES)[number];
+
 export const LEAD_SORTS = {
   "-created_at": "Newest first",
   created_at: "Oldest first",
@@ -70,6 +116,10 @@ export type Lead = {
   budget_min_inr?: number | null;
   budget_max_inr?: number | null;
   location?: string | null;
+  company_website?: string | null;
+  company_industry?: CompanyIndustry | null;
+  company_size?: CompanySize | null;
+  preferred_language?: PreferredLanguage | null;
   owner_id: string | null;
   converted_at: string | null;
   converted_account_id: string | null;
@@ -622,6 +672,7 @@ export const PAYMENT_METHODS = [
   "card",
   "cash",
   "other",
+  "upi",
 ] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
@@ -1425,6 +1476,35 @@ export type WebEvidence = {
 };
 
 export type WebEvidencePage = { items: WebEvidence[] };
+
+/** A lead's company fields as they are now (ADR 0026), with the version to save against. */
+export type CompanyCurrent = {
+  company_website: string | null;
+  company_industry: CompanyIndustry | null;
+  company_size: CompanySize | null;
+  version: number;
+};
+
+/** One lookup of the company's own website: what it suggests and what that rests on (cleaned). */
+export type CompanySuggestion = {
+  id: string;
+  created_at: string;
+  verdict: WebEvidenceVerdict;
+  error_code: string | null;
+  company_website: string | null;
+  company_industry: CompanyIndustry | null;
+  company_size: CompanySize | null;
+  name: string | null;
+  excerpt: string;
+  /** The pages that were read (shown as text, never as links). */
+  pages: string[];
+  cleaned: string[];
+};
+
+export type CompanyDetails = {
+  current: CompanyCurrent;
+  latest: CompanySuggestion | null;
+};
 export type WebCheckSourcePage = { items: WebCheckSource[] };
 
 export type EmailPage = {
@@ -1473,7 +1553,7 @@ export type AgentAction = {
   kind: string;
   /** One line for the approver, e.g. "Change the lead's status to contacted". */
   description: string;
-  target_type: "lead" | "account" | "contact";
+  target_type: "lead" | "account" | "contact" | "opportunity" | "quote";
   target_id: string;
   target_link: string;
   /** The record's name - only if the reader may see that record. */
@@ -1600,4 +1680,74 @@ export type QualifierTrial = {
   missing: string[];
   would_propose: string | null;
   procedure_version: number | null;
+};
+
+/** One of the twelve things buyer memory records about a buyer (ADR 0028). */
+export type BuyerMemoryKey = { key: string; label: string };
+
+/** A fact (source and quote) or an assumption (reason); never edited, a change adds a row. */
+export type BuyerMemoryItem = {
+  id: string;
+  key: string;
+  value: string;
+  status: "fact" | "assumption";
+  source: string | null;
+  source_ref: string | null;
+  quote: string | null;
+  reason: string | null;
+  recorded_by_user_id: string;
+  created_at: string;
+};
+
+/** The newest entry of each key is current; older ones are history; keys with none are gaps. */
+export type BuyerMemory = {
+  keys: BuyerMemoryKey[];
+  current: BuyerMemoryItem[];
+  history: BuyerMemoryItem[];
+  gaps: BuyerMemoryKey[];
+};
+
+/** The rep's brief before a site visit (ADR 0029): built by code, nothing stored. */
+export type SiteBrief = {
+  as_of: string;
+  place: string | null;
+  buyer: {
+    name: string;
+    status: string;
+    source: string | null;
+    owner: string | null;
+    phone: string | null;
+    email: string | null;
+    language: "en" | "hi" | "te" | null;
+    language_label: string | null;
+  };
+  facts: {
+    key: string;
+    label: string;
+    value: string;
+    source: string | null;
+    quote: string | null;
+    recorded_on: string;
+  }[];
+  assumptions: {
+    key: string;
+    label: string;
+    value: string;
+    reason: string | null;
+    recorded_on: string;
+  }[];
+  ask: { kind: "confirm" | "gap"; key: string; label: string; text: string }[];
+  recent: {
+    kind: string;
+    occurred_at: string;
+    subject: string;
+    excerpt: string;
+  }[];
+  tasks: {
+    subject: string;
+    due_at: string | null;
+    priority: string;
+    overdue: boolean;
+  }[];
+  cautions: { code: string; text: string }[];
 };

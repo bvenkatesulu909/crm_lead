@@ -1,0 +1,14 @@
+# Known security advisories we accept for a short time (BP-20, docs/ci-security-gate.md).
+#
+# The `security` CI job fails on every advisory in our Python packages that is not listed here.
+# An entry is a reminder with a deadline, not a permanent "ignore": it needs a reason, and
+# `expires` at most 30 days after `added`. An expired entry fails the job by itself.
+#
+# Example (copy, fill in, keep the reason honest):
+#
+# [[exception]]
+# id = "GHSA-xxxx-xxxx-xxxx"          # or the PYSEC-/CVE- id pip-audit prints
+# package = "example-package"
+# reason = "No fixed release yet; we do not call the affected function (checked 2026-11-10)."
+# added = 2026-11-10
+# expires = 2026-12-10

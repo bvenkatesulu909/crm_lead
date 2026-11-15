@@ -14,6 +14,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# ffmpeg cleans call recordings before they are transcribed (ADR 0030). The worker runs it; the
+# API never does. Installed from Debian's own packages, no extra source.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # Run as a normal user, not root: a bug in the app can't change the container.
 RUN useradd --create-home --uid 10001 crm
 WORKDIR /app

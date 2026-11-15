@@ -94,7 +94,8 @@ def test_the_graph_has_exactly_five_steps_and_none_that_writes() -> None:
     assert nodes == {"read", "web_check", "duplicate_check", "decide", "propose"}
 
 
-def test_langgraph_is_imported_by_the_lead_agent_module_only() -> None:
+def test_langgraph_is_imported_by_the_two_graph_files_only() -> None:
+    # The lead agent's graph (ADR 0022) and the deal desk's (ADR 0024): nowhere else.
     app = Path(__file__).resolve().parents[1] / "app"
     pattern = re.compile(r"^\s*(from|import)\s+langgraph", re.M)
     users = {
@@ -102,4 +103,4 @@ def test_langgraph_is_imported_by_the_lead_agent_module_only() -> None:
         for path in app.rglob("*.py")
         if pattern.search(path.read_text(encoding="utf-8"))
     }
-    assert users == {("modules", "lead_agent", "graph.py")}
+    assert users == {("modules", "lead_agent", "graph.py"), ("modules", "deal_desk", "graph.py")}

@@ -97,8 +97,8 @@ def use(
 def priced(api, input_price: float = 3.0, output_price: float = 15.0) -> None:
     api.app.state.settings = api.app.state.settings.model_copy(
         update={
-            "ai_input_price_per_million": input_price,
-            "ai_output_price_per_million": output_price,
+            "ai_input_price_per_million": Decimal(str(input_price)),
+            "ai_output_price_per_million": Decimal(str(output_price)),
         }
     )
 

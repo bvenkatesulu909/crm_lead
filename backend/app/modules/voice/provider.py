@@ -19,6 +19,26 @@ class SpeechProviderError(Exception):
     """The speech vendor failed or is not configured; the API maps this to 503."""
 
 
+class NoSpeechError(SpeechProviderError):
+    """The recording had no speech in it (not a vendor failure: trying again cannot help)."""
+
+
+@dataclass(frozen=True)
+class TimedSegment:
+    start: float
+    end: float
+    text: str
+
+
+@dataclass(frozen=True)
+class TimedTranscript:
+    """A transcript with the time of each stretch of speech (calls, ADR 0030)."""
+
+    text: str
+    segments: list[TimedSegment]
+    engine: str
+
+
 @dataclass(frozen=True)
 class SynthesizedSpeech:
     audio: bytes
@@ -31,6 +51,33 @@ class SpeechProvider(Protocol):
     async def transcribe(self, data: bytes, filename: str, content_type: str) -> str: ...
 
     async def synthesize(self, text: str) -> SynthesizedSpeech: ...
+
+    async def transcribe_timed(
+        self, data: bytes, filename: str, content_type: str, language: str
+    ) -> TimedTranscript: ...
+
+
+def segments_from_words(
+    words: list[tuple[float, float, str]], *, per_segment: int = 20
+) -> list[TimedSegment]:
+    """Group a vendor's word list into segments of about ``per_segment`` words, closing a segment
+    early after a pause of two seconds or more."""
+    segments: list[TimedSegment] = []
+    current: list[tuple[float, float, str]] = []
+    for word in words:
+        if current and (len(current) >= per_segment or word[0] - current[-1][1] >= 2.0):
+            segments.append(_segment(current))
+            current = []
+        current.append(word)
+    if current:
+        segments.append(_segment(current))
+    return segments
+
+
+def _segment(words: list[tuple[float, float, str]]) -> TimedSegment:
+    return TimedSegment(
+        start=words[0][0], end=words[-1][1], text=" ".join(w[2] for w in words).strip()
+    )
 
 
 class OpenAISpeechProvider:
@@ -80,6 +127,41 @@ class OpenAISpeechProvider:
         if not text:
             raise SpeechProviderError("No speech was detected.")
         return text
+
+    async def transcribe_timed(
+        self, data: bytes, filename: str, content_type: str, language: str
+    ) -> TimedTranscript:
+        # verbose_json (with the time of each segment) needs a Whisper model, not the "mini" one.
+        try:
+            response = await self._client_or_create().post(
+                f"{self._base_url}/audio/transcriptions",
+                headers=self._headers,
+                data={
+                    "model": self._stt_model,
+                    "language": language,
+                    "response_format": "verbose_json",
+                    "timestamp_granularities[]": "segment",
+                },
+                files={"file": (filename, data, content_type or "application/octet-stream")},
+            )
+            response.raise_for_status()
+            body = response.json()
+            text = str(body.get("text", "")).strip()
+            segments = [
+                TimedSegment(
+                    start=float(item.get("start", 0)),
+                    end=float(item.get("end", 0)),
+                    text=str(item.get("text", "")).strip(),
+                )
+                for item in body.get("segments") or []
+                if str(item.get("text", "")).strip()
+            ]
+        except Exception as exc:  # noqa: BLE001 - vendor errors must become a clean error
+            logger.warning("speech transcription failed", extra={"error": type(exc).__name__})
+            raise SpeechProviderError("Speech transcription is unavailable.") from exc
+        if not text:
+            raise NoSpeechError("No speech was detected.")
+        return TimedTranscript(text=text, segments=segments, engine=f"openai:{self._stt_model}")
 
     async def synthesize(self, text: str) -> SynthesizedSpeech:
         try:
@@ -151,6 +233,33 @@ class ElevenLabsSpeechProvider:
             raise SpeechProviderError("No speech was detected.")
         return text
 
+    async def transcribe_timed(
+        self, data: bytes, filename: str, content_type: str, language: str
+    ) -> TimedTranscript:
+        try:
+            response = await self._client_or_create().post(
+                f"{self._base_url}/speech-to-text",
+                headers=self._headers,
+                data={"model_id": self._stt_model, "language_code": language},
+                files={"file": (filename, data, content_type or "application/octet-stream")},
+            )
+            response.raise_for_status()
+            body = response.json()
+            text = str(body.get("text", "")).strip()
+            words = [
+                (float(w.get("start", 0)), float(w.get("end", 0)), str(w.get("text", "")).strip())
+                for w in body.get("words") or []
+                if w.get("type", "word") == "word" and str(w.get("text", "")).strip()
+            ]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("elevenlabs transcription failed", extra={"error": type(exc).__name__})
+            raise SpeechProviderError("Speech transcription is unavailable.") from exc
+        if not text:
+            raise NoSpeechError("No speech was detected.")
+        return TimedTranscript(
+            text=text, segments=segments_from_words(words), engine=f"elevenlabs:{self._stt_model}"
+        )
+
     async def synthesize(self, text: str) -> SynthesizedSpeech:
         try:
             response = await self._client_or_create().post(
@@ -211,6 +320,39 @@ class LocalSpeechProvider:
             raise SpeechProviderError("No speech was detected.")
         return text
 
+    async def transcribe_timed(
+        self, data: bytes, filename: str, content_type: str, language: str
+    ) -> TimedTranscript:
+        import asyncio
+        import tempfile
+        from pathlib import Path
+
+        def run() -> list[TimedSegment]:
+            with tempfile.NamedTemporaryFile(
+                suffix=Path(filename).suffix or ".mp3", delete=False
+            ) as handle:
+                handle.write(data)
+                path = Path(handle.name)
+            try:
+                found, _ = self._model().transcribe(str(path), language=language)
+                return [
+                    TimedSegment(start=float(s.start), end=float(s.end), text=s.text.strip())
+                    for s in found
+                    if s.text.strip()
+                ]
+            finally:
+                path.unlink(missing_ok=True)
+
+        try:
+            segments = await asyncio.to_thread(run)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("local transcription failed", extra={"error": type(exc).__name__})
+            raise SpeechProviderError("Local speech transcription is unavailable.") from exc
+        if not segments:
+            raise NoSpeechError("No speech was detected.")
+        text = " ".join(s.text for s in segments)
+        return TimedTranscript(text=text, segments=segments, engine=f"local:{self._stt_model_name}")
+
     async def synthesize(self, text: str) -> SynthesizedSpeech:
         import asyncio
         import shutil
@@ -249,12 +391,16 @@ class LocalSpeechProvider:
         return SynthesizedSpeech(audio=audio, media_type="audio/wav")
 
 
-def build_speech_provider(settings: Settings) -> SpeechProvider | None:
+def build_speech_provider(
+    settings: Settings, *, stt_model: str | None = None
+) -> SpeechProvider | None:
+    """``stt_model`` replaces the transcription model (calls need a Whisper-class one that gives
+    timestamps) for the OpenAI-compatible and local providers; ElevenLabs keeps its own."""
     if not settings.voice_enabled:
         return None
     if settings.voice_provider == "local":
         return LocalSpeechProvider(
-            stt_model=settings.voice_stt_model,
+            stt_model=stt_model or settings.voice_stt_model,
             tts_model_path=settings.voice_tts_model,
             piper_command=settings.voice_piper_command,
         )
@@ -268,7 +414,11 @@ def build_speech_provider(settings: Settings) -> SpeechProvider | None:
     return provider(
         api_key=settings.voice_api_key.get_secret_value(),
         base_url=settings.voice_base_url,
-        stt_model=settings.voice_stt_model,
+        stt_model=(
+            settings.voice_stt_model
+            if settings.voice_provider == "elevenlabs"
+            else (stt_model or settings.voice_stt_model)
+        ),
         tts_model=settings.voice_tts_model,
         tts_voice=settings.voice_tts_voice,
     )

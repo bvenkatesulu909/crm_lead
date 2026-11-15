@@ -4,20 +4,21 @@ A source names ONE host and builds the address itself; the model and the user on
 which must match the source's pattern. A parser turns a page into a ``CheckRecord`` or says
 "unclear". Parsers are deterministic: no model reads a page.
 
-v1 has only DEMO sources. A real source is added in a later step, after the owner has read that
-site's terms of use and robots.txt (ADR 0019, W2) - and is then switched on per deployment.
+A real source is added only after the owner has read that site's terms of use and robots.txt
+(ADR 0019, W2), and is then switched on per deployment. The first one is AP RERA, whose search is
+a web form (ADR 0019, Amendment A): it is fetched with ``form_search`` instead of an address.
 """
 
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from html.parser import HTMLParser
 from typing import Any, Literal
 from urllib.parse import quote
 
-from app.core.webfetch import FetchResult
+from app.core.webfetch import FetchResult, FormSpec
 from app.modules.webcheck.fake import DEMO_HOST
 from app.modules.webcheck.rules import (
     MAX_RESULTS_READ,
@@ -45,8 +46,12 @@ class Source:
     demo: bool
     query_pattern: re.Pattern[str]
     query_hint: str
-    path_template: str  # "/rera/search?number={q}"
+    path_template: str  # "/rera/search?number={q}"; unused when ``form`` is set
     parser: Parser
+    # A source whose search is a web form (ADR 0019, Amendment A): fetched with ``form_search``.
+    form: FormSpec | None = field(default=None)
+    # Registration numbers that are written in capitals on the registry (e.g. AP RERA's "P...").
+    upper_case: bool = False
 
     def check_query(self, query: str) -> str:
         """The query in its tidy form, or ``InvalidQueryError``. Only a public identifier passes:
@@ -54,10 +59,13 @@ class Source:
         text = re.sub(" +", " ", query.strip())
         if not self.query_pattern.fullmatch(text):
             raise InvalidQueryError(self.query_hint)
-        return text
+        return text.upper() if self.upper_case else text
 
     def url_for(self, query: str) -> str:
-        """The address, built here: the query goes into the query string, percent-encoded."""
+        """The address, built here: the query goes into the query string, percent-encoded. A form
+        source has one fixed page; the query travels in the form, not in the address."""
+        if self.form is not None:
+            return f"https://{self.host}{self.form.path}"
         return f"https://{self.host}{self.path_template.format(q=quote(query, safe=''))}"
 
     def parse(self, result: FetchResult, query: str) -> CheckRecord:
@@ -181,6 +189,149 @@ def parse_rera_page(result: FetchResult, query: str) -> CheckRecord:
     )
 
 
+# --- the AP RERA results page (ADR 0019, Amendment A) -------------------------------------------
+
+APRERA_TABLE_ID = "ContentPlaceHolder1_gvApprovedProject"
+APRERA_NO_RESULT_ID = "ContentPlaceHolder1_Label1"
+APRERA_NO_RESULT = "no data found on your entered text"
+APRERA_COLUMNS = (
+    "s.no.",
+    "application no",
+    "registration no",
+    "project name",
+    "promoter name",
+    "place",
+    "status",
+)
+# The only status words understood, and what is stored for them. Anything else is "unclear".
+APRERA_STATUSES = {"aprera registered": "registered"}
+APRERA_MAX_ROWS = 50  # a search by one number returns one row; a long table is not walked
+
+
+class _GridPage(HTMLParser):
+    """Reads one table, found by its id: the header cells and each body row's cells as text,
+    plus the text of one message element (also found by its id). Scripts and styles are skipped;
+    a link or picture inside a cell is kept as text, so the cleaning reports it."""
+
+    def __init__(self, table_id: str, message_id: str) -> None:
+        super().__init__(convert_charrefs=True)
+        self._table_id = table_id
+        self._message_id = message_id
+        self.tables = 0
+        self.header: list[str] = []
+        self.rows: list[list[str]] = []
+        self.message: str | None = None
+        self.too_many = False
+        self._depth = 0  # how deep inside the wanted table (nested tables are not ours)
+        self._skip = 0
+        self._row: list[str] | None = None
+        self._cell: list[str] | None = None
+        self._header_row = False
+        self._message: list[str] | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        if tag in ("script", "style"):
+            self._skip += 1
+        elif tag == "table" and values.get("id") == self._table_id and self._depth == 0:
+            self.tables += 1
+            self._depth = 1
+        elif tag == "table" and self._depth:
+            self._depth += 1
+        elif tag == "tr" and self._depth == 1:
+            self._row, self._header_row = [], False
+        elif tag in ("td", "th") and self._row is not None and self._depth == 1:
+            self._cell = []
+            self._header_row = self._header_row or tag == "th"
+        elif values.get("id") == self._message_id and self.message is None:
+            self._message = []
+        elif self._cell is not None and tag == "img" and values.get("src"):
+            self._cell.append(f" ![]({values['src']}) ")
+        elif self._cell is not None and tag == "a" and values.get("href"):
+            self._cell.append(f" {values['href']} ")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ("script", "style") and self._skip:
+            self._skip -= 1
+        elif tag in ("td", "th") and self._cell is not None and self._row is not None:
+            self._row.append(" ".join("".join(self._cell).split()))
+            self._cell = None
+        elif tag == "tr" and self._row is not None and self._depth == 1:
+            if self._header_row and not self.header:
+                self.header = self._row
+            elif len(self.rows) < APRERA_MAX_ROWS:
+                self.rows.append(self._row)
+            else:
+                self.too_many = True
+            self._row = None
+        elif tag == "table" and self._depth:
+            self._depth -= 1
+        elif tag == "span" and self._message is not None:
+            self.message = " ".join("".join(self._message).split())
+            self._message = None
+
+    def handle_data(self, data: str) -> None:
+        if self._skip:
+            return
+        if self._cell is not None:
+            self._cell.append(data)
+        elif self._message is not None:
+            self._message.append(data)
+
+
+def parse_aprera_results(result: FetchResult, query: str) -> CheckRecord:
+    """The AP RERA approved-project search: found (registered), not found, or unclear. Only the
+    row whose Registration No equals the query is read; anything unexpected is "unclear"."""
+    refused = _not_a_normal_answer(result, "text/html")
+    if refused is not None:
+        return refused
+    page = _GridPage(APRERA_TABLE_ID, APRERA_NO_RESULT_ID)
+    page.feed(result.body.decode("utf-8", errors="replace"))
+    page.close()
+    if page.tables == 0:
+        if page.message is not None and page.message.casefold() == APRERA_NO_RESULT:
+            return CheckRecord(
+                "not_found", None, None, None, "No approved project with this number was found."
+            )
+        return unclear("The page layout was not recognised.")
+    if page.tables > 1 or page.too_many:
+        return unclear("The page layout was not recognised.")
+    if tuple(cell.casefold() for cell in page.header) != APRERA_COLUMNS:
+        return unclear("The results table has changed, so it cannot be read with certainty.")
+    if any(len(row) != len(APRERA_COLUMNS) for row in page.rows):
+        return unclear("A row of the results table could not be read.")
+    wanted = query.strip().upper()
+    matches = [row for row in page.rows if row[2].strip().upper() == wanted]
+    if not matches:
+        return CheckRecord(
+            "not_found", None, None, None, "No approved project with this number was found."
+        )
+    if len(matches) > 1:
+        return unclear("The number appears more than once, so it cannot be read with certainty.")
+    _, _, registration, project, promoter, place, status_text = matches[0]
+    status = APRERA_STATUSES.get(" ".join(status_text.split()).casefold())
+    if status is None:
+        return unclear("The page does not give a status that is understood.")
+    name, name_codes = clean_text(project, NAME_MAX)
+    promoter_text, promoter_codes = clean_text(promoter, NAME_MAX)
+    place_text, place_codes = clean_text(place, NAME_MAX)
+    fields = [
+        ("Registration", registration.strip().upper()),
+        ("Project", name or "-"),
+        ("Promoter", promoter_text or "-"),
+        ("Place", place_text or "-"),
+        ("Status", "APRERA Registered"),
+    ]
+    return CheckRecord(
+        "found",
+        name or None,
+        status,
+        None,
+        build_excerpt(fields),
+        merge_codes(name_codes, promoter_codes, place_codes),
+    )
+
+
 # --- parsing a JSON company list ----------------------------------------------------------------
 
 
@@ -224,6 +375,14 @@ def parse_company_json(result: FetchResult, query: str) -> CheckRecord:
 
 # --- the catalogue ------------------------------------------------------------------------------
 
+_APRERA_NOTE = (
+    "AP RERA terms of use (rera.ap.gov.in/RERA/Views/termsandconditions.aspx, read 2026-11-09): "
+    "by using the site you accept its terms; the content 'should not be interpreted as a statement "
+    "of law or used for any legal purposes'; doubts are to be checked with the department. No "
+    "clause about automated access was found and the site has no robots.txt. One check is two "
+    "requests to the public approved-project search; nothing is logged in or bypassed."
+)
+
 _DEMO_NOTE = (
     "Demo source: a fictional registry served inside the CRM for tests and local trials. "
     "It never contacts a real site."
@@ -253,6 +412,35 @@ SOURCES: dict[str, Source] = {
         query_hint="A company name has 3 to 120 letters, digits, spaces or . , & ' ( ) -",
         path_template="/api/companies?name={q}",
         parser=parse_company_json,
+    ),
+    "rera_andhra_pradesh": Source(
+        key="rera_andhra_pradesh",
+        title="AP RERA (Andhra Pradesh)",
+        kind="rera",
+        host="rera.ap.gov.in",
+        terms_note=_APRERA_NOTE,
+        demo=False,
+        query_pattern=re.compile(r"[Pp][0-9]{11}", re.ASCII),
+        query_hint="An AP RERA registration number is P followed by 11 digits, e.g. P12250106962.",
+        path_template="",
+        parser=parse_aprera_results,
+        form=FormSpec(
+            path="/RERA/Views/Reports/ApprovedProjectSearch.aspx",
+            query_field="ctl00$ContentPlaceHolder1$txtName",
+            submit=("ctl00$ContentPlaceHolder1$btnSubmit", "Search"),
+            hidden_fields=(
+                "__EVENTTARGET",
+                "__EVENTARGUMENT",
+                "__VIEWSTATE",
+                "__VIEWSTATEGENERATOR",
+                "__SCROLLPOSITIONX",
+                "__SCROLLPOSITIONY",
+                "__VIEWSTATEENCRYPTED",
+                "__EVENTVALIDATION",
+            ),
+            required=("__VIEWSTATE", "__EVENTVALIDATION"),
+        ),
+        upper_case=True,
     ),
 }
 

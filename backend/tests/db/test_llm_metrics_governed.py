@@ -7,6 +7,7 @@ call must be counted under THAT agent, a failed call too, and nothing may stay b
 
 import re
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -47,8 +48,8 @@ class Metered:
             seconds=0.1,
             input_tokens=400,
             output_tokens=100,
-            input_price_per_million=1.0,
-            output_price_per_million=2.0,
+            input_price_per_million=Decimal("1"),
+            output_price_per_million=Decimal("2"),
         )
         return ModelReply("hello", usage={"input_tokens": 400, "output_tokens": 100})
 
@@ -73,7 +74,7 @@ def gate(ctx: Ctx, model: Metered, key: str) -> Any:
     return governed(model, ctx.session, ctx.alpha, key, LIMITS, clock=lambda: NOW)
 
 
-def test_the_catalogue_has_the_six_model_agents() -> None:
+def test_the_catalogue_has_the_nine_model_agents() -> None:
     # The web check uses no model and the MCP client's model runs outside the CRM.
     assert set(MODEL_AGENTS) == {
         "staff_assistant",
@@ -82,6 +83,9 @@ def test_the_catalogue_has_the_six_model_agents() -> None:
         "knowledge_answers",
         "qualifier",
         "lead_agent",
+        "deal_desk",
+        "deck_writer",
+        "account_research",
     }
 
 

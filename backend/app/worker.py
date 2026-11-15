@@ -33,12 +33,17 @@ from app.core.storage import FileStore, build_file_store
 from app.modules.activities import api as activities_api
 from app.modules.approvals import api as approvals_api
 from app.modules.assistant import api as assistant_api
+from app.modules.calls import api as calls_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
+from app.modules.deal_desk import api as deal_desk_api
+from app.modules.documents import api as documents_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
 from app.modules.lead_agent import api as lead_agent_api
 from app.modules.notifications import api as notifications_api
+from app.modules.payment_links import api as payment_links_api
+from app.modules.proposal_decks import api as proposal_decks_api
 from app.modules.public_chat import api as public_chat_api
 from app.modules.qualifier import api as qualifier_api
 from app.modules.quotes import api as quotes_api
@@ -73,7 +78,13 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
             services.mailer, services.settings.web_app_url
         ),
         communications_api.EMAIL_JOB: communications_api.email_job_handler(services.mailer),
+        calls_api.JOB_KIND: calls_api.job_handler(services.file_store, services.settings),
+        calls_api.CLIP_JOB_KIND: calls_api.clip_job_handler(services.file_store, services.settings),
+        payment_links_api.APPLY_JOB: payment_links_api.apply_job_handler(),
+        proposal_decks_api.JOB: proposal_decks_api.job_handler(services.file_store),
+        proposal_decks_api.JOB_PPTX: proposal_decks_api.job_handler(services.file_store),
         webcheck_api.CHECK_JOB: webcheck_api.check_job_handler(services.settings),
+        webcheck_api.COMPANY_JOB: webcheck_api.company_job_handler(services.settings),
         # Domain events (ADR 0006): every "event.<name>" job goes to its subscribers.
         **dispatcher(
             merge_subscribers(
@@ -112,6 +123,8 @@ def run_schedules(
     limit = settings.workflow_actions_per_hour if settings else 500
     retention = settings.public_chat_retention_days if settings else 30
     staff_hours = settings.staff_conversation_retention_hours if settings else 24
+    # Direct uploads (ADR 0025) leave pending files to remove: the sweep needs the store.
+    files: FileStore | None = build_file_store(settings) if settings else None
     for tenant_id in tenant_ids:
         # Each tenant's scheduled work runs in its own transaction with app.tenant_id set.
         with session_factory() as session, session.begin():
@@ -138,6 +151,32 @@ def run_schedules(
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += webcheck_api.delete_expired(session, now, tenant_id=tenant_id)
+            # Deal reviews older than the retention (ADR 0024): deleted.
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += deal_desk_api.delete_expired(session, now, tenant_id=tenant_id)
+                count += deal_desk_api.delete_expired_briefs(session, now, tenant_id=tenant_id)
+            # Direct uploads a day old (ADR 0025): the row and any pending file left behind.
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += documents_api.delete_stale_uploads(
+                    session, files, now, tenant_id=tenant_id
+                )
+                count += knowledge_api.delete_stale_knowledge_uploads(
+                    session, files, now, tenant_id=tenant_id
+                )
+            # Call recordings (ADR 0030): uploads never finished are expired, and the audio of
+            # finished ones is deleted after the retention (the transcript stays).
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += calls_api.expire_stale_uploads(session, files, now, tenant_id=tenant_id)
+                count += calls_api.delete_old_audio(
+                    session,
+                    files,
+                    now,
+                    tenant_id=tenant_id,
+                    retention_days=settings.calls_retention_days if settings else 90,
+                )
             # AI proposals nobody decided on in time (ADR 0014): expired, requester told.
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
@@ -155,6 +194,8 @@ def dead_job_handlers() -> dict[str, DeadJobHandler]:
     return {
         quotes_api.EMAIL_JOB: quotes_api.email_failed_handler(),
         communications_api.EMAIL_JOB: communications_api.email_failed_handler(),
+        calls_api.JOB_KIND: calls_api.dead_job_handler(),
+        calls_api.CLIP_JOB_KIND: calls_api.clip_dead_job_handler(),
     }
 
 

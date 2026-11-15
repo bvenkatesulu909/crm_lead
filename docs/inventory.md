@@ -1,6 +1,6 @@
 # Project inventory (generated)
 
-*Generated on 2026-11-06 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
+*Generated on 2026-11-15 by `python -m scripts.report_inventory` (run in `backend/` with the venv active).*
 
 This file records counts and routes, not design decisions. Do not edit it by hand -
 re-run the command. The 18 October 2026 audit is in [gap-analysis.md](gap-analysis.md)
@@ -8,61 +8,70 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## API (from `docs/api/openapi.json`)
 
-- **228** operations over **183** paths and **266** schemas.
+- **275** operations over **219** paths and **324** schemas.
 - If this contract is stale, run `python -m scripts.export_openapi`.
 
 | Tag | Operations |
 |---|---|
-| portal | 19 |
-| quotes | 17 |
+| portal | 24 |
+| quotes | 18 |
 | leads | 13 |
+| calls | 11 |
 | catalogue | 11 |
 | communications | 11 |
 | user administration | 11 |
 | assistant | 10 |
+| knowledge | 10 |
 | opportunities | 10 |
 | accounts | 9 |
 | contracts | 9 |
 | tickets | 9 |
 | activities | 8 |
+| documents | 8 |
 | invoices | 8 |
-| knowledge | 8 |
 | contacts | 7 |
 | qualifier | 7 |
 | workflows | 7 |
+| webcheck | 6 |
 | approvals | 5 |
-| documents | 5 |
+| branding | 5 |
 | notifications | 5 |
 | orders | 5 |
+| proposal-decks | 5 |
 | reports | 5 |
+| buyer-memory | 4 |
 | agents | 3 |
 | customer relationships | 3 |
 | identity | 3 |
 | portal access | 3 |
 | voice | 3 |
-| webcheck | 3 |
+| account-research | 2 |
+| deal-desk | 2 |
 | health | 2 |
 | onboarding | 2 |
+| payment-links | 2 |
 | portal-knowledge | 2 |
 | public chat | 2 |
 | dashboard | 1 |
+| integrations | 1 |
 | lead-agent | 1 |
 | platform | 1 |
+| site-brief | 1 |
 
 ## Database (live)
 
-- Alembic revision: **0051**
-- Tables in the current schema: **67**
-- Tables with Row-Level Security: **63** (63 policies)
+- Alembic revision: **0067**
+- Tables in the current schema: **78**
+- Tables with Row-Level Security: **74** (74 policies)
 
 ## Migrations (from `backend/alembic/versions/`)
 
-- Migration files: **51**
-- Heads: `0051`
+- Migration files: **67**
+- Heads: `0067`
 
 ## Web app (`frontend/src/app`)
 
-- 81 pages and 15 route handlers.
+- 83 pages and 17 route handlers.
 
 | Route | Kind |
 |---|---|
@@ -89,6 +98,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/automation/agents` | page |
 | `/automation/new` | page |
 | `/automation/qualifier` | page |
+| `/branding` | page |
 | `/chat` | page |
 | `/communications` | page |
 | `/communications/templates` | page |
@@ -136,10 +146,12 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/portal/orders/[id]` | page |
 | `/portal/quotes` | page |
 | `/portal/quotes/[id]` | page |
+| `/portal/quotes/[id]/deck` | route handler |
 | `/portal/quotes/[id]/pdf` | route handler |
 | `/portal/tickets` | page |
 | `/portal/tickets/[id]` | page |
 | `/portal/tickets/new` | page |
+| `/print/leads/[id]/brief` | page |
 | `/print/quotes/[id]` | page |
 | `/products` | page |
 | `/products/[id]` | page |
@@ -148,6 +160,7 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 | `/profile` | page |
 | `/quotes` | page |
 | `/quotes/[id]` | page |
+| `/quotes/[id]/deck` | route handler |
 | `/quotes/[id]/edit` | page |
 | `/quotes/[id]/pdf` | route handler |
 | `/quotes/new` | page |
@@ -165,10 +178,10 @@ and the current status is in [CLAUDE.md](../CLAUDE.md).
 
 ## Tests
 
-- Backend test files: **171**
-- Frontend component test files: **36**
-- Playwright end-to-end specs: **32**
+- Backend test files: **226**
+- Frontend component test files: **50**
+- Playwright end-to-end specs: **44**
 
 ## Documentation
 
-- Markdown documents under `docs/`: **79** (25 in `docs/adr/`)
+- Markdown documents under `docs/`: **98** (35 in `docs/adr/`)

@@ -385,7 +385,7 @@ Design: [docs/qualifier.md](docs/qualifier.md), accepted 2026-10-31 with the six
 | QA4 | Screens: lead card with the Qualify button, admin page with a dry run, notifications |
 | QA5 | BP-10 evaluation cases, final docs, Playwright journey, full runs - done 2026-11-02 (journey written, not run) |
 
-## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 accepted 2026-10-30; WC0, WC1, WC2a, WC2b, WC2c, WC3, WC4 done)*
+## Phase WC — Live web check of a RERA number or a company (BP-15)  *(ADR 0019 accepted 2026-10-30; WC0-WC5 done - phase complete 2026-11-08)*
 
 Accepted 2026-10-30 with the recommended answers to the five questions in ADR 0019.
 
@@ -398,7 +398,8 @@ Accepted 2026-10-30 with the recommended answers to the five questions in ADR 00
 | WC2c | `webcheck` API: `POST /webcheck/checks`, `GET /webcheck/evidence`, schemas, OpenAPI, inventory |
 | WC3 | Agent registry entry (no model), staff assistant tool `check_rera`, limits |
 | WC4 | Screens: Check button and Evidence card on lead and account pages |
-| WC5 | BP-10 cases, `docs/webcheck.md`, Playwright journey, full runs |
+| WC5 | BP-10 cases, `docs/webcheck.md`, Playwright journey, full runs (done 2026-11-08) |
+| WC6a-c | First real source, AP RERA, through a narrow form search (ADR 0019 Amendment A, accepted 2026-11-09): fetcher shape, parser on saved copies, one live check with the owner's yes |
 ## Phase 16 — Marketing Management (Module 7)
 
 **Acceptance criteria**
@@ -440,6 +441,37 @@ Accepted 2026-10-31 with the recommended answers to the five questions in ADR 00
 | MCP5b | Three `propose_*` tools in `mcp-server`, catalogue + `docs/mcp-tools.md`, rules and injection tests |
 | MCP5c | Provenance on the approval card, entry on the AI agents page |
 | MCP5d | Live tests, docs, full runs |
+
+## Phase DD — Deal desk and parallel account research (CRM-114)  *(ADR 0024 accepted 2026-11-08 with the recommended answers; DD0-DD4 done; the deal desk ON by default since 2026-11-08)*
+
+The newer CRM-114 title asks for a multi-agent deal desk and parallel account research; ADR 0022's
+lead agent (built from an older title) stays as it is. Details and the eight questions: ADR 0024.
+
+| Step | Content |
+|---|---|
+| DD0 | ADR 0024 + this plan (documents only) |
+| DD1 | Fact sheets for the three reviewers, built by code through each module's `api.py`; permission, tenant, record-level and ID-tampering tests |
+| DD2 | The graph (parallel reviewers, desk lead, citation and answer checks), registry entry `deal_desk` (off), migration, limits, audit |
+| DD3 | API and the "Review this deal" card; scripted model |
+| DD4 | Account research: four gatherers, writer, `account_briefs`, registry entry `account_research` (off), API and the account card |
+| DD5 | BP-10 cases and a Playwright journey - done 2026-11-08 (28 cases; journey covers both) |
+| DD6 | `docs/deal-desk.md`, one real-model run (owner's yes), full runs - done 2026-11-08 (DeepSeek run: 8 of 13 live cases, no safety failure) |
+
+## Phase DU — Large files through signed links (ADR 0025, accepted 2026-11-10)
+
+Netlify refuses requests of 6 MB or more, so uploads (and probably downloads) above about 5 MB fail in
+the live set-up although the CRM allows 20 MB. Files go straight between the browser and the private
+file store through short-lived signed links; the API still decides who may do what and checks every
+file exactly as today. Details and the five questions: ADR 0025.
+
+| Step | Content |
+|---|---|
+| DU0 | Measurements on staging (download limit; POST policy and CORS on SeaweedFS and Google Cloud Storage); documents only - **done 2026-11-10**: both stores enforce a POST policy's size; GCS needs a CORS rule (DU5) |
+| DU1 | Signed upload / download, stat and copy in `app/core/storage.py` - done 2026-11-10 |
+| DU2 | Documents: start + finish an upload through a pending object, the sweep, all rule tests - done 2026-11-10 |
+| DU3 | Knowledge documents; downloads (documents, portal, quote PDFs) by 302 to a signed link - DU3a (downloads) and DU3b (knowledge uploads) done 2026-11-10 |
+| DU4 | Web app: direct upload with progress, CSP `connect-src`, Playwright with a 15 MB file - done 2026-11-10 |
+| DU5 | Staging bucket CORS + lifecycle, a real 15 MB upload and download, checklist ticked - done 2026-11-10 |
 
 ## Phase 19 — External Integrations (Module 17)  *(CRM MCP server: ADR 0015, steps MCP0-MCP6; MCP1 done 2026-10-26)*
 

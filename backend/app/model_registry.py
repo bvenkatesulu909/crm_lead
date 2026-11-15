@@ -14,10 +14,14 @@ from app.modules.agents import models as agents_models
 from app.modules.approvals import models as approvals_models
 from app.modules.assistant import models as assistant_models
 from app.modules.assistant import staff_models as staff_assistant_models
+from app.modules.branding import models as branding_models
+from app.modules.buyer_memory import models as buyer_memory_models
+from app.modules.calls import models as calls_models
 from app.modules.catalog import models as catalog_models
 from app.modules.communications import models as communications_models
 from app.modules.contacts import models as contacts_models
 from app.modules.contracts import models as contracts_models
+from app.modules.deal_desk import models as deal_desk_models
 from app.modules.documents import models as documents_models
 from app.modules.identity import models as identity_models
 from app.modules.invoices import models as invoices_models
@@ -25,6 +29,8 @@ from app.modules.knowledge import models as knowledge_models
 from app.modules.leads import models as leads_models
 from app.modules.notifications import models as notifications_models
 from app.modules.orders import models as orders_models
+from app.modules.payment_links import models as payment_links_models
+from app.modules.proposal_decks import models as proposal_decks_models
 from app.modules.public_chat import models as public_chat_models
 from app.modules.qualifier import models as qualifier_models
 from app.modules.quotes import models as quotes_models
@@ -43,6 +49,9 @@ __all__ = [
     "heartbeat_models",
     "catalog_models",
     "approvals_models",
+    "buyer_memory_models",
+    "branding_models",
+    "calls_models",
     "communications_models",
     "contacts_models",
     "contracts_models",
@@ -53,6 +62,7 @@ __all__ = [
     "leads_models",
     "notifications_models",
     "orders_models",
+    "payment_links_models",
     "outbox_models",
     "public_chat_models",
     "qualifier_models",
@@ -61,6 +71,8 @@ __all__ = [
     "staff_assistant_models",
     "support_models",
     "webcheck_models",
+    "deal_desk_models",
+    "proposal_decks_models",
     "workflows_models",
 ]
 

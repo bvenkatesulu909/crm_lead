@@ -7,7 +7,7 @@
 # KC_BOOTSTRAP_ADMIN_USERNAME, KC_BOOTSTRAP_ADMIN_PASSWORD, CRM_WEB_URL, CRM_WEB_CLIENT_SECRET,
 # CRM_USER_ADMIN_CLIENT_SECRET, SMTP_HOST, SMTP_PORT, SMTP_FROM, SMTP_USER, SMTP_PASSWORD.
 
-FROM quay.io/keycloak/keycloak:26.4.7
+FROM quay.io/keycloak/keycloak:26.7.5
 
 # Options that must be fixed when Keycloak is "built" (not changeable later by environment).
 ENV KC_DB=postgres \

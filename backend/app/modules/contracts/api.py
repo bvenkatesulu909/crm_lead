@@ -1,15 +1,18 @@
 """Public interface of the contracts module: what other modules and the worker may import."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
 from app.modules.contracts import repository, service
+from app.modules.contracts.models import Contract
+from app.modules.contracts.policies import readable_contracts
 from app.modules.contracts.rules import label
 
-__all__ = ["label", "contract_brief", "contract_people", "run_schedules"]
+__all__ = ["label", "contract_brief", "contract_people", "next_renewal", "run_schedules"]
 
 
 def contract_brief(
@@ -24,6 +27,27 @@ def contract_brief(
         contract.owner_id,
         contract.created_by_user_id,
     )
+
+
+def next_renewal(
+    session: Session, principal: Principal, account_id: uuid.UUID
+) -> tuple[uuid.UUID, str, date] | None:
+    """(id, "CT-0007", end date) of the active contract of an account that ends first, among
+    those this person may read; None when there is none (the deal desk, ADR 0024)."""
+    row = session.execute(
+        select(Contract.id, Contract.number, Contract.end_date)
+        .where(
+            Contract.account_id == account_id,
+            Contract.status == "active",
+            Contract.end_date.is_not(None),
+            readable_contracts(principal),
+        )
+        .order_by(Contract.end_date)
+        .limit(1)
+    ).first()
+    if row is None or row.end_date is None:
+        return None
+    return row.id, label(row.number), row.end_date
 
 
 def contract_people(

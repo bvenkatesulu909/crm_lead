@@ -7,6 +7,7 @@ tenant, a person or any text (ADR 0016).
 """
 
 import threading
+from decimal import Decimal
 
 import pytest
 
@@ -37,8 +38,8 @@ def call(**changes: object) -> None:
             "seconds": 0.2,
             "input_tokens": 1000,
             "output_tokens": 500,
-            "input_price_per_million": 3.0,
-            "output_price_per_million": 15.0,
+            "input_price_per_million": Decimal("3"),
+            "output_price_per_million": Decimal("15"),
             **changes,
         }  # type: ignore[arg-type]
     )

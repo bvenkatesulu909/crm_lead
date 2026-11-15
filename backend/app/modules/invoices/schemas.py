@@ -17,7 +17,7 @@ InvoiceStatus = Literal["draft", "issued", "discarded"]
 PaymentStateName = Literal[
     "draft", "discarded", "open", "partially_paid", "overdue", "paid", "credited"
 ]
-PaymentMethod = Literal["bank_transfer", "card", "cash", "other"]
+PaymentMethod = Literal["bank_transfer", "card", "cash", "other", "upi"]
 InvoiceFilter = Literal["draft", "unpaid", "overdue", "paid", "discarded"]
 InvoiceSort = Literal["-created_at", "created_at", "due_date", "-total"]
 

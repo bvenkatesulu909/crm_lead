@@ -56,6 +56,19 @@ x-api-environment: &api-environment
   CRM_DEEPSEEK_MODEL: ${CRM_DEEPSEEK_MODEL:-deepseek-chat}
   # OpenRouter only: up to 2 comma-separated models tried in order when the first one fails.
   CRM_DEEPSEEK_FALLBACK_MODELS: ${CRM_DEEPSEEK_FALLBACK_MODELS:-}
+  # The most a model may write in one answer. Free models that think before answering need more.
+  CRM_ASSISTANT_MAX_TOKENS: ${CRM_ASSISTANT_MAX_TOKENS:-1024}
+  # Off on a server: the browser's own speech engine sends the audio to Google/Apple/Microsoft.
+  CRM_VOICE_BROWSER_ENGINE: ${CRM_VOICE_BROWSER_ENGINE:-false}
+  # Real registries for the web check (ADR 0019), comma-separated keys. Empty: none is contacted.
+  CRM_WEBCHECK_SOURCES: ${CRM_WEBCHECK_SOURCES:-}
+  # UPI payments through Razorpay (ADR 0031): off unless the owner sets the mode to "test" and
+  # types the three values below into .env. They are never generated and never committed. The
+  # go-live flag is deliberately NOT passed here: a live key is a separate decision (ADR 0007).
+  CRM_RAZORPAY_MODE: ${CRM_RAZORPAY_MODE:-off}
+  CRM_RAZORPAY_KEY_ID: ${CRM_RAZORPAY_KEY_ID:-}
+  CRM_RAZORPAY_KEY_SECRET: ${CRM_RAZORPAY_KEY_SECRET:-}
+  CRM_RAZORPAY_WEBHOOK_SECRET: ${CRM_RAZORPAY_WEBHOOK_SECRET:-}
   # For the estimated cost on the AI agents page (US dollars per million tokens; 0 = no estimate).
   CRM_AI_INPUT_PRICE_PER_MILLION: ${CRM_AI_INPUT_PRICE_PER_MILLION:-0}
   CRM_AI_OUTPUT_PRICE_PER_MILLION: ${CRM_AI_OUTPUT_PRICE_PER_MILLION:-0}
@@ -168,8 +181,10 @@ services:
     build:
       context: ../../infrastructure/keycloak
       dockerfile: Dockerfile.production
-    image: crm-lead-keycloak:26.4.7-production
+    image: crm-lead-keycloak:26.7.5-production
     restart: unless-stopped
+    # Keycloak 26.7 waits 10 s for requests to finish when it stops; give it time.
+    stop_grace_period: 30s
     environment:
       KC_HOSTNAME: https://${LOGIN_HOST:?run bin/make_env.py}
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
@@ -178,6 +193,8 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-keycloak-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?run bin/make_env.py}
       KC_HEALTH_ENABLED: "true"
+      # Its "clients have not been logged out" warnings name the person's e-mail: errors only.
+      KC_LOG_LEVEL: info,org.keycloak.services.managers.AuthenticationManager:error
       # Substituted into the realm file (infrastructure/keycloak/realm-crm-production.json).
       CRM_WEB_URL: ${WEB_URL}
       CRM_WEB_CLIENT_SECRET: ${CRM_WEB_CLIENT_SECRET:?run bin/make_env.py}
@@ -193,14 +210,15 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      # The image has no curl: bash opens a TCP connection to the management port and checks that
-      # /health/ready reports "UP".
+      # The image has no curl: bash opens a TCP connection to the management port and reads the
+      # status line of /health/ready - 200 only when Keycloak is ready, 503 while it starts or
+      # updates its database. (The body cannot be searched for "UP": one sub-check always says UP.)
       test:
         - CMD-SHELL
         - >-
           exec 3<>/dev/tcp/127.0.0.1/9000 &&
           printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
-          grep -q '"status": *"UP"' <&3
+          head -n 1 <&3 | grep -q ' 200 '
       interval: 10s
       timeout: 5s
       retries: 30
@@ -212,7 +230,7 @@ services:
 
   caddy:
     # The only service the internet can reach: ports 80 (certificate checks, redirect) and 443.
-    image: caddy:2.10.2-alpine
+    image: caddy:2.11.6-alpine
     restart: unless-stopped
     environment:
       API_HOST: ${API_HOST}

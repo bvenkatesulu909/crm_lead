@@ -1,27 +1,43 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from "react";
 
 import { buttonClass, cx } from "@/components/ui";
 import {
+  CHAT_LANGUAGES,
+  CHAT_LANGUAGE_NAMES,
   CHAT_MESSAGE_MAX,
+  CHAT_TEXT,
+  SPEECH_LANG,
   type ChatAnswer,
+  type ChatLanguage,
   type ChatProblem,
   chatErrorText,
   checkVisitorMessage,
+  pickLanguage,
 } from "@/lib/public-chat";
+import {
+  createRecognition,
+  speechRecognitionAvailable,
+  type SpeechRecognitionLike,
+} from "@/lib/speech";
 
 type Line = { role: "visitor" | "assistant"; text: string };
-
-const GREETING =
-  "Hello! I can help you find a home. Tell me what you are looking for - the type of " +
-  "property, your budget and the area - and leave your name and phone number so an advisor " +
-  "can call you.";
 
 /**
  * The website chat for home buyers (ADR 0013). Talks only to our own /api/public-chat route;
  * the conversation token lives in an httpOnly cookie this code can't read. Every answer is
  * shown as plain text (React escapes it), so a reply can never load images or links.
+ *
+ * Hindi and Telugu (ADR 0027): the visitor picks a language; the words on this page, the
+ * answers and the language written on the lead follow it. Speaking and hearing use the
+ * browser's own speech - this code never receives audio, only the words it recognised.
  */
 export function PublicChat({
   privacyUrl,
@@ -36,10 +52,89 @@ export function PublicChat({
   const [sending, setSending] = useState(false);
   const [saved, setSaved] = useState(false);
   const end = useRef<HTMLLIElement>(null);
+  // null until the visitor chooses: then the browser's own language, if it is one of ours.
+  const [choice, setChoice] = useState<ChatLanguage | null>(null);
+  const browserLanguage = useSyncExternalStore(
+    () => () => {},
+    () => pickLanguage(navigator.languages),
+    () => "en" as ChatLanguage,
+  );
+  const language = choice ?? browserLanguage;
+  const words = CHAT_TEXT[language];
+  const [listening, setListening] = useState(false);
+  const [readAloud, setReadAloud] = useState(false);
+  const recognition = useRef<SpeechRecognitionLike | null>(null);
+  const canListen = useSyncExternalStore(
+    () => () => {},
+    speechRecognitionAvailable,
+    () => false,
+  );
+  const canSpeak = useSyncExternalStore(
+    () => () => {},
+    () => "speechSynthesis" in window,
+    () => false,
+  );
 
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "end" });
   }, [lines]);
+
+  // Leaving the page stops the microphone and any voice that is still talking.
+  useEffect(
+    () => () => {
+      recognition.current?.stop();
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    },
+    [],
+  );
+
+  function chooseLanguage(next: ChatLanguage) {
+    recognition.current?.stop();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setChoice(next);
+  }
+
+  function toggleReadAloud(on: boolean) {
+    setReadAloud(on);
+    if (!on && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+
+  function speak(reply: string) {
+    if (!("speechSynthesis" in window)) return;
+    const utterance = new SpeechSynthesisUtterance(reply);
+    utterance.lang = SPEECH_LANG[language];
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function toggleListening() {
+    if (listening) {
+      recognition.current?.stop();
+      return;
+    }
+    const heard = createRecognition();
+    if (!heard) return;
+    const before = text.trim() ? `${text.trim()} ` : "";
+    heard.lang = SPEECH_LANG[language];
+    heard.continuous = false;
+    heard.interimResults = true;
+    heard.onresult = (event) => {
+      let said = "";
+      for (let i = 0; i < event.results.length; i += 1)
+        said += event.results[i][0].transcript;
+      // Only the words land in the box: the visitor reads them and presses Send.
+      setText((before + said).slice(0, CHAT_MESSAGE_MAX));
+    };
+    heard.onend = () => setListening(false);
+    heard.onerror = () => {
+      setListening(false);
+      setError(words.micFailed);
+    };
+    recognition.current = heard;
+    setError(null);
+    setListening(true);
+    heard.start();
+  }
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,7 +154,7 @@ export function PublicChat({
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, website }),
+        body: JSON.stringify({ message, website, language }),
       });
       const body = (await response.json().catch(() => ({}))) as ChatAnswer &
         ChatProblem;
@@ -74,6 +169,7 @@ export function PublicChat({
       ]);
       setText("");
       if (body.lead_saved) setSaved(true);
+      if (readAloud) speak(body.reply);
     } catch {
       setError(chatErrorText(503));
     } finally {
@@ -102,11 +198,44 @@ export function PublicChat({
         )}
       </p>
 
+      <div
+        role="group"
+        aria-label={words.language}
+        className="mt-3 flex flex-wrap items-center gap-2"
+      >
+        {CHAT_LANGUAGES.map((code) => (
+          <button
+            key={code}
+            type="button"
+            aria-pressed={code === language}
+            onClick={() => chooseLanguage(code)}
+            className={cx(
+              "rounded-full px-3 py-1 text-sm font-medium ring-1 ring-inset",
+              code === language
+                ? "bg-brand-600 text-white ring-brand-600"
+                : "bg-white text-slate-700 ring-slate-300 hover:bg-slate-50",
+            )}
+          >
+            {CHAT_LANGUAGE_NAMES[code]}
+          </button>
+        ))}
+        {canSpeak && (
+          <label className="ml-auto flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={readAloud}
+              onChange={(e) => toggleReadAloud(e.target.checked)}
+            />
+            {words.readAloud}
+          </label>
+        )}
+      </div>
+
       <ol
         aria-label="Conversation"
         className="my-4 flex-1 space-y-3 overflow-y-auto"
       >
-        <Bubble role="assistant" text={GREETING} />
+        <Bubble role="assistant" text={words.greeting} />
         {lines.map((line, index) => (
           <Bubble key={index} role={line.role} text={line.text} />
         ))}
@@ -118,7 +247,7 @@ export function PublicChat({
           role="status"
           className="mb-3 rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800"
         >
-          Your details were passed on to our team. An advisor will call you.
+          {words.saved}
         </p>
       )}
       {error && (
@@ -148,7 +277,7 @@ export function PublicChat({
           </label>
         </div>
         <label className="flex-1">
-          <span className="sr-only">Your message</span>
+          <span className="sr-only">{words.yourMessage}</span>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -160,14 +289,27 @@ export function PublicChat({
             }}
             rows={2}
             maxLength={CHAT_MESSAGE_MAX}
-            placeholder="Type your message…"
+            placeholder={words.placeholder}
             className="block w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
           />
         </label>
+        {canListen && (
+          <button
+            type="button"
+            onClick={toggleListening}
+            aria-pressed={listening}
+            className={buttonClass("secondary")}
+          >
+            {listening ? words.listening : words.speak}
+          </button>
+        )}
         <button type="submit" className={buttonClass()} disabled={sending}>
-          {sending ? "Sending…" : "Send"}
+          {sending ? words.sending : words.send}
         </button>
       </form>
+      {canListen && (
+        <p className="mt-2 text-xs text-slate-500">{words.speechNotice}</p>
+      )}
     </div>
   );
 }

@@ -102,13 +102,13 @@ See `docs/adr/0012-communication-center.md` and Phase CC in `implementation-plan
 | BP-09 | AI usage and cost per tenant | `ai_usage` table (tenant, feature, model, tokens, cost in `Decimal`, latency) and a usage page. Prometheus metrics stay without tenant labels (current privacy rule) | `observability/metrics.py`, price settings | design | M |
 | BP-08 | Cited RERA / brochure answers + "I don't know" gate | Property brochures and RERA numbers in the knowledge base; answers must cite a source or refuse | knowledge module (pgvector, citations, feedback) | design | M |
 | BP-15 | Live RERA / company web check | An agent looks up a RERA number or company on public websites and stores the evidence | BP-14 budgets, BP-05 | **ADR** (sends data outside; site terms; SSRF protection) | L |
-| BP-20 | CI security gate | Add dependency audit (`pip-audit`, `npm audit`), secret scan, "no float for money" check, RLS guard (exists) as required CI jobs | CI workflow | short design | S–M |
+| BP-20 | CI security gate | Add dependency audit (`pip-audit`, `npm audit`), secret scan, "no float for money" check, RLS guard (exists) as required CI jobs | CI workflow | short design: `docs/ci-security-gate.md` (accepted 2026-11-10) | S–M |
 
 ### AI Track A3 — autonomous CRM workflows
 
 | # | Blueprint | What it means in this CRM | Builds on | Design | Size |
 |---|---|---|---|---|---|
-| BP-02 | One-click lead and company enrichment | Button on a lead: fill company size, website, industry from an outside data source; every change shown before saving | BP-14, BP-05 | **ADR** (lead data sent outside) | L |
+| BP-02 | One-click lead and company enrichment | Button on a lead: fill company size, website, industry from an outside data source; every change shown before saving | BP-14, BP-05 | **ADR** (lead data sent outside): [ADR 0026](adr/0026-lead-company-enrichment.md), accepted 2026-11-10 | L |
 | BP-03 | Qualification procedures (AOPs) | Admin writes plain-English qualification steps; the AI follows them and **proposes** stage changes through BP-05 | BP-05, workflows | design | M |
 | BP-12 | Automatic follow-up sequences | Timed e-mail sequences (day 0, 2, 7) that stop when the lead replies or converts | **Communication Center**, outbox, workflows | design | M |
 | BP-13 | Deal risk and forecast | Risk score per deal (no activity, stage age, missing contact) and a forecast view | sales, dashboard, reports | design | M |

@@ -1,0 +1,128 @@
+/**
+ * Proposal decks of a quote (ADR 0032, PD4): the shape the API returns and the words the screens
+ * use. The state, the file facts and who may do what all come from the API; nothing here decides.
+ */
+
+export type DeckState =
+  "none" | "queued" | "ready" | "failed" | "not_available";
+
+export type DeckStatus = {
+  status: DeckState;
+  reason: string | null;
+  file_name: string | null;
+  size_bytes: number | null;
+  created_at: string | null;
+  refresh_failed: boolean;
+};
+
+/** The two files a deck can be: the PDF (the default) and the PowerPoint version (PD6). */
+export type DeckFormat = "pdf" | "pptx";
+
+/**
+ * The format asked for in a web address: no value means the PDF, and anything but "pdf" or "pptx"
+ * is not a format (null), so a route handler can answer "not found" instead of passing it on.
+ */
+export function parseDeckFormat(
+  value: string | null | undefined,
+): DeckFormat | null {
+  if (value === null || value === undefined || value === "") return "pdf";
+  return value === "pdf" || value === "pptx" ? value : null;
+}
+
+/** The query the API takes for a format; the PDF is what it answers without one. */
+export function deckQuery(format: DeckFormat): string {
+  return format === "pptx" ? "?format=pptx" : "";
+}
+
+/** How often the card looks again while a deck is being made. */
+export const DECK_REFRESH_MS = 4000;
+
+export function deckStateText(status: DeckStatus): string {
+  switch (status.status) {
+    case "queued":
+      return "The deck is being made. This page updates by itself.";
+    case "ready":
+      return status.refresh_failed
+        ? "The last attempt to make a new deck failed. The earlier deck is still available."
+        : "The deck is ready.";
+    case "failed":
+      return "The deck could not be made. Try again, and contact support if it keeps failing.";
+    case "not_available":
+      return (
+        status.reason ??
+        "A proposal deck is available once the quote is approved."
+      );
+    default:
+      return "No deck yet.";
+  }
+}
+
+export function isWorkingOnDeck(status: DeckStatus): boolean {
+  return status.status === "queued";
+}
+
+/** The size in plain words ("84 KB"). */
+export function deckSize(bytes: number | null): string {
+  if (bytes === null) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function deckErrorText(code: string | null, fallback: string): string {
+  switch (code) {
+    case "deck_pending":
+      return "A deck for this quote is already being made. Wait a moment.";
+    case "quote_not_ready_for_deck":
+      return "A proposal deck is available once the quote is approved.";
+    case "quote_superseded":
+      return "This quote was replaced by a newer revision. Make the deck from the newest one.";
+    case "deck_rate_limited":
+      return "Too many decks were asked for. Try again later.";
+    case "quote_not_found":
+      return "That quote was not found.";
+    case "forbidden":
+      return "You may view this quote but not change it, so you cannot make a deck for it.";
+    default:
+      return fallback;
+  }
+}
+
+/** The approved text of a quote's "why this proposal" slide, or none (ADR 0032 Amendment A, PD7). */
+export type DeckSummary = { text: string | null };
+
+/** What asking the deck writer gave: a proposal that waits, or a refusal by the safety check. */
+export type SummaryDraft = {
+  outcome: "proposed" | "blocked";
+  proposal_id: string | null;
+  proposal_link: string | null;
+  blocked_message: string | null;
+};
+
+export function summaryErrorText(
+  code: string | null,
+  fallback: string,
+): string {
+  switch (code) {
+    case "agent_unavailable":
+      return "The deck writer is switched off. A tenant administrator can switch it on under AI agents.";
+    case "agent_budget_reached":
+      return "This month's AI budget is used up. A tenant administrator can raise it under AI agents.";
+    case "deck_writer_rate_limited":
+      return "A draft was made for this quote a moment ago. Try again later.";
+    case "deck_writer_invalid_answer":
+      return "The assistant's draft could not be used. Try again.";
+    case "agent_action_limit_reached":
+      return "You already have too many proposals waiting for approval. Wait for a decision first.";
+    case "quote_not_ready_for_deck":
+      return "A summary slide is available once the quote is approved.";
+    case "quote_superseded":
+      return "This quote was replaced by a newer revision. Draft the summary for the newest one.";
+    case "quote_not_found":
+      return "That quote was not found.";
+    case "forbidden":
+      return "You may view this quote but not change it, so you cannot draft a summary slide for it.";
+    default:
+      return fallback;
+  }
+}

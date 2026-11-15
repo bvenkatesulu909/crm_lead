@@ -9,6 +9,7 @@ import type {
   StartResult,
 } from "@/app/(app)/leads/[id]/call-actions";
 import { ActionDialog, DialogField } from "@/components/action-dialog";
+import { ClipsPanel, type ClipsActions } from "@/components/calls-clips";
 import { UploadProgress } from "@/components/upload-progress";
 import { buttonClass } from "@/components/ui";
 import {
@@ -20,9 +21,11 @@ import {
   isWorking,
   languageLabel,
   statusLabel,
+  type CallClip,
   type CallDetail,
   type CallListen,
   type CallRecording,
+  type ClipInput,
 } from "@/lib/calls";
 import type { DialogState } from "@/lib/dialog-state";
 import { initialDialogState } from "@/lib/dialog-state";
@@ -37,7 +40,37 @@ export type CallsActions = {
   deleteAudio: (callId: string, previous: DialogState) => Promise<DialogState>;
   listen: (callId: string) => Promise<Fetched<CallListen>>;
   read: (callId: string) => Promise<Fetched<CallDetail>>;
+  // Highlight clips (ADR 0033); without them the clip block is not shown.
+  listClips?: (callId: string) => Promise<Fetched<CallClip[]>>;
+  createClip?: (callId: string, input: ClipInput) => Promise<Fetched<CallClip>>;
+  editClip?: (
+    callId: string,
+    clipId: string,
+    input: { title: string; note: string },
+  ) => Promise<Fetched<CallClip>>;
+  deleteClip?: (callId: string, clipId: string) => Promise<Fetched<null>>;
+  listenToClip?: (
+    callId: string,
+    clipId: string,
+  ) => Promise<Fetched<CallListen>>;
 };
+
+/** The clip actions of one recording, or null when the card was not given them. */
+function clipActionsOf(
+  actions: CallsActions,
+  callId: string,
+): ClipsActions | null {
+  const { listClips, createClip, editClip, deleteClip, listenToClip } = actions;
+  if (!listClips || !createClip || !editClip || !deleteClip || !listenToClip)
+    return null;
+  return {
+    list: () => listClips(callId),
+    create: (input) => createClip(callId, input),
+    edit: (clipId, input) => editClip(callId, clipId, input),
+    remove: (clipId) => deleteClip(callId, clipId),
+    listen: (clipId) => listenToClip(callId, clipId),
+  };
+}
 
 /** How often the card looks again while a recording is being processed. */
 export const REFRESH_MS = 8000;
@@ -285,6 +318,19 @@ function CallItem({
         </div>
       )}
       {open && detail && <TranscriptPanel detail={detail} />}
+      {open &&
+        detail &&
+        call.status === "ready" &&
+        (() => {
+          const clipActions = clipActionsOf(actions, call.id);
+          return clipActions ? (
+            <ClipsPanel
+              call={detail}
+              canWrite={canWrite}
+              actions={clipActions}
+            />
+          ) : null;
+        })()}
     </li>
   );
 }

@@ -250,6 +250,11 @@ class Settings(BaseSettings):
     qualifier_per_lead_hour: int = Field(default=1, ge=1, le=100)
     qualifier_per_user_hour: int = Field(default=20, ge=1, le=1_000)
     qualifier_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
+    # Custom agents (ADR 0034): runs per record per hour, per person per hour and per
+    # organisation per day. The platform sets them; an agent's definition cannot raise them.
+    custom_agent_per_record_hour: int = Field(default=1, ge=1, le=100)
+    custom_agent_per_user_hour: int = Field(default=20, ge=1, le=1_000)
+    custom_agent_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
     # The optional lead agent (ADR 0022): how often it may run.
     lead_agent_per_lead_hour: int = Field(default=1, ge=1, le=100)
     lead_agent_per_tenant_day: int = Field(default=200, ge=1, le=100_000)

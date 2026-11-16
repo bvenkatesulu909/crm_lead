@@ -2,11 +2,12 @@
 second wall, ADR 0009)."""
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.modules.custom_agents.models import CustomAgent, CustomAgentVersion
+from app.modules.custom_agents.models import CustomAgent, CustomAgentRun, CustomAgentVersion
 
 
 def get(
@@ -88,5 +89,66 @@ def list_versions(
                 CustomAgentVersion.custom_agent_id == agent_id,
             )
             .order_by(CustomAgentVersion.version_no.desc())
+        )
+    )
+
+
+def add_run(session: Session, run: CustomAgentRun) -> CustomAgentRun:
+    session.add(run)
+    session.flush()
+    return run
+
+
+def count_runs(
+    session: Session,
+    tenant_id: uuid.UUID,
+    *,
+    since: datetime,
+    record_id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+    real_only: bool = False,
+) -> int:
+    """Runs (and dry runs, unless ``real_only``) since a moment, for the rate limits."""
+    query = (
+        select(func.count())
+        .select_from(CustomAgentRun)
+        .where(CustomAgentRun.tenant_id == tenant_id, CustomAgentRun.created_at >= since)
+    )
+    if record_id is not None:
+        query = query.where(CustomAgentRun.record_id == record_id)
+    if user_id is not None:
+        query = query.where(CustomAgentRun.user_id == user_id)
+    if real_only:
+        query = query.where(CustomAgentRun.mode == "run")
+    return int(session.scalar(query) or 0)
+
+
+def has_trial(session: Session, tenant_id: uuid.UUID, agent_id: uuid.UUID, version_no: int) -> bool:
+    """Has this version of the agent had a successful dry run?"""
+    return bool(
+        session.scalar(
+            select(func.count())
+            .select_from(CustomAgentRun)
+            .where(
+                CustomAgentRun.tenant_id == tenant_id,
+                CustomAgentRun.custom_agent_id == agent_id,
+                CustomAgentRun.version_no == version_no,
+                CustomAgentRun.mode == "trial",
+            )
+        )
+    )
+
+
+def list_runs(
+    session: Session, tenant_id: uuid.UUID, agent_id: uuid.UUID, *, limit: int = 50
+) -> list[CustomAgentRun]:
+    return list(
+        session.scalars(
+            select(CustomAgentRun)
+            .where(
+                CustomAgentRun.tenant_id == tenant_id, CustomAgentRun.custom_agent_id == agent_id
+            )
+            .order_by(CustomAgentRun.seq.desc())
+            .limit(limit)
         )
     )

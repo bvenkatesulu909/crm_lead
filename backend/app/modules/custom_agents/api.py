@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from app.modules.custom_agents import repository, rules
+from app.modules.custom_agents.run_rules import TOOL_NAME
 from app.modules.custom_agents.service import (
     AgentView,
     CustomAgentNotFoundError,
@@ -25,9 +26,6 @@ from app.modules.custom_agents.service import (
     list_versions,
     update_agent,
 )
-
-# The one tool a custom agent's model gets in a run (AB2b); the registry's tool filter lists it.
-TOOL_NAME = "submit_suggestion"
 
 
 @dataclass(frozen=True)
@@ -49,6 +47,15 @@ def registry_info(session: Session, tenant_id: uuid.UUID, key: str) -> RegistryI
         return None
     version = repository.get_version(session, tenant_id, agent.id, agent.current_version)
     return RegistryInfo(agent.agent_key, agent.name, version.purpose if version else "")
+
+
+def has_trial(session: Session, tenant_id: uuid.UUID, key: str) -> bool:
+    """Has the agent's CURRENT version had a successful dry run? (The registry asks before an
+    administrator may switch a custom agent on.)"""
+    agent = repository.get_by_key(session, tenant_id, key)
+    if agent is None or agent.archived_at is not None:
+        return False
+    return repository.has_trial(session, tenant_id, agent.id, agent.current_version)
 
 
 def registry_infos(session: Session, tenant_id: uuid.UUID) -> list[RegistryInfo]:
@@ -74,6 +81,7 @@ __all__ = [
     "get_agent",
     "list_agents",
     "list_versions",
+    "has_trial",
     "registry_info",
     "registry_infos",
     "update_agent",

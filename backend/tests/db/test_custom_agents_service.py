@@ -21,7 +21,7 @@ from app.modules.approvals import service as approvals_service
 from app.modules.approvals.models import AgentAction
 from app.modules.custom_agents import api as ca
 from app.modules.custom_agents import rules
-from app.modules.custom_agents.models import CustomAgent, CustomAgentVersion
+from app.modules.custom_agents.models import CustomAgent, CustomAgentRun, CustomAgentVersion
 from tests.db.conftest import setup_lead_context
 from tests.db.test_approvals import Acting, acting, add_lead, alpha, audits, status_proposal
 from tests.db.test_quotes_api import World, world
@@ -54,6 +54,26 @@ def update(acting: Acting, view: ca.AgentView, who: str = "alpha.admin", **chang
         version=changes.pop("version", view.agent.version),
         **values(**changes),
     )
+
+
+def mark_tried(acting: Acting, db_session: Session, world: World, view: ca.AgentView) -> None:
+    """Record a successful dry run, as the run module does (switching on needs one; these tests are
+    about the registry, the dry run itself is tested in test_custom_agent_run.py)."""
+    admin = world.users["alpha.admin"]
+    db_session.add(
+        CustomAgentRun(
+            tenant_id=alpha(world),
+            custom_agent_id=view.agent.id,
+            version_no=view.current.version_no,
+            mode="trial",
+            record_type="lead",
+            record_id=uuid.uuid4(),
+            user_id=admin.id,
+            action="none",
+            outcome="shown",
+        )
+    )
+    db_session.flush()
 
 
 # --- who may define and read -----------------------------------------------------------------
@@ -297,6 +317,7 @@ def test_an_administrator_switches_a_custom_agent_on_and_its_usage_is_counted(
     view = create(acting)
     key, tenant = view.agent.agent_key, alpha(world)
     admin = acting.who("alpha.admin")
+    mark_tried(acting, db_session, world, view)
     on = agents_api.update_settings(db_session, admin, key, limits=AI, now=NOW, enabled=True)
     assert on.enabled
     state = agents_api.check_can_call(db_session, tenant, key, AI, NOW)
@@ -316,6 +337,7 @@ def test_an_administrator_switches_a_custom_agent_on_and_its_usage_is_counted(
 def test_the_token_budget_of_a_custom_agent_is_enforced(acting, db_session, world) -> None:
     view = create(acting)
     key, tenant = view.agent.agent_key, alpha(world)
+    mark_tried(acting, db_session, world, view)
     agents_api.update_settings(
         db_session, acting.who("alpha.admin"), key, limits=AI, now=NOW, enabled=True
     )

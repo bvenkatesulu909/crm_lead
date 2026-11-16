@@ -109,3 +109,60 @@ class CustomAgentVersion(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     cleaned: Mapped[Any] = mapped_column(JSONB)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+RUN_MODES = ("run", "trial")
+RUN_OUTCOMES = ("proposed", "no_proposal", "blocked", "shown")
+
+
+class CustomAgentRun(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
+    """One run, or one dry run ("trial"), of a custom agent on one record: which version it used,
+    who asked and what came of it. Insert-only. Ids and codes only - never what the model wrote."""
+
+    __tablename__ = "custom_agent_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "custom_agent_id", "version_no"],
+            [
+                "custom_agent_versions.tenant_id",
+                "custom_agent_versions.custom_agent_id",
+                "custom_agent_versions.version_no",
+            ],
+            name="fk_custom_agent_runs_agent_version",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "user_id"], ["users.tenant_id", "users.id"], ondelete="RESTRICT"
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "proposal_id"],
+            ["agent_actions.tenant_id", "agent_actions.id"],
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("mode IN ('run', 'trial')", name="mode_allowed"),
+        CheckConstraint(
+            "outcome IN ('proposed', 'no_proposal', 'blocked', 'shown')", name="outcome_allowed"
+        ),
+        CheckConstraint("record_type IN ('lead', 'account', 'deal')", name="record_type_allowed"),
+        CheckConstraint("action IN ('none', 'set_status', 'create_task')", name="action_allowed"),
+        # A dry run never proposes; a proposal exists exactly when the outcome says so.
+        CheckConstraint(
+            "((mode = 'trial') = (outcome = 'shown')) AND ((outcome = 'proposed') = "
+            "(proposal_id IS NOT NULL))",
+            name="mode_outcome_proposal_consistent",
+        ),
+        Index("ix_custom_agent_runs_tenant_id_custom_agent_id", "tenant_id", "custom_agent_id"),
+        Index("ix_custom_agent_runs_tenant_id_record_id", "tenant_id", "record_id"),
+    )
+
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+    custom_agent_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    version_no: Mapped[int] = mapped_column(Integer)
+    mode: Mapped[str] = mapped_column(String(5))
+    record_type: Mapped[str] = mapped_column(String(10))
+    record_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    action: Mapped[str] = mapped_column(String(12))
+    outcome: Mapped[str] = mapped_column(String(12))
+    proposal_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, default=None)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())

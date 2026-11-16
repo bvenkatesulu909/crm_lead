@@ -208,11 +208,19 @@ class MetricsMiddleware:
 # label stays bounded whatever a caller passes - and it can never carry a tenant, person or text.
 _AGENT: ContextVar[str] = ContextVar("crm_ai_agent", default="unknown")
 _AGENT_NAME = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+_CUSTOM_KEY = re.compile(r"^custom_[a-z]{12}$")
+
+
+def metric_agent(name: str) -> str:
+    """The label value for an agent: an organisation's own custom agents (ADR 0034) all count as
+    ``custom_agent``, so the number of label values never grows with their number or names."""
+    return "custom_agent" if _CUSTOM_KEY.fullmatch(name) else name
 
 
 @contextmanager
 def ai_agent(name: str) -> Iterator[None]:
     """Count the model calls made inside this block for the agent ``name``."""
+    name = metric_agent(name)
     token = _AGENT.set(name if _AGENT_NAME.fullmatch(name) else "unknown")
     try:
         yield

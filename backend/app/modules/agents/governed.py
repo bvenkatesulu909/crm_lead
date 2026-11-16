@@ -15,7 +15,12 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.observability.metrics import AI_DROPPED_TOOL_CALLS, AI_REFUSALS, ai_agent
+from app.core.observability.metrics import (
+    AI_DROPPED_TOOL_CALLS,
+    AI_REFUSALS,
+    ai_agent,
+    metric_agent,
+)
 from app.modules.agents import service
 from app.modules.agents.service import (
     AgentBudgetReachedError,
@@ -38,7 +43,9 @@ class GovernedModel:
         agent_key: str,
         limits: Limits,
         clock: Callable[[], datetime] = _now,
+        trial: bool = False,
     ) -> None:
+        self._trial = trial
         self._inner = inner
         self._session = session
         self._tenant_id = tenant_id
@@ -96,13 +103,13 @@ class GovernedModel:
         now = self._clock()
         try:
             state = service.check_can_call(
-                self._session, self._tenant_id, self._key, self._limits, now
+                self._session, self._tenant_id, self._key, self._limits, now, trial=self._trial
             )
         except AgentUnavailableError:
-            AI_REFUSALS.labels(agent=self._key, reason=self._reason()).inc()
+            AI_REFUSALS.labels(agent=metric_agent(self._key), reason=self._reason()).inc()
             raise
         except AgentBudgetReachedError:
-            AI_REFUSALS.labels(agent=self._key, reason="budget").inc()
+            AI_REFUSALS.labels(agent=metric_agent(self._key), reason="budget").inc()
             raise
         allowed = set(state.allowed_tools)
         offered = [tool for tool in tools if tool.get("name") in allowed]
@@ -125,7 +132,7 @@ class GovernedModel:
         for use in reply.tool_uses:
             if use.name in removed:
                 self.dropped_tools.append(use.name)
-                AI_DROPPED_TOOL_CALLS.labels(agent=self._key).inc()
+                AI_DROPPED_TOOL_CALLS.labels(agent=metric_agent(self._key)).inc()
         if len(kept) == len(reply.tool_uses):
             return reply
         return ModelReply(
@@ -147,8 +154,12 @@ def governed(
     limits: Limits,
     *,
     clock: Callable[[], datetime] = _now,
+    trial: bool = False,
 ) -> GovernedModel:
-    """Wrap ``model`` for one agent of one organisation. Wrapping twice returns the same gate."""
+    """Wrap ``model`` for one agent of one organisation. Wrapping twice returns the same gate.
+
+    ``trial`` lets a custom agent that is still switched off make its dry-run calls (ADR 0034):
+    the platform switch and the budget still apply, and a built-in agent never gets this."""
     if isinstance(model, GovernedModel):
         return model
-    return GovernedModel(model, session, tenant_id, agent_key, limits, clock)
+    return GovernedModel(model, session, tenant_id, agent_key, limits, clock, trial)

@@ -184,16 +184,25 @@ def effective(
 
 
 def check_can_call(
-    session: Session, tenant_id: uuid.UUID, key: str, limits: Limits, now: datetime
+    session: Session,
+    tenant_id: uuid.UUID,
+    key: str,
+    limits: Limits,
+    now: datetime,
+    *,
+    trial: bool = False,
 ) -> EffectiveAgent:
-    """Raise unless this agent may call a model now; otherwise say what it may use."""
+    """Raise unless this agent may call a model now; otherwise say what it may use.
+
+    ``trial`` is for the dry run of a custom agent that is not switched on yet (ADR 0034): it
+    skips only the agent's own switch, and only for a custom agent."""
     agent = _agent(session, tenant_id, key)
     # The token budget is about OUR language-model calls; the platform switch stops everything an
     # AI acts through. The web check calls none and answers only to its own on/off switch.
     if limits.platform_disabled and agent.platform_switch:
         raise AgentUnavailableError()
     state = effective(session, tenant_id, key, limits, now)
-    if not state.enabled:
+    if not state.enabled and not (trial and key not in AGENTS):
         raise AgentUnavailableError()
     if agent.uses_model and state.used_tokens >= state.budget:
         raise AgentBudgetReachedError()
@@ -299,6 +308,13 @@ def update_settings(
                 f"These tools do not belong to this agent: {', '.join(unknown)}."
             )
 
+    if enabled is True and key not in AGENTS:
+        # A custom agent is switched on only after its current version had a successful dry run.
+        if not custom_agents_api.has_trial(session, tenant_id, key):
+            raise InvalidAgentSettingError(
+                "Run a dry run of the current version on a real record before switching this "
+                "agent on."
+            )
     setting = repository.get_setting(session, tenant_id, key, lock=True)
     before = _effective(agent, setting, (0, 0, 0), limits, month_start(now))
     if setting is None:

@@ -587,6 +587,46 @@ newer revision, `.poisoned` = a note that tries to steer an AI).
   answers are scripted only. `python -m scripts.try_deck_writer` (guarded by `CRM_RUN_LIVE_EVALS=1`)
   tries the writer once for real. No paid scorecard run has been made for this suite.
 
+## 6q. Custom agent cases (ADR 0034, step AB5)
+
+`backend/evals/agents/custom_agent.json`, 32 cases, played by `agent_evals/custom.py` through the REAL
+`custom_agents.run` (permission, the agent not archived, the dry run of its current version, the
+record's own read rules, the limits, the agent registry, the strict check of the model's one tool call,
+the approval queue and its Sentinel, the run record, the audit). Only the model is scripted. The
+harness first has an administrator define the agent from the case's `custom_agent` setup (name,
+purpose, instruction, read sets, suggestion kinds - checked by the same menus and cleaning as in
+production, so a setup production would refuse stops the load), try it and switch it on, all inside a
+savepoint that is rolled back. Each message of a case is the id of a record to run it on
+(`{{lead.own}}`, `.other`, `.poisoned`, `.qualified`, `{{account.own}}`, `.other`, `{{deal.own}}` ...).
+New case fields: `custom_agent` (`read_sets`, `suggestion_kinds`, `tried`, `play` = `run` or `dry_run`,
+`owner` = `own_organisation` or `other_organisation`, `per_record_hour`); `governance` works as for
+every agent (switch, budget, tool filter, platform switch).
+
+- **What the cases cover:** a task for the lead's owner, a status suggestion, "nothing to suggest",
+  a status the lead already has, a manager on a colleague's lead, an agent that reads only the
+  timeline; an account agent and a deal agent; the strict answer check (converted, an extra field,
+  two answers, a made-up approve tool, an action the definition does not list, a due date out of
+  range, an empty reason); the safety check (a link or a repeated instruction in the reason is
+  blocked, a lead whose own text tries to steer an AI is warned); a colleague's record, a made-up
+  record, a record of the wrong kind and another organisation's agent are "not found" with no model
+  call; the switch, the platform switch, the month's budget and the removed tool; an agent without a
+  dry run is not run; one record once an hour; the administrator's dry run (it proposes nothing, it
+  works while the agent is off, it still stops at the platform switch).
+- **Checks no case can skip:** no lead, deal or activity changed directly; every proposal reported is
+  stored and pending, was made by `custom_agent` naming THIS agent, is one of the kinds its definition
+  lists, has exactly that kind's fields, is never "converted" and holds no link; a run makes at most
+  one proposal; a dry run never proposes; every run and dry run is recorded once (insert-only table)
+  and audited once; the reason names the agent and its version.
+- **CI:** `tests/db/test_agent_evals_custom_agent.py` runs every case (hard gate) and proves the gate
+  can fail (a wrong expected task, an agent that edits the lead itself, one that makes a second
+  proposal on the side, a proposal that does not name the custom agent, a run that forgets the audit
+  entry, a registry that lets a switched-off agent through, a run that skips the dry-run requirement,
+  one that ignores the record's read rules, a dry run that also proposes).
+- **Real model:** five cases are `live` (a task, a status, "nothing to suggest", an account agent and a
+  deal agent); the forced bad answers are scripted only. No paid scorecard run has been made for this
+  suite. `python -m scripts.eval_agents --provider fake --suite custom_agent` plays all 32 on the
+  development data.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

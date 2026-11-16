@@ -2,8 +2,9 @@
 
 An administrator defines a small AI helper as data; staff run it on one record; it can only
 **suggest**, and a different person approves every suggestion in the approval queue. This page
-describes what exists today (steps AB1-AB4: tables, service, run, the API and the screens). The
-evaluation cases are AB5.
+describes what exists today (steps AB1-AB5: tables, service, run, the API, the screens and the
+evaluation cases). The cases that play custom agents against the real code are described in
+`docs/agent-evals.md` section 6q.
 
 ## The screens (AB4)
 

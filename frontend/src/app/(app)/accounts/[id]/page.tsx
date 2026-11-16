@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AccountResearchCard } from "@/components/account-research-card";
+import { CustomAgentsSection } from "@/components/custom-agents-section";
 import { ActivityPanel } from "@/components/activity-panel";
 import { EmailCard } from "@/components/email-card";
 import { RecordProposals } from "@/components/record-proposals";
@@ -414,6 +415,7 @@ export default async function AccountPage({
           <RecordProposals me={me} targetId={a} />
           <WebCheckCard me={me} record={{ type: "account", id: a }} />
           <AccountResearchCard me={me} accountId={a} />
+          <CustomAgentsSection me={me} recordType="account" recordId={a} />
 
           <EmailCard me={me} record={{ type: "account", id: a }} accountId={a} />
 

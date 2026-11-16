@@ -52,6 +52,8 @@ function action(changes: Partial<AgentAction> = {}): AgentAction {
     reason: "She answered my call today.",
     agent: "staff_assistant",
     via_client: null,
+    custom_agent_key: null,
+    custom_agent_name: null,
     requested_by_user_id: OTHER,
     status: "pending",
     expires_at: "2026-11-01T10:00:00Z",

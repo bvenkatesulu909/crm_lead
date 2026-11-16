@@ -6,6 +6,7 @@ import { ActivityPanel } from "@/components/activity-panel";
 import { ChatTranscriptCard } from "@/components/chat-transcript-card";
 import { EmailCard } from "@/components/email-card";
 import { RecordProposals } from "@/components/record-proposals";
+import { CustomAgentsSection } from "@/components/custom-agents-section";
 import { LeadAgentSection } from "@/components/lead-agent-section";
 import { QualifierCard } from "@/components/qualifier-card";
 import { BuyerMemoryCard } from "@/components/buyer-memory-card";
@@ -331,6 +332,7 @@ export default async function LeadPage({
           <RecordProposals me={me} targetId={lead.id} />
           <QualifierCard me={me} leadId={lead.id} />
           <LeadAgentSection me={me} leadId={lead.id} />
+          <CustomAgentsSection me={me} recordType="lead" recordId={lead.id} />
           <BuyerMemoryCard me={me} leadId={lead.id} />
           <CallsCard me={me} leadId={lead.id} />
           <CompanyDetailsCard me={me} leadId={lead.id} />

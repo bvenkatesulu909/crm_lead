@@ -44,7 +44,17 @@ const AGENT_LABELS: Record<string, string> = {
   lead_agent: "the lead agent",
   deal_desk: "the deal desk",
   deck_writer: "the deck writer",
+  custom_agent: "a custom agent",
 };
+
+/** Who made the proposal, in words. A custom agent is named (also after it was retired). */
+export function agentLabel(
+  action: Pick<AgentAction, "agent" | "custom_agent_name">,
+): string {
+  if (action.agent === "custom_agent" && action.custom_agent_name)
+    return `the custom agent "${action.custom_agent_name}"`;
+  return AGENT_LABELS[action.agent] ?? "an AI feature";
+}
 
 /**
  * One AI proposal: what it would do, on which record, why, who asked, and how it ended. All
@@ -109,7 +119,7 @@ export function ApprovalCard({
         </dl>
         <p className="mt-3 text-xs text-slate-500">
           Asked by {nameOf(action.requested_by_user_id)} through{" "}
-          {AGENT_LABELS[action.agent] ?? "an AI feature"}
+          {agentLabel(action)}
           {action.via_client
             ? ` - application "${action.via_client}"`
             : ""} ·{" "}

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ActivityPanel } from "@/components/activity-panel";
+import { CustomAgentsSection } from "@/components/custom-agents-section";
 import { DealDeskCard } from "@/components/deal-desk-card";
 import { EmailCard } from "@/components/email-card";
 import { DocumentsCard } from "@/components/documents-card";
@@ -184,6 +185,7 @@ export default async function OpportunityPage({
               is_open: (OPEN_STAGES as readonly string[]).includes(opp.stage),
             }}
           />
+          <CustomAgentsSection me={me} recordType="deal" recordId={opp.id} />
           <DocumentsCard me={me} recordType="opportunity" recordId={opp.id} />
           {quotes && (
             <Card>

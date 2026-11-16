@@ -50,6 +50,14 @@ def registry_info(session: Session, tenant_id: uuid.UUID, key: str) -> RegistryI
     return RegistryInfo(agent.agent_key, agent.name, version.purpose if version else "")
 
 
+def agent_name(session: Session, tenant_id: uuid.UUID, key: str) -> str | None:
+    """The name of a custom agent, also after it was archived (for the approval card)."""
+    if not rules.is_custom_key(key):
+        return None
+    agent = repository.get_by_key(session, tenant_id, key)
+    return agent.name if agent else None
+
+
 def has_trial(session: Session, tenant_id: uuid.UUID, key: str) -> bool:
     """Has the agent's CURRENT version had a successful dry run? (The registry asks before an
     administrator may switch a custom agent on.)"""
@@ -83,6 +91,7 @@ __all__ = [
     "list_agents",
     "list_runs",
     "list_versions",
+    "agent_name",
     "has_trial",
     "registry_info",
     "registry_infos",

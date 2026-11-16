@@ -1,9 +1,11 @@
 """Pure rules of the no-code agent builder (ADR 0034, AB1): cleaning, limits and the two menus."""
 
+import re
 from typing import Any
 
 import pytest
 
+from app.modules.agents.catalogue import KEY_PATTERN
 from app.modules.approvals.catalogue import KINDS
 from app.modules.custom_agents import rules
 from app.modules.custom_agents.rules import DefinitionError, clean_definition
@@ -94,7 +96,10 @@ def test_the_longest_allowed_texts_are_accepted() -> None:
 
 
 def test_read_sets_come_only_from_the_menu_and_at_most_three() -> None:
-    assert clean(read_sets=["lead", "lead", "account"]).read_sets == ["lead", "account"]
+    assert clean(read_sets=["lead", "lead", "lead_activity"]).read_sets == [
+        "lead",
+        "lead_activity",
+    ]
     with pytest.raises(DefinitionError):
         clean(read_sets=[])
     with pytest.raises(DefinitionError):
@@ -105,17 +110,14 @@ def test_read_sets_come_only_from_the_menu_and_at_most_three() -> None:
 
 
 def test_suggestion_kinds_come_only_from_the_menu_and_at_most_two() -> None:
-    assert clean(suggestion_kinds=["lead.set_status", "lead.assign"]).suggestion_kinds == [
-        "lead.set_status",
-        "lead.assign",
-    ]
+    both = clean(suggestion_kinds=["lead.set_status", "activity.create_task"])
+    assert both.suggestion_kinds == ["lead.set_status", "activity.create_task"]
     with pytest.raises(DefinitionError):
         clean(suggestion_kinds=[])
-    with pytest.raises(DefinitionError):
-        clean(suggestion_kinds=["lead.set_status", "lead.assign", "activity.create_task"])
-    # Nothing that approves, deletes, converts, moves money or changes a deal's stage.
+    # Nothing that approves, deletes, converts, assigns, moves money or changes a deal's stage.
     for bad in (
         "agent_action.approve",
+        "lead.assign",
         "lead.convert",
         "lead.delete",
         "opportunity.set_stage",
@@ -127,6 +129,37 @@ def test_suggestion_kinds_come_only_from_the_menu_and_at_most_two() -> None:
             clean(suggestion_kinds=[bad])
 
 
+def test_an_agent_works_on_one_kind_of_record() -> None:
+    assert clean(read_sets=["lead", "lead_activity"]).record_type == "lead"
+    assert (
+        clean(
+            read_sets=["account", "account_health"], suggestion_kinds=["activity.create_task"]
+        ).record_type
+        == "account"
+    )
+    assert (
+        clean(
+            read_sets=["deal", "deal_quotes"], suggestion_kinds=["activity.create_task"]
+        ).record_type
+        == "deal"
+    )
+    for mixed in (
+        ["lead", "deal"],
+        ["account", "deal_quotes"],
+        ["lead_activity", "account_health"],
+    ):
+        with pytest.raises(DefinitionError, match="different kinds"):
+            clean(read_sets=mixed)
+
+
+def test_changing_a_lead_status_needs_an_agent_that_reads_a_lead() -> None:
+    for sets in (["account"], ["deal"]):
+        with pytest.raises(DefinitionError, match="reads a lead"):
+            clean(read_sets=sets, suggestion_kinds=["lead.set_status"])
+        # A task works for any record.
+        assert clean(read_sets=sets, suggestion_kinds=["activity.create_task"]).record_type
+
+
 def test_the_menus_are_exactly_what_the_decision_lists() -> None:
     assert tuple(rules.READ_SETS) == (
         "lead",
@@ -136,7 +169,7 @@ def test_the_menus_are_exactly_what_the_decision_lists() -> None:
         "deal",
         "deal_quotes",
     )
-    assert rules.SUGGESTION_KINDS == ("lead.set_status", "lead.assign", "activity.create_task")
+    assert rules.SUGGESTION_KINDS == ("lead.set_status", "activity.create_task")
     assert (rules.MAX_AGENTS, rules.MAX_READ_SETS, rules.MAX_SUGGESTION_KINDS) == (10, 3, 2)
 
 
@@ -150,7 +183,17 @@ def test_agent_keys_are_unguessable_and_never_a_built_in_name() -> None:
     keys = {rules.new_agent_key() for _ in range(50)}
     assert len(keys) == 50
     assert all(rules.is_custom_key(key) for key in keys)
+    # The registry's own key rule applies to them (agent_settings / agent_usage check it).
+    assert all(re.fullmatch(KEY_PATTERN, key) for key in keys)
     assert not keys & set(AGENTS)
     assert not any(rules.is_custom_key(name) for name in AGENTS)
-    for bad in ("custom_", "custom_XYZ", "custom_0123456789abc", "staff_assistant", "custom_g1"):
+    for bad in (
+        "custom_",
+        "custom_XYZ",
+        "custom_abcdefghijkl1",
+        "custom_0123456789ab",
+        "custom_abcdefghijklm",
+        "staff_assistant",
+        "custom_g1",
+    ):
         assert not rules.is_custom_key(bad)

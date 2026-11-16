@@ -40,6 +40,7 @@ AGENTS = (
     "lead_agent",
     "deal_desk",
     "deck_writer",
+    "custom_agent",
 )
 REASON_MAX = 500
 
@@ -62,6 +63,15 @@ class AgentAction(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Version
         CheckConstraint(f"agent IN {AGENTS}", name="agent_allowed"),
         CheckConstraint(
             "(agent = 'mcp_client') = (via_client IS NOT NULL)", name="via_client_matches_agent"
+        ),
+        # A custom agent's proposal names which agent made it (ADR 0034); no other proposal does.
+        CheckConstraint(
+            "(agent = 'custom_agent') = (custom_agent_key IS NOT NULL)",
+            name="custom_agent_key_matches_agent",
+        ),
+        CheckConstraint(
+            "custom_agent_key IS NULL OR custom_agent_key ~ '^custom_[a-z]{12}$'",
+            name="custom_agent_key_shape",
         ),
         CheckConstraint("kind ~ '^[a-z_]+\\.[a-z_]+$'", name="kind_shape"),
         CheckConstraint("jsonb_typeof(payload) = 'object'", name="payload_is_object"),
@@ -99,6 +109,8 @@ class AgentAction(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Version
     agent: Mapped[str] = mapped_column(String(40))
     # The verified application the proposal came through (the token's azp), e.g. crm-mcp.
     via_client: Mapped[str | None] = mapped_column(String(64), default=None)
+    # The registry key of the custom agent that made the proposal (agent = 'custom_agent').
+    custom_agent_key: Mapped[str | None] = mapped_column(String(20), default=None)
     requested_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

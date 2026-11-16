@@ -180,6 +180,10 @@ class Permission(StrEnum):
     QUALIFIER_RUN = "qualifier:run"
     QUALIFIER_READ = "qualifier:read"
     QUALIFIER_MANAGE = "qualifier:manage"
+    # The no-code agent builder (ADR 0034): administrators define small agents; sales staff run
+    # them on a record they may read. A custom agent can only suggest, through the approval queue.
+    CUSTOM_AGENT_MANAGE = "custom_agent:manage"
+    CUSTOM_AGENT_RUN = "custom_agent:run"
     # The deal desk (ADR 0024): ask the AI reviewers to look at a deal. A sales agent may ask only
     # about deals they own; the deal must be readable either way.
     DEAL_DESK_RUN = "deal_desk:run"
@@ -206,7 +210,7 @@ _SALES_ALL = frozenset(
         _P.BUYER_MEMORY_READ, _P.BUYER_MEMORY_WRITE,
         _P.CALL_READ, _P.CALL_WRITE,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
-        _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN,
+        _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN, _P.CUSTOM_AGENT_RUN,
     }
 )  # fmt: skip
 
@@ -221,7 +225,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.TENANT_ADMIN: _SALES_ALL
     | {_P.TENANT_USER_READ, _P.TENANT_USER_MANAGE, _P.PORTAL_USER_INVITE}
     | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE, _P.AGENT_MANAGE, _P.QUALIFIER_MANAGE}
-    | {_P.BRANDING_MANAGE}
+    | {_P.BRANDING_MANAGE, _P.CUSTOM_AGENT_MANAGE}
     | {_P.TICKET_READ_ALL, _P.TICKET_MANAGE}
     | _ORDERS_ALL
     | _BILLING_ALL
@@ -272,6 +276,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.QUALIFIER_RUN,
             _P.DEAL_DESK_RUN,
             _P.ACCOUNT_RESEARCH_RUN,
+            _P.CUSTOM_AGENT_RUN,
         }
     ),  # fmt: skip
     Role.SUPPORT_AGENT: frozenset(

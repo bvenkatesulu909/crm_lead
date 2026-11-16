@@ -28,7 +28,7 @@ depends_on: str | Sequence[str] | None = None
 READ_SETS = (
     "ARRAY['lead', 'lead_activity', 'account', 'account_health', 'deal', 'deal_quotes']::text[]"
 )
-KINDS = "ARRAY['lead.set_status', 'lead.assign', 'activity.create_task']::text[]"
+KINDS = "ARRAY['lead.set_status', 'activity.create_task']::text[]"
 
 
 def _tenant_policy(table: str) -> None:
@@ -67,7 +67,7 @@ def upgrade() -> None:
         sa.Column("version", sa.Integer(), server_default=sa.text("1"), nullable=False),
         sa.Column("tenant_id", sa.Uuid(), nullable=False),
         sa.CheckConstraint(
-            "agent_key ~ '^custom_[0-9a-f]{12}$'", name=op.f("ck_custom_agents_key_format")
+            "agent_key ~ '^custom_[a-z]{12}$'", name=op.f("ck_custom_agents_key_format")
         ),
         sa.CheckConstraint(
             "char_length(name) BETWEEN 1 AND 60", name=op.f("ck_custom_agents_name_length")

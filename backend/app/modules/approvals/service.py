@@ -343,6 +343,7 @@ def propose(
     pending_limit: int = DEFAULT_PENDING_LIMIT,
     sentinel_limits: sentinel.Limits | None = None,
     via_client: str | None = None,
+    custom_agent_key: str | None = None,
 ) -> AgentAction:
     """Store a pending proposal. Nothing in the CRM changes until someone else approves it."""
     tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_PROPOSE)
@@ -354,6 +355,8 @@ def propose(
         raise InvalidActionError("Unknown AI feature.")
     if (agent == "mcp_client") != (via_client is not None):
         raise InvalidActionError("A proposal through a client must name it.")
+    if (agent == "custom_agent") != (custom_agent_key is not None):
+        raise InvalidActionError("A proposal from a custom agent must name it.")
     why = (reason or "").strip()
     if not why or len(why) > REASON_MAX:
         raise InvalidActionError(f"reason: 1 to {REASON_MAX} characters are required.")
@@ -426,6 +429,7 @@ def propose(
         reason=why,
         agent=agent,
         via_client=via_client,
+        custom_agent_key=custom_agent_key,
         requested_by_user_id=user_id,
         status="pending",
         expires_at=_now() + timedelta(days=expires_in_days),

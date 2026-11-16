@@ -24,6 +24,7 @@ from app.core.events import publish
 from app.modules.agents import repository
 from app.modules.agents.catalogue import AGENTS, AgentDef
 from app.modules.agents.models import MAX_TOKENS, AgentSetting
+from app.modules.custom_agents import api as custom_agents_api
 
 ENTITY = "agent_settings"
 WARN_PERCENT = 80  # admins hear about it when a month's usage first passes this share
@@ -125,11 +126,23 @@ def month_start(now: datetime) -> date:
     return date(moment.year, moment.month, 1)
 
 
-def _agent(key: str) -> AgentDef:
+def _agent(session: Session, tenant_id: uuid.UUID, key: str) -> AgentDef:
+    """The catalogue entry of a built-in agent, or an organisation's own custom agent (ADR 0034),
+    which is described to the registry as an agent with one tool that starts switched OFF."""
     agent = AGENTS.get(key)
-    if agent is None:
+    if agent is not None:
+        return agent
+    info = custom_agents_api.registry_info(session, tenant_id, key)
+    if info is None:
         raise UnknownAgentError()
-    return agent
+    return AgentDef(
+        key=info.key,
+        title=info.name,
+        description=info.purpose,
+        owner_role="tenant_admin",
+        tools=(custom_agents_api.TOOL_NAME,),
+        default_enabled=False,
+    )
 
 
 def _effective(
@@ -159,7 +172,7 @@ def _effective(
 def effective(
     session: Session, tenant_id: uuid.UUID, key: str, limits: Limits, now: datetime
 ) -> EffectiveAgent:
-    agent = _agent(key)
+    agent = _agent(session, tenant_id, key)
     month = month_start(now)
     return _effective(
         agent,
@@ -174,7 +187,7 @@ def check_can_call(
     session: Session, tenant_id: uuid.UUID, key: str, limits: Limits, now: datetime
 ) -> EffectiveAgent:
     """Raise unless this agent may call a model now; otherwise say what it may use."""
-    agent = _agent(key)
+    agent = _agent(session, tenant_id, key)
     # The token budget is about OUR language-model calls; the platform switch stops everything an
     # AI acts through. The web check calls none and answers only to its own on/off switch.
     if limits.platform_disabled and agent.platform_switch:
@@ -198,7 +211,7 @@ def record_usage(
     now: datetime,
 ) -> UsageResult:
     """Add one model call to the month's total (atomic) and report the first 80 % crossing."""
-    agent = _agent(key)
+    agent = _agent(session, tenant_id, key)
     month = month_start(now)
     used = repository.add_usage(
         session,
@@ -229,7 +242,8 @@ def list_agents(
     session: Session, principal: Principal, limits: Limits, now: datetime
 ) -> list[EffectiveAgent]:
     tenant_id = _tenant(principal, Permission.AGENT_READ)
-    return [effective(session, tenant_id, key, limits, now) for key in AGENTS]
+    keys = [*AGENTS, *(info.key for info in custom_agents_api.registry_infos(session, tenant_id))]
+    return [effective(session, tenant_id, key, limits, now) for key in keys]
 
 
 def get_agent(
@@ -266,7 +280,7 @@ def update_settings(
     ``version`` is required when the organisation already has settings for the agent (lost
     updates are refused) and must be absent otherwise."""
     tenant_id = _tenant(principal, Permission.AGENT_MANAGE)
-    agent = _agent(key)
+    agent = _agent(session, tenant_id, key)
     if not agent.uses_model and not (
         isinstance(monthly_token_budget, _Unset) and isinstance(allowed_tools, _Unset)
     ):

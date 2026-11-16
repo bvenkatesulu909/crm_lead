@@ -7,6 +7,8 @@ that records what would have been sent and answers with a scripted response.
 """
 
 import json
+import logging
+from collections.abc import Iterator
 from typing import Any
 
 import httpx
@@ -243,9 +245,33 @@ def test_a_provider_failure_becomes_a_clean_503() -> None:
         )
 
 
+@pytest.fixture
+def llm_log(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
+    """The warnings the DeepSeek client logs, collected by a handler on ITS OWN logger.
+
+    Not caplog: earlier tests of a full suite run (the migrations' logging setup, others) can switch
+    loggers off or change how they propagate, and then a root-level capture sees nothing."""
+    logger = logging.getLogger("app.modules.assistant.llm")
+    lines: list[str] = []
+
+    class Collect(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            lines.append(record.getMessage())
+
+    handler = Collect(level=logging.WARNING)
+    monkeypatch.setattr(logger, "disabled", False)
+    monkeypatch.setattr(logger, "level", logging.WARNING)
+    monkeypatch.setattr(logging.root.manager, "disable", logging.NOTSET)
+    logger.addHandler(handler)
+    try:
+        yield lines
+    finally:
+        logger.removeHandler(handler)
+
+
 @pytest.mark.parametrize("status", [400, 401, 404, 429])
 def test_a_failed_call_logs_the_http_status_and_nothing_secret(
-    status: int, caplog: pytest.LogCaptureFixture
+    status: int, llm_log: list[str]
 ) -> None:
     """A wrong key (401), an unknown model (404), a model without tool support (400) and a rate
     limit (429) look the same to the user ("temporarily unavailable"); the log tells them apart."""
@@ -257,18 +283,18 @@ def test_a_failed_call_logs_the_http_status_and_nothing_secret(
         response=httpx.Response(status, text=echoed_body, request=request),
     )
     http = FakeHttp(failure)
-    with caplog.at_level("WARNING"), pytest.raises(AssistantUnavailableError):
+    with pytest.raises(AssistantUnavailableError):
         model(http).reply(system="s", messages=[{"role": "user", "content": "x"}], tools=[])
-    text = " ".join(record.getMessage() for record in caplog.records)
+    text = " ".join(llm_log)
     assert f"HTTPStatusError HTTP {status}" in text
     assert "test-key-not-real" not in text and echoed_body not in text
 
 
-def test_a_failure_without_a_status_logs_only_its_kind(caplog: pytest.LogCaptureFixture) -> None:
+def test_a_failure_without_a_status_logs_only_its_kind(llm_log: list[str]) -> None:
     http = FakeHttp(httpx.ConnectTimeout("timed out"))
-    with caplog.at_level("WARNING"), pytest.raises(AssistantUnavailableError):
+    with pytest.raises(AssistantUnavailableError):
         model(http).reply(system="s", messages=[{"role": "user", "content": "x"}], tools=[])
-    text = " ".join(record.getMessage() for record in caplog.records)
+    text = " ".join(llm_log)
     assert "ConnectTimeout" in text and "HTTP" not in text
 
 

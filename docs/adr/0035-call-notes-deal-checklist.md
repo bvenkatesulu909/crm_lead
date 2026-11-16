@@ -1,6 +1,6 @@
 # ADR 0035 — Call notes and a deal checklist (BANT or MEDDIC) from a call transcript
 
-- **Status:** Proposed (2026-11-16) - waiting for the owner's answers to section 6
+- **Status:** Accepted (2026-11-16, owner: "Accept, build CN1"; the recommended answers of section 6 apply). CN1 built 2026-11-16.
 - **Date:** 2026-11-16
 - **Deciders:** Project owner
 - **Depends on:** ADR 0030 (call recordings and timestamped transcripts), ADR 0028 (buyer memory),
@@ -193,6 +193,23 @@ Nothing is switched on in staging by default, and staging is not touched by any 
   well-known frames cover the request and keep the data comparable (ADR 0034 makes the same argument).
 - **Reusing the custom-agent builder for this.** Rejected: its read sets are records, not a transcript, and
   this feature needs a code-side quote check, which a recipe cannot express.
+
+## 7a. Amendment (2026-11-16, while building CN1)
+
+Small corrections found while writing the rules, all of them narrowing:
+
+1. **An assumed line also carries a short value** (what the agent thinks), because a buyer-memory
+   assumption needs one. Only a *stated* line must have its value inside its quote; an assumed value is
+   free text but is cleaned, labelled "assumed" and always shown next to its reason.
+2. **The time of a line is the transcript's, not the model's.** The code finds the quote in the stored
+   segments near the time the model named (2 seconds of slack either side) and stores the start of the
+   first and the end of the last segment that hold the words. A line may point at no more than 300 seconds.
+3. **A quote needs at least four letters or digits** (otherwise "yes" would "prove" anything), and the
+   model may name a window of at most 120 seconds.
+4. **Free call notes are lines too** (field `note`, always a stated line with a quote), at most 8 per
+   draft; a note whose quote is not found is dropped and counted, not turned into unknown.
+5. **One list of "kinds of finding"** (`cleaned_codes`) on each draft records what was cleaned out of what the
+   model wrote and any instruction-like words the transcript contained; never the text itself.
 
 ## 8. Consequences
 

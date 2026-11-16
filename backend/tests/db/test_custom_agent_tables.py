@@ -80,7 +80,8 @@ def test_each_agent_gets_its_own_key(committed_world: Session, world: World) -> 
         {"suggestion_kinds": []},
         {"suggestion_kinds": ["lead.convert"]},
         {"suggestion_kinds": ["agent_action.approve"]},
-        {"suggestion_kinds": ["lead.set_status", "lead.assign", "activity.create_task"]},
+        {"suggestion_kinds": ["lead.set_status", "activity.create_task", "lead.assign"]},
+        {"suggestion_kinds": ["lead.assign"]},
         {"purpose": ""},
         {"purpose": "p" * (rules.PURPOSE_MAX + 1)},
         {"instruction": ""},
@@ -96,6 +97,7 @@ def test_each_agent_gets_its_own_key(committed_world: Session, world: World) -> 
         "convert-not-allowed",
         "approve-not-allowed",
         "three-suggestions",
+        "assign-not-allowed-in-v1",
         "empty-purpose",
         "long-purpose",
         "empty-instruction",
@@ -143,7 +145,7 @@ def test_a_version_number_is_used_once_per_agent(committed_world: Session, world
 def test_the_agent_key_must_look_like_a_custom_key(committed_world: Session, world: World) -> None:
     person = world.users["alpha.admin"]
     bind_tenant(committed_world, person.tenant_id)
-    for bad in ("staff_assistant", "custom_XYZ", "custom_0123456789abc", ""):
+    for bad in ("staff_assistant", "custom_XYZ", "custom_0123456789ab", "custom_abcdefghijkl1", ""):
         with pytest.raises(IntegrityError), committed_world.begin_nested():
             committed_world.add(
                 CustomAgent(

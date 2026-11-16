@@ -49,7 +49,7 @@ class CustomAgent(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Version
             ["users.tenant_id", "users.id"],
             ondelete="RESTRICT",
         ),
-        CheckConstraint("agent_key ~ '^custom_[0-9a-f]{12}$'", name="key_format"),
+        CheckConstraint("agent_key ~ '^custom_[a-z]{12}$'", name="key_format"),
         CheckConstraint(f"char_length(name) BETWEEN 1 AND {rules.NAME_MAX}", name="name_length"),
         CheckConstraint("current_version >= 1", name="version_positive"),
     )

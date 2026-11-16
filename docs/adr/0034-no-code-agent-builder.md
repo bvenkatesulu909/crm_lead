@@ -114,6 +114,18 @@ Each step is a separate, reviewed change. Nothing is switched on in staging by d
 - **Waiting until the built-in agents are all finished.** Possible, but this ADR keeps the builder small
   enough to start now, because every ingredient (registry, approvals, Sentinel, dry run) already exists.
 
+## 7a. Amendment (2026-11-16, while building AB2)
+
+Two corrections found by reading the code, both small and both narrowing:
+
+1. **`lead.assign` is not on the v1 menu.** An assignment needs a colleague's id, and the model is never
+   shown who could be assigned, so it could only guess a person. It can be added later together with a read
+   set that lists assignable colleagues. The v1 menu is `lead.set_status` and `activity.create_task`.
+2. **One agent works on one kind of record.** A run is about one record, so all read sets of an agent must
+   belong to the same kind (lead, account or deal), and `lead.set_status` needs an agent that reads a lead.
+3. **Registry keys are letters only** (`custom_` plus 12 letters), because the registry's existing key rule
+   allows no digits.
+
 ## 8. Consequences
 
 A new module `custom_agents`, two tables, two permissions, one builder page and some buttons. Cost: more

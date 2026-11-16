@@ -7,7 +7,8 @@ database checks of migration 0068 as well (a test keeps the two in step).
 """
 
 import re
-import uuid
+import secrets
+import string
 from dataclasses import dataclass
 
 from app.core.screening import screen
@@ -19,6 +20,7 @@ MIN_MEANINGFUL = 3
 MAX_AGENTS = 10  # per organisation (ADR 0034, decision AB8; counted by the service in AB2)
 MAX_READ_SETS = 3
 MAX_SUGGESTION_KINDS = 2
+KEY_LETTERS = 12
 
 # What a custom agent may LOOK AT. Each runs as the person who starts the agent, so that person's
 # own record-level rules decide what is visible (AB2). The text is what the builder screen shows.
@@ -31,9 +33,24 @@ READ_SETS: dict[str, str] = {
     "deal_quotes": "The deal's quotes and their status.",
 }
 
+# What kind of record each read set is about. A run is about ONE record, so the read sets of one
+# agent must all belong to the same kind (a lead agent cannot also read "the deal's quotes").
+RECORD_TYPE_OF: dict[str, str] = {
+    "lead": "lead",
+    "lead_activity": "lead",
+    "account": "account",
+    "account_health": "account",
+    "deal": "deal",
+    "deal_quotes": "deal",
+}
+
 # What a custom agent may SUGGEST: kinds that already exist in the approval queue, and nothing that
 # moves money or a deal's stage. A new kind is a developer's change and an amendment of ADR 0034.
-SUGGESTION_KINDS: tuple[str, ...] = ("lead.set_status", "lead.assign", "activity.create_task")
+# ``lead.assign`` is left out of v1: the model is never shown who could be assigned, so it could
+# only guess a person (ADR 0034, amendment of 2026-11-16).
+SUGGESTION_KINDS: tuple[str, ...] = ("lead.set_status", "activity.create_task")
+# The kinds that change the lead itself work only for an agent that reads a lead.
+LEAD_ONLY_KINDS = frozenset({"lead.set_status"})
 
 
 class DefinitionError(ValueError):
@@ -47,16 +64,19 @@ class CleanDefinition:
     instruction: str
     read_sets: list[str]
     suggestion_kinds: list[str]
+    # What kind of record this agent is run on: "lead", "account" or "deal".
+    record_type: str
     # Codes of what was taken out while cleaning (links, hidden characters...), never the text.
     cleaned: list[str]
 
 
 def new_agent_key() -> str:
     """The agent's key in the registry: unguessable and never a built-in agent's name."""
-    return f"custom_{uuid.uuid4().hex[:12]}"
+    # Letters only: the registry's key rule (agents.catalogue.KEY_PATTERN) allows no digits.
+    return "custom_" + "".join(secrets.choice(string.ascii_lowercase) for _ in range(KEY_LETTERS))
 
 
-_KEY = re.compile(r"^custom_[0-9a-f]{12}$")
+_KEY = re.compile(r"^custom_[a-z]{12}$")
 
 
 def is_custom_key(key: str) -> bool:
@@ -119,6 +139,14 @@ def clean_definition(
     links, markup and hidden characters are taken out and reported by code; words that try to
     switch off the safety rules are refused outright (the instruction is read by a model)."""
     found: set[str] = set()
+    sets = _menu("read sets", read_sets, tuple(READ_SETS), MAX_READ_SETS)
+    kinds = _menu("suggestion kinds", suggestion_kinds, SUGGESTION_KINDS, MAX_SUGGESTION_KINDS)
+    record_types = {RECORD_TYPE_OF[item] for item in sets}
+    if len(record_types) != 1:
+        raise DefinitionError("Read sets about different kinds of record cannot be mixed.")
+    record_type = record_types.pop()
+    if record_type != "lead" and LEAD_ONLY_KINDS & set(kinds):
+        raise DefinitionError("Changing a lead's status needs an agent that reads a lead.")
     clean_name, codes = _clean_text("name", name, longest=NAME_MAX, lines=False)
     found |= codes
     clean_purpose, codes = _clean_text("purpose", purpose, longest=PURPOSE_MAX, lines=False)
@@ -131,9 +159,8 @@ def clean_definition(
         name=clean_name,
         purpose=clean_purpose,
         instruction=clean_instruction,
-        read_sets=_menu("read sets", read_sets, tuple(READ_SETS), MAX_READ_SETS),
-        suggestion_kinds=_menu(
-            "suggestion kinds", suggestion_kinds, SUGGESTION_KINDS, MAX_SUGGESTION_KINDS
-        ),
+        read_sets=sets,
+        suggestion_kinds=kinds,
+        record_type=record_type,
         cleaned=sorted(found),
     )

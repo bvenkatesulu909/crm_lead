@@ -243,6 +243,35 @@ def test_a_provider_failure_becomes_a_clean_503() -> None:
         )
 
 
+@pytest.mark.parametrize("status", [400, 401, 404, 429])
+def test_a_failed_call_logs_the_http_status_and_nothing_secret(
+    status: int, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A wrong key (401), an unknown model (404), a model without tool support (400) and a rate limit
+    (429) look the same to the user ("temporarily unavailable"); the log tells them apart."""
+    request = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+    secret_body = "echo of the key test-key-not-real and the prompt"
+    failure = httpx.HTTPStatusError(
+        "failed",
+        request=request,
+        response=httpx.Response(status, text=secret_body, request=request),
+    )
+    http = FakeHttp(failure)
+    with caplog.at_level("WARNING"), pytest.raises(AssistantUnavailableError):
+        model(http).reply(system="s", messages=[{"role": "user", "content": "x"}], tools=[])
+    text = " ".join(record.getMessage() for record in caplog.records)
+    assert f"HTTPStatusError HTTP {status}" in text
+    assert "test-key-not-real" not in text and secret_body not in text
+
+
+def test_a_failure_without_a_status_logs_only_its_kind(caplog: pytest.LogCaptureFixture) -> None:
+    http = FakeHttp(httpx.ConnectTimeout("timed out"))
+    with caplog.at_level("WARNING"), pytest.raises(AssistantUnavailableError):
+        model(http).reply(system="s", messages=[{"role": "user", "content": "x"}], tools=[])
+    text = " ".join(record.getMessage() for record in caplog.records)
+    assert "ConnectTimeout" in text and "HTTP" not in text
+
+
 def test_an_unexpected_answer_shape_gives_an_empty_reply_not_a_crash() -> None:
     http = FakeHttp({"choices": []})
     reply = model(http).reply(

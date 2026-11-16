@@ -52,7 +52,10 @@ export default async function CustomAgentsPage({
         description="Small AI helpers you define for your team. An agent reads one record and may suggest a follow-up task or a status change; it can never change anything itself. A different person approves every suggestion."
         actions={
           full ? undefined : (
-            <ButtonLink href="/automation/custom-agents/new">
+            <ButtonLink
+              href="/automation/custom-agents/new"
+              className="whitespace-nowrap"
+            >
               New custom agent
             </ButtonLink>
           )

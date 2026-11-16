@@ -16,6 +16,7 @@ from app.modules.catalog.router import router as catalog_router
 from app.modules.communications.router import router as communications_router
 from app.modules.contacts.router import router as contacts_router
 from app.modules.contracts.router import router as contracts_router
+from app.modules.custom_agents.router import router as custom_agents_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.deal_desk.router import research_router as account_research_router
 from app.modules.deal_desk.router import router as deal_desk_router
@@ -87,6 +88,7 @@ api_router.include_router(approvals_router)
 api_router.include_router(agents_router)
 api_router.include_router(webcheck_router)
 api_router.include_router(qualifier_router)
+api_router.include_router(custom_agents_router)
 api_router.include_router(lead_agent_router)
 api_router.include_router(deal_desk_router)
 api_router.include_router(account_research_router)

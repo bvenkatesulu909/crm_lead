@@ -16,7 +16,7 @@ from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
 from app.modules.custom_agents import repository, rules
-from app.modules.custom_agents.models import CustomAgent, CustomAgentVersion
+from app.modules.custom_agents.models import CustomAgent, CustomAgentRun, CustomAgentVersion
 
 ENTITY = "custom_agent"
 
@@ -281,3 +281,14 @@ def list_versions(
     if agent is None:
         raise CustomAgentNotFoundError()
     return repository.list_versions(session, tenant_id, agent.id)
+
+
+def list_runs(
+    session: Session, principal: Principal, agent_id: uuid.UUID, *, limit: int = 50
+) -> list[CustomAgentRun]:
+    """The newest runs and dry runs of one agent - for administrators only."""
+    tenant_id = _tenant(principal, Permission.CUSTOM_AGENT_MANAGE)
+    agent = repository.get(session, tenant_id, agent_id)
+    if agent is None:
+        raise CustomAgentNotFoundError()
+    return repository.list_runs(session, tenant_id, agent.id, limit=limit)

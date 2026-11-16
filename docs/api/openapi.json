@@ -5754,6 +5754,534 @@
         "title": "CreditNoteRead",
         "type": "object"
       },
+      "CustomAgentDefinitionIn": {
+        "additionalProperties": false,
+        "properties": {
+          "instruction": {
+            "maxLength": 20000,
+            "title": "Instruction",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 400,
+            "title": "Name",
+            "type": "string"
+          },
+          "purpose": {
+            "maxLength": 2000,
+            "title": "Purpose",
+            "type": "string"
+          },
+          "read_sets": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Read Sets",
+            "type": "array"
+          },
+          "suggestion_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Suggestion Kinds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "purpose",
+          "instruction",
+          "read_sets",
+          "suggestion_kinds"
+        ],
+        "title": "CustomAgentDefinitionIn",
+        "type": "object"
+      },
+      "CustomAgentDefinitionUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "instruction": {
+            "maxLength": 20000,
+            "title": "Instruction",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 400,
+            "title": "Name",
+            "type": "string"
+          },
+          "purpose": {
+            "maxLength": 2000,
+            "title": "Purpose",
+            "type": "string"
+          },
+          "read_sets": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Read Sets",
+            "type": "array"
+          },
+          "suggestion_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Suggestion Kinds",
+            "type": "array"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "purpose",
+          "instruction",
+          "read_sets",
+          "suggestion_kinds",
+          "version"
+        ],
+        "title": "CustomAgentDefinitionUpdate",
+        "type": "object"
+      },
+      "CustomAgentMenuItem": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "record_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Type"
+          }
+        },
+        "required": [
+          "key",
+          "description"
+        ],
+        "title": "CustomAgentMenuItem",
+        "type": "object"
+      },
+      "CustomAgentMenusRead": {
+        "description": "What an administrator can choose from, and the limits of a definition.",
+        "properties": {
+          "instruction_max": {
+            "title": "Instruction Max",
+            "type": "integer"
+          },
+          "max_agents": {
+            "title": "Max Agents",
+            "type": "integer"
+          },
+          "max_read_sets": {
+            "title": "Max Read Sets",
+            "type": "integer"
+          },
+          "max_suggestion_kinds": {
+            "title": "Max Suggestion Kinds",
+            "type": "integer"
+          },
+          "name_max": {
+            "title": "Name Max",
+            "type": "integer"
+          },
+          "purpose_max": {
+            "title": "Purpose Max",
+            "type": "integer"
+          },
+          "read_sets": {
+            "items": {
+              "$ref": "#/components/schemas/CustomAgentMenuItem"
+            },
+            "title": "Read Sets",
+            "type": "array"
+          },
+          "suggestion_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/CustomAgentMenuItem"
+            },
+            "title": "Suggestion Kinds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "read_sets",
+          "suggestion_kinds",
+          "max_read_sets",
+          "max_suggestion_kinds",
+          "max_agents",
+          "name_max",
+          "purpose_max",
+          "instruction_max"
+        ],
+        "title": "CustomAgentMenusRead",
+        "type": "object"
+      },
+      "CustomAgentPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CustomAgentRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "max_agents": {
+            "default": 10,
+            "title": "Max Agents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CustomAgentPage",
+        "type": "object"
+      },
+      "CustomAgentRead": {
+        "properties": {
+          "agent_key": {
+            "title": "Agent Key",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_version": {
+            "title": "Current Version",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "read_sets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Read Sets",
+            "type": "array"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          },
+          "suggestion_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestion Kinds",
+            "type": "array"
+          },
+          "tried": {
+            "title": "Tried",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "agent_key",
+          "name",
+          "purpose",
+          "record_type",
+          "read_sets",
+          "suggestion_kinds",
+          "instruction",
+          "current_version",
+          "version",
+          "enabled",
+          "tried",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CustomAgentRead",
+        "type": "object"
+      },
+      "CustomAgentRecordIn": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "format": "uuid",
+            "title": "Record Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "title": "CustomAgentRecordIn",
+        "type": "object"
+      },
+      "CustomAgentRunPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CustomAgentRunRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CustomAgentRunPage",
+        "type": "object"
+      },
+      "CustomAgentRunRead": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "blocked_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Message"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
+          "proposal_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Link"
+          },
+          "record_id": {
+            "format": "uuid",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version_no",
+          "mode",
+          "record_type",
+          "record_id",
+          "action",
+          "outcome",
+          "proposal_id",
+          "proposal_link",
+          "user_id",
+          "created_at"
+        ],
+        "title": "CustomAgentRunRead",
+        "type": "object"
+      },
+      "CustomAgentTrialRead": {
+        "description": "What the agent WOULD do on one record. Nothing was proposed or changed.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sets_shown": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sets Shown",
+            "type": "array"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
+          },
+          "would_propose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Would Propose"
+          }
+        },
+        "required": [
+          "run_id",
+          "version_no",
+          "action",
+          "reason",
+          "would_propose",
+          "sets_shown"
+        ],
+        "title": "CustomAgentTrialRead",
+        "type": "object"
+      },
+      "CustomAgentVersionRead": {
+        "properties": {
+          "cleaned": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cleaned",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by_user_id": {
+            "format": "uuid",
+            "title": "Created By User Id",
+            "type": "string"
+          },
+          "instruction": {
+            "title": "Instruction",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "read_sets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Read Sets",
+            "type": "array"
+          },
+          "suggestion_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestion Kinds",
+            "type": "array"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version_no",
+          "purpose",
+          "instruction",
+          "read_sets",
+          "suggestion_kinds",
+          "cleaned",
+          "created_by_user_id",
+          "created_at"
+        ],
+        "title": "CustomAgentVersionRead",
+        "type": "object"
+      },
       "CustomerFigures": {
         "properties": {
           "active": {
@@ -25263,6 +25791,818 @@
         "summary": "End an active contract early, with a reason (managers)",
         "tags": [
           "contracts"
+        ]
+      }
+    },
+    "/api/v1/custom-agents": {
+      "get": {
+        "description": "Administrators see each agent's instruction; sales staff see only what they need to run it.",
+        "operationId": "list_agents_api_v1_custom_agents_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomAgentPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The custom agents of your organisation",
+        "tags": [
+          "custom-agents"
+        ]
+      },
+      "post": {
+        "description": "Links, markup and hidden characters are removed from the typed text; words that try to change the AI's safety rules are refused. Read sets and suggestion kinds come only from the menus. An organisation can have at most 10 active agents.",
+        "operationId": "create_agent_api_v1_custom_agents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomAgentDefinitionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomAgentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Define a new custom agent (it starts switched off)",
+        "tags": [
+          "custom-agents"
+        ]
+      }
+    },
+    "/api/v1/custom-agents/menus": {
+      "get": {
+        "operationId": "menus_api_v1_custom_agents_menus_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomAgentMenusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What an agent can read and suggest, and the limits of a definition",
+        "tags": [
+          "custom-agents"
+        ]
+      }
+    },
+    "/api/v1/custom-agents/{agent_id}": {
+      "get": {
+        "operationId": "get_agent_api_v1_custom_agents__agent_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomAgentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One custom agent",
+        "tags": [
+          "custom-agents"
+        ]
+      },
+      "put": {
+        "description": "Send `version` (the agent's counter as you last saw it) so two people cannot overwrite each other. A new version must have a dry run before it can be switched on or run.",
+        "operationId": "update_agent_api_v1_custom_agents__agent_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomAgentDefinitionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomAgentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save a changed definition as the next version (older versions are kept)",
+        "tags": [
+          "custom-agents"
+        ]
+      }
+    },
+    "/api/v1/custom-agents/{agent_id}/archive": {
+      "post": {
+        "operationId": "archive_agent_api_v1_custom_agents__agent_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retire an agent: it can no longer be run or edited; its history stays",
+        "tags": [
+          "custom-agents"
+        ]
+      }
+    },
+    "/api/v1/custom-agents/{agent_id}/runs": {
+      "get": {
+        "operationId": "list_runs_api_v1_custom_agents__agent_id__runs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomAgentRunPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The newest runs and dry runs of an agent",
+        "tags": [
+          "custom-agents"
+        ]
+      },
+      "post": {
+        "description": "The record must be one you may read, and the agent must be switched on and have had a dry run of its current version. The result may be a proposal in the approval queue (nothing changes until a different person approves it) or just a recorded run. Off, over budget or over a limit: 503 / 429 with nothing proposed.",
+        "operationId": "run_agent_api_v1_custom_agents__agent_id__runs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomAgentRecordIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomAgentRunRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run an agent on one record; it suggests, a different person decides",
+        "tags": [
+          "custom-agents"
+        ]
+      }
+    },
+    "/api/v1/custom-agents/{agent_id}/try": {
+      "post": {
+        "description": "Uses the current version on one real record you may read. No proposal, no change; the model call counts against the agent's token budget. A valid answer counts as the dry run of this version, which is needed before the agent can be switched on. It works while the agent is still switched off.",
+        "operationId": "try_agent_api_v1_custom_agents__agent_id__try_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomAgentRecordIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomAgentTrialRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dry run for an administrator: show what the agent would suggest, nothing else",
+        "tags": [
+          "custom-agents"
+        ]
+      }
+    },
+    "/api/v1/custom-agents/{agent_id}/versions": {
+      "get": {
+        "operationId": "list_versions_api_v1_custom_agents__agent_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CustomAgentVersionRead"
+                  },
+                  "title": "Response List Versions Api V1 Custom Agents  Agent Id  Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Every saved version of an agent, newest first",
+        "tags": [
+          "custom-agents"
         ]
       }
     },

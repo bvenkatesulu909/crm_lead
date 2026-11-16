@@ -23,6 +23,7 @@ from app.modules.custom_agents.service import (
     create_agent,
     get_agent,
     list_agents,
+    list_runs,
     list_versions,
     update_agent,
 )
@@ -80,6 +81,7 @@ __all__ = [
     "create_agent",
     "get_agent",
     "list_agents",
+    "list_runs",
     "list_versions",
     "has_trial",
     "registry_info",

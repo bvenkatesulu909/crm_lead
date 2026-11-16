@@ -21,6 +21,7 @@ from app.modules.catalog import models as catalog_models
 from app.modules.communications import models as communications_models
 from app.modules.contacts import models as contacts_models
 from app.modules.contracts import models as contracts_models
+from app.modules.custom_agents import models as custom_agents_models
 from app.modules.deal_desk import models as deal_desk_models
 from app.modules.documents import models as documents_models
 from app.modules.identity import models as identity_models
@@ -72,6 +73,7 @@ __all__ = [
     "support_models",
     "webcheck_models",
     "deal_desk_models",
+    "custom_agents_models",
     "proposal_decks_models",
     "workflows_models",
 ]

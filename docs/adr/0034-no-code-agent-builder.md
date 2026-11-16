@@ -1,6 +1,6 @@
 # ADR 0034 — A no-code agent builder for administrators
 
-- **Status:** Proposed (2026-11-16, waiting for the owner's answers in section 6)
+- **Status:** Accepted (2026-11-16, owner said to build it; the recommended answers of section 6 apply)
 - **Date:** 2026-11-16
 - **Deciders:** Project owner
 - **Depends on:** ADR 0014 (approval queue), ADR 0016 (agent registry, budgets, kill switch), ADR 0017 and

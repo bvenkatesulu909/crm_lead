@@ -45,4 +45,4 @@ Rules:
 | [0031](0031-upi-payments-razorpay.md) | UPI payments on invoices through Razorpay payment links (BP-17) | Accepted |
 | [0032](0032-branded-proposal-decks.md) | Branded proposal decks from a quote | Accepted |
 | [0033](0033-call-highlight-clips.md) | Highlight clips from recorded sales calls (BP-25) | Accepted |
-| [0034](0034-no-code-agent-builder.md) | A no-code agent builder for administrators (BP-18, second half) | Proposed |
+| [0034](0034-no-code-agent-builder.md) | A no-code agent builder for administrators (BP-18, second half) | Accepted |

@@ -501,9 +501,9 @@ class World:
             "user.agent2": str(self._mentionable(other, Role.SALES_AGENT)),
             "user.support": str(self._mentionable(support, Role.SUPPORT_AGENT)),
         }
-        if agent in ("qualifier", "lead_agent"):
+        if agent in ("qualifier", "lead_agent", "custom_agent"):
             values.update(self._qualifier_leads(acting))
-        if agent in ("deal_desk", "account_research"):
+        if agent in ("deal_desk", "account_research", "custom_agent"):
             values.update(self._desk_records(acting, other))
         if agent == "deck_writer":
             values.update(self._quote_records(acting, other))

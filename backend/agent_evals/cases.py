@@ -36,6 +36,7 @@ Agent = Literal[
     "deal_desk",
     "account_research",
     "deck_writer",
+    "custom_agent",
 ]
 # The deal desk asks four models in one run (ADR 0024): each step of its script says which one
 # answers. Three reviewers run at the same time, so the order they are asked in is not fixed.
@@ -74,6 +75,9 @@ PERSONAS: dict[str, set[str]] = {
     "account_research": {"sales_agent", "sales_manager", "tenant_admin", "support_agent"},
     # ADR 0032 Amendment A: whoever may change a quote may ask the deck writer for its slide.
     "deck_writer": {"sales_agent", "sales_manager"},
+    # ADR 0034: custom agents are run by the people who hold custom_agent:run; an administrator
+    # also tries them (a dry run).
+    "custom_agent": {"sales_agent", "sales_manager", "tenant_admin"},
 }
 # After these outcomes nothing in the CRM has changed (or may only wait for approval): the
 # answer must not claim otherwise.
@@ -125,10 +129,10 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.proposal_decks import writer
 
         return {writer.TOOL_NAME}
-    if agent == "deck_writer":
-        from app.modules.proposal_decks import writer
+    if agent == "custom_agent":
+        from app.modules.custom_agents import run_rules
 
-        return {writer.TOOL_NAME}
+        return {run_rules.TOOL_NAME}
     raise CaseFileError(f"unknown agent {agent!r}")
 
 
@@ -212,6 +216,51 @@ class WebcheckSetup(_Strict):
     # After the conversation, run the lookups it queued against the demo registry (the real
     # fetcher and parser; only the network is replaced), so the stored evidence can be checked.
     run_jobs: bool = False
+
+
+class CustomAgentSetup(_Strict):
+    """The custom agent a case plays (ADR 0034). The harness has an administrator define it from
+    the fixed menus, try it (a dry run) and switch it on, all inside a savepoint that is rolled
+    back, so no agent leaks into the next case. The definition goes through the same cleaning and
+    menus as in production, so a setup that production would refuse stops the load."""
+
+    name: str = Field(default="Eval custom agent", min_length=1, max_length=60)
+    purpose: str = Field(default="Suggest a follow-up for a record.", min_length=1, max_length=200)
+    instruction: str = Field(
+        default="Read the record.\nSuggest one follow-up if it needs one.",
+        min_length=1,
+        max_length=4000,
+    )
+    read_sets: list[str] = Field(default_factory=lambda: ["lead", "lead_activity"])
+    suggestion_kinds: list[str] = Field(
+        default_factory=lambda: ["lead.set_status", "activity.create_task"]
+    )
+    # False: the agent has had no dry run, so it cannot be switched on and a run is refused.
+    tried: bool = True
+    # "run": the persona runs it on each message (a record id). "dry_run": an administrator tries
+    # it - no proposal, nothing changes.
+    play: Literal["run", "dry_run"] = "run"
+    # "other_organisation": the agent belongs to the other organisation; ours must not reach it.
+    owner: Literal["own_organisation", "other_organisation"] = "own_organisation"
+    # The platform's limit of runs per record per hour for this case (the platform sets it; a
+    # definition cannot raise it).
+    per_record_hour: int = Field(default=1_000, ge=1, le=1_000)
+
+    @model_validator(mode="after")
+    def _is_a_real_definition(self) -> "CustomAgentSetup":
+        from app.modules.custom_agents import rules
+
+        try:
+            rules.clean_definition(
+                name=self.name,
+                purpose=self.purpose,
+                instruction=self.instruction,
+                read_sets=self.read_sets,
+                suggestion_kinds=self.suggestion_kinds,
+            )
+        except rules.DefinitionError as exc:
+            raise ValueError(f"custom_agent: the definition is not allowed ({exc})") from exc
+        return self
 
 
 class ExpectedEvidence(_Strict):
@@ -328,6 +377,8 @@ class Case(BaseModel):
     qualifier: QualifierSetup | None = None
     # Staff assistant: how the web check is set up (ADR 0019). Absent = no web check settings.
     webcheck: WebcheckSetup | None = None
+    # Custom agent: the agent the case plays. Absent = the standard lead agent of the harness.
+    custom_agent: CustomAgentSetup | None = None
     script: list[Step] = Field(default_factory=list)
     expect: Expect
 
@@ -348,14 +399,25 @@ class Case(BaseModel):
             raise ValueError("language: only the website chat has a visitor language")
         if self.mode == "voice" and self.agent != "staff_assistant":
             raise ValueError("mode: voice is only for the staff assistant")
+        if self.custom_agent is not None and self.agent != "custom_agent":
+            raise ValueError("custom_agent: only for the custom agent")
+        if (
+            self.agent == "custom_agent"
+            and self.custom_agent is not None
+            and self.custom_agent.play == "dry_run"
+            and self.persona != "tenant_admin"
+        ):
+            raise ValueError("custom_agent.play: only an administrator tries an agent")
         if self.agent not in ("qualifier", "lead_agent") and self.qualifier:
             raise ValueError("qualifier: only for the qualifier and the lead agent")
         if (
-            self.agent not in ("qualifier", "lead_agent", "deal_desk", "deck_writer")
+            self.agent
+            not in ("qualifier", "lead_agent", "deal_desk", "deck_writer", "custom_agent")
             and self.expect.proposals is not None
         ):
             raise ValueError(
-                "expect.proposals: only for the qualifier, lead agent, deal desk and deck writer"
+                "expect.proposals: only for the qualifier, lead agent, deal desk, deck writer "
+                "and custom agent"
             )
         roles = [step.role for step in self.script]
         if self.agent == "deal_desk" and any(role is None for role in roles):

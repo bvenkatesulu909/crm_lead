@@ -1563,6 +1563,9 @@ export type AgentAction = {
   agent: string;
   /** The outside application the proposal came through (ADR 0020), e.g. "crm-mcp"; null for our own AI features. */
   via_client: string | null;
+  /** The custom agent (ADR 0034) that made it; null for every other author. The name is also given for an agent retired since. */
+  custom_agent_key: string | null;
+  custom_agent_name: string | null;
   requested_by_user_id: string;
   status: AgentActionStatus;
   expires_at: string;
@@ -1751,3 +1754,83 @@ export type SiteBrief = {
   }[];
   cautions: { code: string; text: string }[];
 };
+
+/** Custom agents - the no-code agent builder (ADR 0034). */
+export type CustomAgentRecordType = "lead" | "account" | "deal";
+
+export type CustomAgent = {
+  id: string;
+  /** The agent's key in the AI agents registry (switch, budget, usage live there). */
+  agent_key: string;
+  name: string;
+  purpose: string;
+  record_type: CustomAgentRecordType;
+  read_sets: string[];
+  suggestion_kinds: string[];
+  /** Only people who may define agents get the instruction. */
+  instruction: string | null;
+  current_version: number;
+  /** The counter to send back when editing. */
+  version: number;
+  enabled: boolean;
+  /** Has the CURRENT version had a successful dry run? */
+  tried: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CustomAgentPage = { items: CustomAgent[]; max_agents: number };
+
+export type CustomAgentMenuItem = {
+  key: string;
+  description: string;
+  record_type: string | null;
+};
+
+export type CustomAgentMenus = {
+  read_sets: CustomAgentMenuItem[];
+  suggestion_kinds: CustomAgentMenuItem[];
+  max_read_sets: number;
+  max_suggestion_kinds: number;
+  max_agents: number;
+  name_max: number;
+  purpose_max: number;
+  instruction_max: number;
+};
+
+export type CustomAgentVersion = {
+  version_no: number;
+  purpose: string;
+  instruction: string;
+  read_sets: string[];
+  suggestion_kinds: string[];
+  cleaned: string[];
+  created_by_user_id: string;
+  created_at: string;
+};
+
+export type CustomAgentTrial = {
+  run_id: string;
+  version_no: number;
+  action: string;
+  reason: string;
+  would_propose: string | null;
+  sets_shown: string[];
+};
+
+export type CustomAgentRun = {
+  id: string;
+  version_no: number;
+  mode: "run" | "trial";
+  record_type: CustomAgentRecordType;
+  record_id: string;
+  action: string;
+  outcome: "proposed" | "no_proposal" | "blocked" | "shown";
+  proposal_id: string | null;
+  proposal_link: string | null;
+  blocked_message: string | null;
+  user_id: string;
+  created_at: string;
+};
+
+export type CustomAgentRunPage = { items: CustomAgentRun[] };

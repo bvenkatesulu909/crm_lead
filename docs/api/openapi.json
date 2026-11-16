@@ -1134,6 +1134,28 @@
             "title": "Created At",
             "type": "string"
           },
+          "custom_agent_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Agent Key"
+          },
+          "custom_agent_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Agent Name"
+          },
           "decided_at": {
             "anyOf": [
               {
@@ -1292,6 +1314,8 @@
           "reason",
           "agent",
           "via_client",
+          "custom_agent_key",
+          "custom_agent_name",
           "requested_by_user_id",
           "status",
           "expires_at",

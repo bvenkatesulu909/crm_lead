@@ -58,6 +58,10 @@ class AgentActionRead(BaseModel):
     agent: str
     # The verified application a proposal came through (crm-mcp), None for our own assistant.
     via_client: str | None
+    # The key and name of the custom agent that made it (ADR 0034); None for every other author.
+    # The name is also given for an agent that was retired since.
+    custom_agent_key: str | None
+    custom_agent_name: str | None
     requested_by_user_id: uuid.UUID
     status: Status
     expires_at: datetime

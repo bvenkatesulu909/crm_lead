@@ -122,6 +122,12 @@ export const canWriteCalls = (me: Pick<Me, "permissions">) =>
 /** The Qualifier (docs/qualifier.md): ask for an assessment / read the procedure / write it. */
 export const canRunQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:run");
+/** Custom agents (ADR 0034): administrators define and try them, sales staff run them. Display
+ * only - the API decides again. */
+export const canManageCustomAgents = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "custom_agent:manage");
+export const canRunCustomAgents = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "custom_agent:run");
 /** The deal desk (ADR 0024): display only - the API checks again, and a sales agent may ask only
  * about deals they own. */
 export const canRunDealDesk = (me: Pick<Me, "permissions">) =>
@@ -273,6 +279,12 @@ export function navigationFor(
       label: "AI agents",
       icon: "automation",
     });
+  if (canManageCustomAgents(me))
+    items.push({
+      href: "/automation/custom-agents",
+      label: "Custom agents",
+      icon: "automation",
+    });
   if (canManageBranding(me))
     items.push({ href: "/branding", label: "Branding", icon: "automation" });
   return items;
@@ -319,6 +331,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "qualifier:run": "Ask the Qualifier to assess a lead",
   "qualifier:read": "Read the Qualifier's written steps",
   "qualifier:manage": "Write the Qualifier's steps and try them",
+  "custom_agent:run": "Run a custom agent on a record you can see",
+  "custom_agent:manage": "Define custom agents and try them",
   "tenant:user:read": "View your organisation's users",
   "tenant:user:manage": "Manage your organisation's users",
   "account:read:all": "View all customer accounts",

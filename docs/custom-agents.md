@@ -2,8 +2,28 @@
 
 An administrator defines a small AI helper as data; staff run it on one record; it can only
 **suggest**, and a different person approves every suggestion in the approval queue. This page
-describes what exists today (steps AB1-AB3: tables, service, run and the API). The screens are
-AB4.
+describes what exists today (steps AB1-AB4: tables, service, run, the API and the screens). The
+evaluation cases are AB5.
+
+## The screens (AB4)
+
+- **Administrators** (menu entry **Custom agents**, `/automation/custom-agents`): the list with each
+  agent's state in words ("Needs a dry run, then switching on", "Ready to switch on", "Switched on");
+  **New custom agent** (name, what it is for, instruction, and two groups of checkboxes - what it may
+  read, grouped by kind of record, and what it may suggest - straight from the API's menus; a lead
+  status is greyed out for an agent that reads an account or a deal); one agent's page with
+  **Dry run and switch** (pick a real record, see what the agent WOULD do, nothing is proposed;
+  **Switch on** stays disabled until the current version had a dry run), **Definition** (saving makes
+  the next version and needs a new dry run), **Versions**, **Recent runs** and **Retire** (asks
+  first). A refused save keeps what was typed and chosen.
+- **Sales staff**: a **Custom agents** card on a lead, an account or a deal page with one
+  **Run <name>** button per agent that is switched on, has had a dry run of its current version and
+  works on that kind of record. Nothing is shown when there is nothing to run. The result says that
+  nothing changes until a different person approves, and links to the suggestion.
+- **Approvals**: the proposal card says "Asked by ... through the custom agent "<name>"" (also after
+  the agent was retired).
+- Everything a model wrote is shown as plain text. The screens only help: the API decides who may do
+  what and checks every menu and limit again.
 
 ## What an agent is
 

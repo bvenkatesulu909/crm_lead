@@ -413,6 +413,9 @@ def test_an_agent_runs_and_only_makes_a_proposal_a_manager_then_approves(
         "lead.set_status",
         "custom_agent",
     )
+    # The card names the custom agent, by key and by name.
+    assert card["custom_agent_key"] == live["agent_key"]
+    assert card["custom_agent_name"] == "Quiet lead helper"
     # The person who ran it cannot approve; a manager can.
     own = api.post(
         f"/api/v1/approvals/actions/{body['proposal_id']}/approve",
@@ -538,3 +541,13 @@ def test_the_record_id_is_the_only_thing_a_run_accepts(api, auth, live, lead) ->
         ).status_code
         == 422
     )
+
+
+def test_the_card_still_names_an_agent_that_was_retired_since(api, auth, live, lead) -> None:
+    use(api, says())
+    body = ok(run_it(api, auth, live, lead.id), 201)
+    assert api.post(f"{URL}/{live['id']}/archive", headers=auth("alpha.admin")).status_code == 204
+    card = ok(
+        api.get(f"/api/v1/approvals/actions/{body['proposal_id']}", headers=auth("alpha.manager"))
+    )
+    assert card["custom_agent_name"] == "Quiet lead helper"

@@ -436,6 +436,8 @@ describe("approval card", () => {
       reason: "Qualifier (procedure v1): Phone present.",
       agent: "qualifier",
       via_client: null,
+      custom_agent_key: null,
+      custom_agent_name: null,
       requested_by_user_id: "22222222-2222-4222-8222-222222222222",
       status: "pending",
       expires_at: "2026-11-08T10:00:00Z",

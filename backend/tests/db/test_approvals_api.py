@@ -117,6 +117,8 @@ def test_approvers_see_the_organisations_queue_and_others_only_their_own(
     assert item["reason"] == REASON
     assert item["status"] == "pending" and item["version"] == 1
     assert item["requested_by_user_id"] == str(world.users["alpha.agent1"].id)
+    # Only a custom agent's proposal (ADR 0034) names a custom agent.
+    assert (item["custom_agent_key"], item["custom_agent_name"]) == (None, None)
 
     own = ok(api.get(ACTIONS, headers=auth("alpha.agent1")))
     assert [i["id"] for i in own["items"]] == [str(first.id)]

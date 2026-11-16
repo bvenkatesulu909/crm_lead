@@ -30,6 +30,7 @@ from app.modules.approvals.schemas import (
     SeenValue,
     Status,
 )
+from app.modules.custom_agents import api as custom_agents_api
 from app.modules.identity.api import get_verified_token, require_any_permission
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
@@ -57,6 +58,12 @@ def _read(session: Session, principal: Principal, action: AgentAction) -> AgentA
         reason=action.reason,
         agent=action.agent,
         via_client=action.via_client,
+        custom_agent_key=action.custom_agent_key,
+        custom_agent_name=(
+            custom_agents_api.agent_name(session, action.tenant_id, action.custom_agent_key)
+            if action.custom_agent_key
+            else None
+        ),
         requested_by_user_id=action.requested_by_user_id,
         status=action.status,  # the database allows only these values
         expires_at=action.expires_at,

@@ -73,3 +73,32 @@ def lines_of(session: Session, tenant_id: uuid.UUID, note_id: uuid.UUID) -> list
             .order_by(CallNoteLine.position)
         )
     )
+
+
+def settings_row(session: Session, tenant_id: uuid.UUID) -> CallNoteSettings | None:
+    return session.scalars(
+        select(CallNoteSettings).where(CallNoteSettings.tenant_id == tenant_id)
+    ).first()
+
+
+def versions_of(session: Session, tenant_id: uuid.UUID, recording_id: uuid.UUID) -> list[CallNote]:
+    """Every draft of a recording, newest first."""
+    return list(
+        session.scalars(
+            select(CallNote)
+            .where(CallNote.tenant_id == tenant_id, CallNote.recording_id == recording_id)
+            .order_by(CallNote.version_no.desc())
+        )
+    )
+
+
+def version_of(
+    session: Session, tenant_id: uuid.UUID, recording_id: uuid.UUID, version_no: int
+) -> CallNote | None:
+    return session.scalars(
+        select(CallNote).where(
+            CallNote.tenant_id == tenant_id,
+            CallNote.recording_id == recording_id,
+            CallNote.version_no == version_no,
+        )
+    ).first()

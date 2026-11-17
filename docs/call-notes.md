@@ -1,8 +1,8 @@
 # Call notes and a deal checklist (ADR 0035)
 
-Status: **CN1 (rules, tables) built 2026-11-16, CN2 (the governed run) built 2026-11-17.** There is no
-endpoint or screen yet (CN3-CN6). Nothing calls the run from the web app, so no model reads a transcript
-in practice until CN3.
+Status: **CN1 (rules, tables) built 2026-11-16, CN2 (the governed run) and CN3 (the API) built 2026-11-17.**
+There is no screen yet (CN4-CN6). The feature stays off until an administrator switches the `call_notes`
+agent on (AI agents page or `PATCH /api/v1/agents/call_notes`).
 
 ## The idea in one paragraph
 After a recorded sales call has a transcript, a rep will be able to ask for notes and a BANT or MEDDIC
@@ -73,6 +73,18 @@ as a buyer-memory **assumption**.
 `CRM_AI_PROVIDER=fake` uses a scripted model (`llm.FakeCallNotesModel`) that quotes the first transcript line
 for the first checklist field, so a demo shows a real, verifiable quote.
 
+## The API (CN3)
+| Endpoint | Who | What |
+|---|---|---|
+| `GET /api/v1/call-notes/settings` | sales agents, managers, administrators | The chosen frame (`bant` until an administrator chooses), its `version` (0 before the first choice) and the fields of both frames with labels and hints. |
+| `PUT /api/v1/call-notes/settings` | administrators | Body: `framework` (`bant` or `meddic`) and `version` (what the screen last saw; 0 or absent for the first choice). Nothing else is accepted. A stale version is a 409. Saving the frame already chosen changes nothing. Audit `call_notes.framework_changed` (from, to). |
+| `POST /api/v1/leads/{lead}/calls/{call}/notes` | people with `call_notes:run` | **No body**: the lead and call are in the address, the frame is the organisation's. 201 with the draft. Errors: 403 (no permission), 404 (lead or call not found or not readable), 409 (no transcript yet), 422 (`call_notes_bad_answer`, `_unverified_answer`, `_transcript_too_long`, `_no_transcript`), 429 (`call_notes_rate_limited`), 503 (agent off, over budget, platform switch). A refused answer still keeps the tokens it used. |
+| `GET /api/v1/leads/{lead}/calls/{call}/notes` | same | `{newest, versions}`: the newest draft (or null) and every version, newest first. |
+| `GET /api/v1/leads/{lead}/calls/{call}/notes/{n}` | same | One version. |
+
+A line in a draft has: `field`, a `label`, `state` (`stated`, `assumed`, `unknown`), `value`, `quote`,
+`start_ms` / `end_ms` (the transcript's own time), `reason` (assumed only) and `note_code` (why a claim became
+unknown). The response carries no tokens, tenant, prompt or raw model answer.
+
 ## Still to build
-CN3 the API (settings and `POST/GET /leads/{id}/calls/{call_id}/notes`), CN4 the proposals through the
-approval queue, CN5 the screens, CN6 evaluation cases.
+CN4 the proposals through the approval queue, CN5 the screens, CN6 evaluation cases.

@@ -14,6 +14,7 @@ from app.core.screening import screen
 
 FRAMEWORK_NAMES = ("bant", "meddic")
 DEFAULT_FRAMEWORK = "bant"
+TITLES = {"bant": "BANT", "meddic": "MEDDIC"}
 STATES = ("stated", "assumed", "unknown")
 NOTE = "note"  # the field name of a free "call note" line (always a stated line with a quote)
 
@@ -103,6 +104,10 @@ FRAMEWORKS: dict[str, tuple[Field, ...]] = {
             None,
         ),
     ),
+}
+LABELS: dict[str, str] = {
+    NOTE: "Note",
+    **{f.key: f.label for fields in FRAMEWORKS.values() for f in fields},
 }
 ALL_FIELDS: tuple[str, ...] = tuple(f.key for fields in FRAMEWORKS.values() for f in fields)
 

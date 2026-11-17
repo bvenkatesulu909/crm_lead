@@ -255,6 +255,11 @@ class Settings(BaseSettings):
     custom_agent_per_record_hour: int = Field(default=1, ge=1, le=100)
     custom_agent_per_user_hour: int = Field(default=20, ge=1, le=1_000)
     custom_agent_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # Call notes (ADR 0035): drafts per recording per day, per person per hour and per
+    # organisation per day.
+    call_notes_per_recording_day: int = Field(default=3, ge=1, le=100)
+    call_notes_per_user_hour: int = Field(default=20, ge=1, le=1_000)
+    call_notes_per_tenant_day: int = Field(default=100, ge=1, le=100_000)
     # The optional lead agent (ADR 0022): how often it may run.
     lead_agent_per_lead_hour: int = Field(default=1, ge=1, le=100)
     lead_agent_per_tenant_day: int = Field(default=200, ge=1, le=100_000)

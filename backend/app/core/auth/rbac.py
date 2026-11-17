@@ -177,6 +177,10 @@ class Permission(StrEnum):
     # or delete one. The lead's own read rules still decide which leads a person may open.
     CALL_READ = "call:read"
     CALL_WRITE = "call:write"
+    # Call notes and the deal checklist (ADR 0035): ask for a draft from a call transcript / choose
+    # the checklist frame. Reading a transcript also needs call:read.
+    CALL_NOTES_RUN = "call_notes:run"
+    CALL_NOTES_MANAGE = "call_notes:manage"
     QUALIFIER_RUN = "qualifier:run"
     QUALIFIER_READ = "qualifier:read"
     QUALIFIER_MANAGE = "qualifier:manage"
@@ -208,7 +212,7 @@ _SALES_ALL = frozenset(
         _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE, _P.AGENT_READ,
         _P.WEBCHECK_RUN, _P.WEBCHECK_READ,
         _P.BUYER_MEMORY_READ, _P.BUYER_MEMORY_WRITE,
-        _P.CALL_READ, _P.CALL_WRITE,
+        _P.CALL_READ, _P.CALL_WRITE, _P.CALL_NOTES_RUN,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
         _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN, _P.CUSTOM_AGENT_RUN,
     }
@@ -225,7 +229,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.TENANT_ADMIN: _SALES_ALL
     | {_P.TENANT_USER_READ, _P.TENANT_USER_MANAGE, _P.PORTAL_USER_INVITE}
     | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE, _P.AGENT_MANAGE, _P.QUALIFIER_MANAGE}
-    | {_P.BRANDING_MANAGE, _P.CUSTOM_AGENT_MANAGE}
+    | {_P.BRANDING_MANAGE, _P.CUSTOM_AGENT_MANAGE, _P.CALL_NOTES_MANAGE}
     | {_P.TICKET_READ_ALL, _P.TICKET_MANAGE}
     | _ORDERS_ALL
     | _BILLING_ALL
@@ -249,6 +253,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.BUYER_MEMORY_WRITE,
             _P.CALL_READ,
             _P.CALL_WRITE,
+            _P.CALL_NOTES_RUN,
             _P.OPPORTUNITY_READ_OWN,
             _P.OPPORTUNITY_WRITE_OWN,
             _P.ACTIVITY_READ_OWN,

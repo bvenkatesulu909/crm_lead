@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
-from app.core.errors import ConflictError, DomainError, NotFoundError
+from app.core.auth.rbac import Permission
+from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
 from app.modules.buyer_memory import repository, rules
 from app.modules.buyer_memory.models import BuyerMemoryItem
 from app.modules.buyer_memory.schemas import MemoryConfirm, MemoryItemCreate
@@ -269,3 +270,69 @@ def record_from_website_chat(
     if added:
         _audit(session, principal, lead_id, "buyer_memory.recorded_from_chat", keys=added)
     return len(added)
+
+
+# --- an approved AI suggestion (ADR 0035, CN4) ---------------------------------------------------
+
+
+class KeyConfirmedError(ConflictError):
+    code = "memory_key_confirmed"
+
+    def __init__(self) -> None:
+        super().__init__("The buyer already confirmed this detail; an assumption would replace it.")
+
+
+def _current_of_key(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, key: str
+) -> BuyerMemoryItem | None:
+    arranged = rules.arrange(repository.rows_of_lead(session, tenant_id, lead_id))
+    return next((row for row in arranged.current if row.key == key), None)
+
+
+def current_text(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, key: str
+) -> str | None:
+    """The current value of one key, or None when it is still a gap."""
+    row = _current_of_key(session, tenant_id, lead_id, key)
+    return row.value if row else None
+
+
+def assumption_problem(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, key: str, value: str
+) -> str | None:
+    """Why an assumption for this key would be pointless or harmful, or None. A newer row replaces
+    the older one, so an assumption must never be written over a fact the buyer confirmed."""
+    row = _current_of_key(session, tenant_id, lead_id, key)
+    if row is None:
+        return None
+    if row.status == "fact":
+        return "the buyer already confirmed this detail"
+    if row.value == value:
+        return "this assumption is already recorded"
+    return None
+
+
+def add_assumption(
+    session: Session,
+    principal: Principal,
+    lead_id: uuid.UUID,
+    *,
+    key: str,
+    value: str,
+    reason: str,
+) -> BuyerMemoryItem:
+    """Record an ASSUMPTION - never a fact - for an approved suggestion. The person who approves
+    needs to be allowed to write buyer memory and to read the lead."""
+    tenant_id = _require_lead(session, principal, lead_id)
+    if not principal.has_permission(Permission.BUYER_MEMORY_WRITE):
+        raise ForbiddenError("You may not change buyer memory.")
+    current = _current_of_key(session, tenant_id, lead_id, key)
+    if current is not None and current.status == "fact":
+        raise KeyConfirmedError()
+    item = _checked(key=key, value=value, status="assumption", reason=reason)
+    stored = _store(session, principal, tenant_id, lead_id, item)
+    _audit(
+        session, principal, lead_id, "buyer_memory.added",
+        key=item.key, status=item.status, item_id=str(stored.id), via="approved_suggestion",
+    )  # fmt: skip
+    return stored

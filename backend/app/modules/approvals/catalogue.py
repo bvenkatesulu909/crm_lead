@@ -12,13 +12,14 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
 from app.core.records import LeadSnapshot
 from app.modules.activities import api as activities_api
 from app.modules.approvals.artifact import Change, Plan
+from app.modules.buyer_memory import api as buyer_memory_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 from app.modules.proposal_decks import api as proposal_decks_api
@@ -48,6 +49,32 @@ class DeckSummaryPayload(_Payload):
     """The text of a quote deck's "why this proposal" slide (ADR 0032 Amendment A, PD7)."""
 
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+class BuyerMemoryAssumptionPayload(_Payload):
+    """One detail for a lead's buyer memory, always recorded as an ASSUMPTION (ADR 0035, CN4).
+    ``note`` says where it came from (the call and the moment); ``call_id`` and ``at_ms`` point
+    at it. A fact needs a person to confirm it with the buyer's words, so this kind has no
+    status."""
+
+    key: str
+    value: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    note: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    call_id: uuid.UUID
+    at_ms: Annotated[int, Field(ge=0, le=86_400_000)]
+
+    @field_validator("key")
+    @classmethod
+    def _known_key(cls, key: str) -> str:
+        if key not in {name for name, _label in buyer_memory_api.KEYS}:
+            raise ValueError("must be one of the twelve buyer memory keys")
+        return key
+
+    @field_validator("value", "note")
+    @classmethod
+    def _one_line(cls, text: str) -> str:
+        # The stored text is cleaned the same way, so the plan and the outcome compare equal.
+        return " ".join(text.split())
 
 
 @dataclass(frozen=True)
@@ -249,6 +276,61 @@ def _observe_summary(
     return [Change("deck_summary", None, now)]
 
 
+def _check_memory(
+    session: Session, proposal: Proposal, payload: BuyerMemoryAssumptionPayload
+) -> str | None:
+    return buyer_memory_api.assumption_problem(
+        session, proposal.tenant_id, proposal.target_id, payload.key, payload.value
+    )
+
+
+def _run_memory(
+    session: Session, me: Principal, proposal: Proposal, payload: BuyerMemoryAssumptionPayload
+) -> Ran:
+    stored = buyer_memory_api.add_assumption(
+        session,
+        me,
+        proposal.target_id,
+        key=payload.key,
+        value=payload.value,
+        reason=payload.note,
+    )
+    return Ran("Recorded in the buyer memory as an assumption.", stored.id)
+
+
+def _spec_memory(
+    session: Session, me: Principal, proposal: Proposal, payload: BuyerMemoryAssumptionPayload
+) -> Plan:
+    now = buyer_memory_api.current_text(
+        session, proposal.tenant_id, proposal.target_id, payload.key
+    )
+    return Plan(
+        [Change(f"buyer_memory.{payload.key}", now, payload.value)],
+        {"lead_id": str(proposal.target_id), "call_id": str(payload.call_id)},
+    )
+
+
+def _observe_memory(
+    session: Session,
+    me: Principal,
+    proposal: Proposal,
+    payload: BuyerMemoryAssumptionPayload,
+    ran: Ran,
+) -> list[Change]:
+    now = buyer_memory_api.current_text(
+        session, proposal.tenant_id, proposal.target_id, payload.key
+    )
+    return [Change(f"buyer_memory.{payload.key}", None, now)]
+
+
+def _describe_memory(payload: BuyerMemoryAssumptionPayload) -> str:
+    labels = dict(buyer_memory_api.KEYS)
+    return (
+        "Note in the buyer memory, as an assumption (not a fact): "
+        f"{labels.get(payload.key, payload.key)}: {payload.value}"
+    )
+
+
 def _describe_status(payload: LeadStatusPayload) -> str:
     return f"Change the lead's status to {payload.status}"
 
@@ -289,6 +371,16 @@ KINDS: dict[str, ActionKind] = {
             _run_task,
             _spec_task,
             _observe_task,
+        ),
+        ActionKind(
+            "buyer_memory.add_assumption",
+            ("lead",),
+            BuyerMemoryAssumptionPayload,
+            _describe_memory,
+            _check_memory,
+            _run_memory,
+            _spec_memory,
+            _observe_memory,
         ),
         ActionKind(
             "quote.deck_summary",

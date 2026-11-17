@@ -12402,6 +12402,62 @@
         "title": "PlannedChange",
         "type": "object"
       },
+      "PlannedMemoryRead": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "position",
+          "field",
+          "label",
+          "key",
+          "value",
+          "note"
+        ],
+        "title": "PlannedMemoryRead",
+        "type": "object"
+      },
+      "PlannedTaskRead": {
+        "properties": {
+          "due_in_days": {
+            "title": "Due In Days",
+            "type": "integer"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "due_in_days"
+        ],
+        "title": "PlannedTaskRead",
+        "type": "object"
+      },
       "PortalAccountRead": {
         "description": "What customer-portal users see: no owners, internal numbers or audit fields.",
         "properties": {
@@ -14441,6 +14497,100 @@
         "title": "ProductUpdate",
         "type": "object"
       },
+      "ProposalOutcomeRead": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
+          "proposal_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Link"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target",
+          "position",
+          "status",
+          "proposal_id",
+          "proposal_link",
+          "message"
+        ],
+        "title": "ProposalOutcomeRead",
+        "type": "object"
+      },
+      "ProposalPreviewRead": {
+        "properties": {
+          "memory": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedMemoryRead"
+            },
+            "title": "Memory",
+            "type": "array"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlannedTaskRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "memory",
+          "task"
+        ],
+        "title": "ProposalPreviewRead",
+        "type": "object"
+      },
       "ProposalRead": {
         "description": "A change the assistant proposed; it waits for a manager's approval (ADR 0014).",
         "properties": {
@@ -14488,6 +14638,50 @@
           "link"
         ],
         "title": "ProposalRef",
+        "type": "object"
+      },
+      "ProposalRequest": {
+        "additionalProperties": false,
+        "description": "Which lines to suggest. Nothing else is accepted: the key, the value, the lead and the call\nall come from the stored draft.",
+        "properties": {
+          "follow_up_task": {
+            "default": true,
+            "title": "Follow Up Task",
+            "type": "boolean"
+          },
+          "positions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positions"
+          }
+        },
+        "title": "ProposalRequest",
+        "type": "object"
+      },
+      "ProposalsRead": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalOutcomeRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ProposalsRead",
         "type": "object"
       },
       "PublicChatReply": {
@@ -32564,6 +32758,263 @@
           }
         ],
         "summary": "One version of the call notes of a call",
+        "tags": [
+          "call-notes"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/calls/{call_id}/notes/{version_no}/proposals": {
+      "post": {
+        "description": "Each chosen line becomes a proposal to note a detail in the buyer memory - always as an ASSUMPTION, never a fact - and the unknown lines can become one follow-up task. Nothing changes until a different person approves. A line the safety check refuses or that is already confirmed is reported, not an error.",
+        "operationId": "create_proposals_api_v1_leads__lead_id__calls__call_id__notes__version_no__proposals_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_no",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Version No",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Turn a draft into proposals; a different person decides",
+        "tags": [
+          "call-notes"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/calls/{call_id}/notes/{version_no}/proposals/preview": {
+      "get": {
+        "operationId": "preview_proposals_api_v1_leads__lead_id__calls__call_id__notes__version_no__proposals_preview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Call Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_no",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Version No",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "positions",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "maxItems": 20,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Positions"
+            }
+          },
+          {
+            "in": "query",
+            "name": "follow_up_task",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Follow Up Task",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalPreviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What asking for proposals from a draft would suggest (stores nothing)",
         "tags": [
           "call-notes"
         ]

@@ -3,6 +3,7 @@
 from app.modules.approvals.metrics import qualifier_suggestions_table
 from app.modules.approvals.sentinel import Limits as SentinelLimits
 from app.modules.approvals.service import (
+    InvalidActionError,
     LimitReachedError,
     ProposalBlockedError,
     action_brief,
@@ -15,6 +16,7 @@ from app.modules.approvals.service import (
 )
 
 __all__ = [
+    "InvalidActionError",
     "LimitReachedError",
     "ProposalBlockedError",
     "SentinelLimits",

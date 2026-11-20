@@ -10,11 +10,22 @@ import {
   readClips,
   startCallUpload,
 } from "@/app/(app)/leads/[id]/call-actions";
+import {
+  createNotes,
+  makeProposals,
+  previewProposals,
+  readNotes,
+  readNotesVersion,
+} from "@/app/(app)/leads/[id]/call-notes-actions";
 import { CallsView } from "@/components/calls-views";
 import { Card } from "@/components/ui";
 import type { Me } from "@/lib/api-types";
 import type { CallRecording } from "@/lib/calls";
-import { canReadCalls, canWriteCalls } from "@/lib/permissions";
+import {
+  canReadCalls,
+  canRunCallNotes,
+  canWriteCalls,
+} from "@/lib/permissions";
 import { apiFetch } from "@/lib/server/api";
 
 /**
@@ -42,6 +53,7 @@ export async function CallsCard({
         <CallsView
           calls={data.items}
           canWrite={canWriteCalls(me)}
+          canAskNotes={canRunCallNotes(me)}
           actions={{
             start: startCallUpload.bind(null, leadId),
             finish: finishCallUpload.bind(null, leadId),
@@ -53,6 +65,15 @@ export async function CallsCard({
             editClip: editClip.bind(null, leadId),
             deleteClip: deleteClip.bind(null, leadId),
             listenToClip: listenToClip.bind(null, leadId),
+            ...(canRunCallNotes(me)
+              ? {
+                  readNotes: readNotes.bind(null, leadId),
+                  readNotesVersion: readNotesVersion.bind(null, leadId),
+                  createNotes: createNotes.bind(null, leadId),
+                  previewProposals: previewProposals.bind(null, leadId),
+                  makeProposals: makeProposals.bind(null, leadId),
+                }
+              : {}),
           }}
         />
       </div>

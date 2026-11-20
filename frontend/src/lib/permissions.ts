@@ -119,6 +119,11 @@ export const canReadCalls = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call:read");
 export const canWriteCalls = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call:write");
+/** Call notes and the deal checklist (ADR 0035): display only - the API checks again. */
+export const canRunCallNotes = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "call_notes:run");
+export const canManageCallNotes = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "call_notes:manage");
 /** The Qualifier (docs/qualifier.md): ask for an assessment / read the procedure / write it. */
 export const canRunQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:run");
@@ -279,6 +284,12 @@ export function navigationFor(
       label: "AI agents",
       icon: "automation",
     });
+  if (canManageCallNotes(me))
+    items.push({
+      href: "/automation/call-notes",
+      label: "Call notes",
+      icon: "automation",
+    });
   if (canManageCustomAgents(me))
     items.push({
       href: "/automation/custom-agents",
@@ -328,6 +339,9 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "buyer_memory:write": "Record and confirm what we know about a buyer",
   "call:read": "See call recordings and transcripts on a lead",
   "call:write": "Add a call recording to a lead",
+  "call_notes:run":
+    "Ask for call notes and a deal checklist from a call transcript",
+  "call_notes:manage": "Choose the deal checklist frame (BANT or MEDDIC)",
   "qualifier:run": "Ask the Qualifier to assess a lead",
   "qualifier:read": "Read the Qualifier's written steps",
   "qualifier:manage": "Write the Qualifier's steps and try them",

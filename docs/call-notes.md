@@ -1,7 +1,7 @@
 # Call notes and a deal checklist (ADR 0035)
 
 Status: **CN1 (rules, tables) built 2026-11-16; CN2 (the governed run), CN3 (the API) and CN4 (proposals)
-built 2026-11-17.** There is no screen yet (CN5-CN6). The feature stays off until an administrator switches the `call_notes`
+built 2026-11-17; CN5 (the screens) built 2026-11-20.** Evaluation cases (CN6) are still to do. The feature stays off until an administrator switches the `call_notes`
 agent on (AI agents page or `PATCH /api/v1/agents/call_notes`).
 
 ## The idea in one paragraph
@@ -113,5 +113,34 @@ each first.
 - Asking twice does not fill the queue: the Sentinel blocks an identical waiting proposal. The audit entry
   `call_notes.proposed` has ids and counts only. No model is called.
 
+## The screens (CN5)
+- **On the lead page**, in the **Call recordings** card: open a recording's transcript and a **Call notes and
+  deal checklist** block appears under it (people with `call_notes:run`; nothing when the lead is not
+  readable). It says in words that it is an **AI draft** and that nothing in the CRM has changed.
+  - Each checklist line shows its **state** (*Stated* / *Assumed* / *Unknown*), the value, the **quote** as
+    plain text (never markup), the moment in the call ("At 0:06"), the words **Speaker not verified** and a
+    **Listen at 0:06** button that plays the cleaned copy at that moment (a 60-second link; no button when
+    the audio was deleted). An assumed line shows its reason. An unknown line says nothing on the call
+    answers it; when the AI answered but the code could not find its quote, a sentence says why and the
+    number of such lines is shown.
+  - Free call notes are listed under the checklist; notes left out and what was cleaned (a link removed, words
+    that read like instructions to an AI) are named in a sentence each, never repeated.
+  - **Create call notes** / **Make new call notes** asks for a draft (nothing is sent: the server knows the
+    lead, the call and the frame). Refusals are explained in plain words (switched off, budget used up, too
+    often, answer could not be checked, no transcript). Versions are listed and can be opened.
+  - **Suggest to buyer memory...** shows what would be suggested (each line and the follow-up task with a
+    tick box), says it is saved as an **assumption, not a fact** and needs a **different person** to approve,
+    and **Send for approval** sends only the ticked line numbers and the task choice. The result lists, per
+    suggestion, "Waiting for a different person to approve" with a link to the approval, or "Not sent: ..."
+    with the reason (safety check, already confirmed, too many waiting).
+- **Administrators**: menu entry **Call notes** -> `/automation/call-notes`: choose **BANT** or **MEDDIC**
+  (the fields of each are listed) and save; only the frame and the version the page saw are sent, a stale
+  version is explained, and a refused save keeps the choice. The page says where to switch the feature on
+  (AI agents).
+- **Approvals**: the card says the suggestion came from "the call notes agent"; the description says it is
+  noted as an assumption (not a fact).
+- The profile page has words for `call_notes:run` and `call_notes:manage`. The screens only help: the API
+  decides who may do what and checks every limit again.
+
 ## Still to build
-CN5 the screens, CN6 evaluation cases.
+CN6 the evaluation cases (a BP-10 suite for the call notes run), and a real-model try.

@@ -76,6 +76,19 @@ AGENTS: dict[str, AgentDef] = {
             tools=("save_lead",),
         ),
         AgentDef(
+            key="receptionist",
+            title="Voice receptionist",
+            description=(
+                "Talks to anonymous website visitors by voice in Hindi, Telugu or English and "
+                "saves a lead on request. It is the website chat, spoken: it can only save a "
+                "lead, never reads CRM data and says it is an automated assistant. Counts "
+                "model tokens and server speech minutes. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=("save_lead",),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="knowledge_answers",
             title="Knowledge answers",
             description="Answers questions from the knowledge base, always with sources.",

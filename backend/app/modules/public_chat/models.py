@@ -29,6 +29,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.models import Base, TenantOwnedMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 ROLES = ("visitor", "assistant")
+CHANNELS = ("text", "web_voice")
 MESSAGE_MAX = 8000
 
 
@@ -42,6 +43,16 @@ class PublicChatSession(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, B
         ),
         CheckConstraint("token_hash ~ '^[0-9a-f]{64}$'", name="token_hash_shape"),
         CheckConstraint("visitor_ip_hash ~ '^[0-9a-f]{64}$'", name="ip_hash_shape"),
+        CheckConstraint(f"channel IN {CHANNELS}", name="channel_allowed"),
+        # A voice conversation always carries the proof that the visitor pressed Start (ADR 0038).
+        CheckConstraint(
+            "channel = 'text' OR "
+            "(voice_consent_at IS NOT NULL AND voice_consent_version IS NOT NULL)",
+            name="voice_needs_consent",
+        ),
+        CheckConstraint(
+            "voice_seconds >= 0 AND voice_turns >= 0", name="voice_counts_not_negative"
+        ),
         # The limits look up one address's newest conversations.
         Index(
             "ix_public_chat_sessions_tenant_id_visitor_ip_hash_created_at",
@@ -55,6 +66,14 @@ class PublicChatSession(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, B
     visitor_ip_hash: Mapped[str] = mapped_column(String(64))
     # The lead this conversation produced (at most one, ADR 0013).
     lead_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # How the conversation is held (ADR 0038): "text" (typed) or "web_voice" (spoken).
+    channel: Mapped[str] = mapped_column(String(20), server_default=text("'text'"))
+    # The visitor pressed Start after the notice: when, and which version of the notice it was.
+    voice_consent_at: Mapped[datetime | None] = mapped_column()
+    voice_consent_version: Mapped[int | None] = mapped_column(Integer)
+    # Estimated seconds of speech (heard + spoken) and spoken turns, for the per-call limits.
+    voice_seconds: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    voice_turns: Mapped[int] = mapped_column(Integer, server_default=text("0"))
 
 
 class PublicChatMessage(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
@@ -93,6 +112,7 @@ class PublicChatDailyStat(Base):
         CheckConstraint(
             "conversations_started >= 0 AND leads_saved >= 0", name="counts_not_negative"
         ),
+        CheckConstraint("voice_seconds >= 0", name="voice_not_negative"),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
@@ -103,4 +123,6 @@ class PublicChatDailyStat(Base):
         Integer, nullable=False, server_default=text("0")
     )
     leads_saved: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    # Estimated seconds of server speech used that day (ADR 0038): the organisation's minutes caps.
+    voice_seconds: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
     updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())

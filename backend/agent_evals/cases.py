@@ -108,7 +108,7 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.assistant import tools
 
         return set(tools.TOOLS)
-    if agent == "public_chat":
+    if agent in ("public_chat", "receptionist"):  # the receptionist is the same chat, spoken
         from app.modules.public_chat import rules
 
         return {str(rules.SAVE_LEAD_TOOL["name"])}

@@ -25,6 +25,16 @@ RESTING_REPLY = (
     "Our chat assistant is resting right now. Please leave a message through our contact form "
     "or call us, and an advisor will get back to you."
 )
+# Spoken when the receptionist is switched off, over budget or out of minutes. The page also offers
+# the typed form, so the visitor is never left without a way to reach the team (ADR 0038).
+VOICE_RESTING_REPLY = (
+    "Our voice assistant is resting right now. Please type your name and phone number in the "
+    "chat, or call us, and an advisor will get back to you."
+)
+VOICE_NO_SECRETS_REPLY = (
+    "Please do not say card numbers, bank details, ID numbers or one-time passwords on this "
+    "call. Tell me your name and phone number instead."
+)
 FALLBACK_REPLY = (
     "Sorry, I couldn't answer that. Please leave your name and phone number and an advisor will "
     "call you."
@@ -56,6 +66,59 @@ LANGUAGE_RULES = {
         "own words only for names and places."
     ),
 }
+
+# Added to the prompt when the visitor is TALKING (ADR 0038). Fixed text; nothing the visitor or a
+# model typed is put into it. The confirmation rule exists because speech recognition mishears
+# names and places: the visitor must hear their phone number and name read back first.
+VOICE_RULES = """This is a spoken conversation: the visitor hears your answer read aloud.
+Start by saying that you are an automated assistant of {organisation}. Never claim to be a
+person; if asked, say you are an automated assistant. Use at most two short sentences per turn,
+no lists, no symbols, no emoji. Read the phone number back digit by digit and the name back, and
+ask the visitor to confirm both BEFORE you call save_lead. If the visitor corrects you, read it
+back again. Never ask for or accept card numbers, bank details, one-time passwords or ID numbers;
+if the visitor starts saying one, tell them not to and move on."""
+
+# Spoken numbers (ADR 0038, VR9): a speech recogniser may write "four one one one..." as words
+# instead of digits, and the digit-based card check would not see it.
+_DIGIT_WORDS = {
+    # English
+    "zero": "0", "oh": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+    "six": "6", "seven": "7", "eight": "8", "nine": "9",
+    # Hindi (Devanagari)
+    "शून्य": "0", "एक": "1", "दो": "2", "तीन": "3", "चार": "4", "पाँच": "5", "पांच": "5",
+    "छह": "6", "छः": "6", "सात": "7", "आठ": "8", "नौ": "9",
+    # Telugu
+    "సున్నా": "0", "సున": "0", "ఒకటి": "1", "రెండు": "2", "మూడు": "3", "నాలుగు": "4",
+    "ఐదు": "5", "ఆరు": "6", "ఏడు": "7", "ఎనిమిది": "8", "తొమ్మిది": "9",
+}  # fmt: skip
+# Words that announce a secret the receptionist must never take, in the three languages.
+_SECRET_WORDS = ("otp", "cvv", "ओटीपी", "ఓటీపీ", "ఒటిపి")
+# A phone number is 10 digits (12 with +91); a payment card is 13 to 19. Refuse from 13.
+SPOKEN_CARD_MIN_DIGITS = 13
+
+
+def spoken_number_refusal(text: str) -> bool:
+    """True when ``text`` reads like a card number said aloud (13 or more digits in a row, as
+    digit words in English, Hindi or Telugu mixed with digits) or names a one-time password or
+    card security code. A normal phone number said aloud passes."""
+    lowered = text.casefold()
+    if any(word in lowered for word in _SECRET_WORDS):
+        return True
+    run = 0
+    for raw in re.split(r"[\s,.;:-]+", lowered):
+        token = raw.strip()
+        if not token:
+            continue
+        if token in _DIGIT_WORDS:
+            run += 1
+        elif token.isdigit():
+            run += len(token)
+        else:
+            run = 0
+        if run >= SPOKEN_CARD_MIN_DIGITS:
+            return True
+    return False
+
 
 # Cleaning that does not make a name suspicious (a link or an image in a name does).
 HARMLESS_NAME_FINDINGS = {"hidden_characters", "control_characters", "repeated_text"}

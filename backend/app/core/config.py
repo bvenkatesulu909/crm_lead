@@ -120,6 +120,19 @@ class Settings(BaseSettings):
     public_chat_messages_per_day: int = Field(default=500, ge=1, le=1_000_000)
     # Conversations that never became a lead are deleted after this many quiet days (privacy).
     public_chat_retention_days: int = Field(default=30, ge=1, le=3650)
+    # The voice receptionist on the website (ADR 0038). The organisation's switch is the registry
+    # entry "receptionist" (off until an administrator switches it on); these are the limits.
+    receptionist_max_call_seconds: int = Field(default=300, ge=30, le=3600)  # 5 minutes a call
+    receptionist_max_turns: int = Field(default=12, ge=1, le=100)
+    receptionist_calls_per_ip_day: int = Field(default=3, ge=1, le=1000)
+    # The organisation's caps on estimated server speech, per UTC day and per calendar month.
+    receptionist_minutes_per_day: int = Field(default=60, ge=1, le=100_000)
+    receptionist_minutes_per_month: int = Field(default=600, ge=1, le=1_000_000)
+    # The version of the notice the visitor reads before the microphone opens; raise it when the
+    # words change. The page sends the version it showed and it is stored with the conversation.
+    receptionist_notice_version: int = Field(default=1, ge=1, le=10_000)
+    # One spoken turn is a few seconds of audio; anything bigger is refused unread.
+    receptionist_max_audio_bytes: int = Field(default=2 * 1024 * 1024, ge=1024, le=10 * 1024 * 1024)
     # Server-side speech gateway (STT/TTS), OpenAI-compatible audio API. Disabled without a key.
     voice_enabled: bool = True
     voice_provider: Literal["openai", "elevenlabs", "local"] = "openai"

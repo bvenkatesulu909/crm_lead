@@ -1,14 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   Fetched,
   NewCallInfo,
   StartResult,
 } from "@/app/(app)/leads/[id]/call-actions";
+import type { ProposalChoice } from "@/app/(app)/leads/[id]/call-notes-actions";
+import type {
+  NotesDraft,
+  NotesPage,
+  ProposalOutcome,
+  ProposalPreview,
+} from "@/lib/call-notes";
 import { ActionDialog, DialogField } from "@/components/action-dialog";
+import {
+  CallNotesPanel,
+  type NotesActions,
+} from "@/components/call-notes-panel";
 import { ClipsPanel, type ClipsActions } from "@/components/calls-clips";
 import { UploadProgress } from "@/components/upload-progress";
 import { buttonClass } from "@/components/ui";
@@ -53,7 +64,54 @@ export type CallsActions = {
     callId: string,
     clipId: string,
   ) => Promise<Fetched<CallListen>>;
+  // Call notes and the deal checklist (ADR 0035); without them the notes block is not shown.
+  readNotes?: (callId: string) => Promise<Fetched<NotesPage>>;
+  readNotesVersion?: (
+    callId: string,
+    version: number,
+  ) => Promise<Fetched<NotesDraft>>;
+  createNotes?: (callId: string) => Promise<Fetched<NotesDraft>>;
+  previewProposals?: (
+    callId: string,
+    version: number,
+    followUpTask: boolean,
+  ) => Promise<Fetched<ProposalPreview>>;
+  makeProposals?: (
+    callId: string,
+    version: number,
+    choice: ProposalChoice,
+  ) => Promise<Fetched<ProposalOutcome[]>>;
 };
+
+/** The notes actions of one recording, or null when the card was not given them. */
+function notesActionsOf(
+  actions: CallsActions,
+  callId: string,
+): NotesActions | null {
+  const {
+    readNotes,
+    readNotesVersion,
+    createNotes,
+    previewProposals,
+    makeProposals,
+  } = actions;
+  if (
+    !readNotes ||
+    !readNotesVersion ||
+    !createNotes ||
+    !previewProposals ||
+    !makeProposals
+  )
+    return null;
+  return {
+    read: () => readNotes(callId),
+    readVersion: (version) => readNotesVersion(callId, version),
+    create: () => createNotes(callId),
+    preview: (version, followUpTask) =>
+      previewProposals(callId, version, followUpTask),
+    propose: (version, choice) => makeProposals(callId, version, choice),
+  };
+}
 
 /** The clip actions of one recording, or null when the card was not given them. */
 function clipActionsOf(
@@ -207,10 +265,12 @@ export function TranscriptPanel({ detail }: { detail: CallDetail }) {
 function CallItem({
   call,
   canWrite,
+  canAskNotes,
   actions,
 }: {
   call: CallRecording;
   canWrite: boolean;
+  canAskNotes: boolean;
   actions: CallsActions;
 }) {
   const [audio, setAudio] = useState<CallListen | null>(null);
@@ -218,6 +278,11 @@ function CallItem({
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Stable between renders, so the notes panel loads once.
+  const notesActions = useMemo(
+    () => notesActionsOf(actions, call.id),
+    [actions, call.id],
+  );
 
   async function listen() {
     setBusy(true);
@@ -336,6 +401,14 @@ function CallItem({
             />
           ) : null;
         })()}
+      {open && detail && call.status === "ready" && notesActions && (
+        <CallNotesPanel
+          actions={notesActions}
+          canAsk={canAskNotes}
+          audioAvailable={call.audio_available}
+          listen={() => actions.listen(call.id)}
+        />
+      )}
     </li>
   );
 }
@@ -343,10 +416,13 @@ function CallItem({
 export function CallsView({
   calls,
   canWrite,
+  canAskNotes = false,
   actions,
 }: {
   calls: CallRecording[];
   canWrite: boolean;
+  /** Whether the person may ask for call notes and suggestions (display only). */
+  canAskNotes?: boolean;
   actions: CallsActions;
 }) {
   const router = useRouter();
@@ -373,6 +449,7 @@ export function CallsView({
               key={call.id}
               call={call}
               canWrite={canWrite}
+              canAskNotes={canAskNotes}
               actions={actions}
             />
           ))}

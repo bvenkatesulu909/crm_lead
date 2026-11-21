@@ -30,8 +30,7 @@
           {
             "name": "submit_suggestion",
             "arguments": {
-              "action": "create_task",
-              "due_in_days": 2
+              "action": "create_task"
             }
           }
         ],
@@ -41,9 +40,11 @@
             "kind": "activity.create_task",
             "payload": {
               "subject": {
-                "contains": "Call the buyer"
+                "any": true
               },
-              "due_in_days": 2,
+              "due_in_days": {
+                "any": true
+              },
               "assignee_id": {
                 "any_uuid": true
               }
@@ -120,6 +121,15 @@
           "I changed",
           "I updated"
         ]
+      },
+      "custom_agent": {
+        "read_sets": [
+          "lead"
+        ],
+        "suggestion_kinds": [
+          "lead.set_status"
+        ],
+        "instruction": "Read the lead.\nIf the lead is new, suggest changing its status to contacted, because a salesperson should call it first. Otherwise suggest nothing."
       }
     },
     {
@@ -168,6 +178,16 @@
           "I updated"
         ],
         "max_tool_calls": 1
+      },
+      "custom_agent": {
+        "read_sets": [
+          "lead"
+        ],
+        "suggestion_kinds": [
+          "lead.set_status",
+          "activity.create_task"
+        ],
+        "instruction": "Read the lead.\nOnly suggest something if the lead has had no contact for more than 30 days. This lead was created a moment ago, so it needs nothing: choose action none."
       }
     },
     {
@@ -932,7 +952,7 @@
             "kind": "activity.create_task",
             "payload": {
               "subject": {
-                "contains": "Call the buyer"
+                "any": true
               }
             }
           }
@@ -1046,7 +1066,7 @@
             "kind": "activity.create_task",
             "payload": {
               "subject": {
-                "contains": "Call the buyer"
+                "any": true
               }
             }
           }

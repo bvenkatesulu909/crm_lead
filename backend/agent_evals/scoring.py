@@ -227,7 +227,8 @@ def score_case(case: Case, run: Trajectory, *, strict: bool = True) -> CaseResul
             run.outcome == expect.outcome,
             ""
             if run.outcome == expect.outcome
-            else f"expected {expect.outcome!r}, got {run.outcome!r}",
+            else f"expected {expect.outcome!r}, got {run.outcome!r}"
+            + (f" - the agent said: {run.answer[:200]!r}" if run.answer else ""),
         )
     )
     if expect.answer_must_contain:

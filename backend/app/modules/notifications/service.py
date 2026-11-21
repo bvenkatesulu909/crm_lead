@@ -30,6 +30,7 @@ from app.modules.agents import api as agents_api
 from app.modules.approvals import api as approvals_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
+from app.modules.custom_agents import api as custom_agents_api
 from app.modules.identity import api as identity_api
 from app.modules.invoices import api as invoices_api
 from app.modules.leads import api as leads_api
@@ -240,23 +241,34 @@ def _agent_admins(session: Session, event: Event) -> set[uuid.UUID]:
     )
 
 
-def _agent_title(event: Event) -> str | None:
-    agent = agents_api.AGENTS.get(str(event.data.get("agent")))
-    return agent.title if agent else None
+def _agent_label(session: Session, event: Event) -> tuple[str, str] | None:
+    """The agent's name and where to look at it. A built-in agent is on the AI agents page; an
+    organisation's own custom agent (ADR 0034) is named after what its administrator called it (also
+    after it was retired) and lives on the Custom agents page."""
+    key = str(event.data.get("agent"))
+    agent = agents_api.AGENTS.get(key)
+    if agent is not None:
+        return agent.title, "/automation/agents"
+    name = custom_agents_api.agent_name(session, event.tenant_id, key)
+    return (f"{name} (custom agent)", "/automation/custom-agents") if name else None
 
 
 def _agent_switched(session: Session, me: Principal, event: Event) -> Draft | None:
-    title = _agent_title(event)
+    label = _agent_label(session, event)
     state = "on" if event.data.get("state") == "on" else "off"
-    return Draft(f"AI agent switched {state}: {title}", "/automation/agents") if title else None
+    if label is None:
+        return None
+    title, link = label
+    return Draft(f"AI agent switched {state}: {title}", link)
 
 
 def _agent_warning(session: Session, me: Principal, event: Event) -> Draft | None:
-    title = _agent_title(event)
-    if title is None:
+    label = _agent_label(session, event)
+    if label is None:
         return None
+    title, link = label
     percent = int(event.data.get("percent", 80))
-    return Draft(f"AI agent near its monthly limit ({percent} %): {title}", "/automation/agents")
+    return Draft(f"AI agent near its monthly limit ({percent} %): {title}", link)
 
 
 _WEBCHECK_WORDS = {

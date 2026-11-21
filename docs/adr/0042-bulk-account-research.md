@@ -1,6 +1,6 @@
-# ADR 0042 — Research up to 50 accounts at once (a batch of account briefs)
+# ADR 0042 — Research up to 100 accounts at once (a batch of account briefs)
 
-- **Status:** Proposed (2026-11-21). Waiting for the owner's answers to section 7.
+- **Status:** Accepted (2026-11-21). The owner answered section 7: batch cap raised to 100, managers and administrators only, real saved filters first (BR-pre), confirmation required, "research again" tick, one account at a time, switch off by default, code-built table, no web look-ups, 12 months. The text below already reflects these answers.
 - **Date:** 2026-11-21
 - **Deciders:** Project owner
 - **Depends on:** ADR 0024 (account research: one account, four code gatherers, one governed model call,
@@ -22,12 +22,12 @@ plus a table that lets the manager scan them all**.
 
 The risks are the ones that appear whenever "one" becomes "many":
 
-1. **Cost running away** (50 model calls from one click).
+1. **Cost running away** (100 model calls from one click).
 2. **Data crossing over** - account A's facts leaking into the model's view of account B, or into another
    organisation's call, or one poisoned record steering the others.
 3. **A long job tied to a web request** (Netlify cuts requests at about 60 seconds) and half-finished states nobody
    can explain.
-4. **Doing for 50 accounts what a person may not do for one** (read accounts that are not theirs, exceed the
+4. **Doing for 100 accounts what a person may not do for one** (read accounts that are not theirs, exceed the
    daily ceiling).
 
 ## 2. What exists and is reused
@@ -55,9 +55,9 @@ calls, so every rule of ADR 0024 (gatherers read as the person, citations checke
 stored, cleaning, audit) applies unchanged. A module may import only another module's `api.py`; the batch module
 therefore never touches `account_briefs` itself.
 
-**BR2 - The cap is 50 accounts per batch.** Enforced in the API *and* by a database check on the batch row. More
-than 50 is refused (422 `batch_too_large`), never silently cut. The number lives in a setting
-(`CRM_RESEARCH_BATCH_MAX`, default 50; an organisation can lower it but not raise it above 50 without a new
+**BR2 - The cap is 100 accounts per batch.** Enforced in the API *and* by a database check on the batch row. More
+than 100 is refused (422 `batch_too_large`), never silently cut. The number lives in a setting
+(`CRM_RESEARCH_BATCH_MAX`, default 100; an organisation can lower it but not raise it above 100 without a new
 decision).
 
 **BR3 - Who may start a batch.** A new permission `research_batch:run` for **sales managers and tenant
@@ -69,18 +69,17 @@ than the person could read.
 **BR4 - How accounts are chosen: what the person can see, resolved on the server.** Two ways, both ending in the
 same server-side step:
 
-- **the Accounts list's current filter** (segment, owner, health, renewal window... the parameters the list
-  endpoint already takes), or
-- **ticked rows** on the list (up to 50 ids).
+- **a saved filter** of the Accounts list (a named, per-person or shared filter such as "Hyderabad, renewing this
+  quarter"), or
+- **ticked rows** on the list (up to 100 ids).
 
 The server **never trusts the ids it receives**. It resolves the selection through the scoped accounts repository
-and the record-level read policy **as the person**, takes at most 50 in the list's order, and stores that **frozen
+and the record-level read policy **as the person**, takes at most 100 in the list's order, and stores that **frozen
 list** (`research_batch_items`). Ids the person may not read, ids that do not exist and ids of another
 organisation all get the same answer - *not available* - counted as "N not available" without saying which or
 why. Archived accounts are skipped with a visible reason. Because the list is frozen at start, the batch does not
-change if the filter's result changes later. *(There are no saved filters in the CRM today. "Saved filter" in the
-request is read as "the current filter of the Accounts list"; real saved filters are a separate small item,
-question 3.)*
+change if the filter's result changes later. *(There are no saved filters in the CRM today. The owner decided (question 3) that **real saved filters are built
+first**, as their own small item, step BR-pre below; batches start only after it exists.)*
 
 **BR5 - Fan-out is one account at a time, through the outbox.** Starting a batch writes the batch row and the
 items in the starter's transaction and enqueues **one job** `research_batch.step` (payload: batch id and tenant,
@@ -90,7 +89,7 @@ there is at most one model call per batch, a stop takes effect within one item, 
 next unfinished item, and running a step twice is harmless (an item already `done` is skipped). The worker's
 existing retry covers temporary failures (up to 3 tries per item; only the last failure is recorded). Expected
 time: about 10-15 s per account with a paid model, about 60 s with the slow free one (measured on staging for
-ADR 0024) - so 50 accounts is roughly 10-50 minutes. That is acceptable because nobody waits on a web request;
+ADR 0024) - so 100 accounts is roughly 20-100 minutes. That is acceptable because nobody waits on a web request;
 the page polls.
 
 **BR6 - Limits, in addition to ADR 0024's.**
@@ -134,7 +133,7 @@ accounts that did not run" (new estimate, new confirmation); nothing resumes by 
 **BR9 - Progress and partial failure are shown item by item.** Each item has one status: `queued`, `running`,
 `done`, `reused`, `skipped` (archived, or no longer readable when its turn came - access is re-checked per item),
 `failed` (with a stable code shown in words: *no sourced sentence*, *the model's answer had the wrong shape*,
-*unavailable*, *over budget*), `not_run`. The batch page shows a progress bar and counts ("31 of 50: 28 done, 2
+*unavailable*, *over budget*), `not_run`. The batch page shows a progress bar and counts ("31 of 100: 28 done, 2
 reused, 1 failed"), the table below, and updates itself (polling every four seconds only while `running`, like the
 proposal deck card). One failed account never stops the others. "Try the failed ones again" starts a new batch with
 those accounts (new estimate, same rules).
@@ -160,7 +159,7 @@ question 8.)
   repository (a mismatch is `skipped`, never researched).
 - **Untrusted text stays inside its own call.** Record text goes through the usual cleaning and is marked as data;
   an instruction hidden in one account's notes can influence only that account's brief (which is cleaned and
-  citation-checked) - there is no channel to the other 49 calls.
+  citation-checked) - there is no channel to the other 99 calls.
 - **Tests prove it** (step BR5): scripted-model runs over a world with a poisoned account and accounts from two
   organisations assert that no prompt contains another account's name, id or text, and that a batch never
   contains an account of another organisation.
@@ -176,7 +175,7 @@ question 8.)
 - Audit entries `research_batch.started`, `.finished`, `.cancelled`, `.stopped_budget` with ids, counts and codes
   only (never account names or brief text). Metrics without a tenant label: `crm_research_batches_total{outcome}`
   and `crm_research_batch_items_total{status}`.
-- On finish the starter gets one notification ("Research of 50 accounts finished: 46 done, 2 reused, 2 failed")
+- On finish the starter gets one notification ("Research of 100 accounts finished: 46 done, 2 reused, 2 failed")
   linking to the batch page (event `research_batch.finished`, ids and counts only).
 
 **BR13 - Data, retention, no deletes.** Two new tenant tables with **forced RLS**: `research_batches` (who, when,
@@ -185,14 +184,14 @@ status, counts, `token_cap`, `tokens_used`, the estimate shown, cancel flag, ver
 role has **no DELETE**; updates are limited to the progress columns (a trigger refuses changes to the account
 list, the starter, the cap and the tenant after creation). Rows are kept 12 months like briefs and swept by the
 worker (a younger row cannot be deleted - a database trigger, as for `account_briefs`). A database check keeps the
-counts consistent with the item statuses and limits the count to 50.
+counts consistent with the item statuses and limits the count to 100.
 
 ## 4. What this does not do
 
 No selection by free text or by AI ("find my risky accounts"); no model that compares or ranks accounts; no
 automatic or scheduled batches (a person presses the button); no new web checks or company-detail look-ups on the
 accounts (the briefs only show evidence already on file, as in ADR 0024); no sending of anything to customers; no
-change to any account, deal, task or lead (nothing here creates proposals); no batches over 50 and none across
+change to any account, deal, task or lead (nothing here creates proposals); no batches over 100 and none across
 organisations (platform staff included); no parallel model calls inside one batch; no saved filters.
 
 ## 5. Steps (Phase BR), each ends with a stop for review
@@ -202,12 +201,13 @@ edited.
 
 | Step | What | Done when |
 |---|---|---|
-| BR0 | This ADR and the index line (documents only) | Owner answers section 7; status Accepted |
+| BR0 | This ADR and the index line (documents only) | Done: accepted 2026-11-21 (section 7) |
+| BR-pre | **Saved filters on the Accounts list** (own small design and PR before BR1): save, name, share with the organisation or keep private, delete; stored as the list's own filter parameters only (validated against the list's allow-list, never SQL), per organisation, forced RLS | owner approves; batches can pick "a saved filter" |
 | BR1 | Pure part: selection rules (cap, order, duplicates), the estimate (`Decimal`, upper bound, typical), the budget stop rule, the item status machine; migration `research_batches` + `research_batch_items` (forced RLS, locks, checks); read function `deal_desk_api.brief_overview` | rule tests; database tests for the checks, triggers, RLS, no DELETE; RLS guard and migrations-in-sync pass |
 | BR2 | Service: `estimate`, `start` (resolves as the person, limits, 409 on a changed estimate, one transaction, audit), registry entry `research_batches`, permission `research_batch:run`, settings | database tests: role denial, tenant isolation, ID tampering (foreign, made-up and archived ids all "not available"), limits, estimate changed |
 | BR3 | The worker step `research_batch.step` (one item per run, access and budget re-checked, cancel, `stopped_budget`, retries, safe to run twice, finish event and notification) with the fake writer | tests through the real worker: partial failure, cancel mid-run, hard cap with the worst-case rule, crash and resume, permission lost mid-batch |
 | BR4 | API: `POST /research-batches/estimate`, `POST /research-batches`, `GET /research-batches` and `/{id}` (items, counts), `POST /{id}/cancel`, `POST /{id}/retry`; OpenAPI refreshed | API tests; strict bodies (tenant, person and status are never accepted) |
-| BR5 | BP-10: a batch suite played through the real service with a scripted model (50 accounts; one poisoned; two organisations; one failing; cap reached; cancel; permission lost) and an **isolation check no case can skip** (no prompt contains another account's identifiers) | the gate fails when the check is broken on purpose |
+| BR5 | BP-10: a batch suite played through the real service with a scripted model (100 accounts; one poisoned; two organisations; one failing; cap reached; cancel; permission lost) and an **isolation check no case can skip** (no prompt contains another account's identifiers) | the gate fails when the check is broken on purpose |
 | BR6 | Screens: a "Research selected accounts" bar on the Accounts list, the confirmation dialog (counts, not available, estimate, cap), the batch page (progress, table, cancel, retry, links to briefs), a line on the AI agents page; Playwright journey with the scripted writer; `docs/account-research-batches.md` | Vitest, Playwright, lint, typecheck; a look at the styled page from the main checkout |
 | BR7 (optional) | CSV of the summary table (question 8) | export audited, injection protection tested |
 
@@ -215,9 +215,9 @@ Staging is not touched by any step; the entry stays off until an administrator s
 
 ## 6. Alternatives considered
 
-- **One model call over all 50 accounts.** Rejected: the model would see every account at once - the cross-account
-  leak and poisoning channel BR11 forbids - and quality drops with 50 accounts in one prompt.
-- **One job fans out 50 parallel jobs at once.** Rejected: a cancel or a cap could not be hard (50 calls already in
+- **One model call over all 100 accounts.** Rejected: the model would see every account at once - the cross-account
+  leak and poisoning channel BR11 forbids - and quality drops with 100 accounts in one prompt.
+- **One job fans out 100 parallel jobs at once.** Rejected: a cancel or a cap could not be hard (100 calls already in
   flight), and one database session cannot be shared between threads (ADR 0024 implementation note). Serial steps
   are slower but controllable.
 - **Run synchronously inside the web request.** Rejected: Netlify and Caddy time-outs, and a closed tab would lose
@@ -229,36 +229,21 @@ Staging is not touched by any step; the entry stays off until an administrator s
 - **Nightly automatic research of every account.** Rejected: unbounded cost; a person decides what is worth
   researching.
 
-## 7. Questions for the owner (recommended answer first)
+## 7. Owner's answers (2026-11-21)
 
-1. **Batch size.** *Recommended:* at most 50 accounts per batch; an organisation can only lower it. Alternative: a
-   smaller default such as 25 until the first real cost is seen.
-2. **Who may start a batch?** *Recommended:* sales managers and tenant administrators only. Alternative: sales
-   agents too, limited to accounts they own (more people, more spend; the per-person limits still apply).
-3. **How are accounts chosen?** *Recommended:* the Accounts list's current filter or ticked rows (no saved filters
-   exist today). Alternative: first build real saved filters ("Hyderabad, renewing this quarter") as a separate
-   small item, then batch from them.
-4. **Estimate and hard stop.** *Recommended:* show the upper bound and the typical cost before starting, require a
-   confirmation, and stop the batch before any item whose worst case would pass the confirmed cap or the monthly
-   budget. Alternative: show only a typical figure and stop only at the monthly budget (simpler, but a batch could
-   overshoot what the person saw).
-5. **Reuse of recent briefs.** *Recommended:* an account with a brief younger than 24 hours is reused, not
-   researched again (no cost), with a "research again anyway" tick. Alternative: always research again (costs more;
-   the one-per-hour rule would refuse some anyway).
-6. **Concurrency.** *Recommended:* one account at a time per batch, one running batch per person, two per
-   organisation. Alternative: two accounts at once per batch (about twice as fast; needs a separate database
-   session per thread and makes the cap check trickier).
-7. **Separate switch.** *Recommended:* a new registry entry `research_batches`, off by default, on top of
-   `account_research` (single research stays as it is, and its monthly budget pays for batch calls). Alternative:
-   no new switch - a batch is allowed whenever account research is on.
-8. **Summary table and export.** *Recommended:* a code-built table on the batch page now; CSV export later (BR7)
-   through the existing reports export rules. Alternative: no export at all, or a model-written overview (rejected
-   in section 6).
-9. **Web and company look-ups for accounts with no evidence.** *Recommended:* no - the briefs show only evidence
-   already on file (ADR 0024 Q5). Alternative: let a batch also queue web checks (they have their own 10-per-hour
-   limit per person and would stretch a batch to hours).
-10. **Keeping batches.** *Recommended:* 12 months, no deletes, like briefs and web evidence. Alternative: a shorter
-    time for the progress rows (the briefs keep their 12 months either way).
+1. **Batch size:** **100** accounts (not 50); an organisation can only lower it. The org-wide daily ceiling of 200
+   from ADR 0024 stays, so one full batch uses half of a day's allowance.
+2. **Who may start:** sales managers and tenant administrators only.
+3. **How accounts are chosen:** build **real saved filters first** (step BR-pre), then batch from a saved filter or
+   ticked rows.
+4. **Estimate and hard stop:** the person must **confirm** the estimate shown; the batch stops before any account
+   whose worst case would pass the confirmed cap or the monthly budget.
+5. **Recent briefs:** an account with a brief under 24 hours old is reused, with a "research again anyway" tick.
+6. **Concurrency:** one account at a time per batch, one running batch per person, two per organisation.
+7. **Switch:** new registry entry `research_batches`, **off by default**.
+8. **Summary:** a table built by code (no model); CSV export stays optional (BR7).
+9. **Web and company look-ups:** no; briefs show only evidence already on file.
+10. **Retention:** 12 months, no deletes.
 
 ## 8. Consequences
 

@@ -557,6 +557,10 @@ def run_send_job(
         session, tenant_id, message.contact_id
     ):
         raise PermanentJobError("consent_withdrawn")
+    if message.lead_id is not None and leads_api.email_consent_withdrawn(
+        session, tenant_id, message.lead_id, reader_user_id=message.sent_by_user_id
+    ):
+        raise PermanentJobError("consent_withdrawn")
     mailer.send(
         Mail(
             to=(message.to_address,),

@@ -58,6 +58,7 @@ export default async function EditLeadPage({
     company_website: lead.company_website ?? "",
     company_industry: lead.company_industry ?? "",
     company_size: lead.company_size ?? "",
+    email_consent: lead.email_consent ?? "unknown",
   };
 
   return (

@@ -120,6 +120,8 @@ export type Lead = {
   company_industry?: CompanyIndustry | null;
   company_size?: CompanySize | null;
   preferred_language?: PreferredLanguage | null;
+  email_consent?: EmailConsent;
+  email_consent_at?: string | null;
   owner_id: string | null;
   converted_at: string | null;
   converted_account_id: string | null;

@@ -3,10 +3,11 @@
 import uuid
 from datetime import datetime
 
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.mail import Mailer
 from app.core.outbox import DeadJobHandler, Job, JobHandler, PermanentJobError
 from app.modules.communications import follow_up_rules, repository, service
@@ -53,6 +54,16 @@ def email_failed_handler() -> DeadJobHandler:
     return handle
 
 
+def _emails_per_hour() -> int:
+    """The organisation-wide hourly e-mail limit. A process without a full server configuration
+    (a test run, a script) cannot build the settings; it then gets the built-in default, which is
+    also what the server uses unless CRM_COMMUNICATION_EMAILS_PER_HOUR says otherwise."""
+    try:
+        return get_settings().communication_emails_per_hour
+    except ValidationError:
+        return int(Settings.model_fields["communication_emails_per_hour"].default)
+
+
 def follow_up_problem(
     session: Session,
     tenant_id: uuid.UUID,
@@ -85,7 +96,7 @@ def send_follow_up(
         subject=subject,
         body=body,
         template_id=template_id,
-        hourly_limit=get_settings().communication_emails_per_hour,
+        hourly_limit=_emails_per_hour(),
     )
 
 

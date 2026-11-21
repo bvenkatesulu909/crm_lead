@@ -9,10 +9,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agent_evals import custom, desk, play, writer
+from agent_evals import custom, desk, notes, play, writer
 from agent_evals.cases import Case
 from agent_evals.custom import CustomRun
 from agent_evals.desk import DeskRun, ResearchRun
+from agent_evals.notes import NotesRun
 from agent_evals.play import RAG_MIN_SIMILARITY, explain, invariants
 from agent_evals.rag import HashingEmbedder, RagRun
 from agent_evals.rag_cases import RagCase
@@ -136,3 +137,9 @@ def play_custom_agent(
     session: Session, world: World, case: Case, **options: Any
 ) -> tuple[CaseResult, CustomRun]:
     return custom.play_custom_agent(session, eval_world(session, world), case, **options)
+
+
+def play_call_notes(
+    session: Session, world: World, case: Case, **options: Any
+) -> tuple[CaseResult, NotesRun]:
+    return notes.play_call_notes(session, eval_world(session, world), case, **options)

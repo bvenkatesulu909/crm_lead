@@ -37,6 +37,7 @@ Agent = Literal[
     "account_research",
     "deck_writer",
     "custom_agent",
+    "call_notes",
 ]
 # The deal desk asks four models in one run (ADR 0024): each step of its script says which one
 # answers. Three reviewers run at the same time, so the order they are asked in is not fixed.
@@ -78,6 +79,8 @@ PERSONAS: dict[str, set[str]] = {
     # ADR 0034: custom agents are run by the people who hold custom_agent:run; an administrator
     # also tries them (a dry run).
     "custom_agent": {"sales_agent", "sales_manager", "tenant_admin"},
+    # ADR 0035: the people who hold call_notes:run (and call:read); a support agent has neither.
+    "call_notes": {"sales_agent", "sales_manager", "tenant_admin"},
 }
 # After these outcomes nothing in the CRM has changed (or may only wait for approval): the
 # answer must not claim otherwise.
@@ -133,6 +136,10 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.custom_agents import run_rules
 
         return {run_rules.TOOL_NAME}
+    if agent == "call_notes":
+        from app.modules.call_notes import answer
+
+        return {answer.TOOL_NAME}
     raise CaseFileError(f"unknown agent {agent!r}")
 
 
@@ -263,6 +270,45 @@ class CustomAgentSetup(_Strict):
         return self
 
 
+class CallNotesSetup(_Strict):
+    """How call notes are played in a case (ADR 0035). Each message of the case is a recording to
+    draft notes for (``{{call.english}}``: the lead and the call, made by the world)."""
+
+    # The organisation's checklist frame for this case (applied inside the case's savepoint).
+    framework: Literal["bant", "meddic"] = "bant"
+    # After a successful draft, also ask for proposals for every line that can be suggested (and
+    # the follow-up task), as the person would with the "Suggest to buyer memory" button.
+    suggest: bool = False
+    # With ``suggest``: also ask for the follow-up task for the unknown lines (the default).
+    follow_up_task: bool = True
+    # The platform's limit of drafts per recording per day for this case.
+    per_recording_day: int = Field(default=1_000, ge=1, le=1_000)
+
+
+NoteState = Literal["stated", "assumed", "unknown"]
+
+
+class ExpectedNotes(_Strict):
+    """What the stored draft (the newest one the case made) must look like. Checked on what the
+    database holds, not on what the service said."""
+
+    framework: Literal["bant", "meddic"] | None = None
+    # Checklist field -> its state. Only the fields listed are checked.
+    states: dict[str, NoteState] = Field(default_factory=dict)
+    # Checklist field -> the value it must hold, word for word (numbers are shown as said).
+    values: dict[str, str] = Field(default_factory=dict)
+    # Checklist field -> why it was turned into unknown (for example quote_not_found).
+    codes: dict[str, str] = Field(default_factory=dict)
+    downgraded: int | None = Field(default=None, ge=0, le=20)
+    dropped_notes: int | None = Field(default=None, ge=0, le=20)
+    # How many free call notes the draft kept. None: not checked.
+    notes: int | None = Field(default=None, ge=0, le=8)
+    # Kinds of finding the cleaning must have reported (e.g. "link", "instruction_phrase").
+    cleaned: list[str] = Field(default_factory=list)
+    # How many drafts the case stored in all (one per successful run).
+    drafts: int | None = Field(default=None, ge=0, le=5)
+
+
 class ExpectedEvidence(_Strict):
     """What the lookups a case queued must have stored (``webcheck.run_jobs``)."""
 
@@ -327,6 +373,8 @@ class Expect(_Strict):
     # for citing nothing gathered. None: not checked.
     brief_sentences: int | None = Field(default=None, ge=0, le=8)
     dropped_sentences: int | None = Field(default=None, ge=0, le=20)
+    # Call notes only: what the stored draft must look like. None: not checked.
+    notes: ExpectedNotes | None = None
 
     @model_validator(mode="after")
     def _warnings_are_warnings(self) -> "Expect":
@@ -379,6 +427,8 @@ class Case(BaseModel):
     webcheck: WebcheckSetup | None = None
     # Custom agent: the agent the case plays. Absent = the standard lead agent of the harness.
     custom_agent: CustomAgentSetup | None = None
+    # Call notes: how the case is played. Absent = the defaults (BANT, no proposals asked for).
+    call_notes: CallNotesSetup | None = None
     script: list[Step] = Field(default_factory=list)
     expect: Expect
 
@@ -408,16 +458,27 @@ class Case(BaseModel):
             and self.persona != "tenant_admin"
         ):
             raise ValueError("custom_agent.play: only an administrator tries an agent")
+        if self.call_notes is not None and self.agent != "call_notes":
+            raise ValueError("call_notes: only for the call notes agent")
+        if self.expect.notes is not None and self.agent != "call_notes":
+            raise ValueError("expect.notes: only for the call notes agent")
         if self.agent not in ("qualifier", "lead_agent") and self.qualifier:
             raise ValueError("qualifier: only for the qualifier and the lead agent")
         if (
             self.agent
-            not in ("qualifier", "lead_agent", "deal_desk", "deck_writer", "custom_agent")
+            not in (
+                "qualifier",
+                "lead_agent",
+                "deal_desk",
+                "deck_writer",
+                "custom_agent",
+                "call_notes",
+            )
             and self.expect.proposals is not None
         ):
             raise ValueError(
-                "expect.proposals: only for the qualifier, lead agent, deal desk, deck writer "
-                "and custom agent"
+                "expect.proposals: only for the qualifier, lead agent, deal desk, deck writer, "
+                "custom agent and call notes"
             )
         roles = [step.role for step in self.script]
         if self.agent == "deal_desk" and any(role is None for role in roles):

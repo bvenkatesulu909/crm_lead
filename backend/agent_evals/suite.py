@@ -19,7 +19,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agent_evals import custom, desk, play, writer
+from agent_evals import custom, desk, notes, play, writer
 from agent_evals.cases import Case, dataset_hash, load_cases, substitute
 from agent_evals.rag import HashingEmbedder
 from agent_evals.rag_cases import RagCase, load_rag_cases, rag_dataset_hash
@@ -42,6 +42,7 @@ AGENTS = (
     "account_research",
     "deck_writer",
     "custom_agent",
+    "call_notes",
 )
 CITED = "cited_answers"
 ALL_SUITES = (*AGENTS, CITED)
@@ -117,6 +118,8 @@ def run_suite(
                     return writer.play_deck_writer(session, world, c, model=model)[0]
                 if name == "custom_agent":
                     return custom.play_custom_agent(session, world, c, model=model)[0]
+                if name == "call_notes":
+                    return notes.play_call_notes(session, world, c, model=model)[0]
                 return play.play_public(session, world, c, model=model)[0]
 
             try:
@@ -238,6 +241,7 @@ def estimate_cost(
                 "account_research",
                 "deck_writer",
                 "custom_agent",
+                "call_notes",
             )
             ready = c if whole else substitute(c, world.placeholders(c.persona))
             if c.agent == "qualifier":
@@ -252,6 +256,8 @@ def estimate_cost(
                 writer.play_deck_writer(session, world, c, model=probe)
             elif c.agent == "custom_agent":
                 custom.play_custom_agent(session, world, c, model=probe)
+            elif c.agent == "call_notes":
+                notes.play_call_notes(session, world, c, model=probe)
             elif c.agent == "staff_assistant":
                 run_staff_case(session, world.principal(c.persona), ready, model=probe)
             elif c.agent == "portal_assistant":

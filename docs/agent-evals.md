@@ -627,6 +627,52 @@ every agent (switch, budget, tool filter, platform switch).
   suite. `python -m scripts.eval_agents --provider fake --suite custom_agent` plays all 32 on the
   development data.
 
+## 6r. Call notes cases (ADR 0035, step CN6)
+
+`backend/evals/agents/call_notes.json`, 28 cases, played by `agent_evals/notes.py` through the REAL
+`call_notes.service.run_notes` (permission, the transcript only of a lead the person may read, the
+size and rate limits, the agent registry, the cleaned transcript, the strict answer check, the
+quote verification, the stored draft, the audit) and, when a case asks for suggestions, through the
+REAL `call_notes.proposals.propose` (the approval queue and its Sentinel). Only the model is
+scripted. Each message of a case is a recording, `"<lead id>/<call id>"`, made by the world
+(`{{call.english}}`, `.hindi`, `.telugu`, `.poisoned`, `.empty`, `.too_long`, `.not_ready`,
+`.colleague`); the fictional transcripts are in `agent_evals/transcripts.py` and a script quotes them
+word for word with the time of the line, so those lines are part of the dataset's contract.
+New case fields: `call_notes` (`framework` BANT or MEDDIC, `suggest` to also ask for proposals,
+`follow_up_task`, `per_recording_day`) and `expect.notes` (what the stored draft must hold: `framework`,
+`states`, `values` word for word, `codes`, `downgraded`, `dropped_notes`, `notes`, `cleaned`, `drafts`);
+`expect.proposals` and `governance` work as for the other agents.
+
+- **What the cases cover:** the whole checklist from the transcript (stated, assumed, unknown, a number
+  kept as said, a call note), MEDDIC's own fields, a Hindi and a Telugu call whose quotes stay in their
+  script; a quote nobody said, a value outside its quote and a note with an invented quote (turned
+  into unknown / left out, counted), mostly invented quotes (the whole answer refused); the strict
+  answer check (an extra field, two answers, a made-up approve tool, a field of the other frame, an
+  unknown line with data, nine notes); a link in the answer (cleaned and reported); a transcript that
+  tries to steer an AI and holds a link (reported, nothing changes, the link never reaches the model);
+  a quoted instruction (the draft is stored because the words were said, the safety check refuses to
+  suggest them, only the task waits); a suggestion is an ASSUMPTION with the call and the moment and no
+  status, source or quote; only the follow-up task when the call answered nothing; a colleague's call
+  (not found), no transcript, too long, empty (all before the model); the switch, the platform switch,
+  the month's budget, a removed tool; a second draft of one call over the day's limit.
+- **Checks no case can skip:** no lead, activity or buyer memory row changed directly; one draft per
+  finished run, each audited once (and each request for suggestions once); **every stored line honest
+  when checked again from the transcript** (a stated or assumed line's quote is in the recording's
+  transcript, a stated value is part of its quote, an unknown line holds nothing, no stored text holds
+  a link); **the model was never shown the lead's name, e-mail address, phone number or an id**; every
+  proposal is stored, pending, made by `call_notes`, a buyer-memory assumption with exactly its five
+  fields or the one follow-up task, with no link, at most five memory suggestions and one task per
+  request.
+- **CI:** `tests/db/test_agent_evals_call_notes.py` runs every case (hard gate) and proves the gate can
+  fail (a wrong expected state or number, a missing proposal, a service that writes the buyer memory
+  itself, one that forgets the audit entry, a registry that lets a switched-off agent through, a service
+  that skips the quote check, one that shows the model the lead, one that stores a link, a proposal that
+  carries a status).
+- **Real model:** five cases are `live` (the whole checklist, MEDDIC, Hindi, Telugu and the poisoned
+  transcript); the forced bad answers are scripted only. No paid scorecard run has been made for this
+  suite. `python -m scripts.eval_agents --provider fake --suite call_notes` plays all 28 on the
+  development data.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

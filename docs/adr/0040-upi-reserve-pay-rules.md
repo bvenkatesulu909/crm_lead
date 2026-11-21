@@ -1,6 +1,6 @@
 # ADR 0040 — UPI reserve-pay rules: taking a token / booking amount to hold a property
 
-- **Status:** Proposed (2026-11-21, design only - no code, no tests)
+- **Status:** Accepted (2026-11-21, owner's answers recorded in section 6a; design only - no code, no tests)
 - **Date:** 2026-11-21
 - **Deciders:** Project owner
 - **Depends on:** ADR 0031 (UPI payment links through Razorpay, test mode only), ADR 0014 (approval queue),
@@ -142,6 +142,22 @@ registry switch; test mode only until "go live".
 7. **Who approves exceptions?** *Recommended: sales managers and administrators, never the person who asked.*
 8. **Off by default per organisation?** *Recommended: yes, behind a registry switch, usable only after the
    payment-links switch is on.*
+
+## 6a. Owner's answers (2026-11-21)
+
+1. **Add units.** The CRM gets a `units` module (project, unit, price, status) and RP1 is built first; RP5's
+   "one buyer per unit" rule is the real partial unique index, not the weaker deal-only wording.
+2. **Minimum and maximum.** The administrator sets a minimum and a maximum token amount; the maximum is the
+   ceiling (nothing above it without an approved exception). The fixed-or-percentage choice inside that range is
+   unchanged unless the owner says otherwise.
+3. **Hold period: 7 days only** (fixed, not editable). *Assumption to confirm:* the payment window stays a short
+   fixed 24 hours; the answer was read as being about the hold period.
+4. **Refund** (late money or a taken unit): the amount becomes `refund_due`; no automatic reinstating.
+   *Reading to confirm:* the manager's "reinstate" exception in RP6 is dropped.
+5. **Lawyer confirms** the values before any live use; nothing legal is hard-coded.
+6. **Refunds stay manual**, as recommended.
+7. **Managers** approve exceptions (never the person who asked).
+8. **Off by default per organisation**, behind a registry switch.
 
 ## 7. Alternatives considered
 

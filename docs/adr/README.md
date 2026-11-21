@@ -46,3 +46,4 @@ Rules:
 | [0032](0032-branded-proposal-decks.md) | Branded proposal decks from a quote | Accepted |
 | [0033](0033-call-highlight-clips.md) | Highlight clips from recorded sales calls (BP-25) | Accepted |
 | [0034](0034-no-code-agent-builder.md) | A no-code agent builder for administrators (BP-18, second half) | Accepted |
+| [0036](0036-automatic-follow-up-messages.md) | Automatic follow-up messages: drafted by the system, sent only after approval (owner list, item 13) | Accepted |

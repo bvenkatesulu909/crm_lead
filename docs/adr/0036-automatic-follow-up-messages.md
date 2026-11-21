@@ -1,6 +1,6 @@
 # ADR 0036 — Automatic follow-up messages (drafted by the system, sent only after a person approves)
 
-- **Status:** Proposed (2026-11-21, waiting for the owner's answers in section 7)
+- **Status:** Accepted (2026-11-21, the owner answered section 7; the answers are recorded in section 7a)
 - **Date:** 2026-11-21
 - **Deciders:** Project owner
 - **Depends on:** ADR 0012 (Communication Center), ADR 0014 (approval queue), ADR 0016 (agent registry, budgets,
@@ -199,6 +199,26 @@ FM1 is useful alone and is the prerequisite for everything else. FM6 is optional
    English; Hindi and Telugu templates are written by the organisation.*
 10. **Bounce and complaint handling?** *Recommended: not in v1; a small ADR before the organisation sends more than
     about 100 follow-ups a day.*
+
+## 7a. The owner's answers (2026-11-21)
+
+1. Yes: a person approves every message in v1.
+2. Yes: with consent `unknown`, a draft only about a conversation the person started; promotional needs `yes`.
+3. Yes to both: the record's owner approves their own drafts and a sales manager can approve any.
+4. **Only one rule on the first menu: "a follow-up task on a lead is due today".** The other rules (no activity
+   for N days, quote with no answer) are not built now; they would be a later amendment.
+5. 7-day cooldown per rule; the other caps stay at the recommended defaults (3 per person per month, 7-day expiry
+   of a waiting draft, 200 drafts per organisation per day).
+6. Yes: templates first (FM1 to FM5), the writer agent (FM6) only afterwards and only if wanted.
+7. Yes: reuse the existing e-mail templates with an optional "follow-up" label.
+8. Yes: existing leads start as `unknown`; nothing becomes `yes` without an explicit statement.
+9. **English and Telugu** (no Hindi templates for follow-ups in v1): the lead's preferred language when it is
+   English or Telugu and a template exists, else English.
+10. Bounce and complaint handling is not in v1; a small ADR is needed **before an organisation passes about 100
+    follow-ups a day**. Until then the 200-per-day cap is lowered to **100 drafts per organisation per day**.
+
+Effect on the steps: FM3 builds the rule menu with the single rule `task_due_today`; FM4's scan reads due
+follow-up tasks of leads (and contacts) through the activities module's `api.py`.
 
 ## 8. Consequences
 

@@ -1,6 +1,6 @@
 # ADR 0039 — Property photo enhancer (honest enhancement, original always kept)
 
-- **Status:** Accepted (2026-11-21, owner: "yes" to the recommended answers of questions 1-4 and 8; the face and number-plate warning is **required** (5); the HEIC notice is **required** (6); off until an administrator switches it on (7)). Read as: all eight recommended answers apply.
+- **Status:** Accepted (2026-11-21, owner: "yes" to the recommended answers of questions 1-4 and 8; the face and number-plate warning is **required** (5); the HEIC notice is **not required** (6, owner's correction: the recommended answer stands, no server-side HEIC, a short hint is optional); off until an administrator switches it on (7)). Read as: all eight recommended answers apply.
 - **Date:** 2026-11-21
 - **Deciders:** Project owner
 - **Depends on:** ADR 0025 (documents, signed direct uploads, the file store), ADR 0032 (branding and the

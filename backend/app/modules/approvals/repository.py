@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.approvals.models import AgentAction
@@ -98,6 +98,7 @@ def page(
     status: str | None,
     requester: uuid.UUID | None,
     target_id: uuid.UUID | None = None,
+    owner_decides: tuple[frozenset[str], list[Any]] | None = None,
     limit: int,
     offset: int,
 ) -> tuple[list[AgentAction], int]:
@@ -107,7 +108,18 @@ def page(
     if status is not None:
         conditions.append(AgentAction.status == status)
     if requester is not None:
-        conditions.append(AgentAction.requested_by_user_id == requester)
+        mine = AgentAction.requested_by_user_id == requester
+        kinds, owned = owner_decides if owner_decides is not None else (frozenset(), [])
+        # Plus the kinds the owner of the record may decide on, for records they own.
+        also = [
+            and_(
+                AgentAction.kind.in_(kinds),
+                AgentAction.target_type == target_type,
+                AgentAction.target_id.in_(owned_ids),
+            )
+            for target_type, owned_ids in owned
+        ]
+        conditions.append(or_(mine, *also))
     total = session.scalar(select(func.count()).select_from(AgentAction).where(*conditions)) or 0
     items = session.scalars(
         select(AgentAction)

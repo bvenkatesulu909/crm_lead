@@ -2,16 +2,26 @@
 
 import uuid
 
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
+from app.core.config import Settings, get_settings
 from app.core.mail import Mailer
 from app.core.outbox import DeadJobHandler, Job, JobHandler, PermanentJobError
 from app.modules.communications import service
 
 EMAIL_JOB = service.EMAIL_JOB
 
-__all__ = ["EMAIL_JOB", "email_failed_handler", "email_job_handler", "message_brief"]
+__all__ = [
+    "EMAIL_JOB",
+    "email_failed_handler",
+    "email_job_handler",
+    "follow_up_problem",
+    "message_brief",
+    "queued_text",
+    "send_follow_up",
+]
 
 
 def _message_id(job: Job) -> uuid.UUID:
@@ -37,6 +47,59 @@ def email_failed_handler() -> DeadJobHandler:
         service.send_failed(session, job.tenant_id, _message_id(job), error)
 
     return handle
+
+
+def _emails_per_hour() -> int:
+    """The organisation-wide hourly e-mail limit. A process without a full server configuration
+    (a test run, a script) cannot build the settings; it then gets the built-in default, which is
+    also what the server uses unless CRM_COMMUNICATION_EMAILS_PER_HOUR says otherwise."""
+    try:
+        return get_settings().communication_emails_per_hour
+    except ValidationError:
+        return int(Settings.model_fields["communication_emails_per_hour"].default)
+
+
+def follow_up_problem(
+    session: Session,
+    tenant_id: uuid.UUID,
+    target_type: str,
+    target_id: uuid.UUID,
+    template_id: uuid.UUID | None,
+) -> str | None:
+    """Why a follow-up draft to this lead or contact can't be proposed, or None (ADR 0036)."""
+    return service.follow_up_problem(session, tenant_id, target_type, target_id, template_id)
+
+
+def send_follow_up(
+    session: Session,
+    principal: Principal,
+    *,
+    target_type: str,
+    target_id: uuid.UUID,
+    subject: str,
+    body: str,
+    template_id: uuid.UUID | None,
+) -> uuid.UUID:
+    """Queue an approved follow-up through the normal e-mail path, as the approver (ADR 0036):
+    the recipient, address, consent and hourly-limit checks and the audit all apply as for any
+    other e-mail. Returns the message id."""
+    return service.send_follow_up(
+        session,
+        principal,
+        target_type=target_type,
+        target_id=target_id,
+        subject=subject,
+        body=body,
+        template_id=template_id,
+        hourly_limit=_emails_per_hour(),
+    )
+
+
+def queued_text(
+    session: Session, tenant_id: uuid.UUID, message_id: uuid.UUID
+) -> tuple[str, str] | None:
+    """(subject, text) of a stored message, for the approval's outcome check."""
+    return service.stored_text(session, tenant_id, message_id)
 
 
 def message_brief(

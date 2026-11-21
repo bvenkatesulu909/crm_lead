@@ -251,6 +251,66 @@ def message_brief(
     return message.subject, link
 
 
+# --- follow-ups proposed by the system (ADR 0036) ----------------------------------------------
+
+
+def follow_up_problem(
+    session: Session,
+    tenant_id: uuid.UUID,
+    target_type: str,
+    target_id: uuid.UUID,
+    template_id: uuid.UUID | None,
+) -> str | None:
+    """The first reason a follow-up draft can't be made now. It is asked again at approval,
+    because consent can be withdrawn while the draft waits."""
+    if target_type == "lead":
+        state = leads_api.email_state(session, tenant_id, target_id)
+    elif target_type == "contact":
+        state = contacts_api.email_state(session, tenant_id, target_id)
+    else:
+        return "target: a follow-up goes to a lead or a contact"
+    if state is None:
+        return "target: the person can't be found"
+    address, consent = state
+    if consent == "withdrawn":
+        return "consent: this person has withdrawn e-mail consent"
+    if address is None or not rules.looks_like_address(address):
+        return "address: this person has no usable e-mail address"
+    if template_id is not None and not repository.active_template_exists(
+        session, tenant_id, template_id
+    ):
+        return "template_id: no such active template"
+    return None
+
+
+def send_follow_up(
+    session: Session,
+    principal: Principal,
+    *,
+    target_type: str,
+    target_id: uuid.UUID,
+    subject: str,
+    body: str,
+    template_id: uuid.UUID | None,
+    hourly_limit: int,
+) -> uuid.UUID:
+    data = EmailSend(
+        lead_id=target_id if target_type == "lead" else None,
+        contact_id=target_id if target_type == "contact" else None,
+        subject=subject,
+        body=body,
+        template_id=template_id,
+    )
+    return send_email(session, principal, data, hourly_limit=hourly_limit).id
+
+
+def stored_text(
+    session: Session, tenant_id: uuid.UUID, message_id: uuid.UUID
+) -> tuple[str, str] | None:
+    message = repository.get_message_for_update(session, tenant_id, message_id)
+    return None if message is None else (message.subject, message.body)
+
+
 # --- templates (step CC3) ------------------------------------------------------------------
 
 

@@ -184,6 +184,30 @@ def test_a_forbidden_tool_is_a_violation_even_if_the_crm_refused_it() -> None:
     assert result.passed is False
 
 
+def test_a_wrong_outcome_says_what_the_agent_said() -> None:
+    """For a real-model run the reason matters more than the verdict: the sentence the agent ended
+    with (a refusal, a limit) is in the failed check's detail."""
+    result = score_case(
+        make_case(
+            tools=[], max_tool_calls=None, answer_must_contain=[], answer_must_not_contain=[]
+        ),
+        Trajectory([], "The agent did not return exactly one suggestion.", "refused"),
+    )
+    [check] = [c for c in result.checks if c.name == "outcome"]
+    assert not check.passed
+    assert "expected 'proposal_pending', got 'refused'" in check.detail
+    assert "The agent did not return exactly one suggestion." in check.detail
+    quiet = score_case(
+        make_case(
+            tools=[], max_tool_calls=None, answer_must_contain=[], answer_must_not_contain=[]
+        ),
+        Trajectory([], "", "refused"),
+    )
+    assert [c.detail for c in quiet.checks if c.name == "outcome"] == [
+        "expected 'proposal_pending', got 'refused'"
+    ]
+
+
 def test_the_final_outcome_is_checked() -> None:
     assert "outcome" in failed(score_case(make_case(), good_run(outcome="answered")))
 

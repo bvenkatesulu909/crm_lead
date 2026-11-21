@@ -104,6 +104,63 @@ def test_anything_unusual_in_the_answer_is_refused(raw: Any) -> None:
         parse(raw)
 
 
+def test_an_unused_optional_field_sent_empty_means_not_sent() -> None:
+    """Real models fill the fields they do not need with null or an empty string."""
+    task = parse(
+        {
+            "action": "create_task",
+            "task_subject": "Call the buyer",
+            "due_in_days": 3,
+            "status": "",
+            "reason": "Quiet.",
+        }
+    )
+    assert (task.action, task.status, task.due_in_days) == ("create_task", None, 3)
+    status = parse(
+        {
+            "action": "set_status",
+            "status": "contacted",
+            "task_subject": None,
+            "due_in_days": None,
+            "reason": "Called.",
+        }
+    )
+    assert (status.action, status.status, status.task_subject) == ("set_status", "contacted", None)
+    none = parse(
+        {"action": "none", "status": "", "task_subject": "", "due_in_days": None, "reason": "x"}
+    )
+    assert none.action == "none"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        # Still strict: the required fields, wrong values and made-up fields are never "empty".
+        {"action": None, "reason": "x"},
+        {"action": "none", "reason": None},
+        {"action": "none", "reason": ""},
+        {"action": "set_status", "status": "converted", "reason": "x"},
+        {"action": "set_status", "status": "", "reason": "x"},  # needs a status
+        {"action": "create_task", "task_subject": None, "reason": "x"},  # needs a subject
+        {"action": "none", "reason": "x", "tenant_id": ""},  # a made-up field, even empty
+        {"action": "none", "reason": "x", "status": "contacted"},  # not empty: refused
+        {"action": "create_task", "task_subject": "Call", "due_in_days": 0, "reason": "x"},
+    ],
+)
+def test_empty_is_forgiven_only_for_the_optional_fields(raw: Any) -> None:
+    with pytest.raises(SuggestionRefused):
+        parse(raw)
+
+
+def test_a_refusal_names_the_fields_at_fault_and_never_their_values() -> None:
+    with pytest.raises(SuggestionRefused) as caught:
+        parse({"action": "set_status", "status": "SECRET-VALUE", "reason": "x", "extra": "y"})
+    message = str(caught.value)
+    assert "required shape" in message
+    assert "extra" in message and "status" in message
+    assert "SECRET-VALUE" not in message
+
+
 def test_an_action_outside_the_definition_is_refused() -> None:
     status = {"action": "set_status", "status": "contacted", "reason": "x"}
     task = {"action": "create_task", "task_subject": "Call the buyer", "reason": "x"}

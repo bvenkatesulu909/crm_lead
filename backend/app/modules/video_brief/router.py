@@ -39,6 +39,10 @@ def read_video_brief(
     ] = None,
     tone: Literal["warm", "professional", "brisk"] = "warm",
     length: Annotated[int, Query(description="Seconds: 30, 60 or 90.")] = 60,
+    quote_id: Annotated[
+        uuid.UUID | None,
+        Query(description="An approved, sent or accepted quote of the account this lead became."),
+    ] = None,
 ) -> VideoBriefRead:
     brief = service.build(
         session,
@@ -48,5 +52,6 @@ def read_video_brief(
         language=language,
         tone=tone,
         length_seconds=length,
+        quote_id=quote_id,
     )
     return VideoBriefRead.model_validate(asdict(brief))

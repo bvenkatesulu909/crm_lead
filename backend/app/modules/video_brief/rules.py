@@ -14,6 +14,8 @@ This module only arranges the inputs the service gathered.
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import date
+from decimal import Decimal
 
 from app.core.screening import screen
 from app.modules.assistant import api as assistant_api
@@ -26,6 +28,7 @@ LENGTHS = (30, 60, 90)
 # About 150 spoken words a minute, so a length fixes how many words the script may hold.
 WORDS_PER_SECOND = 2.5
 MAX_FACTS_IN_SCRIPT = 5
+MAX_PRICE_LINES_IN_SCRIPT = 3
 VALUE_MAX = 200
 
 MUST_SAY: tuple[str, ...] = (
@@ -89,6 +92,16 @@ QUESTION_LINE = {
     "en": "Is {value} still right for {label}?",
     "hi": "{label} के लिए क्या {value} अब भी सही है?",
     "te": "{label} కోసం {value} ఇప్పటికీ సరైనదేనా?",
+}
+PRICE_LINE = {
+    "en": "{description} - {amount}.",
+    "hi": "{description} - {amount}।",
+    "te": "{description} - {amount}.",
+}
+PRICE_TOTAL = {
+    "en": "The total is {amount}, valid until {valid_until}.",
+    "hi": "कुल राशि {amount} है, {valid_until} तक मान्य।",
+    "te": "మొత్తం {amount}, {valid_until} వరకు చెల్లుతుంది.",
 }
 INTRO = {
     "introduce": {
@@ -212,6 +225,50 @@ class KnownGuess:
 
 
 @dataclass(frozen=True)
+class PriceLine:
+    description: str
+    quantity: Decimal
+    unit: str
+    net_unit_price: Decimal
+    line_total: Decimal
+
+
+@dataclass(frozen=True)
+class PriceFacts:
+    """The figures of one quote the person may read (never its notes)."""
+
+    label: str  # "QT-0007"
+    currency: str
+    valid_until: date
+    total: Decimal
+    lines: Sequence[PriceLine]
+
+
+def _lakh_grouping(whole: str) -> str:
+    if len(whole) <= 3:
+        return whole
+    head, tail = whole[:-3], whole[-3:]
+    pairs: list[str] = []
+    while len(head) > 2:
+        pairs.insert(0, head[-2:])
+        head = head[:-2]
+    if head:
+        pairs.insert(0, head)
+    return ",".join([*pairs, tail])
+
+
+def format_money(amount: Decimal, currency: str) -> str:
+    """The amount as stored: rupees with the rupee sign and lakh grouping (no decimals when they
+    are .00), any other currency with its code and thousands grouping. Never rounded."""
+    sign = "-" if amount < 0 else ""
+    whole, _, fraction = f"{abs(amount):.2f}".partition(".")
+    if currency == "INR":
+        tail = "" if fraction == "00" else f".{fraction}"
+        return f"{sign}\u20b9{_lakh_grouping(whole)}{tail}"
+    return f"{sign}{currency} {int(whole):,}.{fraction}"
+
+
+@dataclass(frozen=True)
 class KnownLine:
     kind: str  # fact | assumption | form
     key: str
@@ -282,6 +339,7 @@ def build_video_brief(
     facts: Sequence[KnownFact],
     guesses: Sequence[KnownGuess],
     form_wishes: Sequence[tuple[str, str]],
+    price: PriceFacts | None = None,
     competitors: Sequence[str] = (),
 ) -> VideoBrief:
     if language not in LANGUAGES:
@@ -320,6 +378,39 @@ def build_video_brief(
                 ScriptLine("fact", FACT_LINE[language].format(label=label, value=safe), [f.key])
             )
             spoken_facts += 1
+    if price is not None:
+        spoken_lines = 0
+        for pl in price.lines:
+            amount = format_money(pl.line_total, price.currency)
+            safe = _safe_value(pl.description)
+            known.append(
+                KnownLine("price", "price", "Price", f"{safe or '[left out]'} - {amount}",
+                          price.label, None, None)
+            )  # fmt: skip
+            if safe is None:
+                cautions.append(
+                    Caution(
+                        "value_left_out",
+                        "A product description on the quote was left out of the script because "
+                        "it holds contact details or text that is not safe to say.",
+                    )
+                )
+                continue
+            if spoken_lines < MAX_PRICE_LINES_IN_SCRIPT:
+                text = PRICE_LINE[language].format(description=safe, amount=amount)
+                script.append(ScriptLine("price", text, [price.label]))
+                spoken_lines += 1
+        total_amount = format_money(price.total, price.currency)
+        known.append(KnownLine("price", "total", "Total", total_amount, price.label, None, None))
+        script.append(
+            ScriptLine(
+                "price",
+                PRICE_TOTAL[language].format(
+                    amount=total_amount, valid_until=price.valid_until.isoformat()
+                ),
+                [price.label],
+            )
+        )
     for g in guesses:
         safe = _safe_value(g.value)
         known.append(

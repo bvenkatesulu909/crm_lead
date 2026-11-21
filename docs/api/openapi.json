@@ -8793,7 +8793,8 @@
             "enum": [
               "fact",
               "assumption",
-              "form"
+              "form",
+              "price"
             ],
             "title": "Kind",
             "type": "string"
@@ -16718,6 +16719,7 @@
               "greeting",
               "intro",
               "fact",
+              "price",
               "question",
               "closing"
             ],
@@ -34184,6 +34186,25 @@
               "description": "Seconds: 30, 60 or 90.",
               "title": "Length",
               "type": "integer"
+            }
+          },
+          {
+            "description": "An approved, sent or accepted quote of the account this lead became.",
+            "in": "query",
+            "name": "quote_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "An approved, sent or accepted quote of the account this lead became.",
+              "title": "Quote Id"
             }
           }
         ],

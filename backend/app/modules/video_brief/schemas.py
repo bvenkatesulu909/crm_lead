@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 
 class KnownLineRead(BaseModel):
-    kind: Literal["fact", "assumption", "form"]
+    kind: Literal["fact", "assumption", "form", "price"]
     key: str
     label: str
     value: str
@@ -17,7 +17,7 @@ class KnownLineRead(BaseModel):
 
 
 class ScriptLineRead(BaseModel):
-    kind: Literal["greeting", "intro", "fact", "question", "closing"]
+    kind: Literal["greeting", "intro", "fact", "price", "question", "closing"]
     text: str
     cites: list[str]
     seconds: int

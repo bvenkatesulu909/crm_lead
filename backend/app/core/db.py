@@ -78,6 +78,14 @@ def bind_user(session: Session, user_id: uuid.UUID, lead_scope: str) -> None:
     )
 
 
+def clear_user(session: Session) -> None:
+    """Forget the user + lead scope of the current transaction (the leads policy then hides leads)."""
+    session.info.pop("user_id", None)
+    session.info.pop("lead_scope", None)
+    for name in (USER_SETTING, LEAD_SCOPE_SETTING):
+        session.execute(text("select set_config(:name, '', true)"), {"name": name})
+
+
 def clear_tenant(session: Session) -> None:
     """Remove the tenant setting from the current transaction (tests / defensive cleanup)."""
     session.info.pop("tenant_id", None)

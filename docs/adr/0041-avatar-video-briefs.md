@@ -1,6 +1,6 @@
 # ADR 0041 — Avatar video briefs: the CRM writes the brief, a person or a tool makes the video
 
-- **Status:** Proposed (2026-11-21, waiting for the owner's answers in section 6)
+- **Status:** Accepted (2026-11-21, owner replied "yes" with the recommended answers of section 7; languages English, Hindi and Telugu; buyer-memory facts only; off by default). One answer was ambiguous and is recorded as the recommended one: video generation is **not** built now (VB8).
 - **Date:** 2026-11-21
 - **Deciders:** Project owner
 - **Depends on:** ADR 0028 (buyer memory), ADR 0029 (site visit brief), ADR 0032 (branded proposal decks, PD7 deck

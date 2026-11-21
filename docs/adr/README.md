@@ -47,4 +47,4 @@ Rules:
 | [0033](0033-call-highlight-clips.md) | Highlight clips from recorded sales calls (BP-25) | Accepted |
 | [0034](0034-no-code-agent-builder.md) | A no-code agent builder for administrators (BP-18, second half) | Accepted |
 | [0035](0035-call-notes-deal-checklist.md) | Call notes and a deal checklist (BANT or MEDDIC) from a call transcript | Accepted |
-| [0041](0041-avatar-video-briefs.md) | Avatar video briefs: the CRM writes the brief, a person or a tool makes the video | Proposed |
+| [0041](0041-avatar-video-briefs.md) | Avatar video briefs: the CRM writes the brief, a person or a tool makes the video | Accepted |

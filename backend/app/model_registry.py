@@ -16,6 +16,7 @@ from app.modules.assistant import models as assistant_models
 from app.modules.assistant import staff_models as staff_assistant_models
 from app.modules.branding import models as branding_models
 from app.modules.buyer_memory import models as buyer_memory_models
+from app.modules.call_notes import models as call_notes_models
 from app.modules.calls import models as calls_models
 from app.modules.catalog import models as catalog_models
 from app.modules.communications import models as communications_models
@@ -74,6 +75,7 @@ __all__ = [
     "webcheck_models",
     "deal_desk_models",
     "custom_agents_models",
+    "call_notes_models",
     "proposal_decks_models",
     "workflows_models",
 ]

@@ -9,7 +9,7 @@ registry's business (`PATCH /api/v1/agents/call_notes`).
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Request
+from fastapi import APIRouter, Depends, Path, Query, Request
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
@@ -19,7 +19,7 @@ from app.core.db import get_db_session
 from app.core.errors import problem_responses
 from app.modules.agents import api as agents_api
 from app.modules.assistant.api import ChatModel
-from app.modules.call_notes import rules, service
+from app.modules.call_notes import proposals, rules, service
 from app.modules.call_notes.llm import model_for
 from app.modules.call_notes.models import CallNote
 from app.modules.call_notes.schemas import (
@@ -28,6 +28,12 @@ from app.modules.call_notes.schemas import (
     LineRead,
     NotesPage,
     NotesRead,
+    PlannedMemoryRead,
+    PlannedTaskRead,
+    ProposalOutcomeRead,
+    ProposalPreviewRead,
+    ProposalRequest,
+    ProposalsRead,
     SettingsRead,
     SettingsUpdate,
     VersionRead,
@@ -193,3 +199,89 @@ def get_notes(
     session: Db,
 ) -> NotesRead:
     return _notes_read(service.read_version(session, principal, lead_id, call_id, version_no))
+
+
+@notes_router.get(
+    "/{lead_id}/calls/{call_id}/notes/{version_no}/proposals/preview",
+    summary="What asking for proposals from a draft would suggest (stores nothing)",
+    responses=problem_responses(401, 403, 404, 409, 422),
+)
+def preview_proposals(
+    lead_id: uuid.UUID,
+    call_id: uuid.UUID,
+    version_no: Annotated[int, Path(ge=1)],
+    principal: Runner,
+    session: Db,
+    positions: Annotated[list[int] | None, Query(max_length=20)] = None,
+    follow_up_task: bool = True,
+) -> ProposalPreviewRead:
+    plan = proposals.preview(
+        session,
+        principal,
+        lead_id,
+        call_id,
+        version_no,
+        positions=positions,
+        follow_up_task=follow_up_task,
+    )
+    return ProposalPreviewRead(
+        memory=[
+            PlannedMemoryRead(
+                position=item.position,
+                field=item.field,
+                label=item.label,
+                key=item.key,
+                value=item.value,
+                note=item.note,
+            )
+            for item in plan.memory
+        ],
+        task=(
+            PlannedTaskRead(subject=plan.task.subject, due_in_days=plan.task.due_in_days)
+            if plan.task
+            else None
+        ),
+    )
+
+
+@notes_router.post(
+    "/{lead_id}/calls/{call_id}/notes/{version_no}/proposals",
+    status_code=201,
+    summary="Turn a draft into proposals; a different person decides",
+    description="Each chosen line becomes a proposal to note a detail in the buyer memory - always "
+    "as an ASSUMPTION, never a fact - and the unknown lines can become one follow-up task. Nothing "
+    "changes until a different person approves. A line the safety check refuses or that is already "
+    "confirmed is reported, not an error.",
+    responses=problem_responses(401, 403, 404, 409, 422),
+)
+def create_proposals(
+    lead_id: uuid.UUID,
+    call_id: uuid.UUID,
+    version_no: Annotated[int, Path(ge=1)],
+    data: ProposalRequest,
+    principal: Runner,
+    session: Db,
+) -> ProposalsRead:
+    done = proposals.propose(
+        session,
+        principal,
+        lead_id,
+        call_id,
+        version_no,
+        positions=data.positions,
+        follow_up_task=data.follow_up_task,
+    )
+    session.commit()
+    return ProposalsRead(
+        items=[
+            ProposalOutcomeRead(
+                target=o.target,
+                position=o.position,
+                status=o.status,
+                proposal_id=o.proposal_id,
+                proposal_link=f"/approvals/{o.proposal_id}" if o.proposal_id else None,
+                message=o.message,
+            )
+            for o in done.outcomes
+        ]
+    )

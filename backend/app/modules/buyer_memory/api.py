@@ -8,6 +8,10 @@ from app.core.auth.principal import Principal
 from app.modules.buyer_memory import rules, service
 
 record_from_website_chat = service.record_from_website_chat
+add_assumption = service.add_assumption
+assumption_problem = service.assumption_problem
+current_text = service.current_text
+KeyConfirmedError = service.KeyConfirmedError
 MemoryArranged = rules.Arranged
 KEYS = tuple((k.key, k.label) for k in rules.KEYS)
 budget_text = rules.budget_text
@@ -15,9 +19,13 @@ property_type_text = rules.property_type_text
 
 __all__ = [
     "KEYS",
+    "KeyConfirmedError",
     "MemoryArranged",
+    "add_assumption",
+    "assumption_problem",
     "budget_text",
     "current_memory",
+    "current_text",
     "property_type_text",
     "record_from_website_chat",
 ]

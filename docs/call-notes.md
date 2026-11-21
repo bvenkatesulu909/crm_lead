@@ -1,7 +1,7 @@
 # Call notes and a deal checklist (ADR 0035)
 
-Status: **CN1 (rules, tables) built 2026-11-16, CN2 (the governed run) and CN3 (the API) built 2026-11-17.**
-There is no screen yet (CN4-CN6). The feature stays off until an administrator switches the `call_notes`
+Status: **CN1 (rules, tables) built 2026-11-16; CN2 (the governed run), CN3 (the API) and CN4 (proposals)
+built 2026-11-17.** There is no screen yet (CN5-CN6). The feature stays off until an administrator switches the `call_notes`
 agent on (AI agents page or `PATCH /api/v1/agents/call_notes`).
 
 ## The idea in one paragraph
@@ -86,5 +86,32 @@ A line in a draft has: `field`, a `label`, `state` (`stated`, `assumed`, `unknow
 `start_ms` / `end_ms` (the transcript's own time), `reason` (assumed only) and `note_code` (why a claim became
 unknown). The response carries no tokens, tenant, prompt or raw model answer.
 
+## Proposals (CN4)
+A draft changes nothing. A person can turn chosen lines into **proposals** in the approval queue; a
+DIFFERENT person approves each one (no self-approval, as for every AI suggestion) and the Sentinel checks
+each first.
+
+| Endpoint | What |
+|---|---|
+| `GET /api/v1/leads/{lead}/calls/{call}/notes/{n}/proposals/preview?positions=..&follow_up_task=..` | What would be suggested, in plain words. Stores nothing. |
+| `POST /api/v1/leads/{lead}/calls/{call}/notes/{n}/proposals` | Body: `positions` (line numbers; none = every line that can be suggested) and `follow_up_task` (default true). Nothing else is accepted - the key, value, lead and call come from the stored draft. Returns one result per proposal: `proposed`, `blocked` (by the safety check), `refused` (for example the buyer already confirmed it) or `skipped` (too many waiting). |
+
+- **Buyer memory, assumptions only.** New approval kind `buyer_memory.add_assumption` (author
+  `call_notes`, migration 0072): payload `key` (one of the twelve), `value`, `note` (the call and the moment),
+  `call_id`, `at_ms`. It has no status field, so it can only ever record an **assumption**, even for a
+  *stated* line - the speaker is not verified (ADR 0035 CN5) and a fact needs a person to confirm it with the
+  buyer's words. Which lines can be suggested is a reviewed table: budget, authority, need and timeline for
+  BANT; economic buyer, decision criteria and identify pain for MEDDIC. Metrics, decision process and champion
+  stay on the checklist. At most 5 per request.
+- **Never over a confirmed fact.** A newer buyer-memory row replaces the older one, so the kind refuses a key
+  whose current entry is a fact - when the suggestion is made, and again when it is approved (then the
+  approval ends `failed` and nothing changes). The same assumption twice is refused as pointless.
+- **One follow-up task** (`activity.create_task`) for the unknown lines ("Ask the buyer about need and
+  timeline", due in 2 days, for the person who asked), built from fixed labels.
+- The approver records the assumption; the approval card shows "Note in the buyer memory, as an assumption
+  (not a fact)", the plan and the outcome like every other kind.
+- Asking twice does not fill the queue: the Sentinel blocks an identical waiting proposal. The audit entry
+  `call_notes.proposed` has ids and counts only. No model is called.
+
 ## Still to build
-CN4 the proposals through the approval queue, CN5 the screens, CN6 evaluation cases.
+CN5 the screens, CN6 evaluation cases.

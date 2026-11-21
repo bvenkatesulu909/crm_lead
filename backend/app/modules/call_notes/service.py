@@ -353,6 +353,21 @@ def newest_and_versions(
     return NotesResult(newest, repository.lines_of(session, tenant_id, newest.id)), versions
 
 
+def load_version(
+    session: Session,
+    principal: Principal,
+    lead_id: uuid.UUID,
+    call_id: uuid.UUID,
+    version_no: int,
+) -> CallNote:
+    """One draft of a call whose lead the person may read (else 404)."""
+    tenant_id = _readable(session, principal, lead_id, call_id)
+    note = repository.version_of(session, tenant_id, call_id, version_no)
+    if note is None:
+        raise NoteNotFoundError()
+    return note
+
+
 def read_version(
     session: Session,
     principal: Principal,

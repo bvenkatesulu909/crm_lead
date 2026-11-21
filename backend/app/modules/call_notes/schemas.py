@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class FieldRead(BaseModel):
@@ -75,3 +75,55 @@ class VersionRead(BaseModel):
 class NotesPage(BaseModel):
     newest: NotesRead | None
     versions: list[VersionRead]
+
+
+class ProposalRequest(BaseModel):
+    """Which lines to suggest. Nothing else is accepted: the key, the value, the lead and the call
+    all come from the stored draft."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Line positions of the draft; none = every line that can be suggested.
+    positions: list[int] | None = Field(default=None, max_length=20)
+    follow_up_task: bool = True
+
+    @field_validator("positions")
+    @classmethod
+    def _positive(cls, positions: list[int] | None) -> list[int] | None:
+        if positions is not None and any(p < 1 for p in positions):
+            raise ValueError("positions start at 1")
+        return positions
+
+
+class PlannedMemoryRead(BaseModel):
+    position: int
+    field: str
+    label: str
+    key: str
+    value: str
+    note: str
+
+
+class PlannedTaskRead(BaseModel):
+    subject: str
+    due_in_days: int
+
+
+class ProposalPreviewRead(BaseModel):
+    memory: list[PlannedMemoryRead]
+    task: PlannedTaskRead | None
+
+
+class ProposalOutcomeRead(BaseModel):
+    # A buyer-memory key, or "task".
+    target: str
+    position: int | None
+    # proposed, blocked (by the safety check), refused (for example already confirmed), skipped.
+    status: str
+    proposal_id: uuid.UUID | None
+    proposal_link: str | None
+    message: str | None
+
+
+class ProposalsRead(BaseModel):
+    items: list[ProposalOutcomeRead]

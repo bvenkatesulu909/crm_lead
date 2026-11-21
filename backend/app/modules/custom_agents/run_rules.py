@@ -25,6 +25,8 @@ ACTION_OF: dict[str, str] = {kind: action for action, kind in KIND_OF.items()}
 STATUSES: tuple[str, ...] = ("contacted", "qualified", "unqualified")
 # Where the approval queue files a suggestion about each kind of record.
 TARGET_TYPE: dict[str, str] = {"lead": "lead", "account": "account", "deal": "opportunity"}
+# The fields only some actions use; null or "" for these means "not sent".
+OPTIONAL_FIELDS = ("status", "task_subject", "due_in_days")
 REASON_MAX = 400
 PROPOSAL_REASON_MAX = 500  # approvals.models.REASON_MAX
 TASK_SUBJECT_MIN, TASK_SUBJECT_MAX = 3, 200
@@ -106,10 +108,17 @@ def parse_suggestion(raw: Any, kinds: list[str]) -> Suggestion:
     days is refused."""
     if not isinstance(raw, dict):
         raise SuggestionRefused("The suggestion was not an object.")
+    # Models often fill an optional field they do not need with null or an empty string. That means
+    # "not sent". Anything else stays strict: a made-up field, a wrong type, a value off the menu
+    # and an empty or null REQUIRED field are still refused.
+    raw = {k: v for k, v in raw.items() if not (k in OPTIONAL_FIELDS and v in (None, ""))}
     try:
         suggestion = Suggestion.model_validate(raw)
-    except ValidationError:
-        raise SuggestionRefused("The suggestion did not have the required shape.") from None
+    except ValidationError as problem:
+        # Names the fields at fault (never their values), so a refusal can be understood.
+        fields = sorted({str(error["loc"][0]) for error in problem.errors() if error["loc"]})
+        hint = f" (check: {', '.join(fields)})" if fields else ""
+        raise SuggestionRefused(f"The suggestion did not have the required shape{hint}.") from None
     action = suggestion.action
     if action != "none" and KIND_OF[action] not in kinds:
         raise SuggestionRefused("The suggestion is not one this agent may make.")

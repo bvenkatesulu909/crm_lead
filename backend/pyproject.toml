@@ -86,6 +86,7 @@ modules = [
     "app.modules.sales",
     "app.modules.site_brief",
     "app.modules.support",
+    "app.modules.video_brief",
     "app.modules.workflows",
 ]
 # The one allowed path between modules: importing another module's public api.py.

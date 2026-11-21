@@ -1,7 +1,7 @@
 # Call notes and a deal checklist (ADR 0035)
 
 Status: **CN1 (rules, tables) built 2026-11-16; CN2 (the governed run), CN3 (the API) and CN4 (proposals)
-built 2026-11-17; CN5 (the screens) built 2026-11-20.** Evaluation cases (CN6) are still to do. The feature stays off until an administrator switches the `call_notes`
+built 2026-11-17; CN5 (the screens) built 2026-11-20, CN6 (the evaluation cases) 2026-11-21.** Phase CN is complete; a paid real-model try and the measured trial on real calls are still to do. The feature stays off until an administrator switches the `call_notes`
 agent on (AI agents page or `PATCH /api/v1/agents/call_notes`).
 
 ## The idea in one paragraph
@@ -142,5 +142,14 @@ each first.
 - The profile page has words for `call_notes:run` and `call_notes:manage`. The screens only help: the API
   decides who may do what and checks every limit again.
 
-## Still to build
-CN6 the evaluation cases (a BP-10 suite for the call notes run), and a real-model try.
+## Evaluation (CN6)
+28 scripted cases (`backend/evals/agents/call_notes.json`) play the real run and the real suggestions through
+the BP-10 harness; every case also gets checks it cannot skip, among them that every stored line is
+re-checked from the transcript and that the model was never shown the lead's name, e-mail, phone or an id.
+See `docs/agent-evals.md` section 6r. Hard gate in CI: `tests/db/test_agent_evals_call_notes.py`.
+
+## Still to do
+A paid real-model run of the five `live` cases (no scorecard exists yet), and the measured trial of the
+transcripts themselves on real Hindi, Hinglish and Telugu calls (ADR 0030): until then every draft is only as
+good as the automatic transcript under it, which is why each line says it is an AI draft and why the speaker
+is never claimed.

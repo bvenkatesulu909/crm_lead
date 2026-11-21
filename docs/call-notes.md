@@ -1,7 +1,8 @@
 # Call notes and a deal checklist (ADR 0035)
 
-Status: **CN1 built 2026-11-16** (the rules and the tables). Nothing calls a model yet and there is no
-endpoint or screen; those are CN2-CN6. Today no model reads a transcript.
+Status: **CN1 (rules, tables) built 2026-11-16, CN2 (the governed run) built 2026-11-17.** There is no
+endpoint or screen yet (CN3-CN6). Nothing calls the run from the web app, so no model reads a transcript
+in practice until CN3.
 
 ## The idea in one paragraph
 After a recorded sales call has a transcript, a rep will be able to ask for notes and a BANT or MEDDIC
@@ -42,6 +43,36 @@ as a buyer-memory **assumption**.
 - `call_note_settings` - one row per organisation holding its frame (`bant` default or `meddic`), with a
   version check.
 
+## The run (CN2) - `call_notes/service.py`, `answer.py`, `llm.py`
+`run_notes(session, principal, model, lead_id, call_id, ...)` does, in this order:
+
+1. **Who:** a staff member with `call_notes:run` **and** `call:read` (sales agents, managers, administrators;
+   support and customers are refused). New permissions: `call_notes:run`, `call_notes:manage` (administrators,
+   used from CN3).
+2. **Which transcript:** `calls_api.transcript_of` - only of a lead the person may read (else 404, so a
+   colleague's lead or another organisation's looks the same as a made-up id); a recording without a finished
+   transcript is a 409. The model is not called for any of these.
+3. **Size:** a transcript over 60,000 characters or with nothing readable is refused before the model.
+4. **Limits** (settings `CRM_CALL_NOTES_PER_RECORDING_DAY` 3, `_PER_USER_HOUR` 20, `_PER_TENANT_DAY` 100):
+   counted from stored drafts; over the limit is a 429 and the model is not called.
+5. **The gate:** a new registry agent `call_notes` (**off by default**, one tool `submit_notes`): switch,
+   monthly token budget, tool filter and the AI platform switch all apply (ADR 0016). Tokens are counted
+   even when the answer is refused.
+6. **What the model sees:** the transcript cleaned like any untrusted text (links, markup and hidden
+   characters out; instruction-like words are reported and the prompt says so), each line as
+   `[start_ms-end_ms] text` inside marked data, the language and the checklist fields. Never the lead's
+   name, contact details or ids, never the audio.
+7. **The answer:** exactly one `submit_notes` call, read strictly (`answer.parse_answer`: nothing extra,
+   only the fields of the chosen frame, whole-number times), then every quote is checked against the
+   transcript the model saw (`rules.verify`, CN1). A badly shaped answer, or one where more than half of the
+   quotes fail, is a 422 `call_notes_bad_answer` / `call_notes_unverified_answer` and nothing is stored.
+8. **The draft:** one insert-only `call_notes` row (next version for the recording) with its lines, and an
+   audit entry `call_notes.created` with ids, counts and kinds of finding - never a quote, value or reason.
+   **Nothing else in the CRM changes**: no lead, no buyer memory, no proposal (CN4 adds those).
+
+`CRM_AI_PROVIDER=fake` uses a scripted model (`llm.FakeCallNotesModel`) that quotes the first transcript line
+for the first checklist field, so a demo shows a real, verifiable quote.
+
 ## Still to build
-CN2 the run (governed model, registry entry `call_notes` off by default), CN3 the API and settings, CN4 the
-proposals through the approval queue, CN5 the screens, CN6 evaluation cases.
+CN3 the API (settings and `POST/GET /leads/{id}/calls/{call_id}/notes`), CN4 the proposals through the
+approval queue, CN5 the screens, CN6 evaluation cases.

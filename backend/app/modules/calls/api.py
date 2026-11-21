@@ -9,6 +9,7 @@ from app.core.config import Settings
 from app.core.outbox import DeadJobHandler, Job, JobHandler
 from app.core.storage import FileStore
 from app.modules.calls import audio, clips, fakes, processing, service
+from app.modules.calls.service import Transcript, transcript_of
 from app.modules.voice import api as voice_api
 
 expire_stale_uploads = service.expire_stale
@@ -21,12 +22,14 @@ __all__ = [
     "AGENT_KEY",
     "CLIP_JOB_KIND",
     "JOB_KIND",
+    "Transcript",
     "clip_dead_job_handler",
     "clip_job_handler",
     "dead_job_handler",
     "delete_old_audio",
     "expire_stale_uploads",
     "job_handler",
+    "transcript_of",
 ]
 
 

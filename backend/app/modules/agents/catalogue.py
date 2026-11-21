@@ -144,6 +144,20 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="call_notes",
+            title="Call notes",
+            description=(
+                "Reads the transcript of one recorded sales call and drafts call notes and a "
+                "BANT or MEDDIC checklist. Every line is stated (with a quote checked against "
+                "the transcript), assumed or unknown. It never changes the CRM: anything that "
+                "should reach a lead waits in the approval queue for a different person. Off "
+                "until an administrator switches it on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_notes",),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="web_check",
             title="Web check",
             description=(

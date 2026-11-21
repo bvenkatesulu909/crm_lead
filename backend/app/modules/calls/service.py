@@ -18,8 +18,9 @@ shows ``failed`` with its reason). Audit entries hold ids and codes, never names
 
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy.orm import Session
 
@@ -338,6 +339,40 @@ def get_call(
         raise CallNotFoundError()
     return CallDetail.model_validate(
         {**_read(row), "transcript": row.transcript_text, "segments": row.transcript_segments}
+    )
+
+
+@dataclass(frozen=True)
+class Transcript:
+    """A finished transcript for another module to read (ADR 0035). It is the speech service's
+    own text and segments (seconds); the reader must treat it as untrusted."""
+
+    call_id: uuid.UUID
+    lead_id: uuid.UUID
+    language: str
+    text: str
+    segments: list[dict[str, Any]]
+
+
+class TranscriptNotReadyError(ConflictError):
+    code = "call_transcript_not_ready"
+
+    def __init__(self) -> None:
+        super().__init__("This recording has no transcript yet.")
+
+
+def transcript_of(
+    session: Session, principal: Principal, lead_id: uuid.UUID, call_id: uuid.UUID
+) -> Transcript:
+    """The transcript of a recording of a lead the person may read (else 404)."""
+    tenant_id = _require_lead(session, principal, lead_id)
+    row = repository.get_of_lead(session, tenant_id, lead_id, call_id)
+    if row is None:
+        raise CallNotFoundError()
+    if row.status != "ready" or row.transcript_text is None:
+        raise TranscriptNotReadyError()
+    return Transcript(
+        row.id, row.lead_id, row.language, row.transcript_text, list(row.transcript_segments or [])
     )
 
 

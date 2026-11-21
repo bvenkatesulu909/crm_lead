@@ -54,6 +54,7 @@ from app.modules.quotes.router import router as quotes_router
 from app.modules.relationships.router import router as relationships_router
 from app.modules.reports.router import router as reports_router
 from app.modules.sales.router import router as opportunities_router
+from app.modules.saved_filters.router import router as saved_filters_router
 from app.modules.site_brief.router import router as site_brief_router
 from app.modules.support.router import portal_router as portal_tickets_router
 from app.modules.support.router import router as tickets_router
@@ -91,6 +92,7 @@ api_router.include_router(agents_router)
 api_router.include_router(webcheck_router)
 api_router.include_router(qualifier_router)
 api_router.include_router(custom_agents_router)
+api_router.include_router(saved_filters_router)
 api_router.include_router(lead_agent_router)
 api_router.include_router(deal_desk_router)
 api_router.include_router(account_research_router)

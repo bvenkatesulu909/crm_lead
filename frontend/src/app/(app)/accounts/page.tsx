@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Pagination } from "@/components/pagination";
+import { SavedFiltersBar } from "@/components/saved-filters-bar";
 import {
   ButtonLink,
   Card,
@@ -28,6 +29,7 @@ import {
   countryName,
 } from "@/lib/customer-data";
 import { formatDate } from "@/lib/format";
+import type { SavedFilterPage } from "@/lib/saved-filters";
 import { canManageAccounts, canWriteAccounts, hasAny } from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
@@ -56,11 +58,16 @@ export default async function AccountsPage({
 
   let data: AccountPage;
   let people: DirectoryUser[];
+  let savedFilters: SavedFilterPage;
   try {
     // The backend decides which accounts this user may see (own vs. all, own tenant only).
-    [data, people] = await Promise.all([
+    [data, people, savedFilters] = await Promise.all([
       apiFetch<AccountPage>(`/accounts?${accountApiQuery(params)}`),
       apiFetch<DirectoryUser[]>("/users"),
+      // Saved filters are a convenience: the list still works when they cannot be loaded.
+      apiFetch<SavedFilterPage>("/saved-filters").catch(
+        (): SavedFilterPage => ({ items: [] }),
+      ),
     ]);
   } catch (error) {
     if (error instanceof ApiError && error.status === 403) return <Forbidden />;
@@ -118,6 +125,11 @@ export default async function AccountsPage({
           )
         }
       />
+      {raw.done === "filter-deleted" && (
+        <div className="mb-4">
+          <SuccessAlert>The saved filter was deleted.</SuccessAlert>
+        </div>
+      )}
       {raw.done === "archived" && (
         <div className="mb-4">
           <SuccessAlert>
@@ -138,6 +150,16 @@ export default async function AccountsPage({
       </nav>
       <Card>
         <form
+          // The boxes are uncontrolled: when the address changes without a reload (a saved filter
+          // was chosen) they must be rebuilt, or they keep showing the old choice.
+          key={[
+            params.q,
+            params.status,
+            params.segment,
+            params.country,
+            params.lifecycle,
+            params.archived,
+          ].join("|")}
           role="search"
           aria-label="Filter accounts"
           className="grid gap-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]"
@@ -255,6 +277,20 @@ export default async function AccountsPage({
             )}
           </div>
         </form>
+        {!params.archived && (
+          <SavedFiltersBar
+            filters={savedFilters.items}
+            list={{
+              q: params.q,
+              status: params.status,
+              segment: params.segment,
+              country: params.country,
+              lifecycle: params.lifecycle,
+            }}
+            filtered={filtered}
+            canShare={manager}
+          />
+        )}
 
         <div className="border-t border-slate-200">
           {data.items.length === 0 ? (

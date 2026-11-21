@@ -87,3 +87,7 @@ transcript lines inside it, kept with the lead. A person picks the moment; no mo
   excerpt, maker and recording can never change (a trigger).
 - **Audit** (ids, milliseconds and the kinds of finding only, never the title, note or lines):
   `call_clip.created`, `.listened`, `.edited`, `.deleted`, `.failed`.
+
+## Call notes and a deal checklist (ADR 0035, proposed)
+
+A design is waiting for the owner: a governed agent could read a ready transcript and fill a BANT or MEDDIC checklist where every line is *stated* (with a quote checked against the transcript and its time), *assumed* or *unknown*, and could only **propose** buyer-memory assumptions through the approval queue. Nothing is built yet; today no model reads a transcript. See `docs/adr/0035-call-notes-deal-checklist.md`.

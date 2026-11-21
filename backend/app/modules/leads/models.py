@@ -111,7 +111,9 @@ class Lead(
         CheckConstraint(
             "email_consent IN ('unknown', 'granted', 'withdrawn')", name="email_consent_allowed"
         ),
-        CheckConstraint("(email_consent = 'unknown') = (email_consent_at IS NULL)", name="consent_dated"),
+        CheckConstraint(
+            "(email_consent = 'unknown') = (email_consent_at IS NULL)", name="consent_dated"
+        ),
         Index("ix_leads_tenant_id_status", "tenant_id", "status"),
         Index("ix_leads_tenant_id_owner_id", "tenant_id", "owner_id"),
         Index("ix_leads_tenant_id_lower_email", "tenant_id", func.lower(text("email"))),

@@ -9390,6 +9390,28 @@
             ],
             "title": "Email"
           },
+          "email_consent": {
+            "default": "unknown",
+            "enum": [
+              "unknown",
+              "granted",
+              "withdrawn"
+            ],
+            "title": "Email Consent",
+            "type": "string"
+          },
+          "email_consent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Consent At"
+          },
           "first_name": {
             "anyOf": [
               {
@@ -9765,6 +9787,23 @@
               }
             ],
             "title": "Email"
+          },
+          "email_consent": {
+            "anyOf": [
+              {
+                "enum": [
+                  "unknown",
+                  "granted",
+                  "withdrawn"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "E-mail consent; the server records when the answer changed (ADR 0036).",
+            "title": "Email Consent"
           },
           "first_name": {
             "anyOf": [

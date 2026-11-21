@@ -16,9 +16,9 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
+from app.core.db import bind_user, clear_user
 from app.core.errors import DomainError, ForbiddenError
 from app.core.records import LeadQualifierFacts, LeadSnapshot, Recipient, RecordFacts
-from app.core.db import bind_user, clear_user
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
 from app.modules.leads import repository, service
 from app.modules.leads.checks import duplicate_count

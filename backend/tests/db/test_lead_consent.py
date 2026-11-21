@@ -6,6 +6,7 @@ play the real API and the real worker.
 """
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -15,21 +16,17 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.audit import AuditLog
 from app.core.db import bind_tenant
-from app.modules.contacts.models import Contact
 from app.modules.leads import api as leads_api
 from app.modules.leads.models import Lead
 from tests.db.conftest import setup_lead_context
 from tests.db.test_communications_send import (  # noqa: F401 - fixtures used by name
     EMAILS,
-    api,
-    auth,
     leads,
     mailer,
-    ok,
     send,
     worker,
-    world,
 )
+from tests.db.test_quotes_api import api, auth, ok, world  # noqa: F401 - fixtures used by name
 
 LEADS = "/api/v1/leads"
 
@@ -43,7 +40,7 @@ def patch_lead(
 def read_lead(api: TestClient, auth, lead_id: Any, user: str = "alpha.agent1") -> dict[str, Any]:
     response = api.get(f"{LEADS}/{lead_id}", headers=auth(user))
     assert response.status_code == 200, response.text
-    return response.json()
+    return dict(response.json())
 
 
 # --- the answer and its date --------------------------------------------------------------------
@@ -111,7 +108,10 @@ def test_a_change_is_audited_without_personal_data(api, auth, world, leads, db_s
 @pytest.mark.parametrize(
     ("values", "rule"),
     [
-        ({"email_consent": "maybe"}, "email_consent_allowed"),
+        (
+            {"email_consent": "maybe", "email_consent_at": datetime.now(UTC)},
+            "email_consent_allowed",
+        ),
         ({"email_consent": "granted"}, "consent_dated"),  # an answer without a date
     ],
 )

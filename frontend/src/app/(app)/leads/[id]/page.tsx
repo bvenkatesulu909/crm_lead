@@ -33,6 +33,7 @@ import type {
   LeadScore,
   PublicChatTranscript,
 } from "@/lib/api-types";
+import { CONSENT_LABELS } from "@/lib/customer-data";
 import {
   PROPERTY_TYPE_LABELS,
   LANGUAGE_LABELS,
@@ -181,6 +182,10 @@ export default async function LeadPage({
     ["E-mail", lead.email ?? "—"],
     ["Phone", lead.phone ?? "—"],
     ["Source", lead.source ? SOURCE_LABELS[lead.source] : "—"],
+    [
+      "E-mail consent",
+      `${CONSENT_LABELS[lead.email_consent ?? "unknown"]}${lead.email_consent_at ? ` (since ${formatDateTime(lead.email_consent_at)})` : ""}`,
+    ],
     [
       "Call in",
       lead.preferred_language ? LANGUAGE_LABELS[lead.preferred_language] : "—",

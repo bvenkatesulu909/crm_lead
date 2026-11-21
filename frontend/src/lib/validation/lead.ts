@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   COMPANY_INDUSTRY_KEYS,
   COMPANY_SIZES,
+  EMAIL_CONSENTS,
   LEAD_SOURCES,
   PROPERTY_TYPES,
 } from "@/lib/api-types";
@@ -32,58 +33,76 @@ const budget = (label: string) =>
       if (v === "") return undefined;
       const rupees = parseRupees(v);
       if (rupees === null || rupees > MAX_BUDGET) {
-        ctx.addIssue({ code: "custom", message: `${label}: enter whole rupees, like 12000000, 1.2 Cr or 80 L.` });
+        ctx.addIssue({
+          code: "custom",
+          message: `${label}: enter whole rupees, like 12000000, 1.2 Cr or 80 L.`,
+        });
         return z.NEVER;
       }
       return rupees;
     })
     .optional();
 
-export const leadCreateSchema = z.object({
-  first_name: optionalText(100, "First name"),
-  last_name: z
-    .string()
-    .trim()
-    .min(1, "Last name is required.")
-    .max(100, "Last name can be at most 100 characters."),
-  company_name: optionalText(255, "Company"),
-  email: optionalText(320, "E-mail").refine(
-    (v) => v === undefined || /^[^@\s]{1,64}@[^@\s]+\.[^@\s]+$/.test(v),
-    "Enter a valid e-mail address, like name@example.com.",
-  ),
-  phone: optionalText(50, "Phone").refine(
-    (v) => v === undefined || /^[0-9+().\-\s]{3,50}$/.test(v),
-    "Phone may contain only digits, spaces and + ( ) . -",
-  ),
-  job_title: optionalText(150, "Job title"),
-  source: z
-    .union([z.enum(LEAD_SOURCES), z.literal("")])
-    .transform((v) => (v === "" ? undefined : v))
-    .optional(),
-  property_type: z
-    .union([z.enum(PROPERTY_TYPES), z.literal("")])
-    .transform((v) => (v === "" ? undefined : v))
-    .optional(),
-  budget_min_inr: budget("Minimum budget"),
-  budget_max_inr: budget("Maximum budget"),
-  location: optionalText(160, "Location"),
-  // The API turns this into https://<host>; here only the obvious mistakes are caught early.
-  company_website: optionalText(300, "Website").refine(
-    (v) => v === undefined || /^(https?:\/\/)?[^\s/@:?#]+\.[^\s/@:?#]+\/?$/i.test(v),
-    "Enter only the website's address, like example.com.",
-  ),
-  company_industry: z
-    .union([z.enum(COMPANY_INDUSTRY_KEYS), z.literal("")])
-    .transform((v) => (v === "" ? undefined : v))
-    .optional(),
-  company_size: z
-    .union([z.enum(COMPANY_SIZES), z.literal("")])
-    .transform((v) => (v === "" ? undefined : v))
-    .optional(),
-}).refine(
-  (d) => d.budget_min_inr === undefined || d.budget_max_inr === undefined || d.budget_min_inr <= d.budget_max_inr,
-  { path: ["budget_max_inr"], message: "The maximum budget can't be below the minimum budget." },
-);
+export const leadCreateSchema = z
+  .object({
+    first_name: optionalText(100, "First name"),
+    last_name: z
+      .string()
+      .trim()
+      .min(1, "Last name is required.")
+      .max(100, "Last name can be at most 100 characters."),
+    company_name: optionalText(255, "Company"),
+    email: optionalText(320, "E-mail").refine(
+      (v) => v === undefined || /^[^@\s]{1,64}@[^@\s]+\.[^@\s]+$/.test(v),
+      "Enter a valid e-mail address, like name@example.com.",
+    ),
+    phone: optionalText(50, "Phone").refine(
+      (v) => v === undefined || /^[0-9+().\-\s]{3,50}$/.test(v),
+      "Phone may contain only digits, spaces and + ( ) . -",
+    ),
+    job_title: optionalText(150, "Job title"),
+    source: z
+      .union([z.enum(LEAD_SOURCES), z.literal("")])
+      .transform((v) => (v === "" ? undefined : v))
+      .optional(),
+    property_type: z
+      .union([z.enum(PROPERTY_TYPES), z.literal("")])
+      .transform((v) => (v === "" ? undefined : v))
+      .optional(),
+    budget_min_inr: budget("Minimum budget"),
+    budget_max_inr: budget("Maximum budget"),
+    location: optionalText(160, "Location"),
+    // The API turns this into https://<host>; here only the obvious mistakes are caught early.
+    company_website: optionalText(300, "Website").refine(
+      (v) =>
+        v === undefined ||
+        /^(https?:\/\/)?[^\s/@:?#]+\.[^\s/@:?#]+\/?$/i.test(v),
+      "Enter only the website's address, like example.com.",
+    ),
+    company_industry: z
+      .union([z.enum(COMPANY_INDUSTRY_KEYS), z.literal("")])
+      .transform((v) => (v === "" ? undefined : v))
+      .optional(),
+    company_size: z
+      .union([z.enum(COMPANY_SIZES), z.literal("")])
+      .transform((v) => (v === "" ? undefined : v))
+      .optional(),
+    // Only the edit form shows it (ADR 0036); empty means "not on this form" and is never sent.
+    email_consent: z
+      .union([z.enum(EMAIL_CONSENTS), z.literal("")])
+      .transform((v) => (v === "" ? undefined : v))
+      .optional(),
+  })
+  .refine(
+    (d) =>
+      d.budget_min_inr === undefined ||
+      d.budget_max_inr === undefined ||
+      d.budget_min_inr <= d.budget_max_inr,
+    {
+      path: ["budget_max_inr"],
+      message: "The maximum budget can't be below the minimum budget.",
+    },
+  );
 
 export type LeadCreateInput = z.infer<typeof leadCreateSchema>;
 export const LEAD_FIELDS = [
@@ -101,6 +120,7 @@ export const LEAD_FIELDS = [
   "company_website",
   "company_industry",
   "company_size",
+  "email_consent",
 ] as const;
 export type LeadField = (typeof LEAD_FIELDS)[number];
 

@@ -19,7 +19,7 @@ def _convert(api, auth, db_session, consent: str | None) -> Contact:
     response = api.post(f"{LEADS}/{lead['id']}/convert", json={}, headers=auth("alpha.agent1"))
     assert response.status_code == 201, response.text
     contact = db_session.get(Contact, uuid.UUID(response.json()["contact_id"]))
-    assert contact is not None
+    assert isinstance(contact, Contact)
     return contact
 
 

@@ -11,6 +11,8 @@ from app.modules.assistant.router import router as assistant_router
 from app.modules.assistant.staff_router import router as staff_assistant_router
 from app.modules.branding.router import router as branding_router
 from app.modules.buyer_memory.router import router as buyer_memory_router
+from app.modules.call_notes.router import notes_router as call_notes_leads_router
+from app.modules.call_notes.router import router as call_notes_router
 from app.modules.calls.router import router as calls_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.communications.router import router as communications_router
@@ -97,6 +99,8 @@ api_router.include_router(reports_router)
 api_router.include_router(leads_router)
 api_router.include_router(buyer_memory_router)
 api_router.include_router(calls_router)
+api_router.include_router(call_notes_router)
+api_router.include_router(call_notes_leads_router)
 api_router.include_router(site_brief_router)
 api_router.include_router(portal_router)
 api_router.include_router(tickets_router)

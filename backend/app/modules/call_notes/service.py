@@ -15,17 +15,18 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.config import Settings
-from app.core.errors import DomainError, ForbiddenError
+from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
 from app.modules.agents import api as agents_api
 from app.modules.assistant.api import ChatModel
 from app.modules.call_notes import answer, repository, rules
-from app.modules.call_notes.models import CallNote, CallNoteLine
+from app.modules.call_notes.models import CallNote, CallNoteLine, CallNoteSettings
 from app.modules.calls import api as calls_api
 
 AGENT_KEY = "call_notes"
@@ -238,3 +239,129 @@ def run_notes(
         },
     )
     return NotesResult(note, stored)
+
+
+# --- the organisation's frame and reading drafts -------------------------------------------------
+
+
+class SettingsConflictError(ConflictError):
+    code = "call_notes_settings_conflict"
+
+    def __init__(self) -> None:
+        super().__init__("The checklist frame was changed by someone else. Reload and try again.")
+
+
+class NoteNotFoundError(NotFoundError):
+    code = "call_notes_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("These call notes do not exist.")
+
+
+@dataclass(frozen=True)
+class SettingsView:
+    framework: str
+    version: int
+
+
+def _staff(principal: Principal, *permissions: Permission) -> uuid.UUID:
+    if (
+        principal.tenant_id is None
+        or principal.user_id is None
+        or principal.user_type != "staff"
+        or not any(principal.has_permission(p) for p in permissions)
+    ):
+        raise ForbiddenError("You may not do this.")
+    return principal.tenant_id
+
+
+def get_settings(session: Session, principal: Principal) -> SettingsView:
+    tenant_id = _staff(principal, Permission.CALL_NOTES_RUN, Permission.CALL_NOTES_MANAGE)
+    row = repository.settings_row(session, tenant_id)
+    return (
+        SettingsView(row.framework, row.version)
+        if row
+        else SettingsView(rules.DEFAULT_FRAMEWORK, 0)
+    )
+
+
+def set_framework(
+    session: Session, principal: Principal, framework: str, version: int | None
+) -> SettingsView:
+    """Choose BANT or MEDDIC. ``version`` is what the screen last saw (0 or absent before the
+    first choice); a stale one is a conflict. Saving the frame already chosen changes nothing."""
+    tenant_id = _staff(principal, Permission.CALL_NOTES_MANAGE)
+    if framework not in rules.FRAMEWORK_NAMES:
+        raise NotesRefusedError("bad_framework", "The checklist frame does not exist.")
+    row = repository.settings_row(session, tenant_id)
+    if row is None:
+        if version not in (None, 0):
+            raise SettingsConflictError()
+        created = CallNoteSettings(
+            tenant_id=tenant_id, framework=framework, updated_by_user_id=_user_id(principal)
+        )
+        try:
+            with session.begin_nested():
+                session.add(created)
+                session.flush()
+        except IntegrityError:  # two first choices at once: the loser reloads
+            raise SettingsConflictError() from None
+        row, before = created, rules.DEFAULT_FRAMEWORK
+    else:
+        if version != row.version:
+            raise SettingsConflictError()
+        if row.framework == framework:
+            return SettingsView(row.framework, row.version)
+        before = row.framework
+        row.framework = framework
+        row.updated_by_user_id = _user_id(principal)
+        session.flush()
+    record_audit(
+        session,
+        principal,
+        action="call_notes.framework_changed",
+        entity_type="call_note_settings",
+        entity_id=row.id,
+        changes={"from": before, "to": framework},
+    )
+    return SettingsView(row.framework, row.version)
+
+
+def _user_id(principal: Principal) -> uuid.UUID:
+    if principal.user_id is None:  # _staff already refused a principal without one
+        raise ForbiddenError("You may not do this.")
+    return principal.user_id
+
+
+def _readable(
+    session: Session, principal: Principal, lead_id: uuid.UUID, call_id: uuid.UUID
+) -> uuid.UUID:
+    """The organisation's id once the person may run notes AND read this call's lead."""
+    tenant_id = _staff(principal, Permission.CALL_NOTES_RUN)
+    calls_api.transcript_of(session, principal, lead_id, call_id)
+    return tenant_id
+
+
+def newest_and_versions(
+    session: Session, principal: Principal, lead_id: uuid.UUID, call_id: uuid.UUID
+) -> tuple[NotesResult | None, list[CallNote]]:
+    tenant_id = _readable(session, principal, lead_id, call_id)
+    versions = repository.versions_of(session, tenant_id, call_id)
+    if not versions:
+        return None, []
+    newest = versions[0]
+    return NotesResult(newest, repository.lines_of(session, tenant_id, newest.id)), versions
+
+
+def read_version(
+    session: Session,
+    principal: Principal,
+    lead_id: uuid.UUID,
+    call_id: uuid.UUID,
+    version_no: int,
+) -> NotesResult:
+    tenant_id = _readable(session, principal, lead_id, call_id)
+    note = repository.version_of(session, tenant_id, call_id, version_no)
+    if note is None:
+        raise NoteNotFoundError()
+    return NotesResult(note, repository.lines_of(session, tenant_id, note.id))

@@ -1,6 +1,6 @@
 # ADR 0038 — A live Telugu and Hindi voice receptionist (browser first, phone number later)
 
-- **Status:** Proposed (2026-11-21). Documents only; nothing is built until the owner answers section 7.
+- **Status:** Accepted (2026-11-21, owner: recommended answers to all ten questions of section 7; limits per call 5 minutes and 12 turns; the organisation's minutes cap is set after the VR1 measurement). Documents only; VR1 not started.
 - **Date:** 2026-11-21
 - **Deciders:** Project owner
 - **Depends on:** ADR 0013 (public website chat and `save_lead`), ADR 0027 (Hindi/Telugu voice lead capture,

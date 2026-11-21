@@ -1,6 +1,7 @@
 """Public interface of the communications module. Other modules import only from here."""
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -8,7 +9,7 @@ from app.core.auth.principal import Principal
 from app.core.config import get_settings
 from app.core.mail import Mailer
 from app.core.outbox import DeadJobHandler, Job, JobHandler, PermanentJobError
-from app.modules.communications import service
+from app.modules.communications import follow_up_rules, repository, service
 
 EMAIL_JOB = service.EMAIL_JOB
 
@@ -16,7 +17,11 @@ __all__ = [
     "EMAIL_JOB",
     "email_failed_handler",
     "email_job_handler",
+    "follow_up_policy",
+    "follow_up_rules",
     "follow_up_problem",
+    "inbound_logged_since",
+    "render_follow_up",
     "message_brief",
     "queued_text",
     "send_follow_up",
@@ -89,6 +94,40 @@ def queued_text(
 ) -> tuple[str, str] | None:
     """(subject, text) of a stored message, for the approval's outcome check."""
     return service.stored_text(session, tenant_id, message_id)
+
+
+def follow_up_policy(session: Session, tenant_id: uuid.UUID) -> follow_up_rules.Policy:
+    """The organisation's follow-up settings in force (switched off when none was saved)."""
+    return repository.current_follow_up_policy(session, tenant_id)
+
+
+def inbound_logged_since(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, since: datetime | None
+) -> bool:
+    return repository.inbound_logged_since(session, tenant_id, lead_id, since)
+
+
+def render_follow_up(
+    session: Session,
+    automation: Principal,
+    template_id: uuid.UUID,
+    *,
+    first_name: str | None,
+    full_name: str,
+    company: str | None,
+    sender_name: str | None,
+    sender_email: str | None,
+) -> tuple[str, str] | None:
+    return service.render_follow_up(
+        session,
+        automation,
+        template_id,
+        first_name=first_name,
+        full_name=full_name,
+        company=company,
+        sender_name=sender_name,
+        sender_email=sender_email,
+    )
 
 
 def message_brief(

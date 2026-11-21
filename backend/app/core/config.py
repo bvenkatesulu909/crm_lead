@@ -281,6 +281,10 @@ class Settings(BaseSettings):
     # above still apply.
     qualifier_auto_web_leads: bool = False
 
+    # Automatic follow-up drafts (ADR 0036). The platform switch: True stops every organisation's
+    # scan at once, whatever its own settings say (an organisation's own switch is in its policy).
+    follow_ups_disabled: bool = False
+
     # Proposals from an outside AI client (ADR 0020): which verified applications may create
     # them (comma separated) and how many one person may make per hour through them.
     external_proposal_clients: str = Field(default="crm-mcp", max_length=200)

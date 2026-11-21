@@ -16,6 +16,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pydantic import ValidationError
+from sqlalchemy import Select
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
@@ -804,3 +805,37 @@ def requester_of(session: Session, tenant_id: uuid.UUID, action_id: uuid.UUID) -
     """Who asked for the proposal (for notifications; they are still checked: may they read it?)."""
     action = repository.get(session, tenant_id, action_id)
     return action.requested_by_user_id if action else None
+
+
+def follow_up_history(
+    session: Session, tenant_id: uuid.UUID, target_id: uuid.UUID, since: datetime
+) -> repository.DraftHistory:
+    """For the follow-up scan: the drafts of this lead so far (waiting, newest, how many lately)."""
+    return repository.draft_history(
+        session, tenant_id, "communication.send_follow_up", target_id, since
+    )
+
+
+def follow_up_drafts_today(session: Session, tenant_id: uuid.UUID, since: datetime) -> int:
+    """How many follow-up drafts the organisation made since ``since``."""
+    return repository.count_since(
+        session, tenant_id, since=since, kind="communication.send_follow_up"
+    )
+
+
+def follow_up_waiting_for(session: Session, tenant_id: uuid.UUID, leads: Select[Any]) -> int:
+    """How many follow-up drafts wait for the owner of these leads."""
+    return repository.waiting_for_targets(session, tenant_id, "communication.send_follow_up", leads)
+
+
+def deciders_for_notice(
+    session: Session, tenant_id: uuid.UUID, action_id: uuid.UUID
+) -> uuid.UUID | None:
+    """The owner of the record, if this kind of proposal is one the owner may decide on, so the
+    owner can be told it is waiting (ADR 0036). Read as the person who asked."""
+    action = repository.get(session, tenant_id, action_id)
+    if action is None or action.kind not in OWNER_DECIDES or action.target_type != "lead":
+        return None
+    return leads_api.lead_owner_for_notice(
+        session, tenant_id, action.target_id, reader_user_id=action.requested_by_user_id
+    )

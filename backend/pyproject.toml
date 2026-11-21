@@ -73,6 +73,7 @@ modules = [
     "app.modules.contracts",
     "app.modules.dashboard",
     "app.modules.documents",
+    "app.modules.follow_ups",
     "app.modules.identity",
     "app.modules.invoices",
     "app.modules.leads",

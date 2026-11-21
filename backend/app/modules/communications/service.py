@@ -311,6 +311,41 @@ def stored_text(
     return None if message is None else (message.subject, message.body)
 
 
+def render_follow_up(
+    session: Session,
+    automation: Principal,
+    template_id: uuid.UUID,
+    *,
+    first_name: str | None,
+    full_name: str,
+    company: str | None,
+    sender_name: str | None,
+    sender_email: str | None,
+) -> tuple[str, str] | None:
+    """The follow-up template filled in for one lead, or None if it is gone, inactive or has a
+    placeholder without a value (a draft with a hole in it is never made). The sender is the
+    person who will most likely approve it: the record's owner (ADR 0036)."""
+    tenant_id = automation.tenant_id
+    if tenant_id is None:
+        return None
+    template = repository.get_active_template(session, tenant_id, template_id)
+    if template is None:
+        return None
+    values: dict[str, str | None] = {
+        "sender.name": sender_name,
+        "sender.email": sender_email,
+        "organisation.name": _organisation_name(session, automation),
+        "recipient.first_name": first_name,
+        "recipient.full_name": full_name,
+        "recipient.company": company,
+    }
+    subject, missing_in_subject = rules.render(template.subject, values, single_line=True)
+    body, missing_in_body = rules.render(template.body, values)
+    if missing_in_subject or missing_in_body or not subject.strip() or not body.strip():
+        return None
+    return subject, body
+
+
 # --- templates (step CC3) ------------------------------------------------------------------
 
 

@@ -305,11 +305,16 @@ def _webcheck_done(session: Session, me: Principal, event: Event) -> Draft | Non
 
 def _proposal_approvers(session: Session, event: Event) -> set[uuid.UUID]:
     """Everyone who may decide; the requester is the actor and so left out by on_event."""
-    return set(
+    people = set(
         identity_api.staff_with_permission(
             session, event.tenant_id, Permission.AGENT_ACTION_APPROVE
         )
     )
+    # A follow-up draft is also the record owner's to decide (ADR 0036): tell them too.
+    owner = approvals_api.deciders_for_notice(session, event.tenant_id, uuid_of(event, "action_id"))
+    if owner is not None:
+        people.add(owner)
+    return people
 
 
 def _proposal_requester(session: Session, event: Event) -> set[uuid.UUID]:

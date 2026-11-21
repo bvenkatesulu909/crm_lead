@@ -193,6 +193,24 @@ def _visible(
     return False
 
 
+# Kinds the OWNER of the record may decide on, besides the people with the approve permission
+# (ADR 0036, question 3): a follow-up for my lead is mine to read and send.
+OWNER_DECIDES = frozenset({"communication.send_follow_up"})
+
+
+def _owns_target(session: Session, principal: Principal, action: AgentAction) -> bool:
+    """The signed-in person owns the record the proposal is about (and may read it)."""
+    if action.kind not in OWNER_DECIDES or principal.user_id is None:
+        return False
+    if action.target_type == "lead":
+        owner = leads_api.owner_of_lead(session, principal, action.target_id)
+    elif action.target_type == "contact":
+        owner = contacts_api.owner_of(session, principal, action.target_id)
+    else:
+        return False
+    return owner == principal.user_id
+
+
 def _kind(name: str) -> ActionKind:
     kind = KINDS.get(name)
     if kind is None:
@@ -526,6 +544,7 @@ def get_action(session: Session, principal: Principal, action_id: uuid.UUID) -> 
     if action is None or (
         not principal.has_permission(Permission.AGENT_ACTION_APPROVE)
         and action.requested_by_user_id != user_id
+        and not _owns_target(session, principal, action)
     ):
         raise AgentActionNotFoundError()
     return action
@@ -537,8 +556,17 @@ def get_action(session: Session, principal: Principal, action_id: uuid.UUID) -> 
 def _decidable(
     session: Session, principal: Principal, action_id: uuid.UUID, version: int
 ) -> tuple[AgentAction, uuid.UUID]:
-    tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_APPROVE)
+    if principal.has_permission(Permission.AGENT_ACTION_APPROVE):
+        tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_APPROVE)
+    else:
+        # Not an approver: only the owner of the record, and only for the kinds that allow it.
+        tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_PROPOSE)
     action = repository.lock(session, tenant_id, action_id)
+    if not principal.has_permission(Permission.AGENT_ACTION_APPROVE) and (
+        action is None or not _owns_target(session, principal, action)
+    ):
+        # The same answer whether the proposal exists or not: no peeking at other people's queue.
+        raise ForbiddenError("You may not do this.")
     if action is None:
         raise AgentActionNotFoundError()
     if action.requested_by_user_id == user_id:
@@ -695,11 +723,19 @@ def list_actions(
         principal, Permission.AGENT_ACTION_APPROVE if approver else Permission.AGENT_ACTION_PROPOSE
     )
     requester = user_id if mine or not approver else None
+    # Not an approver: my own proposals plus follow-up drafts for the records I own.
+    owned: list[Any] = []
+    if not approver and not mine:
+        owned = [
+            ("lead", leads_api.owned_lead_ids(principal)),
+            ("contact", contacts_api.owned_contact_ids(principal)),
+        ]
     return repository.page(
         session,
         tenant_id,
         status=status,
         requester=requester,
+        owner_decides=(OWNER_DECIDES, owned),
         target_id=target_id,
         limit=limit,
         offset=offset,

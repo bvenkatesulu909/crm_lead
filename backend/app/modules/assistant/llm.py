@@ -261,7 +261,12 @@ class DeepSeekChatModel:
             input_price_per_million=self._input_price,
             output_price_per_million=self._output_price,
         )
-        logger.warning("DeepSeek call failed", extra={"error": type(exc).__name__})
+        # Only the kind of failure and the HTTP status - never the request, the answer, a header
+        # or the key. The status is what tells a wrong key (401), an unknown model (404), a model
+        # without tool support (400) and a rate limit (429) apart.
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        reason = type(exc).__name__ + (f" HTTP {status}" if isinstance(status, int) else "")
+        logger.warning("DeepSeek call failed (%s)", reason, extra={"error": type(exc).__name__})
         return _unavailable()
 
     def _observed(self, started: float, input_tokens: int, output_tokens: int) -> None:

@@ -57,10 +57,10 @@ from app.modules.sales.router import router as opportunities_router
 from app.modules.site_brief.router import router as site_brief_router
 from app.modules.support.router import portal_router as portal_tickets_router
 from app.modules.support.router import router as tickets_router
+from app.modules.video_brief.router import router as video_brief_router
 from app.modules.voice.router import router as voice_router
 from app.modules.webcheck.router import router as webcheck_router
 from app.modules.workflows.router import router as workflows_router
-from app.modules.video_brief.router import router as video_brief_router
 
 api_router = APIRouter()
 api_router.include_router(health.router)

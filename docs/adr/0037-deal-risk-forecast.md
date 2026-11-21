@@ -1,6 +1,6 @@
 # ADR 0037 — Deal risk forecast: a transparent score with plain reasons
 
-- **Status:** Proposed (2026-11-21)
+- **Status:** Accepted (2026-11-21, owner answered the questions of section 7: yes to 1-4 and 7-8, "too early" for 5, "manager" for 6)
 - **Date:** 2026-11-21
 - **Deciders:** Project owner
 - **Depends on:** ADR 0024 (deal desk), ADR 0016 (agent registry), ADR 0014 (approval queue),
@@ -72,9 +72,9 @@ tables. The worker recomputes the open deals of each organisation **nightly** (a
 so the pipeline list is a cheap read. Snapshots let the manager see "was medium last week, high now" and let
 us **measure the forecast against what really happened** (DR8).
 
-**DR5 - Who sees what.** A new permission `deal_risk:read` (sales agents, managers, administrators). The deal's
-own read rules decide the rest: an agent sees the risk of deals they own, a manager of all in the organisation,
-anything else is a 404. Lists are filtered in SQL. Support and portal customers never see it. Only the
+**DR5 - Who sees what.** A new permission `deal_risk:read` (**sales managers and administrators only**, owner's answer to question 6;
+sales agents do not see it in v1). The deal's own read rules decide the rest: a manager sees all deals in the
+organisation, anything else is a 404. Lists are filtered in SQL. Support and portal customers never see it. Only the
 reasons are shown; no personal data from other records is copied into a factor beyond a name the reader may
 already see.
 
@@ -137,13 +137,13 @@ the web.
 - **Cost / load** of the nightly job: bounded by open deals, plain SQL reads, no model.
 - **Data quality** (stale close dates). Missing or old data is itself a visible factor.
 
-## 7. Questions for the owner (recommended answer first)
+## 7. Questions for the owner (answered 2026-11-21: yes, yes, yes, yes, too early, manager, yes, yes)
 
 1. **Score by code, with reasons; no model deciding?** *Recommended: yes (DR1).*
 2. **Show a level and a score, but never a percentage chance?** *Recommended: yes; the score is not a probability (DR3).*
 3. **Fixed weights in v1, per-organisation tuning later?** *Recommended: fixed weights now.*
 4. **Include the optional AI coach (off by default) in this phase?** *Recommended: yes, as the last build step (DR5); skip if you prefer to wait.*
 5. **When may the screen claim the forecast works?** *Recommended: only after at least 30 closed deals in the organisation; before that it says "too early to measure".*
-6. **Who sees risk?** *Recommended: owners of the deal, managers and administrators; never support or portal customers.*
+6. **Who sees risk?** *Recommended was: owners, managers and administrators. **Owner answered: "manager"** - read as sales managers and administrators only; agents, support and portal customers do not see it in v1. Say so if agents should see their own deals.*
 7. **Include call-note gaps (ADR 0035) as a signal?** *Recommended: yes, only when call notes exist; absence is not penalised.*
 8. **Nightly recompute plus on-demand, 365 days of snapshots kept?** *Recommended: yes.*

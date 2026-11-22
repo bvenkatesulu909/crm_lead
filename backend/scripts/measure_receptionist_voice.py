@@ -89,6 +89,51 @@ class Item:
     audio: Path | None
 
 
+def read_reference(path: Path) -> str:
+    """The words said, from a text file saved the way Notepad may have saved it.
+
+    Plain UTF-8 is expected, but Windows Notepad can also write UTF-8 with a hidden marker at the
+    start ("UTF-8 with BOM") or UTF-16 (the "Unicode" choice); both are read correctly. Anything
+    else (for example the old Windows code page) would turn Hindi and Telugu into garbage, so it
+    is refused with a plain explanation instead of being scored."""
+    raw = path.read_bytes()
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return raw.decode("utf-16").strip()
+    try:
+        return raw.decode("utf-8-sig").strip()
+    except UnicodeDecodeError:
+        raise ValueError(
+            f"{path.name} is not saved as UTF-8. Open it in Notepad, choose File > Save As, set "
+            "Encoding to UTF-8, and save it again."
+        ) from None
+
+
+def diagnose(folder: Path) -> list[str]:
+    """Plain-language reasons why a file in the folder is not used as a sample."""
+    problems: list[str] = []
+    stems = {p.stem for p in folder.iterdir() if p.suffix.lower() == ".txt"}
+    audio_stems = {p.stem for p in folder.iterdir() if p.suffix.lower() in AUDIO}
+    for path in sorted(folder.iterdir()):
+        suffix = path.suffix.lower()
+        if suffix not in AUDIO and suffix != ".txt":
+            continue
+        stem, _, language = path.stem.rpartition(".")
+        if not stem or language not in LANGUAGES:
+            problems.append(
+                f"{path.name}: the name must look like q1.hi{suffix} (the part before "
+                f"{suffix} must be .hi, .te or .en)"
+            )
+        elif suffix in AUDIO and path.stem not in stems:
+            problems.append(
+                f"{path.name}: no text file {path.stem}.txt beside it with the words said"
+            )
+        elif suffix == ".txt" and path.stem not in audio_stems:
+            problems.append(
+                f"{path.name}: no recording named {path.stem}.m4a (or .mp3, .wav, ...) beside it"
+            )
+    return problems
+
+
 def find_items(folder: Path) -> list[Item]:
     """``name.<language>.txt`` with an optional audio file of the same stem beside it."""
     items: list[Item] = []
@@ -104,7 +149,7 @@ def find_items(folder: Path) -> list[Item]:
             ),
             None,
         )
-        items.append(Item(stem, language, text.read_text(encoding="utf-8"), audio))
+        items.append(Item(stem, language, read_reference(text), audio))
     return items
 
 
@@ -287,6 +332,24 @@ def measure(
     )
 
 
+def describe_failure(exc: BaseException) -> str:
+    """Why a sample failed, in words that help and cannot leak anything: our own sample problems
+    are spelled out; a provider error shows its type and, when there was one, the HTTP status
+    number (401 = the key is wrong, 429 = too many requests, 5xx = their side). Never the body
+    of the answer, the request or the key."""
+    if isinstance(exc, ValueError):
+        return str(exc)
+    names = [type(exc).__name__]
+    cause = exc.__cause__
+    while cause is not None:
+        names.append(type(cause).__name__)
+        status = getattr(getattr(cause, "response", None), "status_code", None)
+        if isinstance(status, int):
+            names.append(f"HTTP {status}")
+        cause = cause.__cause__
+    return " <- ".join(names)
+
+
 def _assumed_seconds(data: bytes, name: str) -> float:
     return ASSUMED_VISITOR_SECONDS
 
@@ -303,9 +366,19 @@ def main(argv: list[str] | None = None) -> int:
     if not args.folder.is_dir():
         print(f"No such folder: {args.folder}")
         return 2
-    items = find_items(args.folder)
+    try:
+        items = find_items(args.folder)
+    except ValueError as exc:  # a text file that is not UTF-8: say which and how to fix it
+        print(exc)
+        return 2
+    problems = diagnose(args.folder)
+    for line in problems:
+        print(f"  note: {line}")
     if not items:
-        print("No samples found. Name them like q1.hi.txt (hi, te or en).")
+        print(
+            "No samples found. Each sample needs a text file named like q1.hi.txt (the language "
+            "code hi, te or en before .txt) holding the words said."
+        )
         return 2
 
     speech: Any
@@ -354,10 +427,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
         except Exception as exc:  # noqa: BLE001 - report which sample failed, go on
-            # Only our own sample problem is spelled out; a provider error shows its type only,
-            # because its text could carry request details.
-            detail = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
-            print(f"  {item.name}.{item.language} failed: {detail}")
+            print(f"  {item.name}.{item.language} failed: {describe_failure(exc)}")
     loop.close()
     if not turns:
         return 1

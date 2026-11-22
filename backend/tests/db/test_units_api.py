@@ -432,7 +432,7 @@ def test_without_an_organisation_no_row_can_be_read(api, auth, world, db_session
 def test_the_service_itself_refuses_a_reader_who_tries_to_change(world, db_session) -> None:
     """The router also checks; this proves the service does not rely on it."""
     agent = principal_for(world.users["alpha.agent1"], Role.SALES_AGENT)
-    bind_tenant(db_session, agent.tenant_id)
+    bind_tenant(db_session, world.users["alpha.agent1"].tenant_id)
     with pytest.raises(ForbiddenError):
         service.create_project(db_session, agent, ProjectCreate(name="Sneaky"))
     support = principal_for(world.users["alpha.support"], Role.SUPPORT_AGENT)

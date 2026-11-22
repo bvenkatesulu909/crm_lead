@@ -32,6 +32,7 @@ from app.modules.leads import models as leads_models
 from app.modules.notifications import models as notifications_models
 from app.modules.orders import models as orders_models
 from app.modules.payment_links import models as payment_links_models
+from app.modules.photo_enhancer import models as photo_enhancer_models
 from app.modules.proposal_decks import models as proposal_decks_models
 from app.modules.public_chat import models as public_chat_models
 from app.modules.qualifier import models as qualifier_models
@@ -65,6 +66,7 @@ __all__ = [
     "notifications_models",
     "orders_models",
     "payment_links_models",
+    "photo_enhancer_models",
     "outbox_models",
     "public_chat_models",
     "qualifier_models",

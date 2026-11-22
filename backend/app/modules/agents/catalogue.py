@@ -212,6 +212,21 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="photo_enhancer",
+            title="Property photo enhancer",
+            description=(
+                "Lets staff make an adjusted copy of a property photo: brightness, colour, "
+                "straightening, crop, size and a watermark. It only adjusts what the camera saw, "
+                "never adds or removes anything, always keeps the original and labels the copy. "
+                "Calls no language model. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
             key="payment_links",
             title="UPI payment links",
             description=(

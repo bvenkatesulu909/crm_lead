@@ -343,3 +343,25 @@ def test_a_corrupt_photo_that_passes_the_header_is_refused_cleanly() -> None:
 def test_exposure_lift_is_gentle_even_for_a_nearly_black_photo() -> None:
     result = rules.enhance(_jpeg(colour=(8, 8, 8)), Operations(auto_exposure=True))
     assert 15 < _mean(result.jpeg) < 32  # brighter, but not turned into another picture
+
+
+def test_working_memory_is_estimated_from_the_header_size() -> None:
+    info = rules.PhotoInfo("JPEG", 4000, 3000)
+    assert rules.estimated_memory_bytes(info) == 4000 * 3000 * rules.BYTES_PER_PIXEL_AT_PEAK
+
+
+def test_a_photo_that_passes_its_deadline_is_stopped_not_half_finished() -> None:
+    assert _code(lambda: rules.enhance(_jpeg(), Operations(), deadline=0.0)) == "took_too_long"
+
+
+def test_operations_survive_being_kept_as_data() -> None:
+    ops = operations_from_dict(
+        {
+            "auto_exposure": True,
+            "brightness_percent": -5,
+            "crop": [0.1, 0.1, 0.9, 0.9],
+            "preset": "brochure",
+            "watermark": {"kind": "text", "corner": "top_left", "text": "Banyan"},
+        }
+    )
+    assert operations_from_dict(rules.operations_to_dict(ops)) == ops

@@ -43,6 +43,7 @@ from app.modules.knowledge import api as knowledge_api
 from app.modules.lead_agent import api as lead_agent_api
 from app.modules.notifications import api as notifications_api
 from app.modules.payment_links import api as payment_links_api
+from app.modules.photo_enhancer import api as photo_enhancer_api
 from app.modules.proposal_decks import api as proposal_decks_api
 from app.modules.public_chat import api as public_chat_api
 from app.modules.qualifier import api as qualifier_api
@@ -80,6 +81,9 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
         communications_api.EMAIL_JOB: communications_api.email_job_handler(services.mailer),
         calls_api.JOB_KIND: calls_api.job_handler(services.file_store, services.settings),
         calls_api.CLIP_JOB_KIND: calls_api.clip_job_handler(services.file_store, services.settings),
+        photo_enhancer_api.JOB_KIND: photo_enhancer_api.job_handler(
+            services.file_store, services.settings
+        ),
         payment_links_api.APPLY_JOB: payment_links_api.apply_job_handler(),
         proposal_decks_api.JOB: proposal_decks_api.job_handler(services.file_store),
         proposal_decks_api.JOB_PPTX: proposal_decks_api.job_handler(services.file_store),
@@ -196,6 +200,7 @@ def dead_job_handlers() -> dict[str, DeadJobHandler]:
         communications_api.EMAIL_JOB: communications_api.email_failed_handler(),
         calls_api.JOB_KIND: calls_api.dead_job_handler(),
         calls_api.CLIP_JOB_KIND: calls_api.clip_dead_job_handler(),
+        photo_enhancer_api.JOB_KIND: photo_enhancer_api.dead_job_handler(),
     }
 
 

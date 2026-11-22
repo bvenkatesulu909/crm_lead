@@ -47,9 +47,12 @@ __all__ = [
     "pipeline_metrics",
     "transfer_open_opportunities",
     "won_deals_by_account",
+    "DealLabel",
     "RiskInputs",
     "WonHistory",
     "open_deal_ids",
+    "deal_labels",
+    "readable_open_deal_ids",
     "risk_inputs",
     "won_history",
 ]
@@ -434,3 +437,38 @@ def won_history(session: Session, principal: Principal) -> WonHistory:
                 )
             previous[change.opportunity_id] = change.changed_at
     return WonHistory(amounts=amounts, days_in_stage=days)
+
+
+@dataclass(frozen=True)
+class DealLabel:
+    """A deal as a list row shows it: name, stage and figures, no free text."""
+
+    id: uuid.UUID
+    name: str
+    account_id: uuid.UUID
+    stage: str
+    amount: Decimal | None
+    currency: str
+
+
+def readable_open_deal_ids(principal: Principal) -> Select[uuid.UUID]:
+    """Subquery: the open deals this person may read (lists are filtered in SQL)."""
+    return select(Opportunity.id).where(
+        Opportunity.stage.in_(OPEN_STAGES),
+        Opportunity.deleted_at.is_(None),
+        readable_opportunities(principal),
+    )
+
+
+def deal_labels(
+    session: Session, principal: Principal, ids: list[uuid.UUID]
+) -> dict[uuid.UUID, DealLabel]:
+    """Labels for the deals among ``ids`` that this person may read (others are left out)."""
+    if not ids:
+        return {}
+    rows = session.scalars(
+        select(Opportunity).where(Opportunity.id.in_(ids), readable_opportunities(principal))
+    ).all()
+    return {
+        o.id: DealLabel(o.id, o.name, o.account_id, o.stage, o.amount, o.currency) for o in rows
+    }

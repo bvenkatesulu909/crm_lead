@@ -269,6 +269,8 @@ class Settings(BaseSettings):
     # The deal desk (ADR 0024): reviews per deal per hour and per organisation per day.
     deal_desk_per_deal_hour: int = Field(default=1, ge=1, le=100)
     deal_desk_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # Deal risk (ADR 0037): on-demand recomputes per person per hour.
+    deal_risk_recompute_per_user_hour: int = Field(default=30, ge=1, le=1000)
     # Account research (ADR 0024): briefs per account per hour and per organisation per day.
     account_research_per_account_hour: int = Field(default=1, ge=1, le=100)
     account_research_per_tenant_day: int = Field(default=200, ge=1, le=100_000)

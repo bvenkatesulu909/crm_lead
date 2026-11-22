@@ -6445,6 +6445,296 @@
         "title": "DashboardRead",
         "type": "object"
       },
+      "DealRiskDealRead": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "account_id",
+          "stage",
+          "amount",
+          "currency"
+        ],
+        "title": "DealRiskDealRead",
+        "type": "object"
+      },
+      "DealRiskFactorRead": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "sentence": {
+            "title": "Sentence",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "sentence",
+          "points",
+          "source"
+        ],
+        "title": "DealRiskFactorRead",
+        "type": "object"
+      },
+      "DealRiskList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DealRiskRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "note": {
+            "default": "Forecast: an estimate from the reasons listed, not a promise and not a probability.",
+            "title": "Note",
+            "type": "string"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "DealRiskList",
+        "type": "object"
+      },
+      "DealRiskRead": {
+        "properties": {
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "deal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DealRiskDealRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/DealRiskFactorRead"
+            },
+            "title": "Factors",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "note": {
+            "default": "Forecast: an estimate from the reasons listed, not a promise and not a probability.",
+            "title": "Note",
+            "type": "string"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "rules_version": {
+            "title": "Rules Version",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "nightly",
+              "on_demand"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "unknown": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unknown",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "opportunity_id",
+          "level",
+          "score",
+          "rules_version",
+          "source",
+          "computed_at",
+          "factors",
+          "unknown",
+          "deal"
+        ],
+        "title": "DealRiskRead",
+        "type": "object"
+      },
+      "DealRiskSnapshotList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DealRiskSnapshotRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DealRiskSnapshotList",
+        "type": "object"
+      },
+      "DealRiskSnapshotRead": {
+        "properties": {
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/DealRiskFactorRead"
+            },
+            "title": "Factors",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "note": {
+            "default": "Forecast: an estimate from the reasons listed, not a promise and not a probability.",
+            "title": "Note",
+            "type": "string"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "rules_version": {
+            "title": "Rules Version",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "nightly",
+              "on_demand"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "unknown": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unknown",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "opportunity_id",
+          "level",
+          "score",
+          "rules_version",
+          "source",
+          "computed_at",
+          "factors",
+          "unknown"
+        ],
+        "title": "DealRiskSnapshotRead",
+        "type": "object"
+      },
       "DeckLinkRead": {
         "description": "Open ``url`` within a minute: it fetches the file (PDF or PowerPoint) from the file store.",
         "properties": {
@@ -27664,6 +27954,367 @@
         "summary": "Ask the deal desk to review one deal; it suggests, a different person decides",
         "tags": [
           "deal-desk"
+        ]
+      }
+    },
+    "/api/v1/deal-risk": {
+      "get": {
+        "description": "A forecast is an estimate from the listed reasons, not a promise and not a probability. Only deals you may read appear; filtering happens in the database.",
+        "operationId": "list_risk_api_v1_deal_risk_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealRiskList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The newest forecast of every open deal you may read, highest risk first",
+        "tags": [
+          "deal-risk"
+        ]
+      }
+    },
+    "/api/v1/deal-risk/{opportunity_id}": {
+      "get": {
+        "description": "404 for a deal you may not read or a made-up id; `deal_risk_not_computed` (also 404) when none has been stored yet - ask for one with POST .../recompute.",
+        "operationId": "get_risk_api_v1_deal_risk__opportunity_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealRiskRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The newest stored forecast of one deal",
+        "tags": [
+          "deal-risk"
+        ]
+      }
+    },
+    "/api/v1/deal-risk/{opportunity_id}/history": {
+      "get": {
+        "operationId": "get_history_api_v1_deal_risk__opportunity_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealRiskSnapshotList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Earlier forecasts of one deal, newest first (what changed)",
+        "tags": [
+          "deal-risk"
+        ]
+      }
+    },
+    "/api/v1/deal-risk/{opportunity_id}/recompute": {
+      "post": {
+        "description": "Uses the CRM's records as you may read them. At most `CRM_DEAL_RISK_RECOMPUTE_PER_USER_HOUR` (30) per person per hour: 429 beyond that. A closed deal, a deal you may not read or a made-up id answers 404. Nothing is sent to a model.",
+        "operationId": "recompute_api_v1_deal_risk__opportunity_id__recompute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealRiskRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Work the forecast out now and store it",
+        "tags": [
+          "deal-risk"
         ]
       }
     },

@@ -94,7 +94,8 @@ def test_a_manager_gets_the_risk_with_its_reasons_and_it_is_stored(world, db_ses
     assert snapshot.source == "on_demand" and snapshot.requested_by_user_id == manager.user_id
     assert all(f["sentence"] for f in snapshot.factors)
     # What was stored is what the newest read returns.
-    assert deal_risk.latest_snapshot(db_session, manager, deal).id == snapshot.id
+    newest = deal_risk.latest_snapshot(db_session, manager, deal)
+    assert newest is not None and newest.id == snapshot.id
 
 
 def test_asking_is_audited_with_ids_and_counts_only(world, db_session) -> None:
@@ -220,7 +221,9 @@ def test_the_snapshot_table_is_insert_only(world, db_session) -> None:
         {"source": "on_demand", "requested_by_user_id": None},
     ],
 )
-def test_the_database_refuses_a_malformed_snapshot(world, db_session, bad: dict) -> None:
+def test_the_database_refuses_a_malformed_snapshot(
+    world, db_session, bad: dict[str, object]
+) -> None:
     deal = risky_deal(db_session, world)
     manager = who(db_session, world, "alpha.manager")
     values = {

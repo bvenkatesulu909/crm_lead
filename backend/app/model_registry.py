@@ -40,6 +40,7 @@ from app.modules.research_batches import models as research_batches_models
 from app.modules.sales import models as sales_models
 from app.modules.saved_filters import models as saved_filters_models
 from app.modules.support import models as support_models
+from app.modules.units import models as units_models
 from app.modules.webcheck import models as webcheck_models
 from app.modules.workflows import models as workflows_models
 
@@ -74,6 +75,7 @@ __all__ = [
     "sales_models",
     "staff_assistant_models",
     "support_models",
+    "units_models",
     "webcheck_models",
     "deal_desk_models",
     "custom_agents_models",

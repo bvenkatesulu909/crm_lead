@@ -2,8 +2,8 @@
 
 Design: [ADR 0039](adr/0039-property-photo-enhancer.md). This page says what is built and how it behaves.
 
-**Status:** PE1 (the image rules), PE2 (the request, the worker job, storage) and PE3 (the API) are built.
-There is no screen yet (PE4), so a person cannot try it in the browser today.
+**Status:** PE1 (the image rules), PE2 (the request, the worker job, storage), PE3 (the API) and PE4
+(the screens) are built. Decks and brochures do not use the copies yet (PE5).
 
 ## 1. What it does, in plain words
 
@@ -96,9 +96,25 @@ stable code (`photo_operation_too_strong`, `photo_operation_unknown`, `photo_pre
 `photo_watermark_logo_missing`, `photo_not_an_image`, `photo_too_large`), 429 `photo_limit_reached`, 503
 `photo_enhancer_unavailable`.
 
-## 8. Not built yet
+## 8. The screens (PE4)
 
-* PE4: screens ("Enhance", sliders, "Show
-  original", the "Enhanced" badge, the warning "Check for people and number plates before sharing"). PE5: decks
-  and brochures using a copy with the fixed caption. PE6: gate tests and final docs.
-* The retention rule for copies of closed deals (ADR question 4) and noise reduction are not built.
+* **Documents card** (account and deal pages): next to a JPEG or PNG, people who may adjust photos see an
+  "Adjust photo" link. Nothing is shown to anyone else.
+* **`/photos/<document id>`**: sliders for brightness, contrast and straightening, tick boxes for the quick
+  fixes, four trim sliders for the crop, a size menu and a watermark (none, text or our logo, with a corner).
+  The sliders stop at the API's caps. A **preview** is made by the server (about every half second after the
+  last change) and shown beside the sliders. The warning "Check for people and number plates before sharing
+  this photo." is always shown, and so is a plain note that the copy only adjusts what the camera saw.
+* **Adjusted copies** below: each shows an "Enhanced" badge once it is ready, the list of what was done, the
+  size, "Download copy", "Show original" (original and copy side by side) and "Delete copy" (after a
+  confirmation; the original is never touched). While a copy is being made the page looks again every
+  four seconds. A failed copy says why in words.
+* The browser sends only the adjustments, to this app's own route handlers (`/photos/<id>/preview`,
+  `/photos/copies/<id>/download`); the token stays on the server. Pictures reach the page through the
+  signed links of ADR 0025.
+
+## 9. Not built yet
+
+* PE5: decks and brochures using a copy with the fixed caption. PE6: final docs and gate tests.
+* The retention rule for copies of closed deals (ADR question 4) and noise reduction.
+* Faces and number plates are not detected or blurred (ADR question 5): the warning is the only help.

@@ -45,6 +45,26 @@ rupees with the rupee sign and lakh grouping (`₹1,20,00,000`), another currenc
 - Only the figures are read (`quotes_api.price_facts`): never the internal or customer notes.
 - A product description with a link is cleaned; one with a phone number is left out and reported.
 
+## The screen (VB2, built 2026-11-22)
+
+A **Video brief** button on the lead page (next to *Site visit brief*, for people with `video_brief:read`) opens
+`/print/leads/{id}/video-brief`: one column made for a phone and for paper, with a **Print / Save as PDF** button.
+A form on the page chooses the goal, language (the buyer's own by default), tone, length and, when the lead
+became an account, one of its approved, sent or accepted quotes. The choices live in the address; the page
+checks them against the same fixed lists and falls back to the defaults, and the API checks them again.
+
+The page shows the script line by line (with how long each takes and which fact it came from), what the brief
+is built from (each line marked **Fact**, **Assumption**, **Lead form** or **Quote**, and what happens to it:
+lead-form details are shown but never said, assumptions are only asked as questions), the **Say this** and
+**Never say this** lists, **Consent and privacy** and **Be careful**. A script longer than its length is marked in
+red. A refused quote never blocks the brief: the page says why and builds it without prices. Everything is
+shown as plain text. The CRM still makes no video.
+
+Tests: `src/lib/video-brief.test.tsx` (22 Vitest tests: choices, paths, the view, the page) and
+`e2e/video-brief.spec.ts` (one Playwright journey: nothing confirmed -> lead form shown but not said; copy the
+lead form into buyer memory -> three facts in the script; Hindi, 30 seconds and another goal; an altered
+address falls back to the defaults; a colleague gets "not found", a manager can open it, support cannot).
+
 ## Who may ask
 
 Permission `video_brief:read` (sales agents, managers, administrators) **and** the lead's own read rules: a lead
@@ -58,6 +78,6 @@ colleague, other organisation, made-up ids, no data leaked, nothing written); pr
 
 ## Not yet built
 
-Brochure facts with RERA citations, the screen and print page (VB2), hand-written scripts and stored approved
+Brochure facts with RERA citations, hand-written scripts and stored approved
 scripts (VB3), the governed model draft (VB4), the approval kind (VB5), evaluation cases (VB6). The Hindi and
 Telugu words need a native-speaker read-through.

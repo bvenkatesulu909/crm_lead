@@ -1,8 +1,14 @@
 """Public interface of the deal desk module (ADR 0024). Other modules import only from here."""
 
 from app.modules.deal_desk.facts import DealNotFoundError, build_sheets
+from app.modules.deal_desk.llm import model_for
 from app.modules.deal_desk.research import (
+    AccountNotFoundError,
     BriefOverview,
+    Limits,
+    ResearchInvalidError,
+    ResearchNoSourceError,
+    ResearchRateLimitedError,
     latest_overviews,
     list_briefs,
     overviews_of,
@@ -15,8 +21,14 @@ from app.modules.deal_desk.rules import REVIEWERS, DealSheets, Fact, FactSheet, 
 from app.modules.deal_desk.service import delete_expired, list_reviews, run_review
 
 __all__ = [
+    "model_for",
     "REVIEWERS",
+    "AccountNotFoundError",
     "BriefOverview",
+    "Limits",
+    "ResearchInvalidError",
+    "ResearchNoSourceError",
+    "ResearchRateLimitedError",
     "DealNotFoundError",
     "DealSheets",
     "Fact",

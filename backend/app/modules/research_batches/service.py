@@ -5,8 +5,8 @@ and writes nothing. ``start`` does it again from scratch (never trusting what th
 refuses if the figure the person confirmed no longer holds, and then writes the batch and its
 frozen list of accounts in the caller's transaction. Services never commit.
 
-Nothing here researches an account: the worker step of BR3 does, one account at a time, as the
-person who started the batch. Until BR3 a started batch only waits.
+Nothing here researches an account: the worker step (worker.py) does, one account at a time, as the
+person who started the batch.
 """
 
 import uuid
@@ -21,6 +21,7 @@ from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.config import Settings
 from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
+from app.core.outbox import enqueue
 from app.modules.accounts import api as accounts_api
 from app.modules.agents import api as agents_api
 from app.modules.deal_desk import api as deal_desk_api
@@ -32,6 +33,7 @@ ENTITY = "research_batch"
 BATCHES = "research_batches"  # the registry entry that switches the feature
 RESEARCH = "account_research"  # the registry entry whose model calls a batch makes
 DEFAULT_TYPICAL_TOKENS = 3000  # shown when the organisation has no briefs yet; screen only
+STEP_JOB = "research_batch.step"  # the worker step (worker.py): one account per run
 
 
 class BatchNotFoundError(NotFoundError):
@@ -113,6 +115,16 @@ def _check_permission(principal: Principal) -> None:
         Permission.ACCOUNT_RESEARCH_RUN
     ):
         raise ForbiddenError("You may not research accounts in batches.")
+
+
+def enqueue_step(session: Session, tenant_id: uuid.UUID, batch_id: uuid.UUID) -> None:
+    """Queue the next worker step of a batch (ids only)."""
+    enqueue(
+        session,
+        tenant_id=tenant_id,
+        kind=STEP_JOB,
+        payload={"batch_id": str(batch_id), "tenant_id": str(tenant_id)},
+    )
 
 
 def worst_case(settings: Settings) -> rules.WorstCase:
@@ -277,6 +289,8 @@ def start(
             )
         )
     session.flush()
+    if not all_reused:
+        enqueue_step(session, tenant_id, batch.id)  # the worker researches one account per step
     # One batch is counted on the AI agents page (no tokens: the model calls are counted under
     # account research when they happen).
     agents_api.record_usage(

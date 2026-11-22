@@ -15,7 +15,7 @@ MAX_BATCH = 100  # a setting may lower it, never raise it (ADR 0042 BR2)
 REUSE_WINDOW = timedelta(hours=24)
 ESTIMATE_TOLERANCE_PERCENT = 20
 
-BATCH_STATUSES = ("running", "finished", "cancelled", "stopped_budget")
+BATCH_STATUSES = ("running", "finished", "cancelled", "stopped_budget", "stopped_error")
 ITEM_STATUSES = ("queued", "running", "done", "reused", "skipped", "failed", "not_run")
 FINISHED_ITEMS = ("done", "reused", "skipped", "failed", "not_run")
 FAILURE_CODES = (
@@ -222,7 +222,11 @@ def check_failure(status: str, failure_code: str | None) -> None:
 
 
 def batch_outcome(
-    item_statuses: Iterable[str], *, cancel_requested: bool, budget_stopped: bool
+    item_statuses: Iterable[str],
+    *,
+    cancel_requested: bool,
+    budget_stopped: bool,
+    error_stopped: bool = False,
 ) -> str:
     """The state of the batch given its items: still running while any item can still move."""
     statuses = list(item_statuses)
@@ -230,6 +234,8 @@ def batch_outcome(
         raise ValueError("unknown item status")
     if any(s in ("queued", "running") for s in statuses):
         return "running"
+    if error_stopped:
+        return "stopped_error"
     if budget_stopped:
         return "stopped_budget"
     if cancel_requested:

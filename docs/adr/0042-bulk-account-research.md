@@ -245,6 +245,22 @@ Staging is not touched by any step; the entry stays off until an administrator s
 9. **Web and company look-ups:** no; briefs show only evidence already on file.
 10. **Retention:** 12 months, no deletes.
 
+## 8a. Amendment (2026-11-22, while building BR1)
+
+1. **The summary table reads what a brief stores.** A stored brief holds its cited sentences, how many were
+   left out, how many facts each gatherer found and its tokens - not the health, open-deal count or renewal date
+   that BR10 listed. So `deal_desk.api` gets two read functions, `latest_overviews` (newest brief per account,
+   only accounts the person may read) and `overviews_of` (the overview of given briefs), and the v1 table shows
+   those figures (sourced sentences, left out, facts per gatherer, tokens, date) beside the outcome and a link.
+   Health, open deals and renewal stay on the brief's own sentences; richer live columns would be a separate,
+   later decision because they cost more reads per account.
+2. **A batch cannot change its own terms.** Besides the rules of BR13, the database refuses any change to the
+   starter, source, account list, positions, confirmed estimate and cap, refuses `tokens_used` going down, and
+   refuses a finished batch or item coming back to life.
+3. **The hard cap is not a database check.** The stop is `tokens_used + worst case <= cap`, decided by the
+   rules before every item (tests prove it for a whole run). A database check on `tokens_used <= token_cap`
+   would only turn a miscounted call into a stuck batch.
+
 ## 8. Consequences
 
 - A manager can prepare a whole segment in one action, knows the cost first, can stop at any time, sees which

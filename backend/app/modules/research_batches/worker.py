@@ -21,7 +21,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.audit import AuditLog, record_audit
+from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.config import Settings
 from app.core.events import publish
@@ -82,27 +82,17 @@ def _finish(
     session.flush()
     counts = rules.counts(i.status for i in items)
     changes: dict[str, Any] = {"outcome": outcome, "tokens_used": batch.tokens_used, **counts}
-    if actor is not None:
-        record_audit(
-            session,
-            actor,
-            action=f"research_batch.{outcome}",
-            entity_type=ENTITY,
-            entity_id=batch.id,
-            changes=changes,
-        )
-    else:
-        # The starter is gone: the entry is still written, by the system.
-        session.add(
-            AuditLog(
-                tenant_id=batch.tenant_id,
-                actor_user_id=None,
-                action=f"research_batch.{outcome}",
-                entity_type=ENTITY,
-                entity_id=batch.id,
-                changes=changes,
-            )
-        )
+    # When the starter is gone the entry is still written, by the organisation's Automation
+    # identity (the audit log always names an actor).
+    who = actor or identity_api.automation_principal(session, batch.tenant_id)
+    record_audit(
+        session,
+        who,
+        action=f"research_batch.{outcome}",
+        entity_type=ENTITY,
+        entity_id=batch.id,
+        changes=changes,
+    )
     publish(
         session,
         batch.tenant_id,

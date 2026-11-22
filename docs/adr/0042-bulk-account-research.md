@@ -261,6 +261,16 @@ Staging is not touched by any step; the entry stays off until an administrator s
    rules before every item (tests prove it for a whole run). A database check on `tokens_used <= token_cap`
    would only turn a miscounted call into a stuck batch.
 
+4. **A fourth way to end (BR3):** `stopped_error`, for a batch that cannot go on - its starter is no longer an
+   active member of staff, or its step job died after all its retries (migration 0076). The unstarted accounts
+   become `not_run`. When the starter is gone the audit entry is written by the organisation's Automation
+   identity, because the audit log always names an actor. `stopped_budget` covers every limit and switch: the
+   batch's cap, the month's budget, the platform switch and either registry switch being turned off.
+5. **The cap needs a stated worst case for the input.** The worst case of one account is the writer's output cap
+   (`CRM_ASSISTANT_MAX_TOKENS`) plus `CRM_RESEARCH_BATCH_WORST_INPUT_TOKENS` (default 8,000). The cap is only as
+   hard as that figure is true: BR3 measures every call from the month's usage (also a refused answer), and a
+   later step should refuse an account whose prompt would exceed the input figure before the model is called.
+
 ## 8. Consequences
 
 - A manager can prepare a whole segment in one action, knows the cost first, can stop at any time, sees which

@@ -274,6 +274,17 @@ def test_an_account_researched_a_moment_ago_fails_as_rate_limited_not_silently(
     ready, world
 ) -> None:
     ready.add(brief(world, "A1", timedelta(minutes=10)))
+    # The one-per-hour limit counts the audit entries of earlier briefs, as the single button does.
+    ready.add(
+        AuditLog(
+            tenant_id=alpha(world),
+            actor_subject="sub-alpha.manager",
+            action="account_research.written",
+            entity_type="account",
+            entity_id=world.ids["A1"],
+            changes={},
+        )
+    )
     ready.flush()
     batch = start(ready, world, rows(world.ids["A1"], again=True), WORST)
     step(ready, world, batch, Writer())
@@ -322,7 +333,9 @@ def test_a_starter_who_left_stops_the_batch_as_an_error(ready, world, batch) -> 
     entry = ready.scalars(
         select(AuditLog).where(AuditLog.action == "research_batch.stopped_error")
     ).one()
-    assert entry.actor_user_id is None  # written by the system: the person is gone
+    # Written by the Automation identity: the person is gone, but the log always names an actor.
+    assert entry.actor_subject.startswith("automation:")
+    assert entry.actor_user_id != world.users["alpha.manager"].id
 
 
 def test_a_step_job_that_dies_ends_the_batch_and_marks_the_running_account(

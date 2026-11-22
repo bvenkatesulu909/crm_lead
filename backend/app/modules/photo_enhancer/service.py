@@ -9,6 +9,8 @@ job. The original is only read; the copy is a new document next to it.
 import logging
 import time
 import uuid
+from collections import deque
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -124,17 +126,24 @@ def _audit(
     )
 
 
-def request_enhancement(
+@dataclass(frozen=True)
+class _Prepared:
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID
+    ref: documents_api.DocumentRef
+    operations: rules.Operations
+
+
+def _prepare(
     session: Session,
     principal: Principal,
     original_document_id: uuid.UUID,
     raw_operations: dict[str, Any],
     settings: Settings,
-    *,
-    now: datetime | None = None,
-) -> PhotoEnhancement:
-    """Check everything, record the request and queue the job. The caller commits."""
-    when = now or datetime.now(UTC)
+    when: datetime,
+) -> _Prepared:
+    """Everything a request and a preview have in common: who, whether it is on, which photo, and
+    that what was asked for is allowed."""
     tenant_id, user_id = _tenant_and_user(principal)
     _check_may_enhance(principal)
     if settings.photo_enhancer_disabled:
@@ -158,6 +167,27 @@ def request_enhancement(
         raise PhotoRequestError(
             rules.PhotoRuleError("watermark_logo_missing", "The organisation has no logo to use.")
         )
+    return _Prepared(tenant_id, user_id, ref, operations)
+
+
+def request_enhancement(
+    session: Session,
+    principal: Principal,
+    original_document_id: uuid.UUID,
+    raw_operations: dict[str, Any],
+    settings: Settings,
+    *,
+    now: datetime | None = None,
+) -> PhotoEnhancement:
+    """Check everything, record the request and queue the job. The caller commits."""
+    when = now or datetime.now(UTC)
+    prepared = _prepare(session, principal, original_document_id, raw_operations, settings, when)
+    tenant_id, user_id, ref, operations = (
+        prepared.tenant_id,
+        prepared.user_id,
+        prepared.ref,
+        prepared.operations,
+    )
     if (
         repository.count_of_original(session, tenant_id, ref.id)
         >= settings.photo_enhancements_per_original
@@ -252,6 +282,78 @@ def remove_file(store: FileStore, key: str | None) -> None:
         store.delete(key)
     except Exception:  # noqa: BLE001 - an orphaned file is harmless; the row is gone
         logger.warning("could not remove a deleted photo copy's file")
+
+
+# --- preview ---------------------------------------------------------------------------------
+
+
+class PreviewLimiter:
+    """At most ``limit`` previews per person per minute. Kept in this process only: a preview
+    stores nothing, so a restart forgetting the count is harmless; it keeps a slider from
+    hammering the CPU."""
+
+    def __init__(self) -> None:
+        self._seen: dict[tuple[uuid.UUID, uuid.UUID], deque[float]] = {}
+
+    def allow(self, key: tuple[uuid.UUID, uuid.UUID], limit: int) -> bool:
+        now = time.monotonic()
+        window = self._seen.setdefault(key, deque())
+        while window and window[0] <= now - 60:
+            window.popleft()
+        if len(window) >= limit:
+            return False
+        window.append(now)
+        return True
+
+
+_previews = PreviewLimiter()
+
+
+def preview(
+    session: Session,
+    principal: Principal,
+    store: FileStore,
+    original_document_id: uuid.UUID,
+    raw_operations: dict[str, Any],
+    settings: Settings,
+) -> bytes:
+    """A small JPEG showing what the adjustments would do (nothing is stored, nothing is queued).
+    Made by the same code as the real copy, from a reduced-size working copy."""
+    prepared = _prepare(
+        session, principal, original_document_id, raw_operations, settings, datetime.now(UTC)
+    )
+    if not _previews.allow(
+        (prepared.tenant_id, prepared.user_id), settings.photo_previews_per_minute
+    ):
+        raise PhotoLimitReachedError("Too many previews. Wait a moment.")
+    try:
+        _info, original = documents_api.read_document(
+            session, store, prepared.tenant_id, prepared.ref.id
+        )
+        photo = rules.inspect(original)
+        if (
+            rules.estimated_memory_bytes(photo)
+            > settings.photo_enhancer_max_memory_mb * 1024 * 1024
+        ):
+            raise rules.PhotoRuleError("too_large", "The photo is too large to adjust.")
+        logo = (
+            branding_api.branding_for_deck(session, prepared.tenant_id).logo_png
+            if prepared.operations.watermark is not None
+            and prepared.operations.watermark.kind == "logo"
+            else None
+        )
+        result = rules.enhance(
+            original,
+            prepared.operations,
+            logo_png=logo,
+            preview=True,
+            deadline=time.monotonic() + settings.photo_enhancer_max_seconds,
+        )
+    except (StoredFileMissingError, documents_api.DocumentIntegrityError):
+        raise PhotoNotFoundError() from None
+    except rules.PhotoRuleError as exc:
+        raise PhotoRequestError(exc) from None
+    return result.jpeg
 
 
 # --- the worker ----------------------------------------------------------------------------

@@ -2,8 +2,8 @@
 
 Design: [ADR 0039](adr/0039-property-photo-enhancer.md). This page says what is built and how it behaves.
 
-**Status:** PE1 (the image rules) and PE2 (the request, the worker job, storage) are built. There is no
-endpoint and no screen yet (PE3, PE4), so nothing can be tried by a person today.
+**Status:** PE1 (the image rules), PE2 (the request, the worker job, storage) and PE3 (the API) are built.
+There is no screen yet (PE4), so a person cannot try it in the browser today.
 
 ## 1. What it does, in plain words
 
@@ -79,9 +79,26 @@ size, heavy filters. A request that names anything else (for example `sky_replac
   `photo.enhanced`, `photo.failed` and `photo.copy_deleted` with ids, the list of adjustments and sizes, never
   the picture or its file name.
 
-## 7. Not built yet
+## 7. The API (`/api/v1/photo-enhancer`, staff only)
 
-* PE3: API (preview, create, list, delete a copy, signed link). PE4: screens ("Enhance", sliders, "Show
+| Call | What it does |
+|---|---|
+| `POST /previews` | body `{document_id, operations}`; answers a small JPEG (at most 800 px, `no-store`) made by the same code from a reduced working copy; stores and queues nothing; at most 30 a person a minute (`CRM_PHOTO_PREVIEWS_PER_MINUTE`, counted in this process) |
+| `POST /enhancements` | the same body; records the request and queues the job; 201 with the request in state `queued` |
+| `GET /enhancements?document_id=` | the requests made for one photo, newest first, with the fixed `caption` the screens and decks print |
+| `GET /enhancements/{id}/link` | a 60-second signed link to a finished copy (404 while waiting or failed) |
+| `DELETE /enhancements/{id}` | deletes one request and its copy, never the original; 204 |
+
+The body takes only the photo and the adjustments (unknown fields are refused with 422); the tenant, who
+asked, the state and the copy are the server's. Answers: 403 without `photo:enhance` (or `document:read` for
+listing and links), 404 for a photo or copy the person may not see (also another organisation's), 422 with a
+stable code (`photo_operation_too_strong`, `photo_operation_unknown`, `photo_preset_unknown`,
+`photo_watermark_logo_missing`, `photo_not_an_image`, `photo_too_large`), 429 `photo_limit_reached`, 503
+`photo_enhancer_unavailable`.
+
+## 8. Not built yet
+
+* PE4: screens ("Enhance", sliders, "Show
   original", the "Enhanced" badge, the warning "Check for people and number plates before sharing"). PE5: decks
   and brochures using a copy with the fixed caption. PE6: gate tests and final docs.
 * The retention rule for copies of closed deals (ADR question 4) and noise reduction are not built.

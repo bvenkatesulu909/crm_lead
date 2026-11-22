@@ -272,6 +272,13 @@ class Settings(BaseSettings):
     # Account research (ADR 0024): briefs per account per hour and per organisation per day.
     account_research_per_account_hour: int = Field(default=1, ge=1, le=100)
     account_research_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # Batch account research (ADR 0042). The cap can be lowered, never raised above 100.
+    research_batch_max: int = Field(default=100, ge=1, le=100)
+    research_batch_running_per_person: int = Field(default=1, ge=1, le=10)
+    research_batch_running_per_tenant: int = Field(default=2, ge=1, le=50)
+    research_batch_per_person_day: int = Field(default=5, ge=1, le=100)
+    # The most one account's research can read in (tokens): what the hard cap is built from.
+    research_batch_worst_input_tokens: int = Field(default=8000, ge=500, le=100_000)
     # Let the lead agent look at every new website lead as the Automation identity. Off by default;
     # read when the worker starts. The agent's own switch (also off by default), budget and limits
     # still apply.

@@ -307,6 +307,25 @@ def overviews_of(
     return {row.id: _overview(row) for row in rows}
 
 
+def recent_average_tokens(session: Session, tenant_id: uuid.UUID, *, last: int = 20) -> int | None:
+    """What this organisation's last briefs used on average (input + output tokens), or ``None``
+    when there are none. For the typical figure on the batch estimate screen only."""
+    newest = (
+        select(AccountBrief.input_tokens + AccountBrief.output_tokens)
+        .where(AccountBrief.tenant_id == tenant_id)
+        .order_by(AccountBrief.seq.desc())
+        .limit(last)
+        .subquery()
+    )
+    average = session.scalar(select(func.avg(newest.c[0])))
+    return None if average is None else int(average)
+
+
+def researched_today(session: Session, tenant_id: uuid.UUID, now: datetime) -> int:
+    """How many briefs the organisation wrote in the last day: what the daily limit counts."""
+    return count_runs(session, tenant_id, now - timedelta(days=1))
+
+
 def delete_expired(session: Session, now: datetime, *, tenant_id: uuid.UUID) -> int:
     result = session.execute(
         delete(AccountBrief).where(

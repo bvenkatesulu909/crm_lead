@@ -131,6 +131,21 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="research_batches",
+            title="Batch account research",
+            description=(
+                "Lets sales managers and administrators research up to 100 accounts in one go, "
+                "one account at a time. The language-model calls are Account research's (its "
+                "switch and monthly budget apply too); this entry only switches the batch feature "
+                "and counts batches. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
             key="deck_writer",
             title="Deck writer",
             description=(

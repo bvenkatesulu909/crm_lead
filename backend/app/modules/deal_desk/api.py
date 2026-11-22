@@ -6,6 +6,8 @@ from app.modules.deal_desk.research import (
     latest_overviews,
     list_briefs,
     overviews_of,
+    recent_average_tokens,
+    researched_today,
     run_research,
 )
 from app.modules.deal_desk.research import delete_expired as delete_expired_briefs
@@ -26,6 +28,8 @@ __all__ = [
     "latest_overviews",
     "list_briefs",
     "overviews_of",
+    "recent_average_tokens",
+    "researched_today",
     "run_research",
     "list_reviews",
     "run_review",

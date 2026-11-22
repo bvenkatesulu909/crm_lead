@@ -193,6 +193,8 @@ class Permission(StrEnum):
     DEAL_DESK_RUN = "deal_desk:run"
     # Account research (ADR 0024): a one-page brief about an account the person may read.
     ACCOUNT_RESEARCH_RUN = "account_research:run"
+    # Research many accounts in one batch (ADR 0042): sales managers and tenant administrators.
+    RESEARCH_BATCH_RUN = "research_batch:run"
 
 
 _P = Permission
@@ -214,7 +216,7 @@ _SALES_ALL = frozenset(
         _P.BUYER_MEMORY_READ, _P.BUYER_MEMORY_WRITE,
         _P.CALL_READ, _P.CALL_WRITE, _P.CALL_NOTES_RUN,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
-        _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN, _P.CUSTOM_AGENT_RUN,
+        _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN, _P.CUSTOM_AGENT_RUN, _P.RESEARCH_BATCH_RUN,
     }
 )  # fmt: skip
 

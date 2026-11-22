@@ -169,6 +169,18 @@ def current_follow_up_policy(session: Session, tenant_id: uuid.UUID) -> follow_u
     return follow_up_rules.Policy() if row is None else _policy_of(row)
 
 
+def follow_up_policy_version(session: Session, tenant_id: uuid.UUID) -> int:
+    """The ``seq`` of the settings in force (0 when none was ever saved): a screen sends it back
+    so that two administrators cannot overwrite each other unseen."""
+    seq = session.scalars(
+        select(FollowUpPolicy.seq)
+        .where(FollowUpPolicy.tenant_id == tenant_id)
+        .order_by(FollowUpPolicy.seq.desc())
+        .limit(1)
+    ).one_or_none()
+    return int(seq or 0)
+
+
 def add_follow_up_policy(
     session: Session,
     tenant_id: uuid.UUID,

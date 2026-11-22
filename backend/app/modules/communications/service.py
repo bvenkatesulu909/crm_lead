@@ -11,7 +11,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import ColumnElement, or_
+from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
@@ -26,11 +26,13 @@ from app.core.outbox import PermanentJobError, enqueue
 from app.core.records import Recipient
 from app.modules.accounts import api as accounts_api
 from app.modules.activities import api as activities_api
-from app.modules.communications import repository, rules
+from app.modules.communications import follow_up_rules, repository, rules
 from app.modules.communications.models import EmailMessage, EmailTemplate
 from app.modules.communications.schemas import (
     EmailLogReceived,
     EmailSend,
+    FollowUpSettingsRead,
+    FollowUpSettingsUpdate,
     PlaceholderRead,
     TemplateCreate,
     TemplatePreview,
@@ -681,3 +683,114 @@ def send_failed(session: Session, tenant_id: uuid.UUID, message_id: uuid.UUID, e
         FAILED_EVENT,
         {"message_id": str(message.id), "sender_id": str(message.sent_by_user_id)},
     )
+
+
+# --- follow-up settings (ADR 0036) ----------------------------------------------------------
+
+
+class FollowUpSettingsError(DomainError):
+    code = "follow_up_settings_invalid"
+    status_code = 422
+
+
+class FollowUpVersionConflictError(ConflictError):
+    code = "version_conflict"
+
+    def __init__(self) -> None:
+        super().__init__("The follow-up settings were changed by someone else. Reload them.")
+
+
+def _follow_up_admin(principal: Principal) -> tuple[uuid.UUID, uuid.UUID]:
+    if (
+        principal.tenant_id is None
+        or principal.user_id is None
+        or principal.user_type != "staff"
+        or not principal.has_permission(Permission.FOLLOW_UP_MANAGE)
+    ):
+        raise ForbiddenError("Only administrators can change the follow-up settings.")
+    return principal.tenant_id, principal.user_id
+
+
+def _settings_view(
+    session: Session, principal: Principal, tenant_id: uuid.UUID
+) -> FollowUpSettingsRead:
+    policy = repository.current_follow_up_policy(session, tenant_id)
+    name = None
+    if policy.template_id is not None:
+        template = repository.get_readable_template(session, principal, policy.template_id)
+        name = template.name if template else None
+    return FollowUpSettingsRead(
+        enabled=policy.enabled,
+        monthly_cap=policy.monthly_cap,
+        daily_cap=policy.daily_cap,
+        pending_cap=policy.pending_cap,
+        expiry_days=policy.expiry_days,
+        cooldown_days=policy.cooldown_days,
+        template_id=policy.template_id,
+        template_name=name,
+        rule=follow_up_rules.RULE_TASK_DUE_TODAY,
+        version=repository.follow_up_policy_version(session, tenant_id),
+    )
+
+
+def get_follow_up_settings(session: Session, principal: Principal) -> FollowUpSettingsRead:
+    return _settings_view(session, principal, _follow_up_admin(principal)[0])
+
+
+def update_follow_up_settings(
+    session: Session, principal: Principal, data: FollowUpSettingsUpdate
+) -> FollowUpSettingsRead:
+    """Store the next version of the settings (insert-only history). Switching on needs an
+    active template; every number is inside its bounds; a stale screen is refused."""
+    tenant_id, user_id = _follow_up_admin(principal)
+    # Serialise two administrators saving at once (the version check below is then exact).
+    session.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"follow_up:{tenant_id}"))))
+    if repository.follow_up_policy_version(session, tenant_id) != data.version:
+        raise FollowUpVersionConflictError()
+    if data.template_id is not None:
+        template = repository.get_readable_template(session, principal, data.template_id)
+        if template is None or not template.is_active:
+            raise FollowUpSettingsError("Choose an active e-mail template.")
+    if data.enabled and data.template_id is None:
+        raise FollowUpSettingsError("Choose an e-mail template before switching follow-ups on.")
+    before = repository.current_follow_up_policy(session, tenant_id)
+    policy = follow_up_rules.Policy(
+        enabled=data.enabled,
+        monthly_cap=data.monthly_cap,
+        daily_cap=data.daily_cap,
+        pending_cap=data.pending_cap,
+        expiry_days=data.expiry_days,
+        cooldown_days=data.cooldown_days,
+        template_id=data.template_id,
+    )
+    if policy.problems():
+        raise FollowUpSettingsError(
+            "Outside the allowed range: " + ", ".join(policy.problems()) + "."
+        )
+    repository.add_follow_up_policy(session, tenant_id, user_id, policy)
+    changed = {
+        name: {"old": getattr(before, name), "new": getattr(policy, name)}
+        for name in (
+            "enabled",
+            "monthly_cap",
+            "daily_cap",
+            "pending_cap",
+            "expiry_days",
+            "cooldown_days",
+        )
+        if getattr(before, name) != getattr(policy, name)
+    }
+    if before.template_id != policy.template_id:
+        changed["template_id"] = {
+            "old": str(before.template_id) if before.template_id else None,
+            "new": str(policy.template_id) if policy.template_id else None,
+        }
+    record_audit(
+        session,
+        principal,
+        action="follow_up.settings_changed",
+        entity_type="follow_up_policy",
+        entity_id=tenant_id,
+        changes=changed,
+    )
+    return _settings_view(session, principal, tenant_id)

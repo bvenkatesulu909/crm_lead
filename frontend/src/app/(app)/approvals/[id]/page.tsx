@@ -8,6 +8,7 @@ import { ErrorAlert, Forbidden, SuccessAlert } from "@/components/ui";
 import { ApiError, toErrorInfo } from "@/lib/api-error";
 import type { AgentAction, DirectoryUser } from "@/lib/api-types";
 import { canDecideOn } from "@/lib/approvals";
+import { followUpDraft } from "@/lib/follow-ups";
 import { canReadApprovals } from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
@@ -76,6 +77,7 @@ export default async function ApprovalPage({
           canDecideOn(me, action) ? (
             <ApprovalDecision
               description={action.description}
+              draft={followUpDraft(action) ?? undefined}
               approve={approveProposal.bind(null, action.id, action.version)}
               reject={rejectProposal.bind(null, action.id, action.version)}
             />

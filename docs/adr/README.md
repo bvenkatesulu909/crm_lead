@@ -48,3 +48,5 @@ Rules:
 | [0034](0034-no-code-agent-builder.md) | A no-code agent builder for administrators (BP-18, second half) | Accepted |
 | [0035](0035-call-notes-deal-checklist.md) | Call notes and a deal checklist (BANT or MEDDIC) from a call transcript | Accepted |
 | [0038](0038-live-voice-receptionist.md) | A live Telugu and Hindi voice receptionist (browser first, phone number later) | Accepted |
+| [0040](0040-upi-reserve-pay-rules.md) | UPI reserve-pay rules: token / booking amount to hold a property | Accepted |
+| [0042](0042-bulk-account-research.md) | Research up to 100 accounts at once (a batch of account briefs) | Accepted |

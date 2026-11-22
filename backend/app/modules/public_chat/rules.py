@@ -80,7 +80,7 @@ if the visitor starts saying one, tell them not to and move on."""
 
 # Spoken numbers (ADR 0038, VR9): a speech recogniser may write "four one one one..." as words
 # instead of digits, and the digit-based card check would not see it.
-_DIGIT_WORDS = {
+DIGIT_WORDS = {
     # English
     "zero": "0", "oh": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
     "six": "6", "seven": "7", "eight": "8", "nine": "9",
@@ -109,7 +109,7 @@ def spoken_number_refusal(text: str) -> bool:
         token = raw.strip()
         if not token:
             continue
-        if token in _DIGIT_WORDS:
+        if token in DIGIT_WORDS:
             run += 1
         elif token.isdigit():
             run += len(token)

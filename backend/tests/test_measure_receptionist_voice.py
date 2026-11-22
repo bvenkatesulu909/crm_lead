@@ -69,3 +69,12 @@ def test_the_real_engine_refuses_without_the_switch(
     (tmp_path / "q1.en.txt").write_text("hello", encoding="utf-8")
     assert m.main([str(tmp_path), "--engine", "real", "--synthesize"]) == 2
     assert "Refusing to spend money" in capsys.readouterr().out
+
+
+def test_spoken_digits_and_written_digits_score_the_same() -> None:
+    assert m.numbers_as_digits("my number is nine eight seven six") == "my number is 9876"
+    assert m.numbers_as_digits("मेरा number 9876543210 है") == "मेरा number 9876543210 है"
+    assert m.numbers_as_digits("नौ आठ सात छह है") == "9876 है"
+    assert m.numbers_as_digits("తొమ్మిది ఎనిమిది ఏడు ఆరు") == "9876"
+    # A word between two runs keeps them apart (two numbers, not one).
+    assert m.numbers_as_digits("one two and three") == "12 and 3"

@@ -56,6 +56,31 @@ CALL_TURNS = 12  # ... and 12 turns
 ASSUMED_VISITOR_SECONDS = 6.0
 
 
+def numbers_as_digits(text: str) -> str:
+    """Spoken digits and written digits count the same when scoring: a run of digit words (English,
+    Hindi, Telugu) or digits becomes one token of digits, so "nine eight seven" and "987" match.
+    The first measurement scored a correctly heard Hindi phone number as wrong because the
+    recogniser wrote 9876543210 where the reference spelled the words out."""
+    from app.modules.public_chat.rules import DIGIT_WORDS
+
+    out: list[str] = []
+    run = ""
+    for token in text.replace(",", " ").replace(".", " ").split():
+        low = token.casefold()
+        if low in DIGIT_WORDS:
+            run += DIGIT_WORDS[low]
+        elif low.isdigit():
+            run += low
+        else:
+            if run:
+                out.append(run)
+                run = ""
+            out.append(token)
+    if run:
+        out.append(run)
+    return " ".join(out)
+
+
 @dataclass(frozen=True)
 class Item:
     name: str
@@ -252,8 +277,8 @@ def measure(
         item.name,
         item.language,
         voice,
-        word_error_rate(item.reference, result.text),
-        char_error_rate(item.reference, result.text),
+        word_error_rate(numbers_as_digits(item.reference), numbers_as_digits(result.text)),
+        char_error_rate(numbers_as_digits(item.reference), numbers_as_digits(result.text)),
         hear,
         think,
         speak,

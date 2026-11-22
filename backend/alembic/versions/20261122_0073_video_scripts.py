@@ -85,7 +85,10 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_video_scripts")),
         sa.UniqueConstraint(
-            "tenant_id", "lead_id", "version", name=op.f("uq_video_scripts_tenant_id_lead_id_version")
+            "tenant_id",
+            "lead_id",
+            "version",
+            name=op.f("uq_video_scripts_tenant_id_lead_id_version"),
         ),
     )
     op.create_index(

@@ -86,7 +86,20 @@ the **next version** of the lead's script (`GET` lists them, newest first). Perm
 - Saving is audited (`video_script.saved`) with ids, the version, the word count, the language and the source -
   never the words.
 
-Not built yet: a screen to write and save scripts (VB3b), copying a saved script to a document on the lead.
+### The screen for it (VB3b, built 2026-11-22)
+
+On the video brief page, people with `video_brief:write` get **Write your own script**: a box that starts from the
+script the CRM suggests, a live count against the chosen length (red when over), and **Save script**. The goal,
+language, tone, length and quote travel as hidden fields - the ones the brief above was built for - so they cannot
+be edited there. The Server Action checks the lead id, the fixed lists and the script first, and sends only the
+five fields the API accepts (language, tone, goal, length, lines). A refusal is explained in plain words (phone
+number, card number or instruction, never-say list, too long) and the typed text stays. After a save the page
+says "saved as version N" (only a plain number is ever shown) and lists the **saved scripts**, newest first, as
+plain text; people who may only read still see that list. Failing to load the list never stops the brief.
+
+Tests: `src/lib/video-scripts.test.tsx` (22 Vitest tests) and `e2e/video-script.spec.ts` (one Playwright journey).
+
+Not built yet: copying a saved script to a document on the lead.
 
 ## Who may ask
 

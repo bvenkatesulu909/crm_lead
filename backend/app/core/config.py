@@ -260,6 +260,9 @@ class Settings(BaseSettings):
     call_notes_per_recording_day: int = Field(default=3, ge=1, le=100)
     call_notes_per_user_hour: int = Field(default=20, ge=1, le=1_000)
     call_notes_per_tenant_day: int = Field(default=100, ge=1, le=100_000)
+    # The video-script drafter (ADR 0041, VB4): how often it may run.
+    video_brief_per_lead_hour: int = Field(default=3, ge=1, le=100)
+    video_brief_per_tenant_day: int = Field(default=100, ge=1, le=100_000)
     # Saved video scripts (ADR 0041): how many one person may save per hour.
     video_scripts_per_user_hour: int = Field(default=30, ge=1, le=1_000)
     # The optional lead agent (ADR 0022): how often it may run.

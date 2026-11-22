@@ -87,6 +87,7 @@ def test_the_catalogue_has_the_ten_model_agents() -> None:
         "deck_writer",
         "account_research",
         "call_notes",
+        "video_brief",
     }
 
 

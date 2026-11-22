@@ -76,3 +76,29 @@ class ScriptRead(BaseModel):
 
 class ScriptPage(BaseModel):
     items: list[ScriptRead]
+
+
+class DraftCreate(BaseModel):
+    """What a person sends to ask for a draft. The facts are never sent: the server reads them as
+    the person asking."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    goal: Literal["introduce", "follow_up", "after_visit", "explain_quote", "revive"] = "follow_up"
+    language: Literal["en", "hi", "te"] | None = None
+    tone: Literal["warm", "professional", "brisk"] = "warm"
+    length_seconds: Literal[30, 60, 90] = 60
+    quote_id: uuid.UUID | None = None
+
+
+class DraftRead(BaseModel):
+    """A draft: shown to the person who asked, not saved and not approved."""
+
+    status: Literal["draft"] = "draft"
+    lines: list[str]
+    words: int
+    reason: str
+    language: Literal["en", "hi", "te"]
+    goal: Literal["introduce", "follow_up", "after_visit", "explain_quote", "revive"]
+    tone: Literal["warm", "professional", "brisk"]
+    length_seconds: Literal[30, 60, 90]

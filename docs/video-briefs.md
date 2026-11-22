@@ -101,6 +101,40 @@ Tests: `src/lib/video-scripts.test.tsx` (22 Vitest tests) and `e2e/video-script.
 
 Not built yet: copying a saved script to a document on the lead.
 
+## The drafted script (VB4, built 2026-11-22)
+
+`POST /api/v1/leads/{id}/video-brief/draft` asks a governed model to write the spoken script. Body: `goal`,
+`language`, `tone`, `length_seconds` and an optional `quote_id` - **only the choices**; the facts are read by the
+server as the person asking (the same brief as above). Permission `video_brief:write` and the lead's read rules
+(a lead the person may not read is a 404 and the model is never called).
+
+- **A governed agent, off by default.** Registry entry `video_brief` ("Video script drafter"): an administrator
+  switches it on; the monthly token budget, the tool filter and the AI platform switch apply (503
+  `agent_unavailable` / `agent_budget_reached`). Limits `CRM_VIDEO_BRIEF_PER_LEAD_HOUR` (3) and
+  `CRM_VIDEO_BRIEF_PER_TENANT_DAY` (100) -> 429 `video_draft_rate_limited`.
+- **What the model sees:** the buyer's first name, the choices, the confirmed facts, a quote's prices exactly as
+  stored, and - in a separate list - the assumptions it may only ask about. Never the phone, e-mail, last name,
+  an unconfirmed lead-form detail, or another lead. Everything is cleaned and passed as data; text that looks
+  like an instruction is flagged to the model.
+- **One tool, `submit_script`:** exactly `lines` and `reason`, nothing else.
+- **What code checks afterwards** (refusing with a 422 `video_draft_*` code that never repeats the text, and
+  keeping the tokens the call used): the shape of the answer; every check of a hand-written script (cleaning,
+  card numbers and instructions, contact details, banned statements, the length); **every number, amount and date
+  must be one of the supplied facts** (`video_draft_unsupported_number`); an assumption may only be asked, never
+  said as a statement (`video_draft_assumption_stated`).
+- **The answer is a draft:** `status: "draft"`, shown to the person who asked. **Nothing is saved and nothing is
+  approved** - the approval queue is the next step (VB5). The audit entry `video_brief.drafted` holds ids, the
+  word count and the language only.
+- `CRM_AI_PROVIDER=fake` uses a scripted model that builds a plain English script from the facts.
+
+Limits of the checks, honestly: amounts spoken in words ("one and a half crore") and names of projects or people
+are not verified by code; the banned-statement list, the human approval of VB5 and the native-speaker read-through
+of Hindi and Telugu remain the guards for those.
+
+Tests: `tests/test_video_brief_draft.py` (22 pure tests) and `tests/db/test_video_brief_draft_api.py` (28
+database tests: switch, platform switch, budget, limits, roles, colleague and other organisation, made-up ids,
+only the documented fields, each kind of refused answer).
+
 ## Who may ask
 
 Permission `video_brief:read` (sales agents, managers, administrators) **and** the lead's own read rules: a lead
@@ -114,6 +148,5 @@ colleague, other organisation, made-up ids, no data leaked, nothing written); pr
 
 ## Not yet built
 
-Brochure facts with RERA citations, the screen for writing scripts, the approved AI
-scripts (VB4-VB5), the governed model draft (VB4), the approval kind (VB5), evaluation cases (VB6). The Hindi and
+Brochure facts with RERA citations, the approval of a drafted script (VB5), the governed model draft (VB4), the approval kind (VB5), evaluation cases (VB6). The Hindi and
 Telugu words need a native-speaker read-through.

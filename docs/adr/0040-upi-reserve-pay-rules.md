@@ -159,6 +159,12 @@ registry switch; test mode only until "go live".
 7. **Managers** approve exceptions (never the person who asked).
 8. **Off by default per organisation**, behind a registry switch.
 
+## 6b. Build progress
+
+- **RP1 (2026-11-22, branch `feat/rp1-units`): built.** Module `units` (projects and units), migration 0073,
+  permissions `unit:read` / `unit:manage`, API `/projects` and `/units`. See `docs/units.md`. No
+  reservations, payments or screens yet.
+
 ## 7. Alternatives considered
 
 - **Just a flag on the deal ("token paid")** - cheapest, but no hold period, expiry or refund arithmetic, and it

@@ -24,6 +24,7 @@ from app.modules.contacts import models as contacts_models
 from app.modules.contracts import models as contracts_models
 from app.modules.custom_agents import models as custom_agents_models
 from app.modules.deal_desk import models as deal_desk_models
+from app.modules.deal_risk import models as deal_risk_models
 from app.modules.documents import models as documents_models
 from app.modules.identity import models as identity_models
 from app.modules.invoices import models as invoices_models
@@ -76,6 +77,7 @@ __all__ = [
     "units_models",
     "webcheck_models",
     "deal_desk_models",
+    "deal_risk_models",
     "custom_agents_models",
     "call_notes_models",
     "proposal_decks_models",

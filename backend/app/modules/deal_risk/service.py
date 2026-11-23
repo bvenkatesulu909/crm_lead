@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
-from app.core.errors import ForbiddenError
+from app.core.config import Settings
+from app.core.errors import DomainError, ForbiddenError
 from app.modules.deal_risk import repository, signals
 from app.modules.deal_risk.models import DealRiskSnapshot
 from app.modules.deal_risk.rules import Risk, assess
@@ -32,6 +33,26 @@ class DealRiskNotAllowedError(ForbiddenError):
 
     def __init__(self) -> None:
         super().__init__("You may not see deal risk.")
+
+
+class RateLimitedError(DomainError):
+    status_code = 429
+    code = "deal_risk_rate_limited"
+
+    def __init__(self) -> None:
+        super().__init__("You have asked for too many forecasts this hour. Try again later.")
+
+
+class NotComputedError(DomainError):
+    status_code = 404
+    code = "deal_risk_not_computed"
+
+    def __init__(self) -> None:
+        super().__init__("No forecast has been stored for this deal yet.")
+
+
+def per_user_hour(settings: Settings) -> int:
+    return settings.deal_risk_recompute_per_user_hour
 
 
 def _require(principal: Principal) -> uuid.UUID:
@@ -85,9 +106,19 @@ def _store(
 
 
 def snapshot_on_demand(
-    session: Session, principal: Principal, opp_id: uuid.UUID, now: datetime
+    session: Session,
+    principal: Principal,
+    opp_id: uuid.UUID,
+    now: datetime,
+    *,
+    per_user_hour: int = 30,
 ) -> DealRiskSnapshot:
     _require(principal)
+    if principal.user_id is not None and (
+        repository.count_on_demand_since(session, principal.user_id, now - timedelta(hours=1))
+        >= per_user_hour
+    ):
+        raise RateLimitedError
     risk = compute(session, principal, opp_id, now)  # 404 when not readable or not open
     snapshot = _store(
         session, principal, opp_id, risk, source="on_demand", requested_by=principal.user_id
@@ -111,6 +142,33 @@ def latest_snapshot(
     if not sales_api.is_readable_opportunity(session, principal, opp_id):
         raise signals.DealNotFoundError
     return repository.latest(session, tenant_id, opp_id)
+
+
+def history(
+    session: Session, principal: Principal, opp_id: uuid.UUID, limit: int
+) -> list[DealRiskSnapshot]:
+    """Stored snapshots of a deal this person may read, newest first (else not found)."""
+    tenant_id = _require(principal)
+    if not sales_api.is_readable_opportunity(session, principal, opp_id):
+        raise signals.DealNotFoundError
+    return repository.history(session, tenant_id, opp_id, limit)
+
+
+def list_latest(
+    session: Session, principal: Principal, *, level: str | None, limit: int, offset: int
+) -> tuple[list[DealRiskSnapshot], int, dict[uuid.UUID, sales_api.DealLabel]]:
+    """The newest snapshot of every open deal this person may read, highest score first."""
+    tenant_id = _require(principal)
+    rows, total = repository.latest_per_deal(
+        session,
+        tenant_id,
+        sales_api.readable_open_deal_ids(principal),
+        level=level,
+        limit=limit,
+        offset=offset,
+    )
+    labels = sales_api.deal_labels(session, principal, [r.opportunity_id for r in rows])
+    return rows, total, labels
 
 
 def run_nightly(session: Session, now: datetime, *, tenant_id: uuid.UUID) -> int:

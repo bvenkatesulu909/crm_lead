@@ -22,6 +22,7 @@ from app.modules.custom_agents.router import router as custom_agents_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.deal_desk.router import research_router as account_research_router
 from app.modules.deal_desk.router import router as deal_desk_router
+from app.modules.deal_risk.router import router as deal_risk_router
 from app.modules.documents.router import portal_router as portal_documents_router
 from app.modules.documents.router import router as documents_router
 from app.modules.identity.onboarding_router import (
@@ -96,6 +97,7 @@ api_router.include_router(custom_agents_router)
 api_router.include_router(lead_agent_router)
 api_router.include_router(deal_desk_router)
 api_router.include_router(account_research_router)
+api_router.include_router(deal_risk_router)
 api_router.include_router(workflows_router)
 api_router.include_router(reports_router)
 api_router.include_router(leads_router)

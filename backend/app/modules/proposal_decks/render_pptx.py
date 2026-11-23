@@ -30,7 +30,7 @@ from pptx.util import Inches, Pt
 
 from app.modules.branding import api as branding_api
 from app.modules.proposal_decks import rules
-from app.modules.proposal_decks.data import DeckData, DeckLine
+from app.modules.proposal_decks.data import MAX_DECK_PHOTOS, DeckData, DeckLine, DeckPhoto
 
 FONT = "Calibri"
 SLIDE_W, SLIDE_H = 13.333, 7.5  # inches, 16:9
@@ -191,6 +191,39 @@ class _Deck:
         self.text(slide, MARGIN, 1.5, BODY_W, 5.2, self.d.summary or "", size=20, min_size=11)
         return slide
 
+    def photos_slide(self) -> Slide:
+        """Up to four adjusted property photos in a grid, each with its fixed caption (ADR 0039)."""
+        from PIL import Image
+
+        slide = self.new_slide()
+        self.heading(slide, "The property")
+        shown: list[DeckPhoto] = list(self.d.photos[:MAX_DECK_PHOTOS])
+        columns = 1 if len(shown) == 1 else 2
+        rows = -(-len(shown) // columns)
+        gap, top0, area_h, caption_h = 0.3, 1.5, 5.2, 0.3
+        cell_w = (BODY_W - gap * (columns - 1)) / columns
+        cell_h = (area_h - gap * (rows - 1)) / rows
+        for index, photo in enumerate(shown):
+            column, row = index % columns, index // columns
+            left = MARGIN + column * (cell_w + gap)
+            top = top0 + row * (cell_h + gap)
+            with Image.open(io.BytesIO(photo.jpeg)) as image:
+                width, height = image.size
+            scale = min(cell_w / width, (cell_h - caption_h) / height)
+            w, h = width * scale, height * scale
+            slide.shapes.add_picture(
+                io.BytesIO(photo.jpeg),
+                Inches(left + (cell_w - w) / 2),
+                Inches(top),
+                Inches(w),
+                Inches(h),
+            )
+            self.text(
+                slide, left, top + h + 0.04, cell_w, caption_h, photo.caption,
+                size=10, color="5b6470", align=PP_ALIGN.CENTER,
+            )  # fmt: skip
+        return slide
+
     def propose(self, chunk: list[DeckLine], index: int, count: int) -> Slide:
         slide = self.new_slide()
         self.heading(slide, "What we propose" + (f" ({index} of {count})" if count > 1 else ""))
@@ -334,6 +367,8 @@ class _Deck:
             framed.append(self.about())
         if (self.d.summary or "").strip():
             framed.append(self.summary_slide())
+        if self.d.photos:
+            framed.append(self.photos_slide())
         chunks = rules.pages(self.d.lines)
         for index, chunk in enumerate(chunks, start=1):
             framed.append(self.propose(chunk, index, len(chunks)))

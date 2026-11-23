@@ -2,8 +2,8 @@
 
 Design: [ADR 0039](adr/0039-property-photo-enhancer.md). This page says what is built and how it behaves.
 
-**Status:** PE1 (the image rules), PE2 (the request, the worker job, storage), PE3 (the API) and PE4
-(the screens) are built. Decks and brochures do not use the copies yet (PE5).
+**Status:** PE1 (the image rules), PE2 (the request, the worker job, storage), PE3 (the API), PE4 (the
+screens) and PE5 (photos in proposal decks) are built.
 
 ## 1. What it does, in plain words
 
@@ -113,8 +113,25 @@ stable code (`photo_operation_too_strong`, `photo_operation_unknown`, `photo_pre
   `/photos/copies/<id>/download`); the token stays on the server. Pictures reach the page through the
   signed links of ADR 0025.
 
-## 9. Not built yet
+## 9. Photos in proposal decks (PE5)
 
-* PE5: decks and brochures using a copy with the fixed caption. PE6: final docs and gate tests.
+* A sales person ticks **Use in proposal decks** on a finished copy (the Adjusted copies list, or
+  `PATCH /api/v1/photo-enhancer/enhancements/{id}` with `{"in_decks": true}`). Nothing is put in a deck
+  that nobody chose: a new copy starts unchosen. Only a finished copy can be chosen (409 otherwise), and the
+  choice is audited (`photo.deck_choice`).
+* When a deck is made (PDF or PowerPoint) the worker adds a **"The property" slide**, after "About us" and
+  "Why this proposal" and before "What we propose", with the chosen copies whose original photo is on the
+  quote's account or deal - at most four, newest first, in a grid, each with the fixed line
+  "Photo adjusted for brightness and colour". With nothing chosen there is no such slide.
+* The deck draws a copy only if its file still carries the "adjusted copy" note the enhancer wrote
+  (`rules.has_label`); a copy whose file is missing, damaged or without the note is skipped, never fatal.
+* A photo chosen on another customer's account or deal never reaches this quote's deck.
+* Brochures: the CRM does not generate brochures (property brochures are uploaded files read by the
+  knowledge base), so there is nothing to add a photo to there; the rule for any future generator is the same
+  (only chosen, labelled copies, with the fixed caption).
+
+## 10. Not built yet
+
+* PE6: final docs and gate tests.
 * The retention rule for copies of closed deals (ADR question 4) and noise reduction.
 * Faces and number plates are not detected or blurred (ADR question 5): the warning is the only help.

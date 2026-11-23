@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 
 class EnhancementCreate(BaseModel):
@@ -16,6 +16,12 @@ class EnhancementCreate(BaseModel):
 
     document_id: uuid.UUID
     operations: dict[str, Any] = Field(default_factory=dict)
+
+
+class DeckChoice(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    in_decks: StrictBool
 
 
 class EnhancementRead(BaseModel):
@@ -30,6 +36,7 @@ class EnhancementRead(BaseModel):
     width: int | None
     height: int | None
     size_bytes: int | None
+    in_decks: bool
     created_at: datetime
     finished_at: datetime | None
 

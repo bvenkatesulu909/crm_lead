@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState, useTransition } from "react";
 
-import { deleteEnhancement } from "@/app/(app)/photos/actions";
+import { chooseForDecks, deleteEnhancement } from "@/app/(app)/photos/actions";
 import { ActionDialog } from "@/components/action-dialog";
 import { buttonClass } from "@/components/ui";
 import { initialDialogState } from "@/lib/dialog-state";
@@ -15,6 +15,38 @@ import {
   isWorking,
   type Enhancement,
 } from "@/lib/photo-enhancer";
+
+/** "Use in proposal decks": the sales person's choice, kept on the server (ADR 0039, PE5). */
+function DeckChoice({ copy }: { copy: Enhancement }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="mt-2">
+      <label className="flex items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={copy.in_decks}
+          disabled={pending}
+          onChange={(event) => {
+            const value = event.target.checked;
+            startTransition(async () => {
+              const result = await chooseForDecks(copy.id, value);
+              setError(result.error);
+              if (!result.error) router.refresh();
+            });
+          }}
+        />
+        Use in proposal decks
+      </label>
+      {error && (
+        <p role="alert" className="mt-1 text-xs text-red-700">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /**
  * The adjusted copies of one photo (ADR 0039): each with an "Enhanced" badge, the list of what was
@@ -117,8 +149,10 @@ export function PhotoCopies({
                   </figure>
                 </div>
               </details>
+              {canDelete && <DeckChoice copy={copy} />}
               <p className="mt-2 text-xs text-slate-500">
-                In decks and brochures this copy carries the line “{caption}”.{" "}
+                In decks this copy carries the line “{caption}”. A copy is put
+                in a deck only when “Use in proposal decks” is ticked.{" "}
                 {PEOPLE_WARNING}
               </p>
             </>

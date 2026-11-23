@@ -79,3 +79,21 @@ def count_started(
     if user_id is not None:
         statement = statement.where(PhotoEnhancement.requested_by_user_id == user_id)
     return int(session.scalar(statement) or 0)
+
+
+def list_in_decks(
+    session: Session, tenant_id: uuid.UUID, *, limit: int = 100
+) -> list[PhotoEnhancement]:
+    """Finished copies chosen for decks, newest first."""
+    return list(
+        session.scalars(
+            select(PhotoEnhancement)
+            .where(
+                PhotoEnhancement.tenant_id == tenant_id,
+                PhotoEnhancement.status == "ready",
+                PhotoEnhancement.in_decks.is_(True),
+            )
+            .order_by(PhotoEnhancement.created_at.desc(), PhotoEnhancement.id)
+            .limit(limit)
+        ).all()
+    )

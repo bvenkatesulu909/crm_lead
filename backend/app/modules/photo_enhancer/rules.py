@@ -201,6 +201,17 @@ def operations_to_dict(ops: Operations) -> dict[str, Any]:
     }
 
 
+def has_label(jpeg: bytes) -> bool:
+    """Does this file still carry the "adjusted copy" note the enhancer writes? A deck only draws a
+    photo that does (ADR 0039, PE4)."""
+    try:
+        with Image.open(io.BytesIO(jpeg)) as image:
+            note = image.getexif().get(_EXIF_IMAGE_DESCRIPTION)
+            return image.format == "JPEG" and note == FILE_LABEL
+    except (UnidentifiedImageError, OSError, ValueError):
+        return False
+
+
 def describe(ops: Operations) -> list[str]:
     """The list shown beside an enhanced copy ("what was done"), in plain words."""
     lines: list[str] = []

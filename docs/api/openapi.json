@@ -6469,6 +6469,20 @@
         "title": "DashboardRead",
         "type": "object"
       },
+      "DeckChoice": {
+        "additionalProperties": false,
+        "properties": {
+          "in_decks": {
+            "title": "In Decks",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "in_decks"
+        ],
+        "title": "DeckChoice",
+        "type": "object"
+      },
       "DeckLinkRead": {
         "description": "Open ``url`` within a minute: it fetches the file (PDF or PowerPoint) from the file store.",
         "properties": {
@@ -7274,6 +7288,10 @@
             "title": "Id",
             "type": "string"
           },
+          "in_decks": {
+            "title": "In Decks",
+            "type": "boolean"
+          },
           "operations": {
             "additionalProperties": true,
             "title": "Operations",
@@ -7321,6 +7339,7 @@
           "width",
           "height",
           "size_bytes",
+          "in_decks",
           "created_at",
           "finished_at"
         ],
@@ -36445,6 +36464,102 @@
           }
         ],
         "summary": "Delete an adjusted copy (never the original photo)",
+        "tags": [
+          "photo-enhancer"
+        ]
+      },
+      "patch": {
+        "operationId": "choose_for_decks_api_v1_photo_enhancer_enhancements__enhancement_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "enhancement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Enhancement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeckChoice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnhancementRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Choose (or stop choosing) a finished copy for proposal decks",
         "tags": [
           "photo-enhancer"
         ]

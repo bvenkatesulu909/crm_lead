@@ -20,6 +20,7 @@ from app.modules.identity.api import require_any_permission
 from app.modules.photo_enhancer import rules, service
 from app.modules.photo_enhancer.schemas import (
     CopyLink,
+    DeckChoice,
     EnhancementCreate,
     EnhancementPage,
     EnhancementRead,
@@ -96,6 +97,20 @@ def list_for_photo(document_id: uuid.UUID, principal: Reader, session: Db) -> En
     return EnhancementPage(
         items=[EnhancementRead.model_validate(r) for r in rows], caption=rules.DECK_CAPTION
     )
+
+
+@router.patch(
+    "/enhancements/{enhancement_id}",
+    summary="Choose (or stop choosing) a finished copy for proposal decks",
+    responses=problem_responses(404, 409, 422),
+)
+def choose_for_decks(
+    enhancement_id: uuid.UUID, body: DeckChoice, principal: Enhancer, session: Db
+) -> EnhancementRead:
+    row = service.set_in_decks(session, principal, enhancement_id, body.in_decks)
+    result = EnhancementRead.model_validate(row)
+    session.commit()
+    return result
 
 
 @router.get(

@@ -35,7 +35,7 @@ always give the same answer.
 
 ## What is stored and read (DR2)
 
-* **`deal_risk_snapshots`** (migration 0073): one row per forecast - level, score, rules version,
+* **`deal_risk_snapshots`** (migration 0074): one row per forecast - level, score, rules version,
   factors (codes, sentences, points), the unknown signals, `source` (`nightly` or `on_demand`) and,
   for on-demand, who asked. Row-level security (forced), and **insert-only**: a trigger refuses every
   UPDATE and a DELETE of a row younger than 365 days, and the application role has no UPDATE or

@@ -58,6 +58,7 @@ from app.modules.sales.router import router as opportunities_router
 from app.modules.site_brief.router import router as site_brief_router
 from app.modules.support.router import portal_router as portal_tickets_router
 from app.modules.support.router import router as tickets_router
+from app.modules.units.router import router as units_router
 from app.modules.voice.router import router as voice_router
 from app.modules.webcheck.router import router as webcheck_router
 from app.modules.workflows.router import router as workflows_router
@@ -89,6 +90,7 @@ api_router.include_router(payment_links_webhook_router)
 api_router.include_router(public_chat_staff_router)
 api_router.include_router(approvals_router)
 api_router.include_router(agents_router)
+api_router.include_router(units_router)
 api_router.include_router(webcheck_router)
 api_router.include_router(qualifier_router)
 api_router.include_router(custom_agents_router)

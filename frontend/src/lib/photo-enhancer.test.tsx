@@ -490,13 +490,15 @@ describe("PhotoWorkbench", () => {
   function previewOk() {
     URL.createObjectURL = vi.fn(() => "blob:preview");
     URL.revokeObjectURL = vi.fn();
+    // A plain stand-in, not `new Response(new Blob(...))`: jsdom's Blob is not Node's, and whether
+    // Node's Response accepts it as a body differs between Node versions (it broke CI on Node 22).
     globalThis.fetch = vi.fn(async () =>
-      Promise.resolve(
-        new Response(new Blob(["x"], { type: "image/jpeg" }), {
-          status: 200,
-          headers: { "Content-Type": "image/jpeg" },
-        }),
-      ),
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "Content-Type": "image/jpeg" }),
+        blob: async () => new Blob(["x"], { type: "image/jpeg" }),
+      }),
     ) as unknown as typeof fetch;
   }
 

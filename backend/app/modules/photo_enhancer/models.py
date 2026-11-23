@@ -1,4 +1,4 @@
-"""One row per request for an adjusted copy of a photo (ADR 0039, migration 0073).
+"""One row per request for an adjusted copy of a photo (ADR 0039, migration 0074).
 
 The row keeps exactly what the person asked for (``operations``) and, once the worker has made the
 copy, what was done in plain words (``applied``), its size and the copy itself (a document with

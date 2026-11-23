@@ -23,6 +23,7 @@ from app.modules.buyer_memory import api as buyer_memory_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 from app.modules.proposal_decks import api as proposal_decks_api
+from app.modules.video_brief import api as video_brief_api
 
 
 class _Payload(BaseModel):
@@ -49,6 +50,20 @@ class DeckSummaryPayload(_Payload):
     """The text of a quote deck's "why this proposal" slide (ADR 0032 Amendment A, PD7)."""
 
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+class VideoScriptPayload(_Payload):
+    """A drafted script for a lead's buyer video (ADR 0041, VB5): the choices it was written for
+    and the lines. Nothing else; the lead is the target."""
+
+    language: Literal["en", "hi", "te"]
+    tone: Literal["warm", "professional", "brisk"]
+    goal: Literal["introduce", "follow_up", "after_visit", "explain_quote", "revive"]
+    length_seconds: Literal[30, 60, 90]
+    lines: Annotated[
+        list[Annotated[str, StringConstraints(min_length=1, max_length=300)]],
+        Field(min_length=1, max_length=12),
+    ]
 
 
 class BuyerMemoryAssumptionPayload(_Payload):
@@ -276,6 +291,45 @@ def _observe_summary(
     return [Change("deck_summary", None, now)]
 
 
+def _check_script(session: Session, proposal: Proposal, payload: VideoScriptPayload) -> str | None:
+    return video_brief_api.script_problem(payload.lines, payload.length_seconds)
+
+
+def _run_script(
+    session: Session, me: Principal, proposal: Proposal, payload: VideoScriptPayload
+) -> Ran:
+    if proposal.action_id is None:
+        raise LookupError("a script is saved only from a stored proposal")
+    script_id = video_brief_api.add_approved_script(
+        session,
+        me,
+        proposal.target_id,
+        language=payload.language,
+        tone=payload.tone,
+        goal=payload.goal,
+        length_seconds=payload.length_seconds,
+        lines=payload.lines,
+        proposal_id=proposal.action_id,
+    )
+    return Ran("Video script saved.", script_id)
+
+
+def _spec_script(
+    session: Session, me: Principal, proposal: Proposal, payload: VideoScriptPayload
+) -> Plan:
+    now = video_brief_api.latest_script_lines(session, proposal.tenant_id, proposal.target_id)
+    return Plan(
+        [Change("video_script", now, list(payload.lines))], {"lead_id": str(proposal.target_id)}
+    )
+
+
+def _observe_script(
+    session: Session, me: Principal, proposal: Proposal, payload: VideoScriptPayload, ran: Ran
+) -> list[Change]:
+    now = video_brief_api.latest_script_lines(session, proposal.tenant_id, proposal.target_id)
+    return [Change("video_script", None, now)]
+
+
 def _check_memory(
     session: Session, proposal: Proposal, payload: BuyerMemoryAssumptionPayload
 ) -> str | None:
@@ -381,6 +435,18 @@ KINDS: dict[str, ActionKind] = {
             _run_memory,
             _spec_memory,
             _observe_memory,
+        ),
+        ActionKind(
+            "lead.video_script",
+            ("lead",),
+            VideoScriptPayload,
+            lambda payload: (
+                "Save a drafted script for this buyer's video (nothing is sent to the buyer)"
+            ),
+            _check_script,
+            _run_script,
+            _spec_script,
+            _observe_script,
         ),
         ActionKind(
             "quote.deck_summary",

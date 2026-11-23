@@ -37,6 +37,7 @@ from app.modules.calls import api as calls_api
 from app.modules.communications import api as communications_api
 from app.modules.contracts import api as contracts_api
 from app.modules.deal_desk import api as deal_desk_api
+from app.modules.deal_risk import api as deal_risk_api
 from app.modules.documents import api as documents_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
@@ -160,6 +161,12 @@ def run_schedules(
                 bind_tenant(session, tenant_id)
                 count += deal_desk_api.delete_expired(session, now, tenant_id=tenant_id)
                 count += deal_desk_api.delete_expired_briefs(session, now, tenant_id=tenant_id)
+            # Deal risk (ADR 0037): about one snapshot per open deal per day, and snapshots older
+            # than the retention deleted. Cheap to repeat: deals already done today are skipped.
+            with session_factory() as session, session.begin():
+                bind_tenant(session, tenant_id)
+                count += deal_risk_api.run_nightly(session, now, tenant_id=tenant_id)
+                count += deal_risk_api.delete_expired(session, now, tenant_id=tenant_id)
             # Direct uploads a day old (ADR 0025): the row and any pending file left behind.
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)

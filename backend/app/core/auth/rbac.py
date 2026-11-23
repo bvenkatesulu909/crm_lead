@@ -198,6 +198,9 @@ class Permission(StrEnum):
     DEAL_DESK_RUN = "deal_desk:run"
     # Account research (ADR 0024): a one-page brief about an account the person may read.
     ACCOUNT_RESEARCH_RUN = "account_research:run"
+    # Deal risk forecast (ADR 0037): sales managers and administrators read the risk of the deals
+    # they may read. Sales agents, support staff and portal customers do not see it in v1.
+    DEAL_RISK_READ = "deal_risk:read"
 
 
 _P = Permission
@@ -221,6 +224,7 @@ _SALES_ALL = frozenset(
         _P.CALL_READ, _P.CALL_WRITE, _P.CALL_NOTES_RUN,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
         _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN, _P.CUSTOM_AGENT_RUN,
+        _P.DEAL_RISK_READ,
     }
 )  # fmt: skip
 

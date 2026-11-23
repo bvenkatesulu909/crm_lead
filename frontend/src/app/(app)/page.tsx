@@ -34,7 +34,8 @@ import {
   parseDashboardFilters,
   type DashboardFilters,
 } from "@/lib/dashboard";
-import { canReadLeads, canWriteLeads } from "@/lib/permissions";
+import { DealRiskTiles } from "@/components/deal-risk-tiles";
+import { canReadDealRisk, canReadLeads, canWriteLeads } from "@/lib/permissions";
 import { ModuleGrid } from "@/components/module-grid";
 import { modulesFor } from "@/lib/modules";
 import { apiFetch, getMe } from "@/lib/server/api";
@@ -153,7 +154,14 @@ async function LeadOverview({ me }: { me: Me }) {
   );
 }
 
-async function RoleDashboard({ filters }: { filters: DashboardFilters }) {
+async function RoleDashboard({
+  filters,
+  showRisk,
+}: {
+  filters: DashboardFilters;
+  /** Managers and administrators see the deal risk tiles (ADR 0037). */
+  showRisk: boolean;
+}) {
   let data: Dashboard;
   try {
     data = await apiFetch<Dashboard>(`/dashboard?${dashboardQuery(filters)}`);
@@ -181,6 +189,7 @@ async function RoleDashboard({ filters }: { filters: DashboardFilters }) {
       />
       <FilterBar filters={filters} view={data.view} reps={reps} />
       <ExecutiveTiles data={data} />
+      {showRisk && data.view !== "representative" && <DealRiskTiles />}
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
         {data.view === "representative" ? "My sales" : "Sales"}
       </h2>
@@ -218,6 +227,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
       {hasDashboard(me) ? (
         <RoleDashboard
           filters={parseDashboardFilters(await searchParams, new Date())}
+          showRisk={canReadDealRisk(me)}
         />
       ) : canReadLeads(me) ? (
         <LeadOverview me={me} />

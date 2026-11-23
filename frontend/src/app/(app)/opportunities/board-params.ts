@@ -8,12 +8,17 @@ const one = (v: string | string[] | undefined) =>
 export function boardQuery(raw: Raw): {
   q: string;
   owner: string;
+  /** Show only deals whose newest forecast has this level (ADR 0037); "" = all. */
+  risk: "low" | "medium" | "high" | "";
   query: string;
 } {
   const q = one(raw.q).trim().slice(0, 100);
   const owner = UUID.test(one(raw.owner)) ? one(raw.owner).toLowerCase() : "";
+  const wanted = one(raw.risk);
+  const risk =
+    wanted === "low" || wanted === "medium" || wanted === "high" ? wanted : "";
   const query = new URLSearchParams({ limit: "50", closed_days: "30" });
   if (q) query.set("q", q);
   if (owner) query.set("owner_id", owner);
-  return { q, owner, query: query.toString() };
+  return { q, owner, risk, query: query.toString() };
 }

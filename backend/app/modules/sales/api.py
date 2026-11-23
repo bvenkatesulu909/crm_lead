@@ -47,6 +47,11 @@ __all__ = [
     "pipeline_metrics",
     "transfer_open_opportunities",
     "won_deals_by_account",
+    "RiskInputs",
+    "WonHistory",
+    "open_deal_ids",
+    "risk_inputs",
+    "won_history",
 ]
 
 
@@ -320,3 +325,112 @@ def export_table(
         status=Opportunity.stage,
         filters=filters,
     )
+
+
+@dataclass(frozen=True)
+class RiskInputs:
+    """What the deal risk forecast (ADR 0037) needs from the deal itself: figures, dates and
+    codes. Free text (the next step) is reduced to "is there one"."""
+
+    id: uuid.UUID
+    account_id: uuid.UUID
+    stage: str
+    amount: Decimal | None
+    currency: str
+    expected_close_date: date | None
+    created_at: datetime
+    stage_entered_at: datetime
+    has_next_step: bool
+    has_primary_contact: bool
+    stage_went_back: bool
+
+
+def risk_inputs(session: Session, principal: Principal, opp_id: uuid.UUID) -> RiskInputs | None:
+    """The deal's risk inputs for an OPEN deal this person may read, else None."""
+    deal = repository.get_readable(session, principal, opp_id)
+    if deal is None or deal.stage not in OPEN_STAGES:
+        return None
+    changes = list(repository.stage_changes(session, deal))  # newest first
+    order = {stage: i for i, stage in enumerate(OPEN_STAGES)}
+    went_back = any(
+        c.from_stage in order and c.to_stage in order and order[c.to_stage] < order[c.from_stage]
+        for c in changes
+    )
+    return RiskInputs(
+        id=deal.id,
+        account_id=deal.account_id,
+        stage=deal.stage,
+        amount=deal.amount,
+        currency=deal.currency,
+        expected_close_date=deal.expected_close_date,
+        created_at=deal.created_at,
+        stage_entered_at=changes[0].changed_at if changes else deal.created_at,
+        has_next_step=bool(deal.next_step and deal.next_step.strip()),
+        has_primary_contact=deal.primary_contact_id is not None,
+        stage_went_back=went_back,
+    )
+
+
+def open_deal_ids(session: Session, principal: Principal) -> list[uuid.UUID]:
+    """The open deals this person may read, oldest first (the nightly forecast walks them)."""
+    return list(
+        session.scalars(
+            select(Opportunity.id)
+            .where(
+                Opportunity.stage.in_(OPEN_STAGES),
+                Opportunity.deleted_at.is_(None),
+                readable_opportunities(principal),
+            )
+            .order_by(Opportunity.created_at, Opportunity.id)
+        ).all()
+    )
+
+
+WON_HISTORY_LIMIT = 500
+
+
+@dataclass(frozen=True)
+class WonHistory:
+    """The organisation's recently WON deals, for "what is usual here": amounts per currency and,
+    per open stage, how many days won deals spent in it."""
+
+    amounts: dict[str, list[Decimal]]
+    days_in_stage: dict[str, list[int]]
+
+
+def won_history(session: Session, principal: Principal) -> WonHistory:
+    """Recently won deals this person may read. Only figures leave this function."""
+    won = session.execute(
+        select(Opportunity.id, Opportunity.amount, Opportunity.currency)
+        .where(Opportunity.stage == "closed_won", readable_opportunities(principal))
+        .order_by(Opportunity.closed_at.desc())
+        .limit(WON_HISTORY_LIMIT)
+    ).all()
+    amounts: dict[str, list[Decimal]] = {}
+    for row in won:
+        if row.amount is not None:
+            amounts.setdefault(row.currency, []).append(row.amount)
+    days: dict[str, list[int]] = {}
+    if won:
+        changes = session.execute(
+            select(
+                OpportunityStageChange.opportunity_id,
+                OpportunityStageChange.from_stage,
+                OpportunityStageChange.changed_at,
+            )
+            .where(OpportunityStageChange.opportunity_id.in_([r.id for r in won]))
+            .order_by(
+                OpportunityStageChange.opportunity_id,
+                OpportunityStageChange.changed_at,
+                OpportunityStageChange.seq,
+            )
+        ).all()
+        previous: dict[uuid.UUID, datetime] = {}
+        for change in changes:
+            before = previous.get(change.opportunity_id)
+            if before is not None and change.from_stage in OPEN_STAGES:
+                days.setdefault(change.from_stage, []).append(
+                    max((change.changed_at - before).days, 0)
+                )
+            previous[change.opportunity_id] = change.changed_at
+    return WonHistory(amounts=amounts, days_in_stage=days)

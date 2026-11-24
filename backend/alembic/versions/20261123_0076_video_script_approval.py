@@ -1,8 +1,8 @@
 """Approved video scripts remember their proposal; the approval queue learns the video drafter
 (ADR 0041, VB5)
 
-Revision ID: 0074
-Revises: 0073
+Revision ID: 0076
+Revises: 0075
 Create Date: 2026-11-23
 
 ``video_scripts`` gets ``proposal_id`` (the approved proposal an ``ai_draft`` script came from; a
@@ -16,8 +16,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0074"
-down_revision: str | None = "0073"
+revision: str = "0076"
+down_revision: str | None = "0075"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

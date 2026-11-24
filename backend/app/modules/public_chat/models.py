@@ -74,6 +74,8 @@ class PublicChatSession(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, B
     # Estimated seconds of speech (heard + spoken) and spoken turns, for the per-call limits.
     voice_seconds: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     voice_turns: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    # The visitor asked for a callback (a proposal a manager approves): at most one a call.
+    callback_requested_at: Mapped[datetime | None] = mapped_column()
 
 
 class PublicChatMessage(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):

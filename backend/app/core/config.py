@@ -132,6 +132,10 @@ class Settings(BaseSettings):
     # words change. The page sends the version it showed and it is stored with the conversation.
     receptionist_notice_version: int = Field(default=1, ge=1, le=10_000)
     # One spoken turn is a few seconds of audio; anything bigger is refused unread.
+    # Callback requests (proposals a manager approves): how many may wait at once for the whole
+    # website (they all come from the Automation identity) and how many per hour.
+    receptionist_callbacks_waiting: int = Field(default=100, ge=1, le=10_000)
+    receptionist_callbacks_per_hour: int = Field(default=60, ge=1, le=10_000)
     receptionist_max_audio_bytes: int = Field(default=2 * 1024 * 1024, ge=1024, le=10 * 1024 * 1024)
     # Server-side speech gateway (STT/TTS), OpenAI-compatible audio API. Disabled without a key.
     voice_enabled: bool = True

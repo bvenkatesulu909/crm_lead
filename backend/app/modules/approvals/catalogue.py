@@ -339,6 +339,81 @@ def _describe_task(payload: TaskPayload) -> str:
     return f"Plan a task: {payload.subject} (due in {payload.due_in_days} days)"
 
 
+# --- a callback the website visitor asked for (ADR 0038, VR3) ---------------------------------
+
+CALLBACK_DAYS = {"today": 0, "tomorrow": 1, "day_after": 2}
+CALLBACK_WINDOWS = ("morning", "afternoon", "evening")
+CALLBACK_LANGUAGES = {"en": "English", "hi": "Hindi", "te": "Telugu"}
+
+
+class CallbackPayload(_Payload):
+    """Only fixed words: nothing the visitor or the model typed ends up in the task."""
+
+    day: Literal["today", "tomorrow", "day_after"]
+    window: Literal["morning", "afternoon", "evening"]
+    language: Literal["en", "hi", "te"]
+
+
+def callback_subject(payload: CallbackPayload) -> str:
+    day = payload.day.replace("_", " ")
+    day = "the day after tomorrow" if payload.day == "day_after" else day
+    return (
+        f"Call back the website visitor {day} in the {payload.window}, "
+        f"in {CALLBACK_LANGUAGES[payload.language]}"
+    )
+
+
+def _describe_callback(payload: CallbackPayload) -> str:
+    return "Call the website visitor back: " + callback_subject(payload).split("visitor ", 1)[1]
+
+
+def _callback_owner(session: Session, me: Principal, proposal: Proposal) -> uuid.UUID:
+    """The lead's owner, else the person who approves (a manager, who can hand it on)."""
+    snapshot = leads_api.lead_snapshot(session, me, proposal.target_id)
+    if snapshot is not None and snapshot.owner_id is not None:
+        return snapshot.owner_id
+    if me.user_id is None:
+        raise LookupError("only a person can approve")
+    return me.user_id
+
+
+def _run_callback(
+    session: Session, me: Principal, proposal: Proposal, payload: CallbackPayload
+) -> Ran:
+    created = activities_api.create_task(
+        session,
+        me,
+        subject=callback_subject(payload),
+        due_at=datetime.now(UTC) + timedelta(days=CALLBACK_DAYS[payload.day]),
+        assignee_id=_callback_owner(session, me, proposal),
+        lead_id=proposal.target_id,
+        account_id=None,
+        contact_id=None,
+        opportunity_id=None,
+    )
+    return Ran("Callback task created.", created)
+
+
+def _spec_callback(
+    session: Session, me: Principal, proposal: Proposal, payload: CallbackPayload
+) -> Plan:
+    task = {
+        "subject": callback_subject(payload),
+        "due_in_days": CALLBACK_DAYS[payload.day],
+        "assignee_id": str(_callback_owner(session, me, proposal)),
+    }
+    return Plan([Change("task", None, task)], _basis(_lead(session, me, proposal)))
+
+
+def _observe_callback(
+    session: Session, me: Principal, proposal: Proposal, payload: CallbackPayload, ran: Ran
+) -> list[Change]:
+    seen = None
+    if ran.created_id is not None:
+        seen = activities_api.task_snapshot(session, me, ran.created_id, datetime.now(UTC).date())
+    return [Change("task", None, seen)]
+
+
 KINDS: dict[str, ActionKind] = {
     kind.name: kind
     for kind in (
@@ -371,6 +446,16 @@ KINDS: dict[str, ActionKind] = {
             _run_task,
             _spec_task,
             _observe_task,
+        ),
+        ActionKind(
+            "lead.request_callback",
+            ("lead",),
+            CallbackPayload,
+            _describe_callback,
+            _no_check,
+            _run_callback,
+            _spec_callback,
+            _observe_callback,
         ),
         ActionKind(
             "buyer_memory.add_assumption",

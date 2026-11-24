@@ -155,6 +155,7 @@ async def public_voice_turn(
             consent_version=consent_version,
             visitor_ip=ip,
             heard_seconds=heard_seconds,
+            voice_tools=service.VoiceTools(request.app.state.embedder, request.app.state.reranker),
         )
     except service.MessageRefusedError:
         # The audio was recognised (and paid for) even though the words are refused.

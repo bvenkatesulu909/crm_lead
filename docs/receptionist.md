@@ -82,9 +82,35 @@ The lead's "Website chat" transcript (`GET /public-chat/leads/{id}/transcript`) 
 `channel` (`text` or `web_voice`) and the `voice_seconds`. The AI agents page lists the **Voice
 receptionist** with its switch, budget and tool filter like every other agent.
 
+## 5a. Cited answers and callbacks (VR3)
+
+The receptionist now has three abilities, and only the spoken channel has the last two (the typed website
+chat keeps its single tool):
+
+* **`search_knowledge`** (one field, `question`, 3 to 300 characters): a cited answer built only from the
+  organisation's **customer-visible documents that belong to no account** (the visitor is searched as an
+  anonymous customer, so internal documents, account documents and other organisations' documents are never
+  reachable). It goes through the same machinery as every cited answer (citations validated, RERA numbers and
+  amounts must be in a cited source, the fixed "not a live check of the RERA registry" line). When nothing is
+  found the tool says so and the receptionist offers a callback. Without an embedder the tool is not offered.
+* **The spoken answer is held to the same rule.** After the model's final answer, a RERA number or an
+  amount that no source of this turn holds, and that the visitor did not say themselves (their own budget may
+  be read back), is replaced by a fixed sentence ("I do not have that detail confirmed from our documents...
+  shall I ask the team to call you back?"). This catches a price from memory even when no search was made.
+* **`request_callback`** (`day`: today / tomorrow / day_after, `window`: morning / afternoon / evening): a
+  **proposal** of the new kind `lead.request_callback` in the approval queue, never a booking. Only fixed
+  words go into it: the language is the one the visitor chose on the page, the reason is a fixed sentence, and
+  the task a manager's approval creates is built from fixed words ("Call back the website visitor tomorrow in the
+  morning, in Telugu"), assigned to the lead's owner or, if there is none, to the manager who approved it.
+  It needs the saved lead, allows **one per call**, the Sentinel and the usual approval rules apply (nobody
+  approves their own proposal; the proposer is the website's Automation identity), and at most
+  `CRM_RECEPTIONIST_CALLBACKS_WAITING` (100) may wait at once and `CRM_RECEPTIONIST_CALLBACKS_PER_HOUR` (60) be
+  made per hour for the whole website. Migration 0074 allows the author `receptionist` and adds
+  `public_chat_sessions.callback_requested_at`.
+
 ## 6. Not built yet
 
-The page and microphone (VR4), cited answers and the callback proposal (VR3), the evaluation cases
+The page and microphone (VR4), the evaluation cases
 (VR5), metrics for calls and refusals, a streaming answer sentence by sentence (the reply is spoken
 in one piece in v1; replies are at most two short sentences), and the phone number channel (its own
 ADR).

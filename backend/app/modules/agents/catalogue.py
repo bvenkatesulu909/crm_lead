@@ -85,7 +85,7 @@ AGENTS: dict[str, AgentDef] = {
                 "model tokens and server speech minutes. Off until switched on."
             ),
             owner_role="tenant_admin",
-            tools=("save_lead",),
+            tools=("request_callback", "save_lead", "search_knowledge"),
             default_enabled=False,
         ),
         AgentDef(

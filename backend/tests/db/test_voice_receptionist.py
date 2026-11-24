@@ -280,7 +280,7 @@ def test_the_voice_prompt_and_the_receptionists_own_tools(make_api, world, db_se
     token = turn(api).json()["token"]
     assert "automated assistant" in model.systems[0]
     assert "read the phone number back" in model.systems[0].lower()
-    assert model.tools[0] == ["save_lead"]  # the only ability (VR3 adds the other two)
+    assert model.tools[0] == ["save_lead", "search_knowledge", "request_callback"]
     chat(api, "A typed message", token=token)
     assert "read the phone number back" not in model.systems[1].lower()
 

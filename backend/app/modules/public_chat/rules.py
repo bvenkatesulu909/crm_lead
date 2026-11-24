@@ -75,8 +75,12 @@ Start by saying that you are an automated assistant of {organisation}. Never cla
 person; if asked, say you are an automated assistant. Use at most two short sentences per turn,
 no lists, no symbols, no emoji. Read the phone number back digit by digit and the name back, and
 ask the visitor to confirm both BEFORE you call save_lead. If the visitor corrects you, read it
-back again. Never ask for or accept card numbers, bank details, one-time passwords or ID numbers;
-if the visitor starts saying one, tell them not to and move on."""
+back again. For any question about a project, its price, its RERA registration or availability,
+call search_knowledge first and say only what it returns; never state a price, a discount, an
+offer, an availability or a RERA number from memory, and never give legal, loan or tax advice.
+If the visitor asks for a call back and the details are saved, call request_callback with a day
+and a time of day. Never ask for or accept card numbers, bank details, one-time passwords or ID
+numbers; if the visitor starts saying one, tell them not to and move on."""
 
 # Spoken numbers (ADR 0038, VR9): a speech recogniser may write "four one one one..." as words
 # instead of digits, and the digit-based card check would not see it.
@@ -192,6 +196,70 @@ def _tool_definition() -> dict[str, Any]:
 
 
 SAVE_LEAD_TOOL = _tool_definition()
+
+
+class SearchKnowledgeArgs(BaseModel):
+    """What the model may send to search_knowledge: one question, nothing else."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=300)]
+
+
+class RequestCallbackArgs(BaseModel):
+    """What the model may send to request_callback: a day and a time of day from fixed lists. The
+    language is the one the visitor chose on the page, never the model's choice."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    day: Literal["today", "tomorrow", "day_after"]
+    window: Literal["morning", "afternoon", "evening"]
+
+
+SEARCH_KNOWLEDGE_TOOL: dict[str, Any] = {
+    "name": "search_knowledge",
+    "description": (
+        "Look up what the company has published (project brochures, policies) to answer a "
+        "visitor's question about a project, its price, its RERA registration or availability. "
+        "Returns an answer built only from those documents, or says nothing was found. Say only "
+        "what it returns; if nothing was found, say you do not have that information and offer "
+        "a callback."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {"question": {"type": "string", "minLength": 3, "maxLength": 300}},
+        "required": ["question"],
+        "additionalProperties": False,
+    },
+}
+REQUEST_CALLBACK_TOOL: dict[str, Any] = {
+    "name": "request_callback",
+    "description": (
+        "Ask for a callback from the sales team. Call it only after the visitor's details were "
+        "saved (save_lead) and the visitor asked for a call. It books nothing: a manager must "
+        "confirm. Tell the visitor the team will confirm, never that it is booked."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "day": {"type": "string", "enum": ["today", "tomorrow", "day_after"]},
+            "window": {"type": "string", "enum": ["morning", "afternoon", "evening"]},
+        },
+        "required": ["day", "window"],
+        "additionalProperties": False,
+    },
+}
+# What the voice receptionist may use (ADR 0038, VR4): three abilities, no more. The typed website
+# chat keeps its single tool.
+VOICE_TOOLS = (SAVE_LEAD_TOOL, SEARCH_KNOWLEDGE_TOOL, REQUEST_CALLBACK_TOOL)
+# Why a callback is wanted, as a fixed sentence: nothing a visitor or a model wrote goes into a
+# proposal's reason (the Sentinel and the approver read it).
+CALLBACK_REASON = "The website visitor asked, during the voice chat, for a call back from the team."
+# Said instead of an answer that holds a price or a RERA number no document backs (ADR 0038).
+VOICE_UNCITED_REPLY = (
+    "I do not have that detail confirmed from our documents. A colleague can tell you exactly: "
+    "shall I ask the team to call you back?"
+)
 
 
 def split_name(full_name: str) -> tuple[str | None, str]:

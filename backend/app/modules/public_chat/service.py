@@ -23,9 +23,11 @@ from app.core.errors import DomainError, NotFoundError
 from app.core.events import publish
 from app.core.screening import screen
 from app.modules.agents import api as agents_api
+from app.modules.approvals import api as approvals_api
 from app.modules.assistant import api as assistant_api
 from app.modules.buyer_memory import api as buyer_memory_api
 from app.modules.identity import api as identity_api
+from app.modules.knowledge import api as knowledge_api
 from app.modules.leads import api as leads_api
 from app.modules.public_chat import repository, rules
 from app.modules.public_chat.models import MESSAGE_MAX, PublicChatMessage, PublicChatSession
@@ -144,6 +146,121 @@ def _check_limits(
         raise RateLimitedError()
 
 
+@dataclass(frozen=True)
+class VoiceTools:
+    """What the spoken receptionist's knowledge search needs (the answer machinery of the knowledge
+    module). Without an embedder the receptionist has no search_knowledge tool at all."""
+
+    embedder: Any
+    reranker: Any = None
+
+
+def _offered_tools(voice: bool, voice_tools: VoiceTools | None) -> list[dict[str, Any]]:
+    if not voice:
+        return [rules.SAVE_LEAD_TOOL]
+    tools = list(rules.VOICE_TOOLS)
+    if voice_tools is None:
+        tools = [t for t in tools if t["name"] != "search_knowledge"]
+    return tools
+
+
+def _unbacked_numbers(
+    session: Session,
+    conversation: PublicChatSession,
+    answer: str,
+    source_texts: list[str],
+) -> bool:
+    """True when the spoken answer holds a RERA number or an amount that no knowledge source of this
+    turn holds and the visitor did not say themselves (their budget may be read back)."""
+    said = " ".join(
+        m.content for m in repository.all_messages(session, conversation) if m.role == "visitor"
+    )
+    return knowledge_api.unsupported_numbers(answer, source_texts, question=said) is not None
+
+
+def _search_knowledge(
+    session: Session,
+    settings: Settings,
+    voice_tools: VoiceTools,
+    raw_model: assistant_api.ChatModel,
+    tenant_id: uuid.UUID,
+    arguments: Any,
+    source_texts: list[str],
+) -> tuple[str, bool]:
+    try:
+        args = rules.SearchKnowledgeArgs.model_validate(arguments)
+    except ValidationError:
+        return "Send exactly one field, question (3 to 300 characters).", True
+    try:
+        outcome = knowledge_api.answer_for_visitor(
+            session,
+            tenant_id,
+            question=args.question,
+            settings=settings,
+            embedder=voice_tools.embedder,
+            chat_model=raw_model,
+            reranker=voice_tools.reranker,
+        )
+    except (
+        agents_api.AgentUnavailableError,
+        agents_api.AgentBudgetReachedError,
+        assistant_api.AssistantUnavailableError,
+    ):
+        return json.dumps({"found": False, "reason": "unavailable"}), False
+    if not outcome.enough or not outcome.sources:
+        return json.dumps({"found": False, "reason": outcome.reason or "not_found"}), False
+    source_texts.extend(source.text for source in outcome.sources)
+    return json.dumps({"found": True, "answer": outcome.answer}), False
+
+
+def _request_callback(
+    session: Session,
+    settings: Settings,
+    tenant_id: uuid.UUID,
+    conversation: PublicChatSession,
+    arguments: Any,
+    language: str,
+) -> tuple[str, bool]:
+    """Ask for a callback: a PROPOSAL a manager approves, never a booking. Needs the saved lead,
+    allows one per call, and puts only fixed words into the proposal."""
+    try:
+        args = rules.RequestCallbackArgs.model_validate(arguments)
+    except ValidationError:
+        return "Send exactly day (today, tomorrow, day_after) and window (morning, ...).", True
+    if conversation.lead_id is None:
+        return "Save the visitor's details first (save_lead), then ask for the callback.", True
+    if conversation.callback_requested_at is not None:
+        return json.dumps({"requested": False, "already_requested": True}), False
+    automation = identity_api.automation_principal(session, tenant_id)
+    identity_api.bind_reader(session, automation)
+    try:
+        with session.begin_nested():
+            approvals_api.propose(
+                session,
+                automation,
+                kind="lead.request_callback",
+                target_id=conversation.lead_id,
+                payload={"day": args.day, "window": args.window, "language": language},
+                reason=rules.CALLBACK_REASON,
+                agent="receptionist",
+                pending_limit=settings.receptionist_callbacks_waiting,
+                sentinel_limits=approvals_api.SentinelLimits(
+                    proposals_per_hour=settings.receptionist_callbacks_per_hour,
+                    assignments_per_hour=settings.receptionist_callbacks_per_hour,
+                    busy_record_per_day=3,
+                ),
+            )
+    except (
+        approvals_api.InvalidActionError,
+        approvals_api.LimitReachedError,
+        approvals_api.ProposalBlockedError,
+    ):
+        return "The callback could not be requested. Tell the visitor the team will call.", True
+    conversation.callback_requested_at = _now()
+    session.flush()
+    return json.dumps({"requested": True, "confirmed_by_the_team_later": True}), False
+
+
 def _save_lead(
     session: Session,
     tenant_id: uuid.UUID,
@@ -242,6 +359,7 @@ def _handle(
     visitor_ip: str,
     channel: str = "text",
     consent_version: int | None = None,
+    voice_tools: "VoiceTools | None" = None,
 ) -> tuple[PublicChatReply, PublicChatSession, uuid.UUID]:
     """One visitor message, typed or heard. Channel "web_voice" adds the spoken-number check, the
     voice prompt rules and the receptionist's own registry entry (ADR 0038)."""
@@ -317,6 +435,7 @@ def _handle(
         system += "\n" + rules.VOICE_RULES.format(organisation=organisation)
 
     # The spoken receptionist is its own registry entry: its own switch, budget and tool filter.
+    raw_model = model
     model = agents_api.governed(
         model,
         session,
@@ -325,15 +444,21 @@ def _handle(
         agents_api.Limits.from_settings(settings),
     )
     answer = rules.FALLBACK_REPLY
+    offered = _offered_tools(voice, voice_tools)
+    # What the knowledge search returned this turn: the only text a spoken price or RERA number
+    # may come from (checked below).
+    source_texts: list[str] = []
     for _ in range(rules.MAX_TOOL_ROUNDS + 1):
         try:
-            reply = model.reply(system=system, messages=messages, tools=[rules.SAVE_LEAD_TOOL])
+            reply = model.reply(system=system, messages=messages, tools=offered)
         except (agents_api.AgentUnavailableError, agents_api.AgentBudgetReachedError):
             # Switched off or over budget (ADR 0016): the page keeps working, nothing is saved.
             answer = rules.VOICE_RESTING_REPLY if voice else rules.RESTING_REPLY
             break
         if not reply.tool_uses:
             answer = assistant_api.sanitise_output(reply.text or rules.FALLBACK_REPLY)
+            if voice and _unbacked_numbers(session, conversation, answer, source_texts):
+                answer = rules.VOICE_UNCITED_REPLY
             break
         messages.append({"role": "assistant", "content": reply.as_content()})
         results = []
@@ -342,8 +467,25 @@ def _handle(
                 content, is_error = _save_lead(
                     session, tenant_id, conversation, use.input, data.language
                 )
+            elif voice and use.name == "search_knowledge" and voice_tools is not None:
+                content, is_error = _search_knowledge(
+                    session,
+                    settings,
+                    voice_tools,
+                    raw_model,
+                    tenant_id,
+                    use.input,
+                    source_texts,
+                )
+            elif voice and use.name == "request_callback":
+                content, is_error = _request_callback(
+                    session, settings, tenant_id, conversation, use.input, data.language
+                )
             else:
-                content, is_error = "This tool doesn't exist. Only save_lead is available.", True
+                content, is_error = (
+                    "This tool doesn't exist. Use only the tools you were given.",
+                    True,
+                )
             results.append(
                 {
                     "type": "tool_result",
@@ -460,6 +602,7 @@ def handle_voice_message(
     consent_version: int | None,
     visitor_ip: str,
     heard_seconds: int,
+    voice_tools: VoiceTools | None = None,
 ) -> VoiceTurn:
     """What the visitor said, as text, through the same pipeline as a typed message. Adds the
     heard seconds to the call and to the organisation's day. The reply's spoken seconds are added
@@ -475,6 +618,7 @@ def handle_voice_message(
         visitor_ip=visitor_ip,
         channel="web_voice",
         consent_version=consent_version,
+        voice_tools=voice_tools,
     )
     conversation.voice_turns += 1
     conversation.voice_seconds += heard_seconds

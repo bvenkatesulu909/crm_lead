@@ -108,10 +108,14 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.assistant import tools
 
         return set(tools.TOOLS)
-    if agent in ("public_chat", "receptionist"):  # the receptionist is the same chat, spoken
+    if agent == "public_chat":
         from app.modules.public_chat import rules
 
         return {str(rules.SAVE_LEAD_TOOL["name"])}
+    if agent == "receptionist":  # the same chat, spoken, with two more abilities
+        from app.modules.public_chat import rules
+
+        return {str(tool["name"]) for tool in rules.VOICE_TOOLS}
     if agent == "qualifier":
         from app.modules.qualifier import rules as qualifier_rules
 

@@ -136,3 +136,17 @@ export function quoteProblemText(
     return "Only an approved, sent or accepted quote can be used, so no prices were added.";
   return null;
 }
+
+/** The choices exactly as sent by a form, or null when anything is outside the fixed lists or no
+ * language was given (a script is always for one language). Unlike `parseChoices`, which falls
+ * back to defaults for a page address, a form that was changed is refused. */
+export function strictChoices(raw: Record<string, string>): Choices | null {
+  const parsed = parseChoices(raw);
+  const same =
+    parsed.goal === raw.goal &&
+    parsed.language !== "" &&
+    parsed.language === raw.language &&
+    parsed.tone === raw.tone &&
+    String(parsed.length) === raw.length;
+  return same ? parsed : null;
+}

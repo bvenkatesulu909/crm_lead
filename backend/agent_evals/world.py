@@ -230,16 +230,20 @@ class World:
 
     def _other_account(self, granted: list[uuid.UUID]) -> uuid.UUID:
         bind_tenant(self.session, self.tenant_id)
-        others = self.session.scalars(
+        candidates = self.session.scalars(
             select(Account.id)
             .where(
                 Account.tenant_id == self.tenant_id, Account.id.not_in(granted or [uuid.uuid4()])
             )
             .order_by(Account.name)
-        ).first()
-        if others is not None:
-            return others
-        account = Account(tenant_id=self.tenant_id, name="Eval Other Account")
+        ).all()
+        # An id that looks like a card number is refused before any model (a documented finding),
+        # which would turn a "not found" case into a "refused" one. A random id does that about
+        # 1 time in 600, so only clean ids are used; otherwise a stand-in account is created.
+        for candidate in candidates:
+            if guardrails.inspect_input(str(candidate)).allowed:
+                return candidate
+        account = Account(id=clean_id(), tenant_id=self.tenant_id, name="Eval Other Account")
         self.session.add(account)
         self.session.flush()
         return account.id

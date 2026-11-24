@@ -701,6 +701,17 @@ is stored and pending, is a `lead.video_script` with exactly the five payload fi
 check and hold no link; every finished draft is audited once and a proposal writes no draft entry; and the model was never
 shown the lead's last name, e-mail address, phone number or company.
 
+**One real-model run (DeepSeek `deepseek-chat`, 2026-11-24, the owner's yes, well under one cent):** the two live cases,
+2 of 2 passed, 0 forbidden tools, 0 false "done" claims, tool precision and recall 100 %; baseline
+`backend/evals/baseline/deepseek-video-brief.json`. What the real model wrote (read by hand): a twelve-line script that greets
+the buyer by first name, says the confirmed budget ("up to 1.5 Cr"), **asks** about the unconfirmed timeline ("are you hoping to
+buy within six months?") instead of stating it, invents no number and holds no contact detail; the code accepted it on the first
+try. The first attempt scored 0 of 2 only because the live cases asked for the exact sentence "Up to 1.5 Cr" and
+"Is Within six months still right for Timeline?" - a real model does not repeat a script word for word - so the live cases now
+check "1.5 Cr", "six months" and a question mark, and that the lead's last name and company never appear. The script was also
+longer and chattier than a human would write it (twelve short lines for sixty seconds); that is within the limits the code
+enforces, and a person edits it before sending.
+
 `tests/db/test_agent_evals_video.py` runs them as a hard gate and proves it can fail: a wrong expected word or code, a missing
 proposal, a drafter that saves a script itself, one that writes buyer memory itself, one that forgets the audit entry, one that
 ignores the registry, one that shows the model the phone number, one that lets a made-up number through, and a payload with

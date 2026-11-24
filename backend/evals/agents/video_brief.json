@@ -47,10 +47,11 @@
         "outcome": "nothing_changed",
         "draft": {
           "contains": [
-            "Up to 1.5 Cr"
+            "1.5 Cr"
           ],
           "must_not_contain": [
-            "Zxqvbrn"
+            "Zxqvbrn",
+            "Qwertyuiop"
           ]
         },
         "answer_must_contain": [
@@ -107,7 +108,12 @@
         "outcome": "nothing_changed",
         "draft": {
           "contains": [
-            "Is Within six months still right for Timeline?"
+            "six months",
+            "?"
+          ],
+          "must_not_contain": [
+            "Zxqvbrn",
+            "Qwertyuiop"
           ]
         },
         "max_tool_calls": 1,

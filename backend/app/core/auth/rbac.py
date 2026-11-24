@@ -105,6 +105,11 @@ class Permission(StrEnum):
     CATALOG_READ = "catalog:read"
     CATALOG_MANAGE = "catalog:manage"
 
+    # Projects and units that can be reserved (ADR 0040): sales roles read, managers and
+    # administrators maintain. Support and customers have no access.
+    UNIT_READ = "unit:read"
+    UNIT_MANAGE = "unit:manage"
+
     # Quotes. "own" = quotes the user owns or on accounts the user owns. "approve" = release
     # quotes with discounts above the limit (never one's own, except tenant admins).
     QUOTE_READ_ALL = "quote:read:all"
@@ -193,6 +198,9 @@ class Permission(StrEnum):
     DEAL_DESK_RUN = "deal_desk:run"
     # Account research (ADR 0024): a one-page brief about an account the person may read.
     ACCOUNT_RESEARCH_RUN = "account_research:run"
+    # Deal risk forecast (ADR 0037): sales managers and administrators read the risk of the deals
+    # they may read. Sales agents, support staff and portal customers do not see it in v1.
+    DEAL_RISK_READ = "deal_risk:read"
 
 
 _P = Permission
@@ -205,6 +213,7 @@ _SALES_ALL = frozenset(
         _P.OPPORTUNITY_READ_ALL, _P.OPPORTUNITY_WRITE_ALL, _P.DASHBOARD_SALES_ALL,
         _P.ACTIVITY_READ_ALL, _P.ACTIVITY_WRITE_ALL, _P.ACTIVITY_ASSIGN,
         _P.CATALOG_READ, _P.CATALOG_MANAGE,
+        _P.UNIT_READ, _P.UNIT_MANAGE,
         _P.QUOTE_READ_ALL, _P.QUOTE_WRITE_ALL, _P.QUOTE_APPROVE,
         _P.CONTRACT_READ_ALL, _P.CONTRACT_WRITE_ALL, _P.CONTRACT_MANAGE,
         _P.DOCUMENT_READ, _P.DOCUMENT_WRITE, _P.DOCUMENT_DELETE,
@@ -215,6 +224,7 @@ _SALES_ALL = frozenset(
         _P.CALL_READ, _P.CALL_WRITE, _P.CALL_NOTES_RUN,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
         _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN, _P.CUSTOM_AGENT_RUN,
+        _P.DEAL_RISK_READ,
     }
 )  # fmt: skip
 
@@ -259,6 +269,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.ACTIVITY_READ_OWN,
             _P.ACTIVITY_WRITE_OWN,
             _P.CATALOG_READ,
+            _P.UNIT_READ,
             _P.QUOTE_READ_OWN,
             _P.QUOTE_WRITE_OWN,
             _P.CONTRACT_READ_OWN,

@@ -131,6 +131,7 @@ const FIELD_LABELS: Record<string, string> = {
   status: "Status",
   owner_id: "Owner",
   task: "New task",
+  video_script: "Video script",
 };
 const PERSON_FIELDS = new Set(["owner_id", "assignee_id"]);
 
@@ -172,6 +173,14 @@ export function describeChange(
         ? `, for ${nameOf(task.assignee_id)}`
         : "";
     return `${label}: ${plain(task.subject)}${due}${who}`;
+  }
+  if (change.field === "video_script") {
+    // The lines a model drafted, shown as plain text (React escapes them where they are shown).
+    const lines = (value: unknown) =>
+      Array.isArray(value) && value.length > 0
+        ? value.map((line) => plain(line)).join(" / ")
+        : "no saved script";
+    return `${label}: ${lines(change.before)} → ${lines(change.after)}`;
   }
   const show = (value: unknown) =>
     PERSON_FIELDS.has(change.field)

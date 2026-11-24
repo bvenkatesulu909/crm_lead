@@ -28,6 +28,7 @@ from app.core.config import Settings
 from app.core.errors import DomainError
 from app.core.screening import clean_records
 from app.modules.agents import api as agents_api
+from app.modules.approvals import api as approvals_api
 from app.modules.assistant.api import ChatModel
 from app.modules.video_brief import rules, service
 
@@ -338,3 +339,87 @@ def draft_script(
         tone=brief.tone,
         length_seconds=brief.length_seconds,
     )
+
+
+PROPOSAL_REASON = "Video script drafter: checked against the buyer's confirmed facts."
+
+
+@dataclass(frozen=True)
+class ProposeResult:
+    outcome: str  # "proposed" | "blocked"
+    proposal_id: uuid.UUID | None
+    blocked_message: str | None = None
+
+
+def propose_script(
+    session: Session,
+    principal: Principal,
+    lead_id: uuid.UUID,
+    *,
+    goal: str,
+    language: str,
+    tone: str,
+    length_seconds: int,
+    lines: list[str],
+    quote_id: uuid.UUID | None = None,
+    ai_limits: agents_api.Limits | None = None,
+    now: datetime | None = None,
+) -> ProposeResult:
+    """Send a drafted script to the approval queue. The drafter must be switched on (this is its
+    output), the lead must be readable (else 404), and EVERY code-side check of the drafter runs
+    again on these lines against the facts read now as the asker - so lines the person edited, or
+    a client that invents some, get no further than a model's would. A different person approves;
+    only then is the script saved. Nothing here calls a model, so no tokens are counted."""
+    brief = service.build(
+        session,
+        principal,
+        lead_id,
+        goal=goal,
+        language=language,
+        tone=tone,
+        length_seconds=length_seconds,
+        quote_id=quote_id,
+    )
+    if principal.tenant_id is None:
+        raise service.LeadNotFoundError()
+    # The drafter's own switch, budget-free: a person cannot queue its output while it is off.
+    agents_api.check_can_call(
+        session,
+        principal.tenant_id,
+        AGENT,
+        ai_limits or agents_api.Limits.default(),
+        now or datetime.now(UTC),
+    )
+    shown, _ = model_view(brief)
+    checked = check_draft(
+        Draft(lines, PROPOSAL_REASON),
+        length_seconds=length_seconds,
+        allowed_text=allowed_text(shown),
+        assumptions=assumption_values(shown),
+    )
+    blocked: str | None = None
+    proposal_id: uuid.UUID | None = None
+    try:
+        with session.begin_nested():  # a refused proposal leaves nothing behind
+            proposal = approvals_api.propose(
+                session,
+                principal,
+                kind="lead.video_script",
+                target_type="lead",
+                target_id=lead_id,
+                payload={
+                    "language": brief.language,
+                    "tone": brief.tone,
+                    "goal": brief.goal,
+                    "length_seconds": brief.length_seconds,
+                    "lines": checked.lines,
+                },
+                reason=PROPOSAL_REASON,
+                agent=AGENT,
+            )
+            proposal_id = proposal.id
+    except approvals_api.ProposalBlockedError as refusal:
+        approvals_api.audit_blocked(session, principal, refusal)
+        blocked = refusal.detail
+    session.flush()
+    return ProposeResult("blocked" if blocked else "proposed", proposal_id, blocked)

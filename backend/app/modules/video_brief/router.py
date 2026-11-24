@@ -24,6 +24,8 @@ from app.modules.video_brief.models import VideoScript
 from app.modules.video_brief.schemas import (
     DraftCreate,
     DraftRead,
+    ProposeCreate,
+    ProposeRead,
     ScriptCreate,
     ScriptPage,
     ScriptRead,
@@ -181,4 +183,43 @@ def draft_video_script(
         goal=result.goal,
         tone=result.tone,
         length_seconds=result.length_seconds,
+    )
+
+
+@router.post(
+    "/{lead_id}/video-brief/propose",
+    status_code=status.HTTP_201_CREATED,
+    summary="Send a drafted script for this buyer's video to the approval queue",
+    description="The drafter must be switched on. The server reads the facts again as the person "
+    "asking and re-runs every check of the drafter on the lines (a made-up number, an assumption "
+    "said as a fact, a banned statement are a 422 with a code). The script becomes a proposal; "
+    "nothing is saved until a different person approves it.",
+    responses=problem_responses(404, 422, 503),
+)
+def propose_video_script(
+    lead_id: uuid.UUID,
+    data: ProposeCreate,
+    request: Request,
+    principal: Writer,
+    session: Db,
+) -> ProposeRead:
+    settings: Settings = request.app.state.settings
+    result = draft.propose_script(
+        session,
+        principal,
+        lead_id,
+        goal=data.goal,
+        language=data.language,
+        tone=data.tone,
+        length_seconds=data.length_seconds,
+        lines=data.lines,
+        quote_id=data.quote_id,
+        ai_limits=agents_api.Limits.from_settings(settings),
+    )
+    session.commit()
+    return ProposeRead(
+        outcome="blocked" if result.outcome == "blocked" else "proposed",
+        proposal_id=str(result.proposal_id) if result.proposal_id else None,
+        proposal_link=f"/approvals/{result.proposal_id}" if result.proposal_id else None,
+        blocked_message=result.blocked_message,
     )

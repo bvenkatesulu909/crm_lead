@@ -135,6 +135,33 @@ Tests: `tests/test_video_brief_draft.py` (22 pure tests) and `tests/db/test_vide
 database tests: switch, platform switch, budget, limits, roles, colleague and other organisation, made-up ids,
 only the documented fields, each kind of refused answer).
 
+## Sending a drafted script for approval (VB5, built 2026-11-23)
+
+`POST /api/v1/leads/{id}/video-brief/propose` puts a drafted script into the approval queue. Body: the choices
+(`goal`, `language`, `tone`, `length_seconds`, optional `quote_id`) and the `lines`. Permission
+`video_brief:write`, the lead's read rules and the right to propose (`agent_action:propose`).
+
+- **The drafter must be switched on.** This is its output, so a person cannot queue a script while it is off (503
+  `agent_unavailable`). No model is called here, so no tokens are counted.
+- **Every check runs again, on the server.** The facts are read again as the person asking and every code-side check
+  of the drafter is re-run on the lines (a made-up number, an assumption said as a fact, a banned statement, a
+  contact detail, the length -> 422 `video_draft_*`). Lines a person edited, or a client that invents some, get no
+  further than a model's would. The lines stored in the proposal are the cleaned ones.
+- **A new approval kind `lead.video_script`** (target: the lead; author `video_brief`, migration 0076). Its payload is
+  exactly `language`, `tone`, `goal`, `length_seconds` and `lines` (at most 12 lines of at most 300 characters);
+  anything else is refused. The approval card shows the planned change as the script's lines and says "the video
+  script drafter" asked.
+- **The Sentinel screens lists.** It used to read only text fields; a list of strings is now screened line by line
+  (links blocked, hidden text blocked, a phone number warned about, the same as any other text).
+- **A different person approves.** Nobody approves their own proposal; sales agents cannot approve. Only on approval
+  is the script saved as the next version of the lead's script with `source: ai_draft`, the **approver** as the
+  person recorded and `proposal_id` pointing at the proposal (migration 0076; a database check keeps `ai_draft` and
+  `proposal_id` together). The approval re-checks the lines; the plan and the outcome are compared like for every
+  other kind.
+
+Not built yet: the screen (a "Draft with AI" button and "Send for approval" on the video brief page - VB5b), the
+evaluation cases (VB6).
+
 ## Who may ask
 
 Permission `video_brief:read` (sales agents, managers, administrators) **and** the lead's own read rules: a lead
@@ -148,5 +175,5 @@ colleague, other organisation, made-up ids, no data leaked, nothing written); pr
 
 ## Not yet built
 
-Brochure facts with RERA citations, the approval of a drafted script (VB5), the governed model draft (VB4), the approval kind (VB5), evaluation cases (VB6). The Hindi and
+Brochure facts with RERA citations, the screen for drafting and sending for approval (VB5b), the governed model draft (VB4), the approval kind (VB5), evaluation cases (VB6). The Hindi and
 Telugu words need a native-speaker read-through.

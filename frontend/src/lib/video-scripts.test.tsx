@@ -2,6 +2,8 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { agentLabel } from "@/components/approval-views";
+import { describeChange } from "@/lib/approvals";
 import { saveVideoScript } from "@/app/print/leads/[id]/video-brief/actions";
 import VideoBriefPage from "@/app/print/leads/[id]/video-brief/page";
 import { SavedScripts } from "@/components/saved-scripts";
@@ -419,5 +421,33 @@ describe("the page", () => {
     answers([]);
     await show({ saved: "<script>" });
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+describe("the approval card for a drafted script", () => {
+  it("names the video script drafter", () => {
+    expect(agentLabel({ agent: "video_brief", custom_agent_name: null })).toBe(
+      "the video script drafter",
+    );
+  });
+
+  it("shows the planned change as the script's lines, and 'no saved script' before", () => {
+    const text = describeChange(
+      {
+        field: "video_script",
+        before: null,
+        after: ["Hello Suresh,", "Thank you."],
+      },
+      () => "x",
+    );
+    expect(text).toBe(
+      "Video script: no saved script → Hello Suresh, / Thank you.",
+    );
+    expect(
+      describeChange(
+        { field: "video_script", before: ["Old."], after: ["New."] },
+        () => "x",
+      ),
+    ).toBe("Video script: Old. → New.");
   });
 });

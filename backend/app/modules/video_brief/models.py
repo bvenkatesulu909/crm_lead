@@ -2,7 +2,7 @@
 
 One row per saved version of a lead's script: the lines, the choices they were written for, who
 saved them. Insert-only: the database refuses to change a row and to delete one younger than 365
-days (migration 0073). The newest version of a lead is the current one. ``source`` is
+days (migration 0075). The newest version of a lead is the current one. ``source`` is
 ``hand_written`` now; an approved AI draft (VB5) will be ``ai_draft``.
 """
 

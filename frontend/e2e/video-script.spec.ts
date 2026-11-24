@@ -47,7 +47,7 @@ test("an agent edits, saves and re-saves a script and the refusals keep the text
   const again = agent.getByLabel(/Your script/);
   await again.fill("Hello Suresh,\nCall me on 98480 12345.");
   await agent.getByRole("button", { name: "Save script" }).click();
-  await expect(agent.getByText("Could not save").locator("..")).toContainText(
+  await expect(agent.getByText("Could not do that").locator("..")).toContainText(
     /phone number/i,
   );
   await expect(agent.getByLabel(/Your script/)).toHaveValue(
@@ -59,7 +59,7 @@ test("an agent edits, saves and re-saves a script and the refusals keep the text
     .getByLabel(/Your script/)
     .fill("Hello Suresh,\nThis flat is a guaranteed return.");
   await agent.getByRole("button", { name: "Save script" }).click();
-  await expect(agent.getByText("Could not save").locator("..")).toContainText(
+  await expect(agent.getByText("Could not do that").locator("..")).toContainText(
     /never-say list/i,
   );
 

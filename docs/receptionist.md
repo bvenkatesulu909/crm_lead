@@ -108,9 +108,32 @@ chat keeps its single tool):
   made per hour for the whole website. Migration 0074 allows the author `receptionist` and adds
   `public_chat_sessions.callback_requested_at`.
 
+## 5b. The call on the page (VR4)
+
+`/chat` shows a **Talk to us** button only when the web server has `PUBLIC_CHAT_VOICE=on` (and the browser can
+record). Pressing it shows the **notice** in the chosen language (an automated assistant, not a person; the
+speech is turned into text by our speech service and the conversation may be saved; no voice recording is kept;
+do not say card numbers, bank details, ID numbers or one-time passwords) with **Listen to this notice**
+(the browser's own voice), **Cancel** and **Start**. Nothing is recorded before Start; the press is the consent and
+the page sends the notice version (`PUBLIC_CHAT_VOICE_NOTICE_VERSION`, equal to the API's
+`CRM_RECEPTIONIST_NOTICE_VERSION`) with every turn.
+
+Each turn: the microphone records until the visitor stops talking (silence detection: 1.4 s of quiet after speech,
+at most 15 s, nothing said for 8 s counts as nothing), the audio goes to **our own** `POST /api/public-chat/voice`
+route (404 unless the key and the switch are set; refuses audio that is empty, over 2 MB or not audio before anything
+leaves the server; forwards it with the server key and the visitor's address; keeps the conversation token in the same
+httpOnly cookie as the typed chat), the page shows what was heard and the reply as plain text and plays the reply,
+then listens again. **End the call** is always visible. When the service is off or fails, the call button goes away
+and says so; the typed chat below keeps working. Two quiet turns in a row end the call; the call's limits end it with a
+sentence.
+
+The words (notice, greeting, states, errors) exist in English, Hindi and Telugu and were written by an assistant:
+**they need a read-through by a Hindi and a Telugu speaker**. Not checked yet: the page's look, a real microphone on
+an Android or iPhone browser (Safari records MP4), the real speech service end to end.
+
 ## 6. Not built yet
 
-The page and microphone (VR4), the evaluation cases
+The evaluation cases
 (VR5), metrics for calls and refusals, a streaming answer sentence by sentence (the reply is spoken
 in one piece in v1; replies are at most two short sentences), and the phone number channel (its own
 ADR).

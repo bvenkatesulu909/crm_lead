@@ -47,6 +47,7 @@ Rules:
 | [0033](0033-call-highlight-clips.md) | Highlight clips from recorded sales calls (BP-25) | Accepted |
 | [0034](0034-no-code-agent-builder.md) | A no-code agent builder for administrators (BP-18, second half) | Accepted |
 | [0035](0035-call-notes-deal-checklist.md) | Call notes and a deal checklist (BANT or MEDDIC) from a call transcript | Accepted |
+| [0037](0037-deal-risk-forecast.md) | Deal risk forecast: a transparent score with plain reasons | Accepted |
 | [0038](0038-live-voice-receptionist.md) | A live Telugu and Hindi voice receptionist (browser first, phone number later) | Accepted |
 | [0040](0040-upi-reserve-pay-rules.md) | UPI reserve-pay rules: token / booking amount to hold a property | Accepted |
 | [0042](0042-bulk-account-research.md) | Research up to 100 accounts at once (a batch of account briefs) | Accepted |

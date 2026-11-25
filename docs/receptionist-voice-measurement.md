@@ -61,6 +61,12 @@ model's tokens are not included.
 4. Hearing digits as digits ("9876543210") is *good* for phone numbers; the scoring should later treat spoken
    numbers and digits as equal so the Hindi figure stops being misleading.
 
+## Round 2 (real recordings)
+
+The owner chose real recordings first (2026-11-22). The sentences to record, the folder layout, the commands and how to
+compare a second speech provider are in `docs/receptionist-trial-samples.md`. The scoring now treats spoken and
+written digits as equal (a correctly heard phone number is no longer marked wrong). Nothing has been recorded yet.
+
 ## Not done
 
 No real-person recordings, no second provider, no price figures, no native-speaker review of the sentences,

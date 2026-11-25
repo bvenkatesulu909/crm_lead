@@ -105,7 +105,7 @@ chat keeps its single tool):
   It needs the saved lead, allows **one per call**, the Sentinel and the usual approval rules apply (nobody
   approves their own proposal; the proposer is the website's Automation identity), and at most
   `CRM_RECEPTIONIST_CALLBACKS_WAITING` (100) may wait at once and `CRM_RECEPTIONIST_CALLBACKS_PER_HOUR` (60) be
-  made per hour for the whole website. Migration 0074 allows the author `receptionist` and adds
+  made per hour for the whole website. Migration 0076 allows the author `receptionist` and adds
   `public_chat_sessions.callback_requested_at`.
 
 ## 5b. The call on the page (VR4)

@@ -1,7 +1,7 @@
 """The voice receptionist: channel, consent and minutes of a website conversation (ADR 0038).
 
-Revision ID: 0073
-Revises: 0072
+Revision ID: 0075
+Revises: 0074
 Create Date: 2026-11-21
 
 * ``public_chat_sessions`` gets ``channel`` (text or web_voice), the consent record of a voice
@@ -19,8 +19,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0073"
-down_revision: str | None = "0072"
+revision: str = "0075"
+down_revision: str | None = "0074"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

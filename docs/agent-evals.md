@@ -712,7 +712,7 @@ stand-in.
 - **Real model:** five cases are `live` (the greeting, a lead in English and in Telugu, the callback
   proposal and the callback before the lead is saved); the rest need the scripted search answers or force a
   bad call. No paid scorecard run has been made for this suite. `python -m scripts.eval_agents --provider
-  fake --suite receptionist` plays all 32 on the development data (which must be migrated to 0074 first).
+  fake --suite receptionist` plays all 32 on the development data (which must be migrated to 0076 first).
 
 ## 7. What stays out (on purpose)
 

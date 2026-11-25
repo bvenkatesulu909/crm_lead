@@ -1,7 +1,7 @@
 """The voice receptionist's tools: callbacks in the approval queue (ADR 0038, VR3).
 
-Revision ID: 0074
-Revises: 0073
+Revision ID: 0076
+Revises: 0075
 Create Date: 2026-11-23
 
 * ``agent_actions.agent`` may now be ``receptionist`` (a callback the visitor asked for, proposed
@@ -15,8 +15,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0074"
-down_revision: str | None = "0073"
+revision: str = "0076"
+down_revision: str | None = "0075"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -139,7 +139,7 @@ class Settings(BaseSettings):
     receptionist_max_audio_bytes: int = Field(default=2 * 1024 * 1024, ge=1024, le=10 * 1024 * 1024)
     # Server-side speech gateway (STT/TTS), OpenAI-compatible audio API. Disabled without a key.
     voice_enabled: bool = True
-    voice_provider: Literal["openai", "elevenlabs", "local"] = "openai"
+    voice_provider: Literal["openai", "elevenlabs", "local", "fake"] = "openai"
     # Local mode: Whisper model size, path to a Piper .onnx voice, and the piper executable.
     voice_piper_command: str = "piper"
     voice_api_key: SecretStr | None = None
@@ -405,6 +405,10 @@ class Settings(BaseSettings):
     def _public_chat_is_safe(self) -> "Settings":
         if self.environment == "production" and self.public_chat_provider == "fake":
             raise ValueError("The fake public chat provider can't be used in production.")
+        if self.environment == "production" and self.voice_provider == "fake":
+            raise ValueError(
+                "The fake speech provider (voice_provider) can't be used in production."
+            )
         if self.environment == "production" and self.calls_engine == "fake":
             raise ValueError("The fake call engine (calls_engine) can't be used in production.")
         if self.environment == "production" and self.ai_provider == "fake":

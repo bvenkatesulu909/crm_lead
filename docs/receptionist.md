@@ -128,15 +128,29 @@ and says so; the typed chat below keeps working. Two quiet turns in a row end th
 sentence.
 
 The words (notice, greeting, states, errors) exist in English, Hindi and Telugu and were written by an assistant:
-**they need a read-through by a Hindi and a Telugu speaker**. Not checked yet: the page's look, a real microphone on
+**they need a read-through by a Hindi and a Telugu speaker**. Not checked yet: the page's look (the journey checks behaviour only), a real microphone on
 an Android or iPhone browser (Safari records MP4), the real speech service end to end.
 
 ## 5c. Evaluation (VR5)
 
 32 BP-10 cases play the real voice pipeline with only the model scripted: see `docs/agent-evals.md` 6s.
 
+## 5d. Browser journey (VR6)
+
+`frontend/e2e/receptionist.spec.ts` runs the whole call in a real browser against the real web app, route
+handler, API, database and Keycloak. Two stand-ins: a fake microphone (an init script replaces
+`getUserMedia`, `MediaRecorder` and `AudioContext`; the bytes "recorded" are the sentence the test queues) and
+the API's `fake` speech provider (`CRM_VOICE_PROVIDER=fake`, reads those bytes as text; refused in production).
+It checks: switched off, the call ends in words and typing still works; an administrator switches it on; the
+notice comes first and nothing is recorded, not even the microphone opened, until Start; what was heard and the
+reply appear as text; the details become a lead (the token cookie is not readable by page JavaScript); the
+manager hears about it and reads the conversation on the lead page; an agent gets "not found"; a request
+without the consent version or with non-audio is refused. It needs `CRM_PUBLIC_CHAT_PROVIDER=fake`,
+`CRM_PUBLIC_CHAT_TENANT_SLUG=alpha-demo`, the same server key on both sides, `CRM_VOICE_PROVIDER=fake` and
+`PUBLIC_CHAT_VOICE=on`; it skips itself otherwise, and switches the receptionist off again when it ends.
+
 ## 6. Not built yet
 
-A Playwright journey with a faked microphone, metrics for calls and refusals, a streaming answer sentence by
+Metrics for calls and refusals, a streaming answer sentence by
 sentence (the reply is spoken in one piece in v1; replies are at most two short sentences), a real-model score card
 for the receptionist cases, and the phone number channel (its own ADR).

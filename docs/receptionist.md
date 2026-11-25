@@ -131,9 +131,12 @@ The words (notice, greeting, states, errors) exist in English, Hindi and Telugu 
 **they need a read-through by a Hindi and a Telugu speaker**. Not checked yet: the page's look, a real microphone on
 an Android or iPhone browser (Safari records MP4), the real speech service end to end.
 
+## 5c. Evaluation (VR5)
+
+32 BP-10 cases play the real voice pipeline with only the model scripted: see `docs/agent-evals.md` 6s.
+
 ## 6. Not built yet
 
-The evaluation cases
-(VR5), metrics for calls and refusals, a streaming answer sentence by sentence (the reply is spoken
-in one piece in v1; replies are at most two short sentences), and the phone number channel (its own
-ADR).
+A Playwright journey with a faked microphone, metrics for calls and refusals, a streaming answer sentence by
+sentence (the reply is spoken in one piece in v1; replies are at most two short sentences), a real-model score card
+for the receptionist cases, and the phone number channel (its own ADR).

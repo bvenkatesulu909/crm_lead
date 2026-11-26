@@ -70,6 +70,20 @@ class EstimateChangedError(ConflictError):
         super().__init__("The cost changed since you looked at it. Look at the new estimate first.")
 
 
+class NotRunningError(ConflictError):
+    code = "research_batch_not_running"
+
+    def __init__(self) -> None:
+        super().__init__("This batch is not running any more.")
+
+
+class StillRunningError(ConflictError):
+    code = "research_batch_running"
+
+    def __init__(self) -> None:
+        super().__init__("This batch is still running. Wait for it to end, or stop it first.")
+
+
 class BudgetTooSmallError(ConflictError):
     code = "research_budget_too_small"
 
@@ -339,3 +353,84 @@ def list_batches(
     tenant_id, _ = _ids(principal)
     _check_permission(principal)
     return repository.list_batches(session, tenant_id, limit=limit, offset=offset)
+
+
+def cancel_batch(session: Session, principal: Principal, batch_id: uuid.UUID) -> ResearchBatch:
+    """Ask a running batch to stop. The worker sees the flag before the next account; the account
+    being researched finishes and is kept. Anyone who may run batches may stop any batch of the
+    organisation (a colleague's batch can be stopped when its starter is away)."""
+    tenant_id, _ = _ids(principal)
+    _check_permission(principal)
+    batch = repository.get(session, tenant_id, batch_id, lock=True)
+    if batch is None:
+        raise BatchNotFoundError
+    if batch.status != "running":
+        raise NotRunningError
+    if not batch.cancel_requested:
+        batch.cancel_requested = True
+        session.flush()
+        record_audit(
+            session,
+            principal,
+            action="research_batch.cancel_requested",
+            entity_type=ENTITY,
+            entity_id=batch.id,
+            changes={"accounts": batch.account_count, "tokens_used": batch.tokens_used},
+        )
+    return batch
+
+
+RETRY_WHICH = {"failed": ("failed",), "not_run": ("not_run",), "both": ("failed", "not_run")}
+
+
+def retry_request(
+    session: Session, principal: Principal, batch_id: uuid.UUID, which: str
+) -> BatchRequest:
+    """The accounts of an ended batch that failed (or did not run), as a request for a NEW batch.
+    The new batch is estimated, confirmed and limited like any other: nothing resumes by itself."""
+    batch, items = get_batch(session, principal, batch_id)
+    if batch.status == "running":
+        raise StillRunningError
+    statuses = RETRY_WHICH.get(which)
+    if statuses is None:
+        raise SelectionError(rules.BatchRuleError("bad_retry", "Choose failed, not_run or both."))
+    ids = tuple(item.account_id for item in items if item.status in statuses)
+    if not ids:
+        raise SelectionError(
+            rules.BatchRuleError("empty_selection", "No account of this batch is in that state.")
+        )
+    return BatchRequest(source="rows", account_ids=ids)
+
+
+@dataclass(frozen=True)
+class ItemView:
+    item: ResearchBatchItem
+    account_name: str | None  # only for an account the person may read
+    overview: deal_desk_api.BriefOverview | None  # the summary-table figures of its brief
+
+
+def describe_items(
+    session: Session, principal: Principal, items: list[ResearchBatchItem]
+) -> list[ItemView]:
+    """The batch's items with the account's name and the brief's figures - only for accounts the
+    person may read (a batch is organisation-wide, an account's name is not)."""
+    tenant_id, _ = _ids(principal)
+    readable = {
+        account_id
+        for account_id, archived in accounts_api.batch_candidates(
+            session, principal, [i.account_id for i in items]
+        )
+        if not archived
+    }
+    names = accounts_api.account_names(session, tenant_id, readable)
+    overviews = deal_desk_api.overviews_of(
+        session, principal, [i.brief_id for i in items if i.brief_id is not None]
+    )
+    return [
+        ItemView(
+            item,
+            names.get(item.account_id) if item.account_id in readable else None,
+            overviews.get(item.brief_id) if item.brief_id is not None else None,
+        )
+        for item in items
+    ]

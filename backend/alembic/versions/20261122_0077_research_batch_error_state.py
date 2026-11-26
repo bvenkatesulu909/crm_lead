@@ -29,7 +29,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # The guard trigger refuses to change a finished batch; this one change is the point of the step.
+    # The guard trigger refuses to change a finished batch; this one change is the point.
     op.execute("ALTER TABLE research_batches DISABLE TRIGGER research_batches_guard;")
     op.execute(
         "UPDATE research_batches SET status = 'stopped_budget' WHERE status = 'stopped_error'"

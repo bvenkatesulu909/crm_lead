@@ -6,15 +6,19 @@ the buyer's FIRST name is used; the phone number, e-mail address and last name n
 service."""
 
 import uuid
+from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.errors import DomainError, NotFoundError
 from app.modules.buyer_memory import api as memory_api
 from app.modules.leads import api as leads_api
 from app.modules.quotes import api as quotes_api
-from app.modules.video_brief import rules
+from app.modules.video_brief import repository, rules
+from app.modules.video_brief.models import VideoScript
 
 
 class LeadNotFoundError(NotFoundError):
@@ -36,6 +40,21 @@ class QuoteNotFoundError(NotFoundError):
 class QuoteNotReadyError(DomainError):
     status_code = 422
     code = "video_brief_quote_not_ready"
+
+
+class ScriptRefusedError(DomainError):
+    """A hand-written script was refused; ``code`` says why (see ``rules.ScriptError``)."""
+
+    status_code = 422
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class ScriptRateLimitedError(DomainError):
+    status_code = 429
+    code = "video_script_rate_limited"
 
 
 class BriefChoiceInvalidError(DomainError):
@@ -127,3 +146,76 @@ def _price(
             for ln in facts.lines
         ],
     )
+
+
+def _readable_lead(session: Session, principal: Principal, lead_id: uuid.UUID) -> uuid.UUID:
+    """The organisation's id when this person may read the lead, else the same 404 as a lead that
+    does not exist."""
+    if principal.tenant_id is None or leads_api.brief_facts(session, principal, lead_id) is None:
+        raise LeadNotFoundError()
+    return principal.tenant_id
+
+
+def save_script(
+    session: Session,
+    principal: Principal,
+    lead_id: uuid.UUID,
+    *,
+    language: str,
+    tone: str,
+    goal: str,
+    length_seconds: int,
+    lines: Sequence[str],
+    per_user_hour: int,
+) -> VideoScript:
+    """Save a hand-written script as the next version of the lead's script. Does not commit."""
+    tenant_id = _readable_lead(session, principal, lead_id)
+    if principal.user_id is None:
+        raise LeadNotFoundError()
+    try:
+        checked = rules.check_script(lines, length_seconds=length_seconds)
+    except rules.ScriptError as exc:
+        raise ScriptRefusedError(exc.code, str(exc)) from None
+    hour = datetime.now(UTC) - timedelta(hours=1)
+    if (
+        repository.count_saved_by(session, tenant_id, principal.user_id, since=hour)
+        >= per_user_hour
+    ):
+        raise ScriptRateLimitedError("You saved many scripts in the last hour. Try again later.")
+    script = VideoScript(
+        tenant_id=tenant_id,
+        lead_id=lead_id,
+        created_by_user_id=principal.user_id,
+        version=repository.next_version(session, tenant_id, lead_id),
+        language=language,
+        tone=tone,
+        goal=goal,
+        length_seconds=length_seconds,
+        lines=checked.lines,
+        words=checked.words,
+        source="hand_written",
+    )
+    session.add(script)
+    session.flush()
+    record_audit(
+        session,
+        principal,
+        action="video_script.saved",
+        entity_type="video_script",
+        entity_id=script.id,
+        changes={
+            "lead_id": str(lead_id),
+            "version": script.version,
+            "words": script.words,
+            "language": language,
+            "source": "hand_written",
+        },
+    )
+    return script
+
+
+def list_scripts(
+    session: Session, principal: Principal, lead_id: uuid.UUID
+) -> Sequence[VideoScript]:
+    tenant_id = _readable_lead(session, principal, lead_id)
+    return repository.scripts_of(session, tenant_id, lead_id)

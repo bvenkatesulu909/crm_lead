@@ -65,6 +65,29 @@ Tests: `src/lib/video-brief.test.tsx` (22 Vitest tests: choices, paths, the view
 lead form into buyer memory -> three facts in the script; Hindi, 30 seconds and another goal; an altered
 address falls back to the defaults; a colleague gets "not found", a manager can open it, support cannot).
 
+## Saved hand-written scripts (VB3, built 2026-11-22)
+
+A rep may write the script themselves and keep it. `POST /api/v1/leads/{id}/video-scripts` saves the lines as
+the **next version** of the lead's script (`GET` lists them, newest first). Permission `video_brief:write`
+(sales agents, managers, administrators) and the lead's own read rules; a lead the person may not read is a 404.
+
+- The body holds only `language`, `tone`, `goal`, `length_seconds` (30 / 60 / 90) and up to 12 `lines` of at
+  most 300 characters; anything else (tenant, version, source, author) is refused. The server sets those.
+- Each line is cleaned (links, markup, hidden characters out) and **refused** with a stable code - never
+  repeating the text - when it looks like a card number or an instruction (`script_unsafe_text`), holds a
+  phone number or e-mail address (`script_contact_detail`), holds a banned kind of statement
+  (`script_banned_phrase`), or when the whole script has no words (`script_empty`), is longer than its length
+  (`script_too_long`), or a line is too long (`script_line_too_long` / `script_too_many_lines`).
+- At most `CRM_VIDEO_SCRIPTS_PER_USER_HOUR` (30) saves per person per hour (429 `video_script_rate_limited`).
+- Table `video_scripts` (migration 0077): forced row-level security, database checks for every fixed list, and
+  **insert-only** - a trigger refuses every UPDATE and a DELETE of a row younger than 365 days, and the
+  application role has no UPDATE or TRUNCATE. `source` is `hand_written` now; an approved AI draft (VB5) will be
+  `ai_draft`.
+- Saving is audited (`video_script.saved`) with ids, the version, the word count, the language and the source -
+  never the words.
+
+Not built yet: a screen to write and save scripts (VB3b), copying a saved script to a document on the lead.
+
 ## Who may ask
 
 Permission `video_brief:read` (sales agents, managers, administrators) **and** the lead's own read rules: a lead
@@ -78,6 +101,6 @@ colleague, other organisation, made-up ids, no data leaked, nothing written); pr
 
 ## Not yet built
 
-Brochure facts with RERA citations, hand-written scripts and stored approved
-scripts (VB3), the governed model draft (VB4), the approval kind (VB5), evaluation cases (VB6). The Hindi and
+Brochure facts with RERA citations, the screen for writing scripts, the approved AI
+scripts (VB4-VB5), the governed model draft (VB4), the approval kind (VB5), evaluation cases (VB6). The Hindi and
 Telugu words need a native-speaker read-through.

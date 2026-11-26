@@ -13,6 +13,7 @@ What the CRM answered is classified as ``ok``, ``not_found`` (a record the perso
 or ``refused`` (invalid arguments, an unknown tool, a limit, a denied permission).
 """
 
+import re
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -63,11 +64,18 @@ class ScriptedModel:
             return ModelReply("")
         step = self._steps[self._next]
         self._next += 1
+        say = step.say
+        if "{cite_all}" in say:
+            # A cited answer (the knowledge search) names its sources by number, and how many
+            # there are is decided by the real search: cite every one that was shown.
+            shown = str(messages[0].get("content", "")) if messages else ""
+            marks = sorted({int(n) for n in re.findall(r"\n\n\[(\d+)\]", shown)})
+            say = say.replace("{cite_all}", "".join(f"[{n}]" for n in marks))
         uses = []
         for call in step.calls:
             self._ids += 1
             uses.append(ToolUse(f"scripted-{self._ids}", call.name, dict(call.arguments)))
-        return ModelReply(step.say, uses, stop_reason="tool_use" if uses else "end_turn")
+        return ModelReply(say, uses, stop_reason="tool_use" if uses else "end_turn")
 
 
 def classify_result(content: str, is_error: bool) -> CallOutcome:

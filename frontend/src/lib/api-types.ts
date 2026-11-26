@@ -1834,3 +1834,34 @@ export type CustomAgentRun = {
 };
 
 export type CustomAgentRunPage = { items: CustomAgentRun[] };
+
+/** The brief for a personalised buyer video (ADR 0041): built by code, nothing stored. */
+export type VideoBrief = {
+  first_name: string;
+  language: "en" | "hi" | "te";
+  tone: "warm" | "professional" | "brisk";
+  tone_note: string;
+  goal: "introduce" | "follow_up" | "after_visit" | "explain_quote" | "revive";
+  length_seconds: 30 | 60 | 90;
+  word_target: number;
+  words: number;
+  known: {
+    kind: "fact" | "assumption" | "form" | "price";
+    key: string;
+    label: string;
+    value: string;
+    source: string | null;
+    quote: string | null;
+    reason: string | null;
+  }[];
+  script: {
+    kind: "greeting" | "intro" | "fact" | "price" | "question" | "closing";
+    text: string;
+    cites: string[];
+    seconds: number;
+  }[];
+  must_say: string[];
+  must_not_say: string[];
+  consent_notes: string[];
+  cautions: { code: string; text: string }[];
+};

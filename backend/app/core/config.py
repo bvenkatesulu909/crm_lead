@@ -120,9 +120,26 @@ class Settings(BaseSettings):
     public_chat_messages_per_day: int = Field(default=500, ge=1, le=1_000_000)
     # Conversations that never became a lead are deleted after this many quiet days (privacy).
     public_chat_retention_days: int = Field(default=30, ge=1, le=3650)
+    # The voice receptionist on the website (ADR 0038). The organisation's switch is the registry
+    # entry "receptionist" (off until an administrator switches it on); these are the limits.
+    receptionist_max_call_seconds: int = Field(default=300, ge=30, le=3600)  # 5 minutes a call
+    receptionist_max_turns: int = Field(default=12, ge=1, le=100)
+    receptionist_calls_per_ip_day: int = Field(default=3, ge=1, le=1000)
+    # The organisation's caps on estimated server speech, per UTC day and per calendar month.
+    receptionist_minutes_per_day: int = Field(default=60, ge=1, le=100_000)
+    receptionist_minutes_per_month: int = Field(default=600, ge=1, le=1_000_000)
+    # The version of the notice the visitor reads before the microphone opens; raise it when the
+    # words change. The page sends the version it showed and it is stored with the conversation.
+    receptionist_notice_version: int = Field(default=1, ge=1, le=10_000)
+    # One spoken turn is a few seconds of audio; anything bigger is refused unread.
+    # Callback requests (proposals a manager approves): how many may wait at once for the whole
+    # website (they all come from the Automation identity) and how many per hour.
+    receptionist_callbacks_waiting: int = Field(default=100, ge=1, le=10_000)
+    receptionist_callbacks_per_hour: int = Field(default=60, ge=1, le=10_000)
+    receptionist_max_audio_bytes: int = Field(default=2 * 1024 * 1024, ge=1024, le=10 * 1024 * 1024)
     # Server-side speech gateway (STT/TTS), OpenAI-compatible audio API. Disabled without a key.
     voice_enabled: bool = True
-    voice_provider: Literal["openai", "elevenlabs", "local"] = "openai"
+    voice_provider: Literal["openai", "elevenlabs", "local", "fake"] = "openai"
     # Local mode: Whisper model size, path to a Piper .onnx voice, and the piper executable.
     voice_piper_command: str = "piper"
     voice_api_key: SecretStr | None = None
@@ -269,6 +286,8 @@ class Settings(BaseSettings):
     # The deal desk (ADR 0024): reviews per deal per hour and per organisation per day.
     deal_desk_per_deal_hour: int = Field(default=1, ge=1, le=100)
     deal_desk_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # Deal risk (ADR 0037): on-demand recomputes per person per hour.
+    deal_risk_recompute_per_user_hour: int = Field(default=30, ge=1, le=1000)
     # Account research (ADR 0024): briefs per account per hour and per organisation per day.
     account_research_per_account_hour: int = Field(default=1, ge=1, le=100)
     account_research_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
@@ -395,6 +414,10 @@ class Settings(BaseSettings):
     def _public_chat_is_safe(self) -> "Settings":
         if self.environment == "production" and self.public_chat_provider == "fake":
             raise ValueError("The fake public chat provider can't be used in production.")
+        if self.environment == "production" and self.voice_provider == "fake":
+            raise ValueError(
+                "The fake speech provider (voice_provider) can't be used in production."
+            )
         if self.environment == "production" and self.calls_engine == "fake":
             raise ValueError("The fake call engine (calls_engine) can't be used in production.")
         if self.environment == "production" and self.ai_provider == "fake":

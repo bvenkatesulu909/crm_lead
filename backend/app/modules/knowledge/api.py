@@ -129,6 +129,51 @@ def answer_customer_scope(
     )
 
 
+def answer_for_visitor(
+    session: Session,
+    tenant_id: uuid.UUID,
+    *,
+    question: str,
+    settings: Any,
+    embedder: Embedder,
+    chat_model: Any,
+    reranker: Any = None,
+) -> Any:
+    """A cited answer for an ANONYMOUS website visitor (ADR 0038, VR3): the customer scope with no
+    account, so only the organisation's customer-visible documents that belong to no account are
+    searched. Same gates as every cited answer (citations validated, RERA and prices must be in a
+    cited source). Returns the pipeline's outcome."""
+    from app.core.auth.principal import Principal as _Principal
+    from app.modules.knowledge import answers
+
+    visitor = _Principal(
+        subject="website-visitor",
+        issuer="urn:crm-lead:public-chat",
+        user_type="customer",
+        roles=frozenset(),
+        permissions=frozenset(),
+        tenant_id=tenant_id,
+    )
+    return answers.answer_question(
+        session,
+        visitor,
+        embedder,
+        chat_model,
+        question=question,
+        settings=settings,
+        reranker=reranker,
+        account_ids=[],
+    )
+
+
+def unsupported_numbers(answer: str, source_texts: list[str], *, question: str) -> str | None:
+    """Why a spoken answer may not be said: a RERA number or an amount that none of the source
+    texts (and not the visitor's own words) holds. None = fine."""
+    from app.modules.knowledge import numbers
+
+    return numbers.unsupported(answer, source_texts, question=question)
+
+
 def delete_stale_knowledge_uploads(
     session: Session, store: FileStore | None, now: datetime, *, tenant_id: uuid.UUID
 ) -> int:

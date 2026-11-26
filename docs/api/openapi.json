@@ -1864,6 +1864,61 @@
         "title": "BoardColumn",
         "type": "object"
       },
+      "Body_public_voice_turn_api_v1_public_voice_turn_post": {
+        "properties": {
+          "audio": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Audio",
+            "type": "string"
+          },
+          "consent_version": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Version"
+          },
+          "language": {
+            "default": "en",
+            "enum": [
+              "en",
+              "hi",
+              "te"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_-]{40,100}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "website": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Website",
+            "type": "string"
+          }
+        },
+        "required": [
+          "audio"
+        ],
+        "title": "Body_public_voice_turn_api_v1_public_voice_turn_post",
+        "type": "object"
+      },
       "Body_transcribe_api_v1_voice_transcribe_post": {
         "properties": {
           "file": {
@@ -15340,6 +15395,15 @@
       "PublicChatTranscript": {
         "description": "The website conversation that created a lead (empty if the lead came another way).",
         "properties": {
+          "channel": {
+            "default": "text",
+            "enum": [
+              "text",
+              "web_voice"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
           "messages": {
             "items": {
               "$ref": "#/components/schemas/TranscriptMessage"
@@ -15358,6 +15422,11 @@
               }
             ],
             "title": "Started At"
+          },
+          "voice_seconds": {
+            "default": 0,
+            "title": "Voice Seconds",
+            "type": "integer"
           }
         },
         "required": [
@@ -15365,6 +15434,75 @@
           "messages"
         ],
         "title": "PublicChatTranscript",
+        "type": "object"
+      },
+      "PublicVoiceReply": {
+        "description": "What comes back after one spoken turn (ADR 0038).",
+        "properties": {
+          "audio_base64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Base64"
+          },
+          "audio_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Type"
+          },
+          "call_ended": {
+            "description": "True when this call's limits are used up.",
+            "title": "Call Ended",
+            "type": "boolean"
+          },
+          "heard": {
+            "description": "What the speech service heard the visitor say.",
+            "title": "Heard",
+            "type": "string"
+          },
+          "lead_saved": {
+            "title": "Lead Saved",
+            "type": "boolean"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "seconds_left": {
+            "description": "Speech seconds left in this call.",
+            "title": "Seconds Left",
+            "type": "integer"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "turns_left": {
+            "title": "Turns Left",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "token",
+          "heard",
+          "reply",
+          "lead_saved",
+          "seconds_left",
+          "turns_left",
+          "call_ended"
+        ],
+        "title": "PublicVoiceReply",
         "type": "object"
       },
       "QuoteCreate": {
@@ -42123,6 +42261,78 @@
           }
         },
         "summary": "A visitor's message to the website chat (only for the CRM's web server)",
+        "tags": [
+          "public chat"
+        ]
+      }
+    },
+    "/api/v1/public/voice/turn": {
+      "post": {
+        "description": "Audio in, text and speech out. Order matters: everything that can refuse the visitor runs\nbefore the audio is sent to the speech service, so a refused visitor costs nothing.",
+        "operationId": "public_voice_turn_api_v1_public_voice_turn_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_public_voice_turn_api_v1_public_voice_turn_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicVoiceReply"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "One spoken turn of the voice receptionist (only for the CRM's web server)",
         "tags": [
           "public chat"
         ]

@@ -9,6 +9,7 @@ tool saves a lead, and the answer holds just the reply text and "details saved: 
 
 import json
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -22,9 +23,11 @@ from app.core.errors import DomainError, NotFoundError
 from app.core.events import publish
 from app.core.screening import screen
 from app.modules.agents import api as agents_api
+from app.modules.approvals import api as approvals_api
 from app.modules.assistant import api as assistant_api
 from app.modules.buyer_memory import api as buyer_memory_api
 from app.modules.identity import api as identity_api
+from app.modules.knowledge import api as knowledge_api
 from app.modules.leads import api as leads_api
 from app.modules.public_chat import repository, rules
 from app.modules.public_chat.models import MESSAGE_MAX, PublicChatMessage, PublicChatSession
@@ -73,6 +76,37 @@ class BusyError(DomainError):
         super().__init__("The chat is very busy today. Please try again tomorrow or call us.")
 
 
+class VoiceConsentRequiredError(DomainError):
+    status_code = 422
+    code = "voice_consent_required"
+
+    def __init__(self) -> None:
+        super().__init__("Please read the notice and press Start before talking.")
+
+
+class ReceptionistUnavailableError(DomainError):
+    """Switched off, out of budget or out of minutes: the page offers the typed chat instead."""
+
+    status_code = 503
+    code = "receptionist_unavailable"
+
+    def __init__(self) -> None:
+        super().__init__(rules.VOICE_RESTING_REPLY)
+
+
+class VoiceLimitError(DomainError):
+    status_code = 429
+    code = "voice_limit_reached"
+
+
+class HeardNothingError(DomainError):
+    status_code = 422
+    code = "voice_heard_nothing"
+
+    def __init__(self) -> None:
+        super().__init__("I could not hear anything. Please try again, or type your message.")
+
+
 class LeadNotFoundError(NotFoundError):
     code = "lead_not_found"
 
@@ -110,6 +144,121 @@ def _check_limits(
         settings.public_chat_messages_per_session
     ):
         raise RateLimitedError()
+
+
+@dataclass(frozen=True)
+class VoiceTools:
+    """What the spoken receptionist's knowledge search needs (the answer machinery of the knowledge
+    module). Without an embedder the receptionist has no search_knowledge tool at all."""
+
+    embedder: Any
+    reranker: Any = None
+
+
+def _offered_tools(voice: bool, voice_tools: VoiceTools | None) -> list[dict[str, Any]]:
+    if not voice:
+        return [rules.SAVE_LEAD_TOOL]
+    tools = list(rules.VOICE_TOOLS)
+    if voice_tools is None:
+        tools = [t for t in tools if t["name"] != "search_knowledge"]
+    return tools
+
+
+def _unbacked_numbers(
+    session: Session,
+    conversation: PublicChatSession,
+    answer: str,
+    source_texts: list[str],
+) -> bool:
+    """True when the spoken answer holds a RERA number or an amount that no knowledge source of this
+    turn holds and the visitor did not say themselves (their budget may be read back)."""
+    said = " ".join(
+        m.content for m in repository.all_messages(session, conversation) if m.role == "visitor"
+    )
+    return knowledge_api.unsupported_numbers(answer, source_texts, question=said) is not None
+
+
+def _search_knowledge(
+    session: Session,
+    settings: Settings,
+    voice_tools: VoiceTools,
+    raw_model: assistant_api.ChatModel,
+    tenant_id: uuid.UUID,
+    arguments: Any,
+    source_texts: list[str],
+) -> tuple[str, bool]:
+    try:
+        args = rules.SearchKnowledgeArgs.model_validate(arguments)
+    except ValidationError:
+        return "Send exactly one field, question (3 to 300 characters).", True
+    try:
+        outcome = knowledge_api.answer_for_visitor(
+            session,
+            tenant_id,
+            question=args.question,
+            settings=settings,
+            embedder=voice_tools.embedder,
+            chat_model=raw_model,
+            reranker=voice_tools.reranker,
+        )
+    except (
+        agents_api.AgentUnavailableError,
+        agents_api.AgentBudgetReachedError,
+        assistant_api.AssistantUnavailableError,
+    ):
+        return json.dumps({"found": False, "reason": "unavailable"}), False
+    if not outcome.enough or not outcome.sources:
+        return json.dumps({"found": False, "reason": outcome.reason or "not_found"}), False
+    source_texts.extend(source.text for source in outcome.sources)
+    return json.dumps({"found": True, "answer": outcome.answer}), False
+
+
+def _request_callback(
+    session: Session,
+    settings: Settings,
+    tenant_id: uuid.UUID,
+    conversation: PublicChatSession,
+    arguments: Any,
+    language: str,
+) -> tuple[str, bool]:
+    """Ask for a callback: a PROPOSAL a manager approves, never a booking. Needs the saved lead,
+    allows one per call, and puts only fixed words into the proposal."""
+    try:
+        args = rules.RequestCallbackArgs.model_validate(arguments)
+    except ValidationError:
+        return "Send exactly day (today, tomorrow, day_after) and window (morning, ...).", True
+    if conversation.lead_id is None:
+        return "Save the visitor's details first (save_lead), then ask for the callback.", True
+    if conversation.callback_requested_at is not None:
+        return json.dumps({"requested": False, "already_requested": True}), False
+    automation = identity_api.automation_principal(session, tenant_id)
+    identity_api.bind_reader(session, automation)
+    try:
+        with session.begin_nested():
+            approvals_api.propose(
+                session,
+                automation,
+                kind="lead.request_callback",
+                target_id=conversation.lead_id,
+                payload={"day": args.day, "window": args.window, "language": language},
+                reason=rules.CALLBACK_REASON,
+                agent="receptionist",
+                pending_limit=settings.receptionist_callbacks_waiting,
+                sentinel_limits=approvals_api.SentinelLimits(
+                    proposals_per_hour=settings.receptionist_callbacks_per_hour,
+                    assignments_per_hour=settings.receptionist_callbacks_per_hour,
+                    busy_record_per_day=3,
+                ),
+            )
+    except (
+        approvals_api.InvalidActionError,
+        approvals_api.LimitReachedError,
+        approvals_api.ProposalBlockedError,
+    ):
+        return "The callback could not be requested. Tell the visitor the team will call.", True
+    conversation.callback_requested_at = _now()
+    session.flush()
+    return json.dumps({"requested": True, "confirmed_by_the_team_later": True}), False
 
 
 def _save_lead(
@@ -196,6 +345,25 @@ def handle_message(
     *,
     visitor_ip: str,
 ) -> PublicChatReply:
+    """A typed message (ADR 0013)."""
+    reply, _, _ = _handle(session, settings, model, data, visitor_ip=visitor_ip)
+    return reply
+
+
+def _handle(
+    session: Session,
+    settings: Settings,
+    model: assistant_api.ChatModel,
+    data: PublicChatRequest,
+    *,
+    visitor_ip: str,
+    channel: str = "text",
+    consent_version: int | None = None,
+    voice_tools: "VoiceTools | None" = None,
+) -> tuple[PublicChatReply, PublicChatSession, uuid.UUID]:
+    """One visitor message, typed or heard. Channel "web_voice" adds the spoken-number check, the
+    voice prompt rules and the receptionist's own registry entry (ADR 0038)."""
+    voice = channel == "web_voice"
     slug = settings.public_chat_tenant_slug
     key = settings.public_chat_server_key
     tenant = identity_api.active_tenant_by_slug(session, slug) if slug else None
@@ -209,6 +377,8 @@ def handle_message(
     if not decision.allowed:
         raise MessageRefusedError(decision.reason)
     message = decision.clean
+    if voice and rules.spoken_number_refusal(message):
+        raise MessageRefusedError(rules.VOICE_NO_SECRETS_REPLY)
     if not model.available:
         raise assistant_api.AssistantUnavailableError(
             "The chat is not available right now. Please call us or try again later."
@@ -226,13 +396,24 @@ def handle_message(
     if conversation is None or token is None:
         token = rules.new_token()
         conversation = PublicChatSession(
-            tenant_id=tenant_id, token_hash=rules.hash_token(token), visitor_ip_hash=ip_hash
+            tenant_id=tenant_id,
+            token_hash=rules.hash_token(token),
+            visitor_ip_hash=ip_hash,
+            channel=channel,
+            voice_consent_at=_now() if voice else None,
+            voice_consent_version=consent_version if voice else None,
         )
         session.add(conversation)
         session.flush()
         # Anonymous, and kept after the conversation itself is cleaned up (docs/pilot-report.md).
         repository.count_event(session, tenant_id, _now().date(), started=1)
 
+    if voice and conversation.channel != "web_voice":
+        # A typed conversation that goes on by voice: the consent was checked before the audio
+        # was sent, and is recorded now (the database refuses a voice channel without it).
+        conversation.channel = "web_voice"
+        conversation.voice_consent_at = _now()
+        conversation.voice_consent_version = consent_version
     session.add(
         PublicChatMessage(
             tenant_id=tenant_id,
@@ -250,19 +431,34 @@ def handle_message(
         organisation=organisation, language_rule=rules.LANGUAGE_RULES[data.language]
     )
 
+    if voice:
+        system += "\n" + rules.VOICE_RULES.format(organisation=organisation)
+
+    # The spoken receptionist is its own registry entry: its own switch, budget and tool filter.
+    raw_model = model
     model = agents_api.governed(
-        model, session, tenant_id, "public_chat", agents_api.Limits.from_settings(settings)
+        model,
+        session,
+        tenant_id,
+        "receptionist" if voice else "public_chat",
+        agents_api.Limits.from_settings(settings),
     )
     answer = rules.FALLBACK_REPLY
+    offered = _offered_tools(voice, voice_tools)
+    # What the knowledge search returned this turn: the only text a spoken price or RERA number
+    # may come from (checked below).
+    source_texts: list[str] = []
     for _ in range(rules.MAX_TOOL_ROUNDS + 1):
         try:
-            reply = model.reply(system=system, messages=messages, tools=[rules.SAVE_LEAD_TOOL])
+            reply = model.reply(system=system, messages=messages, tools=offered)
         except (agents_api.AgentUnavailableError, agents_api.AgentBudgetReachedError):
             # Switched off or over budget (ADR 0016): the page keeps working, nothing is saved.
-            answer = rules.RESTING_REPLY
+            answer = rules.VOICE_RESTING_REPLY if voice else rules.RESTING_REPLY
             break
         if not reply.tool_uses:
             answer = assistant_api.sanitise_output(reply.text or rules.FALLBACK_REPLY)
+            if voice and _unbacked_numbers(session, conversation, answer, source_texts):
+                answer = rules.VOICE_UNCITED_REPLY
             break
         messages.append({"role": "assistant", "content": reply.as_content()})
         results = []
@@ -271,8 +467,25 @@ def handle_message(
                 content, is_error = _save_lead(
                     session, tenant_id, conversation, use.input, data.language
                 )
+            elif voice and use.name == "search_knowledge" and voice_tools is not None:
+                content, is_error = _search_knowledge(
+                    session,
+                    settings,
+                    voice_tools,
+                    raw_model,
+                    tenant_id,
+                    use.input,
+                    source_texts,
+                )
+            elif voice and use.name == "request_callback":
+                content, is_error = _request_callback(
+                    session, settings, tenant_id, conversation, use.input, data.language
+                )
             else:
-                content, is_error = "This tool doesn't exist. Only save_lead is available.", True
+                content, is_error = (
+                    "This tool doesn't exist. Use only the tools you were given.",
+                    True,
+                )
             results.append(
                 {
                     "type": "tool_result",
@@ -293,7 +506,159 @@ def handle_message(
     )
     conversation.updated_at = _now()
     session.flush()
-    return PublicChatReply(token=token, reply=answer, lead_saved=conversation.lead_id is not None)
+    result = PublicChatReply(token=token, reply=answer, lead_saved=conversation.lead_id is not None)
+    return result, conversation, tenant_id
+
+
+# --- the spoken turn (ADR 0038, step VR2) -----------------------------------------------------
+
+
+@dataclass(frozen=True)
+class VoiceTurn:
+    reply: PublicChatReply
+    conversation_id: uuid.UUID
+    tenant_id: uuid.UUID
+    seconds_left: int
+    turns_left: int
+    call_ended: bool
+
+
+def _website_tenant(session: Session, settings: Settings) -> uuid.UUID:
+    slug = settings.public_chat_tenant_slug
+    tenant = identity_api.active_tenant_by_slug(session, slug) if slug else None
+    if tenant is None or settings.public_chat_server_key is None:
+        raise PublicChatNotFoundError()
+    bind_tenant(session, tenant[0])
+    return tenant[0]
+
+
+def voice_precheck(
+    session: Session,
+    settings: Settings,
+    *,
+    token: str | None,
+    consent_version: int | None,
+    visitor_ip: str,
+) -> None:
+    """Everything that can be refused BEFORE any audio is sent to the speech service, so a refused
+    visitor costs nothing: the organisation's switch, budget and minutes, the visitor's consent
+    (the notice they read), the per-address and per-call limits. Writes nothing."""
+    tenant_id = _website_tenant(session, settings)
+    now = _now()
+    try:
+        agents_api.check_can_call(
+            session, tenant_id, "receptionist", agents_api.Limits.from_settings(settings), now
+        )
+    except (agents_api.AgentUnavailableError, agents_api.AgentBudgetReachedError):
+        raise ReceptionistUnavailableError() from None
+    today = now.date()
+    month_start = today.replace(day=1)
+    if (
+        repository.voice_seconds_between(session, tenant_id, today, today)
+        >= settings.receptionist_minutes_per_day * 60
+        or repository.voice_seconds_between(session, tenant_id, month_start, today)
+        >= settings.receptionist_minutes_per_month * 60
+    ):
+        raise ReceptionistUnavailableError()
+
+    conversation: PublicChatSession | None = None
+    if token is not None:
+        conversation = repository.find_session_unlocked(session, tenant_id, rules.hash_token(token))
+        if conversation is None:
+            raise ConversationNotFoundError()
+    if conversation is None or conversation.channel != "web_voice":
+        # The first spoken turn of a conversation: the visitor must have pressed Start after
+        # reading THIS version of the notice. No press, no microphone.
+        if consent_version != settings.receptionist_notice_version:
+            raise VoiceConsentRequiredError()
+    if conversation is None:
+        key = settings.public_chat_server_key
+        if key is None:  # _website_tenant checked it already
+            raise PublicChatNotFoundError()
+        ip_hash = rules.hash_ip(visitor_ip, key.get_secret_value())
+        calls = repository.sessions_started_since(
+            session, tenant_id, ip_hash, now - timedelta(days=1), channel="web_voice"
+        )
+        if calls >= settings.receptionist_calls_per_ip_day:
+            raise VoiceLimitError("You have made several calls today. Please try again tomorrow.")
+    elif (
+        conversation.voice_turns >= settings.receptionist_max_turns
+        or conversation.voice_seconds >= settings.receptionist_max_call_seconds
+    ):
+        raise VoiceLimitError(
+            "This call has reached its time limit. Please leave your number or call us."
+        )
+
+
+def handle_voice_message(
+    session: Session,
+    settings: Settings,
+    model: assistant_api.ChatModel,
+    *,
+    heard: str,
+    token: str | None,
+    language: str,
+    website: str,
+    consent_version: int | None,
+    visitor_ip: str,
+    heard_seconds: int,
+    voice_tools: VoiceTools | None = None,
+) -> VoiceTurn:
+    """What the visitor said, as text, through the same pipeline as a typed message. Adds the
+    heard seconds to the call and to the organisation's day. The reply's spoken seconds are added
+    by ``add_spoken_seconds`` once the speech exists."""
+    data = PublicChatRequest.model_validate(
+        {"token": token, "message": heard, "website": website, "language": language}
+    )
+    reply, conversation, tenant_id = _handle(
+        session,
+        settings,
+        model,
+        data,
+        visitor_ip=visitor_ip,
+        channel="web_voice",
+        consent_version=consent_version,
+        voice_tools=voice_tools,
+    )
+    conversation.voice_turns += 1
+    conversation.voice_seconds += heard_seconds
+    repository.count_event(session, tenant_id, _now().date(), voice_seconds=heard_seconds)
+    session.flush()
+    return _turn(settings, reply, conversation, tenant_id)
+
+
+def _turn(
+    settings: Settings,
+    reply: PublicChatReply,
+    conversation: PublicChatSession,
+    tenant_id: uuid.UUID,
+) -> VoiceTurn:
+    seconds_left = max(0, settings.receptionist_max_call_seconds - conversation.voice_seconds)
+    turns_left = max(0, settings.receptionist_max_turns - conversation.voice_turns)
+    ended = seconds_left == 0 or turns_left == 0
+    return VoiceTurn(reply, conversation.id, tenant_id, seconds_left, turns_left, ended)
+
+
+def add_spoken_seconds(
+    session: Session, settings: Settings, turn: VoiceTurn, seconds: int
+) -> VoiceTurn:
+    """Count the seconds of the spoken reply (an estimate) against the call and the day."""
+    bind_tenant(session, turn.tenant_id)
+    conversation = repository.get_session(session, turn.tenant_id, turn.conversation_id)
+    if conversation is None:  # cannot happen inside the same transaction
+        return turn
+    conversation.voice_seconds += seconds
+    repository.count_event(session, turn.tenant_id, _now().date(), voice_seconds=seconds)
+    session.flush()
+    return _turn(settings, turn.reply, conversation, turn.tenant_id)
+
+
+def count_refused_turn(session: Session, settings: Settings, heard_seconds: int) -> None:
+    """A refused spoken turn (a card number said aloud, nothing heard) still cost speech
+    recognition: count its seconds against the organisation's day so it cannot be repeated for
+    free. The caller commits."""
+    tenant_id = _website_tenant(session, settings)
+    repository.count_event(session, tenant_id, _now().date(), voice_seconds=heard_seconds)
 
 
 # --- staff: the conversation on the lead page (step PC4) -------------------------------------
@@ -310,6 +675,8 @@ def lead_transcript(
         return PublicChatTranscript(started_at=None, messages=[])
     return PublicChatTranscript(
         started_at=conversation.created_at,
+        channel="web_voice" if conversation.channel == "web_voice" else "text",
+        voice_seconds=conversation.voice_seconds,
         messages=[
             TranscriptMessage.model_validate(m)
             for m in repository.all_messages(session, conversation)

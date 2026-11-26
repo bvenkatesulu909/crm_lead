@@ -22,6 +22,7 @@ import {
   checkVisitorMessage,
   pickLanguage,
 } from "@/lib/public-chat";
+import { PublicVoiceCall } from "@/components/public-voice-call";
 import {
   createRecognition,
   speechRecognitionAvailable,
@@ -42,9 +43,12 @@ type Line = { role: "visitor" | "assistant"; text: string };
 export function PublicChat({
   privacyUrl,
   endpoint = "/api/public-chat",
+  voice,
 }: {
   privacyUrl?: string;
   endpoint?: string;
+  /** Offers the voice receptionist (ADR 0038) when set; the number is the notice's version. */
+  voice?: { noticeVersion: number };
 }) {
   const [lines, setLines] = useState<Line[]>([]);
   const [text, setText] = useState("");
@@ -257,6 +261,29 @@ export function PublicChat({
         >
           {error}
         </p>
+      )}
+
+      {voice && (
+        <div className="mb-3">
+          <PublicVoiceCall
+            language={language}
+            noticeVersion={voice.noticeVersion}
+            onGreeting={(greeting) =>
+              setLines((current) => [
+                ...current,
+                { role: "assistant", text: greeting },
+              ])
+            }
+            onTurn={(heard, reply) =>
+              setLines((current) => [
+                ...current,
+                { role: "visitor", text: heard },
+                { role: "assistant", text: reply },
+              ])
+            }
+            onSaved={() => setSaved(true)}
+          />
+        </div>
       )}
 
       <form onSubmit={send} className="flex items-end gap-2" noValidate>

@@ -126,7 +126,7 @@ export function BatchConfirm({
       <dialog
         ref={dialog}
         aria-labelledby={titleId}
-        className="w-full max-w-lg rounded-lg p-0 shadow-xl backdrop:bg-slate-900/40"
+        className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl p-0 shadow-xl backdrop:bg-slate-900/50"
       >
         <div className="space-y-4 p-6">
           <h2 id={titleId} className="text-lg font-semibold text-slate-900">

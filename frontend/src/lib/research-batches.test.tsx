@@ -437,6 +437,20 @@ describe("the confirmation dialog", () => {
     expect(start).not.toHaveBeenCalled();
   });
 
+  it("is centred like the app's other dialogs (the style reset removes the browser's centring)", () => {
+    render(
+      <BatchConfirm
+        label="Research"
+        title="Go?"
+        estimate={vi.fn()}
+        start={vi.fn()}
+      />,
+    );
+    const dialog = document.querySelector("dialog");
+    expect(dialog?.className).toContain("m-auto");
+    expect(dialog?.className).toContain("w-[calc(100%-2rem)]");
+  });
+
   it("leaves out the month line when there is no budget", () => {
     render(
       <EstimateView

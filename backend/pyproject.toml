@@ -86,6 +86,7 @@ modules = [
     "app.modules.sales",
     "app.modules.site_brief",
     "app.modules.support",
+    "app.modules.video_brief",
     "app.modules.units",
     "app.modules.workflows",
 ]

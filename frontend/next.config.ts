@@ -51,7 +51,10 @@ const nextConfig: NextConfig = {
               "frame-ancestors 'none'",
               "base-uri 'self'",
               ...(store
-                ? [`connect-src 'self' ${store}`, `media-src 'self' ${store}`]
+                ? [
+                    `connect-src 'self' ${store}`,
+                    `media-src 'self' ${store} blob:`,
+                  ]
                 : []),
             ].join("; "),
           },

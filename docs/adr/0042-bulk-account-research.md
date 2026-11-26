@@ -262,7 +262,7 @@ Staging is not touched by any step; the entry stays off until an administrator s
    would only turn a miscounted call into a stuck batch.
 
 4. **A fourth way to end (BR3):** `stopped_error`, for a batch that cannot go on - its starter is no longer an
-   active member of staff, or its step job died after all its retries (migration 0077). The unstarted accounts
+   active member of staff, or its step job died after all its retries (migration 0079). The unstarted accounts
    become `not_run`. When the starter is gone the audit entry is written by the organisation's Automation
    identity, because the audit log always names an actor. `stopped_budget` covers every limit and switch: the
    batch's cap, the month's budget, the platform switch and either registry switch being turned off.

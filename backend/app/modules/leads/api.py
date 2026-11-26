@@ -142,6 +142,8 @@ class LeadBriefFacts:
     budget_min_inr: int | None
     budget_max_inr: int | None
     location: str | None
+    # The account the lead became; a quote can only belong to a lead through it.
+    converted_account_id: uuid.UUID | None = None
 
 
 def brief_facts(
@@ -154,7 +156,7 @@ def brief_facts(
     return LeadBriefFacts(
         lead.first_name, lead.last_name, lead.status, lead.source, lead.owner_id, lead.phone,
         lead.email, lead.preferred_language, lead.property_type, lead.budget_min_inr,
-        lead.budget_max_inr, lead.location,
+        lead.budget_max_inr, lead.location, lead.converted_account_id,
     )  # fmt: skip
 
 

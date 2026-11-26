@@ -2968,6 +2968,24 @@
         "title": "Catalogue",
         "type": "object"
       },
+      "CautionRead": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "text"
+        ],
+        "title": "CautionRead",
+        "type": "object"
+      },
       "CitationRead": {
         "properties": {
           "document": {
@@ -9108,6 +9126,76 @@
           "max_bytes"
         ],
         "title": "KnowledgeUploadTicket",
+        "type": "object"
+      },
+      "KnownLineRead": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "fact",
+              "assumption",
+              "form",
+              "price"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "key",
+          "label",
+          "value",
+          "source",
+          "quote",
+          "reason"
+        ],
+        "title": "KnownLineRead",
         "type": "object"
       },
       "LeadAssign": {
@@ -17251,6 +17339,45 @@
         "title": "ScoreFactor",
         "type": "object"
       },
+      "ScriptLineRead": {
+        "properties": {
+          "cites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cites",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "greeting",
+              "intro",
+              "fact",
+              "price",
+              "question",
+              "closing"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "seconds": {
+            "title": "Seconds",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "cites",
+          "seconds"
+        ],
+        "title": "ScriptLineRead",
+        "type": "object"
+      },
       "SeenValue": {
         "properties": {
           "after": {
@@ -19357,6 +19484,124 @@
           "created_at"
         ],
         "title": "VersionRead",
+        "type": "object"
+      },
+      "VideoBriefRead": {
+        "properties": {
+          "cautions": {
+            "items": {
+              "$ref": "#/components/schemas/CautionRead"
+            },
+            "title": "Cautions",
+            "type": "array"
+          },
+          "consent_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Consent Notes",
+            "type": "array"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "goal": {
+            "enum": [
+              "introduce",
+              "follow_up",
+              "after_visit",
+              "explain_quote",
+              "revive"
+            ],
+            "title": "Goal",
+            "type": "string"
+          },
+          "known": {
+            "items": {
+              "$ref": "#/components/schemas/KnownLineRead"
+            },
+            "title": "Known",
+            "type": "array"
+          },
+          "language": {
+            "enum": [
+              "en",
+              "hi",
+              "te"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "length_seconds": {
+            "enum": [
+              30,
+              60,
+              90
+            ],
+            "title": "Length Seconds",
+            "type": "integer"
+          },
+          "must_not_say": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Must Not Say",
+            "type": "array"
+          },
+          "must_say": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Must Say",
+            "type": "array"
+          },
+          "script": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptLineRead"
+            },
+            "title": "Script",
+            "type": "array"
+          },
+          "tone": {
+            "enum": [
+              "warm",
+              "professional",
+              "brisk"
+            ],
+            "title": "Tone",
+            "type": "string"
+          },
+          "tone_note": {
+            "title": "Tone Note",
+            "type": "string"
+          },
+          "word_target": {
+            "title": "Word Target",
+            "type": "integer"
+          },
+          "words": {
+            "title": "Words",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "first_name",
+          "language",
+          "tone",
+          "tone_note",
+          "goal",
+          "length_seconds",
+          "word_target",
+          "words",
+          "known",
+          "script",
+          "must_say",
+          "must_not_say",
+          "consent_notes",
+          "cautions"
+        ],
+        "title": "VideoBriefRead",
         "type": "object"
       },
       "VoiceStatusRead": {
@@ -35117,6 +35362,170 @@
         "summary": "Change the lead status",
         "tags": [
           "leads"
+        ]
+      }
+    },
+    "/api/v1/leads/{lead_id}/video-brief": {
+      "get": {
+        "operationId": "read_video_brief_api_v1_leads__lead_id__video_brief_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lead_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lead Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "goal",
+            "required": false,
+            "schema": {
+              "default": "follow_up",
+              "enum": [
+                "introduce",
+                "follow_up",
+                "after_visit",
+                "explain_quote",
+                "revive"
+              ],
+              "title": "Goal",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Default: the buyer's preferred language, else English.",
+            "in": "query",
+            "name": "language",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "en",
+                    "hi",
+                    "te"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Default: the buyer's preferred language, else English.",
+              "title": "Language"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tone",
+            "required": false,
+            "schema": {
+              "default": "warm",
+              "enum": [
+                "warm",
+                "professional",
+                "brisk"
+              ],
+              "title": "Tone",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Seconds: 30, 60 or 90.",
+            "in": "query",
+            "name": "length",
+            "required": false,
+            "schema": {
+              "default": 60,
+              "description": "Seconds: 30, 60 or 90.",
+              "title": "Length",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "An approved, sent or accepted quote of the account this lead became.",
+            "in": "query",
+            "name": "quote_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "An approved, sent or accepted quote of the account this lead became.",
+              "title": "Quote Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoBriefRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The brief for a personalised video to this buyer (built on demand, nothing stored)",
+        "tags": [
+          "video-brief"
         ]
       }
     },

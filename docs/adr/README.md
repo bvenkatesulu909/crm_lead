@@ -50,4 +50,5 @@ Rules:
 | [0037](0037-deal-risk-forecast.md) | Deal risk forecast: a transparent score with plain reasons | Accepted |
 | [0038](0038-live-voice-receptionist.md) | A live Telugu and Hindi voice receptionist (browser first, phone number later) | Accepted |
 | [0040](0040-upi-reserve-pay-rules.md) | UPI reserve-pay rules: token / booking amount to hold a property | Accepted |
+| [0041](0041-avatar-video-briefs.md) | Avatar video briefs: the CRM writes the brief, a person or a tool makes the video | Accepted |
 | [0042](0042-bulk-account-research.md) | Research up to 100 accounts at once (a batch of account briefs) | Accepted |

@@ -28,6 +28,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "staff_assistant",
         "portal_assistant",
         "public_chat",
+        "receptionist",
         "knowledge_answers",
         "qualifier",
         "lead_agent",
@@ -68,6 +69,8 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         False,
     )
     assert not AGENTS["voice"].default_enabled and AGENTS["voice"].platform_switch is False
+    # The voice receptionist talks to anonymous visitors: OFF until switched on (ADR 0038).
+    assert not AGENTS["receptionist"].default_enabled and AGENTS["receptionist"].uses_model
     # Company details read outside sites for a lead: OFF until switched on (ADR 0026 Q4).
     details = AGENTS["company_details"]
     assert (details.uses_model, details.platform_switch, details.default_enabled) == (
@@ -81,6 +84,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "deck_writer",
         "call_notes",
         "voice",
+        "receptionist",
         "account_research",
         "company_details",
         "call_audio",
@@ -100,6 +104,7 @@ def test_every_key_fits_the_database_rule() -> None:
         "staff_assistant",
         "portal_assistant",
         "public_chat",
+        "receptionist",
         "deal_desk",
         "account_research",
         "deck_writer",

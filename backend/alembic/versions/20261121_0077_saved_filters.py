@@ -1,7 +1,7 @@
 """Saved filters of the Accounts list (ADR 0042, BR-pre).
 
-Revision ID: 0075
-Revises: 0074
+Revision ID: 0077
+Revises: 0076
 Create Date: 2026-11-21
 
 One new tenant table. A saved filter is a name plus the list's own filter parameters, private to its
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0075"
-down_revision: str | None = "0074"
+revision: str = "0077"
+down_revision: str | None = "0076"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

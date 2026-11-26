@@ -65,7 +65,9 @@ export function AgentCard({
   const unit =
     agent.key === "mcp_client"
       ? { one: "proposal", plural: "proposals" }
-      : { one: "check", plural: "checks" };
+      : agent.key === "research_batches"
+        ? { one: "batch", plural: "batches" }
+        : { one: "check", plural: "checks" };
   const shown = Math.min(100, Math.max(0, agent.percent_used));
   return (
     <article aria-labelledby={headingId}>

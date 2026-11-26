@@ -58,6 +58,9 @@ __all__ = [
     "web_lead_quality_table",
     "web_leads_by_month",
     "create_lead_from_website",
+    "email_consent_withdrawn",
+    "email_state",
+    "owner_of_lead",
     "EXPORT",
     "export_table",
     "qualifier_facts",
@@ -196,6 +199,12 @@ def owned_lead_ids(principal: Principal) -> Select[uuid.UUID]:
     )
 
 
+def owner_of_lead(session: Session, principal: Principal, lead_id: uuid.UUID) -> uuid.UUID | None:
+    """Who owns a lead this principal may read (None if unowned or not readable)."""
+    snapshot = lead_snapshot(session, principal, lead_id)
+    return None if snapshot is None else snapshot.owner_id
+
+
 def lead_brief(session: Session, principal: Principal, lead_id: uuid.UUID) -> str | None:
     """A short label for a lead this principal may see (for notifications), else None."""
     lead = repository.get_readable(session, principal, lead_id)
@@ -243,6 +252,21 @@ def email_consent_withdrawn(
         else:
             clear_user(session)
     return consent is None or consent == "withdrawn"
+
+
+def email_state(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID
+) -> tuple[str | None, str] | None:
+    """(e-mail address, consent answer) of a lead the CURRENT binding may see, else None.
+
+    For the approval check of a follow-up draft (ADR 0036): the proposer was already shown to
+    be allowed to read the lead, and the database policy still applies to this query."""
+    row = session.execute(
+        select(Lead.email, Lead.email_consent).where(
+            Lead.tenant_id == tenant_id, Lead.id == lead_id
+        )
+    ).one_or_none()
+    return None if row is None else (row.email, row.email_consent)
 
 
 def create_lead_from_website(

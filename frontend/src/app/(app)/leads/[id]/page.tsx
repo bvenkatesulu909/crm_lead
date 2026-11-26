@@ -43,7 +43,11 @@ import {
   leadName,
 } from "@/lib/format";
 import { availableActions } from "@/lib/lead-rules";
-import { canReadBuyerMemory, hasAny } from "@/lib/permissions";
+import {
+  canReadBuyerMemory,
+  canReadVideoBrief,
+  hasAny,
+} from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
 import {
@@ -232,6 +236,15 @@ export default async function LeadPage({
               >
                 Site visit brief
               </ButtonLink>
+              {canReadVideoBrief(me) && (
+                <ButtonLink
+                  variant="secondary"
+                  href={`/print/leads/${lead.id}/video-brief`}
+                  className="ml-2"
+                >
+                  Video brief
+                </ButtonLink>
+              )}
             </div>
           )}
         </div>

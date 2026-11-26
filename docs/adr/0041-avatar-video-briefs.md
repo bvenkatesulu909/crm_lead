@@ -188,3 +188,18 @@ Nothing is switched on in staging by default and staging is not touched by these
   a buyer; the content, the banned list and the approval step differ. The pure helpers (cleaning, reading buyer
   memory) are reused.
 - **Store the brief on buyer memory.** Rejected: a script is a generated document, not a fact about the buyer.
+
+## 9. Notes from building VB1 (2026-11-21)
+
+- **Price facts are not in VB1.** Section VB2-4 (property and price facts from a quote or brochure) needs a new
+  read function in the quotes module and a way to cite brochure sections; VB1 uses buyer-memory facts and the
+  lead form's wishes only. The lead form's budget, type and area are shown in the brief as "lead form" lines
+  (the buyer has not confirmed them) and are **never spoken** in the script. Quote and brochure facts follow
+  as VB1b.
+- **Both permissions exist now** (`video_brief:read`, `video_brief:write`) for sales agents, managers and
+  administrators; `write` is not used until the stored-script step (VB3).
+- A value that holds a phone number, an e-mail address, a card number or an instruction is left out of the
+  script and reported as a caution; it is shown as "[left out]" in the facts list.
+- The length is an ordinary integer query value checked against 30 / 60 / 90 in the rules (FastAPI does not
+  convert a query string into an integer `Literal`).
+- The Hindi and Telugu words (greetings, closings, labels) are a first version and need a native-speaker read.

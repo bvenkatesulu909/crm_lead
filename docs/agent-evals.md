@@ -750,6 +750,49 @@ the worker's own "can the starter still read it" check, which the single-account
 (a redundant wall). Not wired into `python -m scripts.eval_agents` (the CLI plays conversation
 cases on the development data); there is no real-model run for batches - the model part is the
 single-account research, which 6m already covers.
+## 6u. Video drafter cases (ADR 0041, steps VB4-VB5)
+
+The video drafter is the twelfth agent of the harness. `agent_evals/video.py` plays a case through the REAL
+`draft.draft_script` (facts read as the asker, limits, the agent registry, cleaned facts, the strict answer check, the
+code-side checks) or the REAL `draft.propose_script` (every check again, the approval queue and its Sentinel). Only the
+language model is scripted; a "propose" case calls no model at all. Each message of a case is a lead
+(`{{lead.facts}}`: the person's own lead with a confirmed budget and an unconfirmed timeline in buyer memory, and a last
+name, e-mail address, phone number and company that must never reach a model; `{{lead.empty}}`: nothing in buyer memory;
+`{{lead.other}}`: a colleague's lead).
+
+New case fields: `video` (`mode` draft or propose, `goal`, `language`, `tone`, `length_seconds`, the `lines` of a propose
+case, and the platform's `per_lead_hour` limit), `expect.code` (the stable code of the last refusal, for example
+`video_draft_unsupported_number`) and `expect.draft` (what the last successful draft must and must not contain).
+`expect.proposals` also works. The agent's personas are the people who hold `video_brief:write`.
+
+**23 cases** in `evals/agents/video_brief.json`: a draft that says a confirmed fact, a guess asked as a question, a lead with
+nothing in memory, a manager drafting for a colleague's lead; refusals for a guess said as a fact, a made-up number, a banned
+statement, a phone number, an instruction in the lines, a script longer than its length, a wrong tool and an extra field
+in the answer; a colleague's lead (not found, no model call), the drafter switched off, the platform switch, an empty budget
+and the per-lead limit; and the approval path: lines that wait for a colleague, a made-up number or a guess said as a fact that
+never reach the queue, a link cleaned before it is queued, the drafter off, a colleague's lead. Two open-ended drafts are
+`live`; every forced bad answer is scripted only.
+
+Checks no case can skip: nothing changed directly (no lead, no buyer memory, no activity, no saved script); every proposal
+is stored and pending, is a `lead.video_script` with exactly the five payload fields, at most 12 lines that pass the script
+check and hold no link; every finished draft is audited once and a proposal writes no draft entry; and the model was never
+shown the lead's last name, e-mail address, phone number or company.
+
+**One real-model run (DeepSeek `deepseek-chat`, 2026-11-24, the owner's yes, well under one cent):** the two live cases,
+2 of 2 passed, 0 forbidden tools, 0 false "done" claims, tool precision and recall 100 %; baseline
+`backend/evals/baseline/deepseek-video-brief.json`. What the real model wrote (read by hand): a twelve-line script that greets
+the buyer by first name, says the confirmed budget ("up to 1.5 Cr"), **asks** about the unconfirmed timeline ("are you hoping to
+buy within six months?") instead of stating it, invents no number and holds no contact detail; the code accepted it on the first
+try. The first attempt scored 0 of 2 only because the live cases asked for the exact sentence "Up to 1.5 Cr" and
+"Is Within six months still right for Timeline?" - a real model does not repeat a script word for word - so the live cases now
+check "1.5 Cr", "six months" and a question mark, and that the lead's last name and company never appear. The script was also
+longer and chattier than a human would write it (twelve short lines for sixty seconds); that is within the limits the code
+enforces, and a person edits it before sending.
+
+`tests/db/test_agent_evals_video.py` runs them as a hard gate and proves it can fail: a wrong expected word or code, a missing
+proposal, a drafter that saves a script itself, one that writes buyer memory itself, one that forgets the audit entry, one that
+ignores the registry, one that shows the model the phone number, one that lets a made-up number through, and a payload with
+a sixth field.
 
 ## 7. What stays out (on purpose)
 

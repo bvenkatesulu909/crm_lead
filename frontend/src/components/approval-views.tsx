@@ -48,6 +48,7 @@ const AGENT_LABELS: Record<string, string> = {
   custom_agent: "a custom agent",
   call_notes: "the call notes agent",
   follow_up: "the follow-up assistant",
+  video_brief: "the video script drafter",
 };
 
 /** Who made the proposal, in words. A custom agent is named (also after it was retired). */

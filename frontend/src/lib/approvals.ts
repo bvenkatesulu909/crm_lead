@@ -140,6 +140,7 @@ const FIELD_LABELS: Record<string, string> = {
   owner_id: "Owner",
   task: "New task",
   email: "E-mail",
+  video_script: "Video script",
 };
 const PERSON_FIELDS = new Set(["owner_id", "assignee_id"]);
 
@@ -189,6 +190,14 @@ export function describeChange(
   ) {
     const mail = change.after as { subject?: unknown };
     return `${label}: one e-mail is queued, subject "${plain(mail.subject)}"`;
+  }
+  if (change.field === "video_script") {
+    // The lines a model drafted, shown as plain text (React escapes them where they are shown).
+    const lines = (value: unknown) =>
+      Array.isArray(value) && value.length > 0
+        ? value.map((line) => plain(line)).join(" / ")
+        : "no saved script";
+    return `${label}: ${lines(change.before)} → ${lines(change.after)}`;
   }
   const show = (value: unknown) =>
     PERSON_FIELDS.has(change.field)

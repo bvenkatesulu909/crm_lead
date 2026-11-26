@@ -3,11 +3,25 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PrintButton } from "@/components/print-button";
+import { SavedScripts } from "@/components/saved-scripts";
+import { VideoScriptEditor } from "@/components/video-script-editor";
 import { VideoBriefView } from "@/components/video-brief-view";
 import { ApiError } from "@/lib/api-error";
-import type { Lead, QuotePage, VideoBrief } from "@/lib/api-types";
+import type {
+  Lead,
+  QuotePage,
+  ScriptPage,
+  ScriptRead,
+  VideoBrief,
+} from "@/lib/api-types";
 import { isUuid } from "@/lib/communications";
-import { apiFetch } from "@/lib/server/api";
+import { canWriteVideoBrief } from "@/lib/permissions";
+import { apiFetch, getMe } from "@/lib/server/api";
+import {
+  draftVideoScript,
+  proposeVideoScript,
+  saveVideoScript,
+} from "./actions";
 import {
   GOAL_LABELS,
   LENGTHS,
@@ -38,7 +52,16 @@ export default async function VideoBriefPage({
 }: PageProps<"/print/leads/[id]/video-brief">) {
   const { id } = await params;
   if (!isUuid(id)) notFound();
-  const choices = parseChoices(await searchParams);
+  const query = await searchParams;
+  const choices = parseChoices(query);
+  // Only a plain number may be shown as 'saved as version N'.
+  const savedRaw = Array.isArray(query.saved) ? query.saved[0] : query.saved;
+  const saved = /^\d{1,4}$/.test(savedRaw ?? "") ? (savedRaw as string) : "";
+  // Only a real proposal id may be linked to.
+  const proposedRaw = Array.isArray(query.proposed)
+    ? query.proposed[0]
+    : query.proposed;
+  const proposed = isUuid(proposedRaw ?? "") ? (proposedRaw as string) : "";
 
   // The lead first: a lead nobody may read stops here, before anything else is asked.
   let lead: Lead;
@@ -75,7 +98,14 @@ export default async function VideoBriefPage({
         brief = await apiFetch<VideoBrief>(
           briefPath(id, { ...choices, quoteId: "" }),
         );
-        return page(id, choices, quotes, brief, notices);
+        return page(
+          id,
+          choices,
+          quotes,
+          brief,
+          notices,
+          await extras(id, saved, proposed),
+        );
       }
     }
     if (
@@ -85,7 +115,32 @@ export default async function VideoBriefPage({
       notFound();
     throw error;
   }
-  return page(id, choices, quotes, brief, notices);
+  return page(
+    id,
+    choices,
+    quotes,
+    brief,
+    notices,
+    await extras(id, saved, proposed),
+  );
+}
+
+/** The saved scripts and whether this person may write one. Neither may stop the brief. */
+async function extras(id: string, saved: string, proposed: string) {
+  let scripts: ScriptRead[] | null = null;
+  try {
+    scripts =
+      (await apiFetch<ScriptPage>(`/leads/${id}/video-scripts`))?.items ?? null;
+  } catch {
+    scripts = null;
+  }
+  let canWrite = false;
+  try {
+    canWrite = canWriteVideoBrief(await getMe());
+  } catch {
+    canWrite = false;
+  }
+  return { scripts, canWrite, saved, proposed };
 }
 
 function page(
@@ -94,6 +149,12 @@ function page(
   quotes: QuotePage["items"],
   brief: VideoBrief,
   notices: string[],
+  more: {
+    scripts: ScriptRead[] | null;
+    canWrite: boolean;
+    saved: string;
+    proposed: string;
+  },
 ) {
   return (
     <main className="mx-auto max-w-2xl bg-white p-5 text-slate-900 sm:p-8 print:p-0">
@@ -196,7 +257,44 @@ function page(
           Update the brief
         </button>
       </form>
+      {more.saved && (
+        <p
+          role="status"
+          className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 print:hidden"
+        >
+          Your script was saved as version {more.saved}.
+        </p>
+      )}
+      {more.proposed && (
+        <p
+          role="status"
+          className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 print:hidden"
+        >
+          Your script was sent and waits for a colleague to approve it - it is
+          saved only when they do.{" "}
+          <Link
+            href={`/approvals/${more.proposed}`}
+            className="font-medium underline"
+          >
+            Open the approval
+          </Link>
+        </p>
+      )}
       <VideoBriefView brief={brief} notices={notices} />
+      {more.canWrite && (
+        <div className="mt-8">
+          <VideoScriptEditor
+            leadId={id}
+            brief={brief}
+            action={saveVideoScript}
+            draftAction={draftVideoScript}
+            proposeAction={proposeVideoScript}
+            initialText={brief.script.map((line) => line.text).join("\n")}
+            quoteId={choices.quoteId}
+          />
+        </div>
+      )}
+      {more.scripts && <SavedScripts scripts={more.scripts} />}
       <footer className="mt-8 border-t border-slate-200 pt-3 text-xs text-slate-500 print:mt-4">
         Built from the CRM when this page was opened; nothing here is saved. The CRM makes no
         video - a person or a tool your organisation trusts does, from this brief.

@@ -39,6 +39,7 @@ Agent = Literal[
     "custom_agent",
     "call_notes",
     "receptionist",
+    "video_brief",
 ]
 # The deal desk asks four models in one run (ADR 0024): each step of its script says which one
 # answers. Three reviewers run at the same time, so the order they are asked in is not fixed.
@@ -84,6 +85,8 @@ PERSONAS: dict[str, set[str]] = {
     "call_notes": {"sales_agent", "sales_manager", "tenant_admin"},
     # ADR 0038: the voice receptionist talks to an anonymous website visitor.
     "receptionist": {"visitor"},
+    # ADR 0041: the people who hold video_brief:write; a support agent has none.
+    "video_brief": {"sales_agent", "sales_manager", "tenant_admin"},
 }
 # After these outcomes nothing in the CRM has changed (or may only wait for approval): the
 # answer must not claim otherwise.
@@ -147,6 +150,10 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.call_notes import answer
 
         return {answer.TOOL_NAME}
+    if agent == "video_brief":
+        from app.modules.video_brief import draft
+
+        return {draft.TOOL_NAME}
     raise CaseFileError(f"unknown agent {agent!r}")
 
 
@@ -292,6 +299,40 @@ class CallNotesSetup(_Strict):
     per_recording_day: int = Field(default=1_000, ge=1, le=1_000)
 
 
+class VideoSetup(_Strict):
+    """How the video drafter (ADR 0041) is played in a case. Each message of the case is a lead
+    (``{{lead.facts}}``: the person's own lead with a confirmed budget and an unconfirmed timeline;
+    ``{{lead.empty}}``: one with nothing in buyer memory)."""
+
+    # "draft": the person asks the drafter (the scripted model writes the lines). "propose": the
+    # person sends the lines below to the approval queue - no model is called.
+    mode: Literal["draft", "propose"] = "draft"
+    goal: Literal["introduce", "follow_up", "after_visit", "explain_quote", "revive"] = "follow_up"
+    language: Literal["en", "hi", "te"] = "en"
+    tone: Literal["warm", "professional", "brisk"] = "warm"
+    length_seconds: Literal[30, 60, 90] = 60
+    # With mode "propose": the lines the person sends.
+    lines: list[str] = Field(default_factory=list, max_length=12)
+    # The platform's limit of drafts per lead per hour for this case.
+    per_lead_hour: int = Field(default=1_000, ge=1, le=1_000)
+
+    @model_validator(mode="after")
+    def _propose_has_lines(self) -> "VideoSetup":
+        if self.mode == "propose" and not self.lines:
+            raise ValueError("video: a propose case needs lines to send")
+        if self.mode == "draft" and self.lines:
+            raise ValueError("video: lines are only for a propose case")
+        return self
+
+
+class ExpectedDraft(_Strict):
+    """What the lines of the last successful draft must (not) contain. Checked on what the
+    drafter returned."""
+
+    contains: list[str] = Field(default_factory=list)
+    must_not_contain: list[str] = Field(default_factory=list)
+
+
 NoteState = Literal["stated", "assumed", "unknown"]
 
 
@@ -385,6 +426,9 @@ class Expect(_Strict):
     dropped_sentences: int | None = Field(default=None, ge=0, le=20)
     # Call notes only: what the stored draft must look like. None: not checked.
     notes: ExpectedNotes | None = None
+    # Video drafter only: the stable code of the last refusal, and what the last draft held.
+    code: str | None = Field(default=None, max_length=80)
+    draft: ExpectedDraft | None = None
 
     @model_validator(mode="after")
     def _warnings_are_warnings(self) -> "Expect":
@@ -456,6 +500,8 @@ class Case(BaseModel):
     call_notes: CallNotesSetup | None = None
     # Voice receptionist: how the call is played. Absent = consent given, no knowledge search.
     receptionist: ReceptionistSetup | None = None
+    # Video drafter: how the case is played. Absent = a draft with the defaults.
+    video: VideoSetup | None = None
     script: list[Step] = Field(default_factory=list)
     expect: Expect
 
@@ -493,6 +539,19 @@ class Case(BaseModel):
             raise ValueError("call_notes: only for the call notes agent")
         if self.expect.notes is not None and self.agent != "call_notes":
             raise ValueError("expect.notes: only for the call notes agent")
+        if self.video is not None and self.agent != "video_brief":
+            raise ValueError("video: only for the video drafter")
+        if (self.expect.code is not None or self.expect.draft is not None) and (
+            self.agent != "video_brief"
+        ):
+            raise ValueError("expect.code / draft: only for the video drafter")
+        if (
+            self.agent == "video_brief"
+            and self.video is not None
+            and self.video.mode == "propose"
+            and (self.script or self.expect.tools)
+        ):
+            raise ValueError("video: a propose case calls no model, so it has no script or tools")
         if self.agent not in ("qualifier", "lead_agent") and self.qualifier:
             raise ValueError("qualifier: only for the qualifier and the lead agent")
         if (
@@ -504,12 +563,13 @@ class Case(BaseModel):
                 "deck_writer",
                 "custom_agent",
                 "call_notes",
+                "video_brief",
             )
             and self.expect.proposals is not None
         ):
             raise ValueError(
                 "expect.proposals: only for the qualifier, lead agent, deal desk, deck writer, "
-                "custom agent and call notes"
+                "custom agent, call notes and video drafter"
             )
         roles = [step.role for step in self.script]
         if self.agent == "deal_desk" and any(role is None for role in roles):

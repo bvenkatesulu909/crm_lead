@@ -115,6 +115,8 @@ export const canReadBuyerMemory = (me: Pick<Me, "permissions">) =>
 /** The video brief (ADR 0041): display only - the API checks again, and the lead decides. */
 export const canReadVideoBrief = (me: Pick<Me, "permissions">) =>
   hasAny(me, "video_brief:read");
+export const canWriteVideoBrief = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "video_brief:write");
 export const canWriteBuyerMemory = (me: Pick<Me, "permissions">) =>
   hasAny(me, "buyer_memory:write");
 /** Call recordings (ADR 0030): display only - the API checks again, and the lead decides. */

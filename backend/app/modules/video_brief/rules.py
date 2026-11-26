@@ -473,3 +473,78 @@ def build_video_brief(
         consent_notes=list(CONSENT_NOTES),
         cautions=cautions,
     )
+
+
+# --- a hand-written script (VB3) -----------------------------------------------------------------
+
+MAX_SCRIPT_LINES = 12
+SCRIPT_LINE_MAX = 300
+
+
+class ScriptError(ValueError):
+    """A hand-written script was refused. ``code`` is stable; the message never repeats the text."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+@dataclass(frozen=True)
+class CheckedScript:
+    lines: list[str]
+    words: int
+
+
+def check_script(
+    lines: Sequence[str], *, length_seconds: int, competitors: Sequence[str] = ()
+) -> CheckedScript:
+    """Clean and check the lines a person wrote. Links, markup and hidden characters are cleaned
+    away; a card number, an instruction, a phone number or e-mail address, a banned kind of
+    statement, a script longer than its length, or no words at all is refused."""
+    squeezed = [" ".join(line.split()) for line in lines]
+    kept = [line for line in squeezed if line]
+    if not kept:
+        raise ScriptError("script_empty", "The script has no words.")
+    if len(kept) > MAX_SCRIPT_LINES:
+        raise ScriptError(
+            "script_too_many_lines", f"A script has at most {MAX_SCRIPT_LINES} lines."
+        )
+    cleaned: list[str] = []
+    for line in kept:
+        if len(line) > SCRIPT_LINE_MAX:
+            raise ScriptError(
+                "script_line_too_long", f"A line has at most {SCRIPT_LINE_MAX} characters."
+            )
+        decision = assistant_api.inspect_input(line)
+        if not decision.allowed:
+            raise ScriptError(
+                "script_unsafe_text",
+                "A line was refused: it looks like a card number or an instruction.",
+            )
+        if _PHONE_RUN.search(re.sub(r"[\s-]", "", line)) or _EMAIL.search(line):
+            raise ScriptError(
+                "script_contact_detail",
+                "A line was refused: no phone number or e-mail address may be in a video.",
+            )
+        text = " ".join(
+            screen(decision.clean, strip_links=True, strip_addresses=True).clean.split()
+        )
+        if text:
+            cleaned.append(text)
+    if not cleaned:
+        raise ScriptError("script_empty", "The script has no words.")
+    banned = banned_phrases_in(" ".join(cleaned), competitors)
+    if banned:
+        raise ScriptError(
+            "script_banned_phrase",
+            "The script contains a banned kind of statement "
+            f"({', '.join(banned)}). See the never-say list.",
+        )
+    total = sum(words(line) for line in cleaned)
+    target = int(length_seconds * WORDS_PER_SECOND)
+    if total > target:
+        raise ScriptError(
+            "script_too_long",
+            f"The script has {total} words but {length_seconds} seconds holds about {target}.",
+        )
+    return CheckedScript(cleaned, total)

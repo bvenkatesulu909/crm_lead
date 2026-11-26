@@ -142,8 +142,13 @@ _NOT_TEXT_KEYS = {"status"}
 def _texts(candidate: Candidate) -> list[str]:
     texts = [candidate.reason]
     for key, value in candidate.payload.items():
-        if isinstance(value, str) and not key.endswith("_id") and key not in _NOT_TEXT_KEYS:
+        if key.endswith("_id") or key in _NOT_TEXT_KEYS:
+            continue
+        if isinstance(value, str):
             texts.append(value)
+        elif isinstance(value, list):
+            # A list of lines (a video script, ADR 0041) is screened line by line.
+            texts.extend(item for item in value if isinstance(item, str))
     return texts
 
 

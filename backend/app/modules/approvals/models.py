@@ -44,6 +44,7 @@ AGENTS = (
     "call_notes",
     "receptionist",
     "follow_up",
+    "video_brief",
 )
 REASON_MAX = 500
 

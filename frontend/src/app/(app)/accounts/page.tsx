@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Pagination } from "@/components/pagination";
+import {
+  ResearchBatchBar,
+  TickAll,
+  TickBox,
+} from "@/components/research-batch-bar";
 import { SavedFiltersBar } from "@/components/saved-filters-bar";
 import {
   ButtonLink,
@@ -29,8 +34,13 @@ import {
   countryName,
 } from "@/lib/customer-data";
 import { formatDate } from "@/lib/format";
-import type { SavedFilterPage } from "@/lib/saved-filters";
-import { canManageAccounts, canWriteAccounts, hasAny } from "@/lib/permissions";
+import { matchesList, type SavedFilterPage } from "@/lib/saved-filters";
+import {
+  canManageAccounts,
+  canRunResearchBatches,
+  canWriteAccounts,
+  hasAny,
+} from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
 import { restoreAccount } from "./actions";
@@ -92,6 +102,18 @@ export default async function AccountsPage({
     params.country ||
     params.lifecycle,
   );
+  // The research boxes: only for people who may start a batch, never on the archived list.
+  const research = canRunResearchBatches(me) && !params.archived;
+  const list = {
+    q: params.q,
+    status: params.status,
+    segment: params.segment,
+    country: params.country,
+    lifecycle: params.lifecycle,
+  };
+  const activeFilter = filtered
+    ? (savedFilters.items.find((f) => matchesList(f, list)) ?? null)
+    : null;
   const tab = (archived: boolean, label: string) => (
     <Link
       href={archived ? "/accounts?archived=1" : "/accounts"}
@@ -147,6 +169,14 @@ export default async function AccountsPage({
           Customer health
         </Link>
         {manager && tab(true, "Archived")}
+        {canRunResearchBatches(me) && (
+          <Link
+            href="/accounts/batches"
+            className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
+          >
+            Research batches
+          </Link>
+        )}
       </nav>
       <Card>
         <form
@@ -280,15 +310,18 @@ export default async function AccountsPage({
         {!params.archived && (
           <SavedFiltersBar
             filters={savedFilters.items}
-            list={{
-              q: params.q,
-              status: params.status,
-              segment: params.segment,
-              country: params.country,
-              lifecycle: params.lifecycle,
-            }}
+            list={list}
             filtered={filtered}
             canShare={manager}
+          />
+        )}
+        {research && data.items.length > 0 && (
+          <ResearchBatchBar
+            savedFilter={
+              activeFilter
+                ? { id: activeFilter.id, name: activeFilter.name }
+                : null
+            }
           />
         )}
 
@@ -324,6 +357,11 @@ export default async function AccountsPage({
                 </caption>
                 <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                   <tr>
+                    {research && (
+                      <th scope="col" className="w-10 px-5 py-3">
+                        <TickAll />
+                      </th>
+                    )}
                     <th scope="col" className="px-5 py-3">
                       Name
                     </th>
@@ -347,6 +385,11 @@ export default async function AccountsPage({
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {data.items.map((account) => (
                     <tr key={account.id} className="hover:bg-slate-50">
+                      {research && (
+                        <td className="px-5 py-3">
+                          <TickBox id={account.id} name={account.name} />
+                        </td>
+                      )}
                       <th
                         scope="row"
                         className="text-left px-5 py-3 font-medium"

@@ -152,6 +152,10 @@ export const canRunDealDesk = (me: Pick<Me, "permissions">) =>
 /** Account research (ADR 0024): display only - the API checks the account again. */
 export const canResearchAccounts = (me: Pick<Me, "permissions">) =>
   hasAny(me, "account_research:run");
+/** Research many accounts at once (ADR 0042): sales managers and tenant administrators. Display
+ * only - the API checks again and resolves the accounts under the person's own read rules. */
+export const canRunResearchBatches = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "research_batch:run");
 export const canReadQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:read");
 export const canManageQualifier = (me: Pick<Me, "permissions">) =>
@@ -370,6 +374,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "custom_agent:run": "Run a custom agent on a record you can see",
   "photo:enhance":
     "Make an adjusted copy of a property photo (the original is kept)",
+  "research_batch:run": "Ask the AI to research many accounts at once",
   "custom_agent:manage": "Define custom agents and try them",
   "tenant:user:read": "View your organisation's users",
   "tenant:user:manage": "Manage your organisation's users",

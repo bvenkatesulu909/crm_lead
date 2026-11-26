@@ -122,6 +122,10 @@ export const canReadCalls = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call:read");
 export const canWriteCalls = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call:write");
+/** Property photo enhancer (ADR 0039): display only - the API checks again, and the photo's
+ * record decides who may see it. Needs both permissions. */
+export const canEnhancePhotos = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "photo:enhance") && hasAny(me, "document:write");
 /** Call notes and the deal checklist (ADR 0035): display only - the API checks again. */
 export const canRunCallNotes = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call_notes:run");
@@ -362,6 +366,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "qualifier:read": "Read the Qualifier's written steps",
   "qualifier:manage": "Write the Qualifier's steps and try them",
   "custom_agent:run": "Run a custom agent on a record you can see",
+  "photo:enhance":
+    "Make an adjusted copy of a property photo (the original is kept)",
   "custom_agent:manage": "Define custom agents and try them",
   "tenant:user:read": "View your organisation's users",
   "tenant:user:manage": "Manage your organisation's users",

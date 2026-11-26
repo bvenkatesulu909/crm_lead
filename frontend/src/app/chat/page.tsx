@@ -4,6 +4,10 @@ import { connection } from "next/server";
 
 import { PublicChat } from "@/components/public-chat";
 import { publicChatKey } from "@/lib/server/public-chat";
+import {
+  publicVoiceEnabled,
+  voiceNoticeVersion,
+} from "@/lib/server/public-voice";
 
 export const metadata: Metadata = { title: "Find your home" };
 
@@ -27,7 +31,14 @@ export default async function ChatPage() {
         </p>
       </header>
       <div className="min-h-0 flex-1">
-        <PublicChat privacyUrl={privacyUrl} />
+        <PublicChat
+          privacyUrl={privacyUrl}
+          voice={
+            publicVoiceEnabled()
+              ? { noticeVersion: voiceNoticeVersion() }
+              : undefined
+          }
+        />
       </div>
     </main>
   );

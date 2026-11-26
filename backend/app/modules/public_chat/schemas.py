@@ -48,4 +48,22 @@ class PublicChatTranscript(BaseModel):
     """The website conversation that created a lead (empty if the lead came another way)."""
 
     started_at: datetime | None
+    channel: Literal["text", "web_voice"] = "text"
+    voice_seconds: int = 0
     messages: list[TranscriptMessage]
+
+
+class PublicVoiceReply(BaseModel):
+    """What comes back after one spoken turn (ADR 0038)."""
+
+    token: str
+    heard: str = Field(description="What the speech service heard the visitor say.")
+    reply: str
+    lead_saved: bool
+    # The reply as speech (base64), or none when speech could not be made: the page then shows
+    # the text only and the conversation goes on.
+    audio_base64: str | None = None
+    audio_type: str | None = None
+    seconds_left: int = Field(description="Speech seconds left in this call.")
+    turns_left: int
+    call_ended: bool = Field(description="True when this call's limits are used up.")

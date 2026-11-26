@@ -8,6 +8,7 @@ from app.modules.voice.provider import (
     TimedTranscript,
     build_speech_provider,
 )
+from app.modules.voice.service import seconds_heard, seconds_spoken
 
 __all__ = [
     "NoSpeechError",
@@ -16,4 +17,6 @@ __all__ = [
     "TimedSegment",
     "TimedTranscript",
     "build_speech_provider",
+    "seconds_heard",
+    "seconds_spoken",
 ]

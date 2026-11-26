@@ -79,7 +79,7 @@ the **next version** of the lead's script (`GET` lists them, newest first). Perm
   (`script_banned_phrase`), or when the whole script has no words (`script_empty`), is longer than its length
   (`script_too_long`), or a line is too long (`script_line_too_long` / `script_too_many_lines`).
 - At most `CRM_VIDEO_SCRIPTS_PER_USER_HOUR` (30) saves per person per hour (429 `video_script_rate_limited`).
-- Table `video_scripts` (migration 0075): forced row-level security, database checks for every fixed list, and
+- Table `video_scripts` (migration 0077): forced row-level security, database checks for every fixed list, and
   **insert-only** - a trigger refuses every UPDATE and a DELETE of a row younger than 365 days, and the
   application role has no UPDATE or TRUNCATE. `source` is `hand_written` now; an approved AI draft (VB5) will be
   `ai_draft`.

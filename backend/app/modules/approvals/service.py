@@ -81,6 +81,21 @@ class RecheckFailedError(DomainError):
     code = "agent_action_recheck_failed"
 
 
+class EditNotAllowedError(DomainError):
+    status_code = 422
+    code = "agent_action_edit_not_allowed"
+
+    def __init__(self) -> None:
+        super().__init__("Only the text of a follow-up e-mail can be edited before approving.")
+
+
+class EditRefusedError(DomainError):
+    """The edited text did not pass the safety check; the proposal is left as it was."""
+
+    status_code = 422
+    code = "agent_action_edit_refused"
+
+
 class LimitReachedError(DomainError):
     status_code = 429
     code = "agent_action_limit_reached"
@@ -617,6 +632,71 @@ def _recheck(session: Session, principal: Principal, action: AgentAction) -> Non
         raise RecheckFailedError(" ".join(f.message for f in verdict.blocks))
 
 
+EDITABLE_FIELDS = ("subject", "body")
+
+
+def _apply_edit(
+    session: Session,
+    principal: Principal,
+    action: AgentAction,
+    user_id: uuid.UUID,
+    edit: dict[str, str],
+) -> None:
+    """The approver rewrote the subject or text of a follow-up (ADR 0036, FM5). The new text
+    is checked like any proposal (payload shape, the kind's own check and the Sentinel's word
+    rules), the plan is rebuilt, and the audit entry records WHO changed WHICH field, never
+    the text. A refusal changes nothing."""
+    if action.kind != "communication.send_follow_up":
+        raise EditNotAllowedError()
+    fields = [
+        name for name in EDITABLE_FIELDS if name in edit and edit[name] != action.payload.get(name)
+    ]
+    if not fields:
+        return
+    kind = _kind(action.kind)
+    new_payload = {**action.payload, **{name: edit[name] for name in fields}}
+    try:
+        data = _payload(kind, new_payload)
+    except InvalidActionError as exc:
+        raise EditRefusedError(exc.detail) from exc
+    proposal = _proposal(action)
+    problem = kind.check(session, proposal, data)
+    if problem:
+        raise EditRefusedError(f"The edited text is not valid ({problem}).")
+    stored = data.model_dump(mode="json", exclude_none=True)
+    candidate = sentinel.Candidate(
+        action.kind, action.reason, stored, action.requested_by_user_id, action.tenant_id
+    )
+    findings = sentinel.check_words(candidate)
+    blocks = [f for f in findings if f.severity == "block"]
+    _observe(sentinel.Verdict(findings, ["words"]))
+    if blocks:
+        raise EditRefusedError(" ".join(f.message for f in blocks))
+    plan = kind.spec(session, principal, proposal, data)
+    previous = dict(action.verification or {})
+    warnings = [w for w in previous.get("warnings", []) if w.get("code") != "phone_number"]
+    warnings += [{"code": f.code, "message": f.message} for f in findings if f.severity == "warn"]
+    action.payload = stored
+    action.verification = {
+        **previous,
+        "warnings": warnings,
+        "spec": {
+            "changes": [c.to_json() for c in plan.changes],
+            "basis": previous.get("spec", {}).get("basis", {}),
+        },
+        "edited": {"fields": fields, "by": str(user_id)},
+    }
+    session.flush()
+    record_audit(
+        session,
+        principal,
+        action="agent_action.edited",
+        entity_type=ENTITY,
+        entity_id=action.id,
+        changes={"kind": action.kind, "fields": fields},
+    )
+
+
 def approve(
     session: Session,
     principal: Principal,
@@ -624,6 +704,7 @@ def approve(
     *,
     version: int,
     note: str | None = None,
+    edit: dict[str, str] | None = None,
 ) -> AgentAction:
     """Run the proposed action as the approver. If the owning module refuses it, nothing
     changes and the proposal is marked failed with the reason."""
@@ -631,6 +712,8 @@ def approve(
     # The approver's own rights decide: a record they can't see doesn't exist for them.
     if not _visible(session, principal, action.target_type, action.target_id):
         raise RecordNotFoundError()
+    if edit:
+        _apply_edit(session, principal, action, user_id, edit)
     kind = _kind(action.kind)
     data = _payload(kind, action.payload)  # checked again: the catalogue may have changed
     status = "approved"

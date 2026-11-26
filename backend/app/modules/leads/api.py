@@ -4,6 +4,7 @@ Every function applies the leads module's own record-level policy: sales agents 
 their own leads.
 """
 
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
+from app.core.db import bind_user, clear_user
 from app.core.errors import DomainError, ForbiddenError
 from app.core.records import LeadQualifierFacts, LeadSnapshot, Recipient, RecordFacts
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
@@ -57,6 +59,13 @@ __all__ = [
     "web_lead_quality_table",
     "web_leads_by_month",
     "create_lead_from_website",
+    "email_consent_withdrawn",
+    "email_state",
+    "FollowUpFacts",
+    "follow_up_facts",
+    "lead_ids_of_owner",
+    "lead_owner_for_notice",
+    "owner_of_lead",
     "EXPORT",
     "export_table",
     "qualifier_facts",
@@ -197,6 +206,78 @@ def owned_lead_ids(principal: Principal) -> Select[uuid.UUID]:
     )
 
 
+def owner_of_lead(session: Session, principal: Principal, lead_id: uuid.UUID) -> uuid.UUID | None:
+    """Who owns a lead this principal may read (None if unowned or not readable)."""
+    snapshot = lead_snapshot(session, principal, lead_id)
+    return None if snapshot is None else snapshot.owner_id
+
+
+@dataclass(frozen=True)
+class FollowUpFacts:
+    """What the follow-up scan may know about a lead (ADR 0036). The address itself stays out:
+    only whether there is a usable one."""
+
+    owner_id: uuid.UUID | None
+    status: str
+    consent: str
+    has_address: bool
+    source: str | None
+    first_name: str | None
+    full_name: str
+    company: str | None
+    created_at: datetime
+
+
+def follow_up_facts(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, reader_user_id: uuid.UUID
+) -> FollowUpFacts | None:
+    """The lead as the follow-up scan sees it, read as ``reader_user_id`` with the "all" scope
+    (the leads policy hides every lead without a user), then the previous binding is put back."""
+    previous_user = session.info.get("user_id")
+    previous_scope = session.info.get("lead_scope")
+    bind_user(session, reader_user_id, "all")
+    try:
+        lead = session.scalars(
+            select(Lead).where(
+                Lead.tenant_id == tenant_id, Lead.id == lead_id, Lead.deleted_at.is_(None)
+            )
+        ).one_or_none()
+        if lead is None:
+            return None
+        address = lead.email or ""
+        return FollowUpFacts(
+            owner_id=lead.owner_id,
+            status=lead.status,
+            consent=lead.email_consent,
+            has_address=bool(re.match(r"^[^@\s]+@[^@\s]+$", address)),
+            source=lead.source,
+            first_name=lead.first_name,
+            full_name=" ".join(p for p in (lead.first_name, lead.last_name) if p),
+            company=lead.company_name,
+            created_at=lead.created_at,
+        )
+    finally:
+        if previous_user is not None and previous_scope is not None:
+            bind_user(session, uuid.UUID(str(previous_user)), str(previous_scope))
+        else:
+            clear_user(session)
+
+
+def lead_owner_for_notice(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, reader_user_id: uuid.UUID
+) -> uuid.UUID | None:
+    """Who owns the lead (for a notification), read as ``reader_user_id`` with the "all" scope."""
+    facts = follow_up_facts(session, tenant_id, lead_id, reader_user_id=reader_user_id)
+    return None if facts is None else facts.owner_id
+
+
+def lead_ids_of_owner(tenant_id: uuid.UUID, owner_id: uuid.UUID) -> Select[uuid.UUID]:
+    """Subquery: IDs of the (not deleted) leads one person owns, to count their waiting drafts."""
+    return select(Lead.id).where(
+        Lead.tenant_id == tenant_id, Lead.owner_id == owner_id, Lead.deleted_at.is_(None)
+    )
+
+
 def lead_brief(session: Session, principal: Principal, lead_id: uuid.UUID) -> str | None:
     """A short label for a lead this principal may see (for notifications), else None."""
     lead = repository.get_readable(session, principal, lead_id)
@@ -217,8 +298,48 @@ def lead_recipient(session: Session, principal: Principal, lead_id: uuid.UUID) -
         email=lead.email,
         company=lead.company_name,
         account_id=None,
-        consent_withdrawn=False,
+        consent_withdrawn=lead.email_consent == "withdrawn",
     )
+
+
+def email_consent_withdrawn(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, reader_user_id: uuid.UUID
+) -> bool:
+    """True if the lead has withdrawn e-mail consent, or no longer exists (fail closed).
+
+    For the worker's last check before an e-mail leaves (ADR 0036). The worker binds only the
+    tenant, and the leads policy hides every lead without a user and scope, so this reads ONE
+    column with the sender's id and the "all" scope, then puts the previous binding back. The
+    sender already got past the read rules when the e-mail was queued; reassigning the lead
+    since then must not let a withdrawn consent slip through."""
+    previous_user = session.info.get("user_id")
+    previous_scope = session.info.get("lead_scope")
+    bind_user(session, reader_user_id, "all")
+    try:
+        consent = session.scalar(
+            select(Lead.email_consent).where(Lead.tenant_id == tenant_id, Lead.id == lead_id)
+        )
+    finally:
+        if previous_user is not None and previous_scope is not None:
+            bind_user(session, uuid.UUID(str(previous_user)), str(previous_scope))
+        else:
+            clear_user(session)
+    return consent is None or consent == "withdrawn"
+
+
+def email_state(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID
+) -> tuple[str | None, str] | None:
+    """(e-mail address, consent answer) of a lead the CURRENT binding may see, else None.
+
+    For the approval check of a follow-up draft (ADR 0036): the proposer was already shown to
+    be allowed to read the lead, and the database policy still applies to this query."""
+    row = session.execute(
+        select(Lead.email, Lead.email_consent).where(
+            Lead.tenant_id == tenant_id, Lead.id == lead_id
+        )
+    ).one_or_none()
+    return None if row is None else (row.email, row.email_consent)
 
 
 def create_lead_from_website(

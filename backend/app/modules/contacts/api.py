@@ -1,6 +1,7 @@
 """Public interface of the contacts module. Other modules import only from here."""
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, and_, select
@@ -24,6 +25,9 @@ __all__ = [
     "contact_name",
     "contact_recipient",
     "email_consent_withdrawn",
+    "email_state",
+    "owned_contact_ids",
+    "owner_of",
     "create_contact",
     "is_readable_contact",
     "mine_contact_ids",
@@ -42,6 +46,8 @@ def create_contact(
     job_title: str | None,
     account_id: uuid.UUID | None,
     owner_id: uuid.UUID | None,
+    email_consent: str = "unknown",
+    email_consent_at: datetime | None = None,
 ) -> uuid.UUID:
     """Insert a contact in the caller's transaction (authorization is the caller's job)."""
     contact = Contact(
@@ -53,6 +59,8 @@ def create_contact(
         job_title=job_title,
         account_id=account_id,
         owner_id=owner_id,
+        email_consent=email_consent,
+        email_consent_at=email_consent_at,
     )
     session.add(contact)
     session.flush()
@@ -155,6 +163,33 @@ def contact_recipient(
         account_id=contact.account_id,
         consent_withdrawn=contact.email_consent == "withdrawn",
     )
+
+
+def email_state(
+    session: Session, tenant_id: uuid.UUID, contact_id: uuid.UUID
+) -> tuple[str | None, str] | None:
+    """(e-mail address, consent answer) of a contact, else None (ADR 0036, follow-up check)."""
+    row = session.execute(
+        select(Contact.email, Contact.email_consent).where(
+            Contact.tenant_id == tenant_id, Contact.id == contact_id, Contact.deleted_at.is_(None)
+        )
+    ).one_or_none()
+    return None if row is None else (row.email, row.email_consent)
+
+
+def owned_contact_ids(principal: Principal) -> Select[uuid.UUID]:
+    """Subquery: IDs of the (not deleted) contacts this user owns in their tenant."""
+    return select(Contact.id).where(
+        Contact.tenant_id == principal.tenant_id,
+        Contact.owner_id == principal.user_id,
+        Contact.deleted_at.is_(None),
+    )
+
+
+def owner_of(session: Session, principal: Principal, contact_id: uuid.UUID) -> uuid.UUID | None:
+    """Who owns a contact this principal may read (None if unowned or not readable)."""
+    contact = repository.get_readable(session, principal, contact_id)
+    return None if contact is None else contact.owner_id
 
 
 def email_consent_withdrawn(session: Session, tenant_id: uuid.UUID, contact_id: uuid.UUID) -> bool:

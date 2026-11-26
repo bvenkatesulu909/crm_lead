@@ -107,6 +107,13 @@ class Lead(
             "preferred_language IS NULL OR preferred_language IN ('en', 'hi', 'te')",
             name="preferred_language_allowed",
         ),
+        # ADR 0036 (FM1): the same consent answer contacts have; dated whenever it changes.
+        CheckConstraint(
+            "email_consent IN ('unknown', 'granted', 'withdrawn')", name="email_consent_allowed"
+        ),
+        CheckConstraint(
+            "(email_consent = 'unknown') = (email_consent_at IS NULL)", name="consent_dated"
+        ),
         Index("ix_leads_tenant_id_status", "tenant_id", "status"),
         Index("ix_leads_tenant_id_owner_id", "tenant_id", "owner_id"),
         Index("ix_leads_tenant_id_lower_email", "tenant_id", func.lower(text("email"))),
@@ -134,6 +141,8 @@ class Lead(
     company_industry: Mapped[str | None] = mapped_column(String(40))
     company_size: Mapped[str | None] = mapped_column(String(10))
     preferred_language: Mapped[str | None] = mapped_column(String(2))
+    email_consent: Mapped[str] = mapped_column(String(20), server_default=text("'unknown'"))
+    email_consent_at: Mapped[datetime | None] = mapped_column(default=None)
 
 
 class LeadActivity(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):

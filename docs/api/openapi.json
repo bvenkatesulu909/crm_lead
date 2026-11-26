@@ -1531,6 +1531,16 @@
       "Approve": {
         "additionalProperties": false,
         "properties": {
+          "edit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApproveEdit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "note": {
             "anyOf": [
               {
@@ -1552,6 +1562,39 @@
           "version"
         ],
         "title": "Approve",
+        "type": "object"
+      },
+      "ApproveEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          }
+        },
+        "title": "ApproveEdit",
         "type": "object"
       },
       "AssessmentCreate": {
@@ -7762,6 +7805,137 @@
         "title": "FollowUpRead",
         "type": "object"
       },
+      "FollowUpSettingsRead": {
+        "description": "The follow-up settings in force (ADR 0036). ``version`` goes back with a change.",
+        "properties": {
+          "cooldown_days": {
+            "title": "Cooldown Days",
+            "type": "integer"
+          },
+          "daily_cap": {
+            "title": "Daily Cap",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expiry_days": {
+            "title": "Expiry Days",
+            "type": "integer"
+          },
+          "monthly_cap": {
+            "title": "Monthly Cap",
+            "type": "integer"
+          },
+          "pending_cap": {
+            "title": "Pending Cap",
+            "type": "integer"
+          },
+          "rule": {
+            "title": "Rule",
+            "type": "string"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          },
+          "template_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Name"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "monthly_cap",
+          "daily_cap",
+          "pending_cap",
+          "expiry_days",
+          "cooldown_days",
+          "template_id",
+          "template_name",
+          "rule",
+          "version"
+        ],
+        "title": "FollowUpSettingsRead",
+        "type": "object"
+      },
+      "FollowUpSettingsUpdate": {
+        "additionalProperties": false,
+        "description": "Whole-settings replacement. The bounds are the pure rules' (and the database's) own.",
+        "properties": {
+          "cooldown_days": {
+            "title": "Cooldown Days",
+            "type": "integer"
+          },
+          "daily_cap": {
+            "title": "Daily Cap",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expiry_days": {
+            "title": "Expiry Days",
+            "type": "integer"
+          },
+          "monthly_cap": {
+            "title": "Monthly Cap",
+            "type": "integer"
+          },
+          "pending_cap": {
+            "title": "Pending Cap",
+            "type": "integer"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "monthly_cap",
+          "daily_cap",
+          "pending_cap",
+          "expiry_days",
+          "cooldown_days",
+          "version"
+        ],
+        "title": "FollowUpSettingsUpdate",
+        "type": "object"
+      },
       "FrameworkRead": {
         "properties": {
           "fields": {
@@ -9823,6 +9997,28 @@
             ],
             "title": "Email"
           },
+          "email_consent": {
+            "default": "unknown",
+            "enum": [
+              "unknown",
+              "granted",
+              "withdrawn"
+            ],
+            "title": "Email Consent",
+            "type": "string"
+          },
+          "email_consent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Consent At"
+          },
           "first_name": {
             "anyOf": [
               {
@@ -10198,6 +10394,23 @@
               }
             ],
             "title": "Email"
+          },
+          "email_consent": {
+            "anyOf": [
+              {
+                "enum": [
+                  "unknown",
+                  "granted",
+                  "withdrawn"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "E-mail consent; the server records when the answer changed (ADR 0036).",
+            "title": "Email Consent"
           },
           "first_name": {
             "anyOf": [
@@ -25329,6 +25542,126 @@
           }
         ],
         "summary": "One e-mail you sent (or, for managers, any e-mail) and its status",
+        "tags": [
+          "communications"
+        ]
+      }
+    },
+    "/api/v1/communications/follow-up-settings": {
+      "get": {
+        "operationId": "get_follow_up_settings_api_v1_communications_follow_up_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpSettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The automatic follow-up settings (administrators)",
+        "tags": [
+          "communications"
+        ]
+      },
+      "put": {
+        "operationId": "put_follow_up_settings_api_v1_communications_follow_up_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowUpSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpSettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change the automatic follow-up settings (administrators)",
         "tags": [
           "communications"
         ]

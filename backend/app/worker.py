@@ -39,6 +39,7 @@ from app.modules.contracts import api as contracts_api
 from app.modules.deal_desk import api as deal_desk_api
 from app.modules.deal_risk import api as deal_risk_api
 from app.modules.documents import api as documents_api
+from app.modules.follow_ups import api as follow_ups_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
 from app.modules.lead_agent import api as lead_agent_api
@@ -188,6 +189,19 @@ def run_schedules(
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += approvals_api.expire_due(session, now, tenant_id=tenant_id)
+            # Follow-up drafts for tasks due today (ADR 0036): proposals only, nothing is sent.
+            # A bug here must not stop the other organisations or the rules below.
+            try:
+                with session_factory() as session, session.begin():
+                    bind_tenant(session, tenant_id)
+                    count += follow_ups_api.run_schedules(
+                        session,
+                        now,
+                        tenant_id=tenant_id,
+                        platform_enabled=not (settings.follow_ups_disabled if settings else False),
+                    )
+            except Exception as error:  # noqa: BLE001 - logged by type only, never by content
+                logger.error("follow-up scan failed (%s)", type(error).__name__)
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += workflows_api.run_schedules(

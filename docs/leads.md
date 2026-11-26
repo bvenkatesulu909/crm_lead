@@ -192,3 +192,24 @@ Three optional fields describe the lead's company. They are typed by staff today
   only gets them where it has nothing yet - a value it already has is never overwritten.
 - The web form groups them under **About the company**; the lead page shows them as plain text.
 
+## E-mail consent on a lead (ADR 0036, step FM1, 2026-11-21)
+
+A lead now has the same e-mail consent answer a contact has: `email_consent` is `unknown`
+(the start for every lead), `granted` or `withdrawn`, and `email_consent_at` is the date the answer
+changed. The server sets the date (a client cannot send or back-date it); the database keeps the
+two together (a date exists exactly when the answer is not `unknown`). Change it with
+`PATCH /leads/{id}` (`email_consent`); `null` and other words are refused. Nothing ever sets
+`granted` by itself.
+
+What `withdrawn` stops, whoever created the message (manual, template, later automatic follow-ups):
+
+1. **When it is queued** - `POST /communications/emails` answers 409 `consent_withdrawn`.
+2. **Just before it leaves** - the worker re-checks (an e-mail queued earlier ends `failed` with
+   `consent_withdrawn`). The worker reads this one column as the sender with the "all" scope,
+   because the worker binds only the tenant and the leads policy would hide the lead; a lead that
+   no longer exists counts as withdrawn.
+3. **On conversion** - the answer and its date are copied to the new contact, so a "no" survives.
+
+`unknown` and `granted` do not block a one-to-one e-mail. The edit form has an "E-mail consent"
+choice (not on the new-lead form); the lead page shows it with its date. Migration `0077`.
+

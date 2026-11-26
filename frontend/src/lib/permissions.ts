@@ -127,6 +127,9 @@ export const canRunCallNotes = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call_notes:run");
 export const canManageCallNotes = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call_notes:manage");
+/** Automatic follow-up messages (ADR 0036): the organisation's settings. */
+export const canManageFollowUps = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "follow_up:manage");
 /** The Qualifier (docs/qualifier.md): ask for an assessment / read the procedure / write it. */
 export const canRunQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:run");
@@ -293,6 +296,12 @@ export function navigationFor(
       label: "Call notes",
       icon: "automation",
     });
+  if (canManageFollowUps(me))
+    items.push({
+      href: "/automation/follow-ups",
+      label: "Follow-ups",
+      icon: "automation",
+    });
   if (canManageCustomAgents(me))
     items.push({
       href: "/automation/custom-agents",
@@ -347,6 +356,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "call_notes:run":
     "Ask for call notes and a deal checklist from a call transcript",
   "call_notes:manage": "Choose the deal checklist frame (BANT or MEDDIC)",
+  "follow_up:manage":
+    "Switch automatic follow-up drafts on and set their limits",
   "qualifier:run": "Ask the Qualifier to assess a lead",
   "qualifier:read": "Read the Qualifier's written steps",
   "qualifier:manage": "Write the Qualifier's steps and try them",

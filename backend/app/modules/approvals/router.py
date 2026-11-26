@@ -42,7 +42,6 @@ Reader = Annotated[
     ),
 ]
 Proposer = Annotated[Principal, Depends(require_any_permission(Permission.AGENT_ACTION_PROPOSE))]
-Approver = Annotated[Principal, Depends(require_any_permission(Permission.AGENT_ACTION_APPROVE))]
 
 
 def _read(session: Session, principal: Principal, action: AgentAction) -> AgentActionRead:
@@ -180,10 +179,15 @@ def get_action(action_id: uuid.UUID, principal: Reader, session: Db) -> AgentAct
     summary="Approve someone else's AI proposal: the action runs with your rights",
     responses=problem_responses(403, 404, 409, 422),
 )
-def approve(
-    action_id: uuid.UUID, data: Approve, principal: Approver, session: Db
-) -> AgentActionRead:
-    action = service.approve(session, principal, action_id, version=data.version, note=data.note)
+def approve(action_id: uuid.UUID, data: Approve, principal: Reader, session: Db) -> AgentActionRead:
+    action = service.approve(
+        session,
+        principal,
+        action_id,
+        version=data.version,
+        note=data.note,
+        edit=data.edit.model_dump(exclude_none=True) if data.edit else None,
+    )
     session.commit()
     return _read(session, principal, action)
 
@@ -193,7 +197,7 @@ def approve(
     summary="Reject someone else's AI proposal (a note is required)",
     responses=problem_responses(403, 404, 409, 422),
 )
-def reject(action_id: uuid.UUID, data: Reject, principal: Approver, session: Db) -> AgentActionRead:
+def reject(action_id: uuid.UUID, data: Reject, principal: Reader, session: Db) -> AgentActionRead:
     action = service.reject(session, principal, action_id, version=data.version, note=data.note)
     session.commit()
     return _read(session, principal, action)

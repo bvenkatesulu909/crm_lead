@@ -20,6 +20,7 @@ from app.core.records import LeadSnapshot
 from app.modules.activities import api as activities_api
 from app.modules.approvals.artifact import Change, Plan
 from app.modules.buyer_memory import api as buyer_memory_api
+from app.modules.communications import api as communications_api
 from app.modules.identity import api as identity_api
 from app.modules.leads import api as leads_api
 from app.modules.proposal_decks import api as proposal_decks_api
@@ -75,6 +76,27 @@ class BuyerMemoryAssumptionPayload(_Payload):
     def _one_line(cls, text: str) -> str:
         # The stored text is cleaned the same way, so the plan and the outcome compare equal.
         return " ".join(text.split())
+
+
+# The rules that can make a follow-up due (ADR 0036). One in v1; more are an amendment.
+FOLLOW_UP_REASONS = ("task_due_today",)
+
+
+class FollowUpPayload(_Payload):
+    """A follow-up e-mail drafted by the system. The text is final: what the approver reads
+    is exactly what is sent (a template was filled in when the draft was made)."""
+
+    reason_code: Literal["task_due_today"]
+    subject: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    body: Annotated[str, StringConstraints(min_length=1, max_length=20_000)]
+    template_id: uuid.UUID | None = None
+
+    @field_validator("body")
+    @classmethod
+    def _not_blank(cls, text: str) -> str:
+        if not text.strip():
+            raise ValueError("the text can't be empty")
+        return text
 
 
 @dataclass(frozen=True)
@@ -331,6 +353,52 @@ def _describe_memory(payload: BuyerMemoryAssumptionPayload) -> str:
     )
 
 
+def _check_follow_up(session: Session, proposal: Proposal, payload: FollowUpPayload) -> str | None:
+    return communications_api.follow_up_problem(
+        session, proposal.tenant_id, proposal.target_type, proposal.target_id, payload.template_id
+    )
+
+
+def _run_follow_up(
+    session: Session, me: Principal, proposal: Proposal, payload: FollowUpPayload
+) -> Ran:
+    # Consent is judged again here: it may have been withdrawn while the draft waited. A refusal
+    # (DomainError) makes the proposal "failed" and nothing is queued.
+    message_id = communications_api.send_follow_up(
+        session,
+        me,
+        target_type=proposal.target_type,
+        target_id=proposal.target_id,
+        subject=payload.subject,
+        body=payload.body,
+        template_id=payload.template_id,
+    )
+    return Ran("E-mail queued; the worker sends it as the approver.", message_id)
+
+
+def _spec_follow_up(
+    session: Session, me: Principal, proposal: Proposal, payload: FollowUpPayload
+) -> Plan:
+    basis = _basis(_lead(session, me, proposal)) if proposal.target_type == "lead" else {}
+    # What the approver will be sending, word for word. The recipient is the record's own address.
+    return Plan(
+        [Change("email", None, {"subject": payload.subject, "body": payload.body})],
+        {**basis, "reason_code": payload.reason_code},
+    )
+
+
+def _observe_follow_up(
+    session: Session, me: Principal, proposal: Proposal, payload: FollowUpPayload, ran: Ran
+) -> list[Change]:
+    stored = (
+        communications_api.queued_text(session, proposal.tenant_id, ran.created_id)
+        if ran.created_id is not None
+        else None
+    )
+    seen = None if stored is None else {"subject": stored[0], "body": stored[1]}
+    return [Change("email", None, seen)]
+
+
 def _describe_status(payload: LeadStatusPayload) -> str:
     return f"Change the lead's status to {payload.status}"
 
@@ -466,6 +534,16 @@ KINDS: dict[str, ActionKind] = {
             _run_memory,
             _spec_memory,
             _observe_memory,
+        ),
+        ActionKind(
+            "communication.send_follow_up",
+            ("lead", "contact"),
+            FollowUpPayload,
+            lambda payload: f"Send a follow-up e-mail: {payload.subject}",
+            _check_follow_up,
+            _run_follow_up,
+            _spec_follow_up,
+            _observe_follow_up,
         ),
         ActionKind(
             "quote.deck_summary",

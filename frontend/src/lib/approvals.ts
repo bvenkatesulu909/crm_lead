@@ -4,6 +4,7 @@ import {
   type AgentActionStatus,
   type Me,
 } from "@/lib/api-types";
+import { FOLLOW_UP_KIND } from "@/lib/follow-ups";
 import { canApproveActions } from "@/lib/permissions";
 
 /**
@@ -22,10 +23,13 @@ export const APPROVAL_STATUS_LABELS: Record<AgentActionStatus, string> = {
 /** Whether to show the decision buttons: an approver, a waiting proposal, someone else's. */
 export function canDecideOn(
   me: Pick<Me, "permissions" | "user_id">,
-  action: Pick<AgentAction, "status" | "requested_by_user_id">,
+  action: Pick<AgentAction, "status" | "requested_by_user_id" | "kind">,
 ): boolean {
+  // The owner of a lead may decide on a follow-up draft for it (ADR 0036). The API checks it
+  // is really their lead; a follow-up shown to someone else would not have been returned.
+  const mayDecide = canApproveActions(me) || action.kind === FOLLOW_UP_KIND;
   return (
-    canApproveActions(me) &&
+    mayDecide &&
     action.status === "pending" &&
     action.requested_by_user_id !== me.user_id
   );
@@ -53,6 +57,10 @@ const DECISION_ERRORS: Record<string, string> = {
     "The proposal changed in the meantime. Please reload the page.",
   agent_action_expired:
     "This proposal has expired and can't be approved any more.",
+  agent_action_edit_refused:
+    "The reworded e-mail was not accepted. Check the subject and the text (no links, and nothing that looks like an instruction).",
+  agent_action_edit_not_allowed:
+    "Only the text of a follow-up e-mail can be reworded.",
   self_approval_forbidden: "You can't decide on your own proposal.",
   record_not_found:
     "You can't see the record this proposal is about, so you can't decide it.",
@@ -131,6 +139,7 @@ const FIELD_LABELS: Record<string, string> = {
   status: "Status",
   owner_id: "Owner",
   task: "New task",
+  email: "E-mail",
 };
 const PERSON_FIELDS = new Set(["owner_id", "assignee_id"]);
 
@@ -172,6 +181,14 @@ export function describeChange(
         ? `, for ${nameOf(task.assignee_id)}`
         : "";
     return `${label}: ${plain(task.subject)}${due}${who}`;
+  }
+  if (
+    change.field === "email" &&
+    change.after &&
+    typeof change.after === "object"
+  ) {
+    const mail = change.after as { subject?: unknown };
+    return `${label}: one e-mail is queued, subject "${plain(mail.subject)}"`;
   }
   const show = (value: unknown) =>
     PERSON_FIELDS.has(change.field)

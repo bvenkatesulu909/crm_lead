@@ -13,6 +13,7 @@ import {
   describeChange,
   fieldLabel,
 } from "@/lib/approvals";
+import { followUpDraft } from "@/lib/follow-ups";
 import { formatDateTime } from "@/lib/format";
 
 const BADGE: Record<AgentActionStatus, string> = {
@@ -46,6 +47,7 @@ const AGENT_LABELS: Record<string, string> = {
   deck_writer: "the deck writer",
   custom_agent: "a custom agent",
   call_notes: "the call notes agent",
+  follow_up: "the follow-up assistant",
 };
 
 /** Who made the proposal, in words. A custom agent is named (also after it was retired). */
@@ -83,6 +85,7 @@ export function ApprovalCard({
         ? "you"
         : (people[id] ?? "a former colleague");
   const headingId = `approval-${action.id}`;
+  const draft = followUpDraft(action);
   return (
     <article aria-labelledby={headingId}>
       <Card className="p-5">
@@ -137,7 +140,37 @@ export function ApprovalCard({
             </>
           )}
         </p>
-        {action.changes.length > 0 && (
+        {draft && (
+          <div
+            role="group"
+            aria-label="The e-mail"
+            className="mt-4 rounded-md border border-slate-200 bg-white p-3 text-sm"
+          >
+            <p className="font-semibold text-slate-900">
+              The e-mail that will be sent
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              To the lead&apos;s own address, from the person who approves it.
+              {action.status === "pending" &&
+                " Consent and the hourly limit are checked again when it is sent."}
+            </p>
+            <dl className="mt-2 space-y-2">
+              <div>
+                <dt className="text-slate-500">Subject</dt>
+                <dd className="break-words font-medium text-slate-900">
+                  {draft.subject}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Text</dt>
+                <dd className="whitespace-pre-wrap break-words text-slate-900">
+                  {draft.body}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        )}
+        {action.changes.length > 0 && !draft && (
           <div
             role="group"
             aria-label="Would change"
@@ -251,7 +284,9 @@ export function RecordProposalsList({ items }: { items: AgentAction[] }) {
                 href={`/approvals/${a.id}`}
                 className="font-medium text-brand-700 hover:underline"
               >
-                {a.description}
+                {followUpDraft(a)
+                  ? `Follow-up e-mail: ${followUpDraft(a)?.subject}`
+                  : a.description}
               </Link>
               <p className="mt-0.5 text-xs text-slate-500">
                 Waiting for approval · expires{" "}

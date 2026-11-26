@@ -74,6 +74,9 @@ test("a manager researches two ticked accounts in one batch", async ({
   const research = await switchAgent(admin, "Account research", true);
   const batches = await switchAgent(admin, "Batch account research", true);
   try {
+    // A person may run one batch at a time: let the worker finish anything an interrupted earlier
+    // run of this journey left behind.
+    for (let i = 0; i < 3; i++) runWorkerOnce();
     const manager = await signedIn(browser, USERS.manager);
     const prefix = uniqueName("E2eBatch");
     await newAccount(manager, `${prefix} one`);
@@ -105,8 +108,9 @@ test("a manager researches two ticked accounts in one batch", async ({
       .getByRole("dialog")
       .getByRole("button", { name: "Start research" })
       .click();
+    // The batch page compiles on its first visit in dev mode: give it time.
     await expect(manager).toHaveURL(/\/accounts\/batches\/[0-9a-f-]{36}/, {
-      timeout: 30_000,
+      timeout: 60_000,
     });
     await expect(manager.getByText("The batch started.")).toBeVisible();
     await expect(manager.getByText("Running", { exact: true })).toBeVisible();
@@ -121,7 +125,9 @@ test("a manager researches two ticked accounts in one batch", async ({
       });
     }).toPass({ timeout: 180_000 });
     await expect(manager.getByText("2 of 2 accounts ended")).toBeVisible();
-    await expect(manager.getByText("Researched")).toHaveCount(2);
+    await expect(
+      manager.getByRole("cell", { name: "Researched", exact: true }),
+    ).toHaveCount(2);
     await expect(
       manager.getByRole("link", { name: `${prefix} one` }),
     ).toBeVisible();

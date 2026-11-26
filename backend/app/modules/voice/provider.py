@@ -391,6 +391,32 @@ class LocalSpeechProvider:
         return SynthesizedSpeech(audio=audio, media_type="audio/wav")
 
 
+class FakeSpeechProvider:
+    """A speech service for local runs and the browser journeys: no key, no network. It "hears"
+    the audio's own bytes read as text (the journey's stand-in microphone records the sentence the
+    visitor is meant to say) and "speaks" a fixed few bytes. Refused in production (settings)."""
+
+    available = True
+
+    async def transcribe(self, data: bytes, filename: str, content_type: str) -> str:
+        text = data.decode("utf-8", errors="replace").strip()
+        if not text:
+            raise NoSpeechError("No speech was detected.")
+        return text
+
+    async def transcribe_timed(
+        self, data: bytes, filename: str, content_type: str, language: str
+    ) -> TimedTranscript:
+        return TimedTranscript(
+            text=await self.transcribe(data, filename, content_type),
+            segments=[],
+            engine="fake:text",
+        )
+
+    async def synthesize(self, text: str) -> SynthesizedSpeech:
+        return SynthesizedSpeech(b"ID3-fake-audio")
+
+
 def build_speech_provider(
     settings: Settings, *, stt_model: str | None = None
 ) -> SpeechProvider | None:
@@ -398,6 +424,8 @@ def build_speech_provider(
     timestamps) for the OpenAI-compatible and local providers; ElevenLabs keeps its own."""
     if not settings.voice_enabled:
         return None
+    if settings.voice_provider == "fake":
+        return FakeSpeechProvider()
     if settings.voice_provider == "local":
         return LocalSpeechProvider(
             stt_model=stt_model or settings.voice_stt_model,

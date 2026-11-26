@@ -152,6 +152,8 @@ def play_receptionist(
     session: Session, world: World, case: Case, **options: Any
 ) -> tuple[CaseResult, ReceptionistRun]:
     return receptionist.play_receptionist(session, eval_world(session, world), case, **options)
+
+
 def play_video_brief(
     session: Session, world: World, case: Case, **options: Any
 ) -> tuple[CaseResult, VideoRun]:

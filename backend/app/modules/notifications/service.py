@@ -70,6 +70,7 @@ TYPES: dict[str, str] = {
     "webcheck.completed": "A web check you asked for has finished",
     "payment_link.paid": "A UPI payment arrived on an invoice",
     "payment_link.needs_review": "A UPI payment needs a person to look at it",
+    "research_batch.finished": "A batch of account research you started has ended",
     "workflow.message": "A message from an automation rule",
 }
 RULE_MESSAGE = "workflow.message"
@@ -303,6 +304,29 @@ def _webcheck_done(session: Session, me: Principal, event: Event) -> Draft | Non
     return Draft(f"Web check finished for {label}: {words}", link) if label else None
 
 
+_BATCH_ENDS = {
+    "finished": "finished",
+    "cancelled": "was stopped",
+    "stopped_budget": "stopped (a limit or a switch)",
+    "stopped_error": "stopped after an error",
+}
+
+
+def _batch_done(session: Session, me: Principal, event: Event) -> Draft | None:
+    """Ids and counts only. Anyone who may run batches may open it, so no record check is needed."""
+    if not me.has_permission(Permission.RESEARCH_BATCH_RUN):
+        return None
+    words = _BATCH_ENDS.get(str(event.data.get("outcome")))
+    if words is None:
+        return None
+    batch_id = uuid_of(event, "batch_id")
+    done, total = int(event.data.get("done", 0)), int(event.data.get("accounts", 0))
+    return Draft(
+        f"Research of {total} accounts {words}: {done} researched",
+        f"/research-batches/{batch_id}",
+    )
+
+
 def _proposal_approvers(session: Session, event: Event) -> set[uuid.UUID]:
     """Everyone who may decide; the requester is the actor and so left out by on_event."""
     people = set(
@@ -382,6 +406,7 @@ RULES: dict[str, tuple[Recipients, Describe]] = {
     "webcheck.completed": (_requester, _webcheck_done),
     "payment_link.paid": (_payment_link_creator, _payment_paid),
     "payment_link.needs_review": (_payment_reviewers, _payment_review),
+    "research_batch.finished": (_requester, _batch_done),
 }
 
 

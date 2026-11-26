@@ -50,6 +50,7 @@ from app.modules.proposal_decks import api as proposal_decks_api
 from app.modules.public_chat import api as public_chat_api
 from app.modules.qualifier import api as qualifier_api
 from app.modules.quotes import api as quotes_api
+from app.modules.research_batches import api as research_batches_api
 from app.modules.webcheck import api as webcheck_api
 from app.modules.workflows import api as workflows_api
 
@@ -90,6 +91,9 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
         proposal_decks_api.JOB: proposal_decks_api.job_handler(services.file_store),
         proposal_decks_api.JOB_PPTX: proposal_decks_api.job_handler(services.file_store),
         webcheck_api.CHECK_JOB: webcheck_api.check_job_handler(services.settings),
+        research_batches_api.STEP_JOB: research_batches_api.job_handler(
+            services.settings, deal_desk_api.model_for(services.settings)
+        ),
         webcheck_api.COMPANY_JOB: webcheck_api.company_job_handler(services.settings),
         # Domain events (ADR 0006): every "event.<name>" job goes to its subscribers.
         **dispatcher(
@@ -222,6 +226,7 @@ def dead_job_handlers() -> dict[str, DeadJobHandler]:
         calls_api.JOB_KIND: calls_api.dead_job_handler(),
         calls_api.CLIP_JOB_KIND: calls_api.clip_dead_job_handler(),
         photo_enhancer_api.JOB_KIND: photo_enhancer_api.dead_job_handler(),
+        research_batches_api.STEP_JOB: research_batches_api.dead_job_handler(),
     }
 
 

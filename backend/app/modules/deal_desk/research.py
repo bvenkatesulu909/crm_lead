@@ -14,10 +14,12 @@ model calls, do run in parallel threads.)
 """
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
 from app.core.audit import AuditLog, record_audit
@@ -59,6 +61,10 @@ class ResearchRateLimitedError(DomainError):
 class ResearchInvalidError(DomainError):
     status_code = 422
     code = "account_research_invalid_answer"
+
+
+class ResearchNoSourceError(ResearchInvalidError):
+    """The writer answered, but no sentence named a source it was given (nothing is stored)."""
 
 
 @dataclass(frozen=True)
@@ -188,7 +194,7 @@ def run_research(
     except rules.BriefRefusedError as refusal:
         raise ResearchInvalidError(str(refusal)) from None
     if not brief.sentences:
-        raise ResearchInvalidError("No sentence of the brief named a source it was given.")
+        raise ResearchNoSourceError("No sentence of the brief named a source it was given.")
     counts = {name: sum(1 for g in gathered if g.gatherer == name) for name in rules.GATHERERS}
     usage = reply.usage or {}
     stored = AccountBrief(
@@ -238,6 +244,90 @@ def list_briefs(
             .limit(LIST_LIMIT)
         )
     )
+
+
+@dataclass(frozen=True)
+class BriefOverview:
+    """What a stored brief says about itself, for a table that scans many briefs (ADR 0042, BR1):
+    how many sourced sentences it has, how many were left out, how many facts each gatherer found.
+    No sentence text and no record content leaves this function."""
+
+    brief_id: uuid.UUID
+    account_id: uuid.UUID
+    created_at: datetime
+    sentences: int
+    dropped: int
+    gathered: dict[str, int]
+    tokens: int
+
+
+def _overview(row: AccountBrief) -> BriefOverview:
+    return BriefOverview(
+        brief_id=row.id,
+        account_id=row.account_id,
+        created_at=row.created_at,
+        sentences=len(row.sentences),
+        dropped=row.dropped,
+        gathered=dict(row.gathered),
+        tokens=row.input_tokens + row.output_tokens,
+    )
+
+
+def latest_overviews(
+    session: Session, principal: Principal, account_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, BriefOverview]:
+    """The newest brief of each of these accounts, only for accounts the person may read (an
+    account they may not read, or that does not exist, is simply absent)."""
+    if principal.tenant_id is None or principal.user_type != "staff" or not account_ids:
+        return {}
+    readable = select(accounts_api.Account.id).where(accounts_api.readable_accounts(principal))
+    rows = session.scalars(
+        select(AccountBrief)
+        .ext(distinct_on(AccountBrief.account_id))
+        .where(
+            AccountBrief.tenant_id == principal.tenant_id,
+            AccountBrief.account_id.in_(list(account_ids)),
+            AccountBrief.account_id.in_(readable),
+        )
+        .order_by(AccountBrief.account_id, AccountBrief.seq.desc())
+    )
+    return {row.account_id: _overview(row) for row in rows}
+
+
+def overviews_of(
+    session: Session, principal: Principal, brief_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, BriefOverview]:
+    """The overview of these briefs, only those of accounts the person may read."""
+    if principal.tenant_id is None or principal.user_type != "staff" or not brief_ids:
+        return {}
+    readable = select(accounts_api.Account.id).where(accounts_api.readable_accounts(principal))
+    rows = session.scalars(
+        select(AccountBrief).where(
+            AccountBrief.tenant_id == principal.tenant_id,
+            AccountBrief.id.in_(list(brief_ids)),
+            AccountBrief.account_id.in_(readable),
+        )
+    )
+    return {row.id: _overview(row) for row in rows}
+
+
+def recent_average_tokens(session: Session, tenant_id: uuid.UUID, *, last: int = 20) -> int | None:
+    """What this organisation's last briefs used on average (input + output tokens), or ``None``
+    when there are none. For the typical figure on the batch estimate screen only."""
+    newest = (
+        select(AccountBrief.input_tokens + AccountBrief.output_tokens)
+        .where(AccountBrief.tenant_id == tenant_id)
+        .order_by(AccountBrief.seq.desc())
+        .limit(last)
+        .subquery()
+    )
+    average = session.scalar(select(func.avg(newest.c[0])))
+    return None if average is None else int(average)
+
+
+def researched_today(session: Session, tenant_id: uuid.UUID, now: datetime) -> int:
+    """How many briefs the organisation wrote in the last day: what the daily limit counts."""
+    return count_runs(session, tenant_id, now - timedelta(days=1))
 
 
 def delete_expired(session: Session, now: datetime, *, tenant_id: uuid.UUID) -> int:

@@ -38,7 +38,9 @@ from app.modules.proposal_decks import models as proposal_decks_models
 from app.modules.public_chat import models as public_chat_models
 from app.modules.qualifier import models as qualifier_models
 from app.modules.quotes import models as quotes_models
+from app.modules.research_batches import models as research_batches_models
 from app.modules.sales import models as sales_models
+from app.modules.saved_filters import models as saved_filters_models
 from app.modules.support import models as support_models
 from app.modules.units import models as units_models
 from app.modules.webcheck import models as webcheck_models
@@ -82,6 +84,8 @@ __all__ = [
     "deal_risk_models",
     "custom_agents_models",
     "call_notes_models",
+    "saved_filters_models",
+    "research_batches_models",
     "proposal_decks_models",
     "workflows_models",
 ]

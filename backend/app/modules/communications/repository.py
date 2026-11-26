@@ -205,3 +205,29 @@ def follow_up_policy_history(
         .order_by(FollowUpPolicy.seq.desc())
         .limit(limit)
     ).all()
+
+
+def inbound_logged_since(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, since: datetime | None
+) -> bool:
+    """Has the lead written to us (a received e-mail someone logged) since ``since``, or ever?"""
+    conditions = [
+        EmailMessage.tenant_id == tenant_id,
+        EmailMessage.lead_id == lead_id,
+        EmailMessage.direction == "inbound_logged",
+    ]
+    if since is not None:
+        conditions.append(EmailMessage.created_at >= since)
+    return session.scalar(select(EmailMessage.id).where(*conditions).limit(1)) is not None
+
+
+def get_active_template(
+    session: Session, tenant_id: uuid.UUID, template_id: uuid.UUID
+) -> EmailTemplate | None:
+    return session.scalars(
+        select(EmailTemplate).where(
+            EmailTemplate.tenant_id == tenant_id,
+            EmailTemplate.id == template_id,
+            EmailTemplate.is_active.is_(True),
+        )
+    ).one_or_none()

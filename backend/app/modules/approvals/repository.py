@@ -2,10 +2,11 @@
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.approvals.models import AgentAction
@@ -142,3 +143,51 @@ def due_for_expiry(session: Session, tenant_id: uuid.UUID, now: datetime) -> Seq
         # Skip rows an approver is deciding on right now; the next run takes them.
         .with_for_update(skip_locked=True)
     ).all()
+
+
+# --- follow-up drafts (ADR 0036) -------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DraftHistory:
+    waiting: bool
+    last_at: datetime | None
+    in_window: int
+
+
+def draft_history(
+    session: Session, tenant_id: uuid.UUID, kind: str, target_id: uuid.UUID, since: datetime
+) -> DraftHistory:
+    """What the drafts of one kind for one record look like: is one waiting, when was the newest
+    made, and how many were made since ``since`` (however they ended)."""
+    rows = session.execute(
+        select(AgentAction.created_at, AgentAction.status).where(
+            AgentAction.tenant_id == tenant_id,
+            AgentAction.kind == kind,
+            AgentAction.target_id == target_id,
+        )
+    ).all()
+    return DraftHistory(
+        waiting=any(r.status == "pending" for r in rows),
+        last_at=max((r.created_at for r in rows), default=None),
+        in_window=sum(1 for r in rows if r.created_at >= since),
+    )
+
+
+def waiting_for_targets(
+    session: Session, tenant_id: uuid.UUID, kind: str, targets: Select[Any]
+) -> int:
+    """Undecided proposals of one kind whose record is in ``targets`` (a subquery of ids)."""
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(AgentAction)
+            .where(
+                AgentAction.tenant_id == tenant_id,
+                AgentAction.kind == kind,
+                AgentAction.status == "pending",
+                AgentAction.target_id.in_(targets),
+            )
+        )
+        or 0
+    )

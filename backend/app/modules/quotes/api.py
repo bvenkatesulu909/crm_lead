@@ -302,3 +302,51 @@ def search_quotes(
         }
         for x in items
     ]
+
+
+# Statuses of a quote whose prices may be spoken to a buyer: approved by a manager, or already with
+# the customer. A draft, a pending, a declined or a replaced quote is not a price anyone stands by.
+PRICE_FACT_STATUSES = ("approved", "sent", "accepted")
+
+
+@dataclass(frozen=True)
+class PriceLineFacts:
+    description: str
+    quantity: Decimal
+    unit: str
+    net_unit_price: Decimal
+    line_total: Decimal
+
+
+@dataclass(frozen=True)
+class QuotePriceFacts:
+    """The figures of a quote for the video brief (ADR 0041). Never the notes."""
+
+    label: str  # "QT-0007 rev 2"
+    status: str
+    account_id: uuid.UUID
+    currency: str
+    valid_until: date
+    total: Decimal
+    lines: list[PriceLineFacts]
+
+
+def price_facts(
+    session: Session, principal: Principal, quote_id: uuid.UUID
+) -> QuotePriceFacts | None:
+    """The prices of a quote this person may read, else None."""
+    quote = repository.get_readable(session, principal, quote_id)
+    if quote is None:
+        return None
+    return QuotePriceFacts(
+        label=service.number_label(quote),
+        status=quote.status,
+        account_id=quote.account_id,
+        currency=quote.currency,
+        valid_until=quote.valid_until,
+        total=quote.total,
+        lines=[
+            PriceLineFacts(ln.description, ln.quantity, ln.unit, ln.net_unit_price, ln.line_total)
+            for ln in repository.lines_of(session, quote)
+        ],
+    )

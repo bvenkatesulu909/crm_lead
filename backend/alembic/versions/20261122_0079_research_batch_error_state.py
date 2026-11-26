@@ -1,7 +1,7 @@
 """A batch can end because of an error (ADR 0042, BR3).
 
-Revision ID: 0077
-Revises: 0076
+Revision ID: 0079
+Revises: 0078
 Create Date: 2026-11-22
 
 The worker step stops a batch as ``stopped_error`` when it cannot go on: its starter is no longer an
@@ -13,8 +13,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0077"
-down_revision: str | None = "0076"
+revision: str = "0079"
+down_revision: str | None = "0078"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

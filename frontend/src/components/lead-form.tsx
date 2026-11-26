@@ -11,6 +11,8 @@ import {
   LEAD_SOURCES,
   PROPERTY_TYPES,
 } from "@/lib/api-types";
+import { CONSENT_LABELS } from "@/lib/customer-data";
+import { EMAIL_CONSENTS } from "@/lib/api-types";
 import { PROPERTY_TYPE_LABELS, SOURCE_LABELS } from "@/lib/format";
 import {
   type FieldErrors,
@@ -158,6 +160,7 @@ const LABELS: Record<LeadField, string> = {
   company_website: "Website",
   company_industry: "Industry",
   company_size: "Employees",
+  email_consent: "E-mail consent",
 };
 
 /**
@@ -343,6 +346,40 @@ export function LeadForm({
         />
       </fieldset>
 
+      {values.email_consent ? (
+        <fieldset className="grid gap-5 sm:grid-cols-2">
+          <legend className="mb-3 text-sm font-semibold text-slate-900">
+            E-mail consent
+          </legend>
+          <div>
+            <label
+              htmlFor="lead-email_consent"
+              className="text-sm font-medium text-slate-700"
+            >
+              {LABELS.email_consent}
+            </label>
+            <select
+              id="lead-email_consent"
+              name="email_consent"
+              defaultValue={values.email_consent}
+              aria-invalid={Boolean(errors.email_consent)}
+              className={inputClass(Boolean(errors.email_consent))}
+            >
+              {EMAIL_CONSENTS.map((c) => (
+                <option key={c} value={c}>
+                  {CONSENT_LABELS[c]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-sm text-slate-600">
+              &ldquo;Opted out&rdquo; stops every e-mail to this person,
+              including automatic follow-ups. Set it only when the person said
+              so.
+            </p>
+          </div>
+        </fieldset>
+      ) : null}
+
       <fieldset className="grid gap-5 sm:grid-cols-2">
         <legend className="mb-3 text-sm font-semibold text-slate-900">
           Property wishes
@@ -373,7 +410,10 @@ export function LeadForm({
             ))}
           </select>
           {errors.property_type && (
-            <p id="lead-property_type-error" className="mt-1 text-sm text-red-700">
+            <p
+              id="lead-property_type-error"
+              className="mt-1 text-sm text-red-700"
+            >
               {errors.property_type}
             </p>
           )}

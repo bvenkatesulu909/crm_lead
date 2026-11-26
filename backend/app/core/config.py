@@ -205,6 +205,17 @@ class Settings(BaseSettings):
     calls_uploads_per_user_hour: int = Field(default=20, ge=1, le=1_000)
     calls_uploads_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
     calls_upload_finish_minutes: int = Field(default=180, ge=5, le=1440)
+    # Property photo enhancer (ADR 0039). ``photo_enhancer_disabled`` is the platform-wide switch;
+    # the limits are counted before a job is queued; the worker refuses a photo that would need
+    # more than ``photo_enhancer_max_memory_mb`` (about 12 bytes per pixel) or more than
+    # ``photo_enhancer_max_seconds`` of work.
+    photo_enhancer_disabled: bool = False
+    photo_enhancements_per_user_hour: int = Field(default=30, ge=1, le=1_000)
+    photo_enhancements_per_tenant_day: int = Field(default=500, ge=1, le=100_000)
+    photo_enhancements_per_original: int = Field(default=5, ge=1, le=50)
+    photo_enhancer_max_memory_mb: int = Field(default=600, ge=50, le=4_000)
+    photo_enhancer_max_seconds: int = Field(default=60, ge=5, le=600)
+    photo_previews_per_minute: int = Field(default=30, ge=1, le=600)
     # The worker (step CA2): a Whisper-class transcription model that gives timestamps (the
     # voice model for chat replies does not), the month's minutes per organisation (estimated
     # from the audio length), the ffmpeg / ffprobe programs and a time limit for one cleaning.

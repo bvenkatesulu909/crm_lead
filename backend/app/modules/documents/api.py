@@ -15,12 +15,19 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core.auth.principal import Principal
 from app.core.errors import DomainError
 from app.core.storage import DOWNLOAD_LINK_LIFETIME, FileStore, object_key
-from app.modules.documents.models import Document
+from app.modules.documents import policies
+from app.modules.documents.models import DERIVED_PURPOSE, Document
 
 __all__ = [
+    "DocumentRef",
     "DownloadLink",
+    "can_read_document",
+    "delete_derived_document",
+    "document_ref",
+    "store_derived_document",
     "delete_stale_uploads",
     "download_link",
     "DocumentInfo",
@@ -266,3 +273,106 @@ def delete_stale_uploads(
     from app.modules.documents import uploads  # the service imports this module: import late
 
     return uploads.delete_stale_uploads(session, store, now, tenant_id=tenant_id)
+
+
+# --- adjusted copies of photos (ADR 0039) ----------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DocumentRef:
+    """What another module needs to know about an uploaded document (an attachment)."""
+
+    id: uuid.UUID
+    record_type: str
+    record_id: uuid.UUID
+    file_name: str
+    content_type: str
+    size_bytes: int
+    customer_visible: bool
+
+
+def document_ref(
+    session: Session, tenant_id: uuid.UUID, document_id: uuid.UUID
+) -> DocumentRef | None:
+    """An uploaded attachment of this tenant (not a generated file, not a derived copy)."""
+    doc = session.scalars(
+        select(Document).where(
+            Document.tenant_id == tenant_id,
+            Document.id == document_id,
+            Document.purpose == "attachment",
+        )
+    ).one_or_none()
+    if doc is None:
+        return None
+    return DocumentRef(
+        doc.id,
+        doc.record_type,
+        doc.record_id,
+        doc.file_name,
+        doc.content_type,
+        doc.size_bytes,
+        doc.customer_visible,
+    )
+
+
+def can_read_document(session: Session, principal: Principal, ref: DocumentRef) -> bool:
+    """Whoever may see the record the document belongs to (the documents module's own rule)."""
+    return policies.record_visible(session, principal, ref.record_type, ref.record_id)
+
+
+def store_derived_document(
+    session: Session,
+    store: FileStore,
+    *,
+    tenant_id: uuid.UUID,
+    original: DocumentRef,
+    file_name: str,
+    content_type: str,
+    data: bytes,
+    created_by_user_id: uuid.UUID | None,
+) -> DocumentInfo:
+    """Store an adjusted copy next to its original: same record, same customer visibility, its own
+    row that is deleted with the original. Never listed as an ordinary document."""
+    document_id = uuid.uuid4()
+    key = object_key(tenant_id, f"{original.record_type}s", original.record_id, document_id)
+    store.put(key, data, content_type, download_name=file_name)
+    doc = Document(
+        id=document_id,
+        tenant_id=tenant_id,
+        record_type=original.record_type,
+        record_id=original.record_id,
+        purpose=DERIVED_PURPOSE,
+        file_name=file_name,
+        content_type=content_type,
+        size_bytes=len(data),
+        sha256=hashlib.sha256(data).hexdigest(),
+        storage_key=key,
+        customer_visible=original.customer_visible,
+        created_by_user_id=created_by_user_id,
+        group_id=document_id,
+        version_no=1,
+        derived_from_id=original.id,
+    )
+    session.add(doc)
+    session.flush()
+    return _info(doc)
+
+
+def delete_derived_document(
+    session: Session, tenant_id: uuid.UUID, document_id: uuid.UUID
+) -> str | None:
+    """Delete one adjusted copy's row; returns its file key for the caller to remove after the
+    commit (a failed commit must not lose the file). None when there is no such copy."""
+    doc = session.scalars(
+        select(Document).where(
+            Document.tenant_id == tenant_id,
+            Document.id == document_id,
+            Document.purpose == DERIVED_PURPOSE,
+        )
+    ).one_or_none()
+    if doc is None:
+        return None
+    key = doc.storage_key
+    session.delete(doc)
+    session.flush()
+    return key

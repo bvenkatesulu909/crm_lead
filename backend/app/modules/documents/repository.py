@@ -78,3 +78,18 @@ def group_by_name(
         .limit(1)
     ).first()
     return (row[0], row[1]) if row else None
+
+
+def derived_keys(
+    session: Session, tenant_id: uuid.UUID, original_ids: list[uuid.UUID]
+) -> list[str]:
+    """File keys of the adjusted copies of these documents (ADR 0039)."""
+    if not original_ids:
+        return []
+    return list(
+        session.scalars(
+            select(Document.storage_key).where(
+                Document.tenant_id == tenant_id, Document.derived_from_id.in_(original_ids)
+            )
+        ).all()
+    )

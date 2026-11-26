@@ -55,8 +55,24 @@ always give the same answer.
 * **Audit**: an on-demand forecast writes `deal_risk.computed` with the level, score and number of
   factors only.
 
+## The API (DR3) - `/api/v1/deal-risk`
+
+All four need the permission `deal_risk:read` (managers and administrators); everyone else gets 403.
+
+| Call | What it does |
+|---|---|
+| `GET /deal-risk?level=&limit=&offset=` | the newest forecast of every open deal you may read, highest score first (filtered and paged in SQL) |
+| `GET /deal-risk/{deal}` | the newest stored forecast of one deal; 404 `deal_risk_not_computed` when none exists yet |
+| `GET /deal-risk/{deal}/history?limit=` | earlier forecasts, newest first |
+| `POST /deal-risk/{deal}/recompute` | works it out now and stores it (201); at most 30 per person per hour (`CRM_DEAL_RISK_RECOMPUTE_PER_USER_HOUR`), then 429 `deal_risk_rate_limited` |
+
+Every answer carries a `note` saying it is an estimate, not a promise and not a probability. The
+client sends nothing but the deal id in the path and the list filters: level, score and factors are
+the server's. A deal you may not read, another organisation's deal, a closed deal and a made-up id
+all answer 404.
+
 ## Not built yet
 
-API and screens (DR3, DR4), the optional AI coach (DR5), the backtest (DR6). Signals not read yet:
+Screens (DR4), the optional AI coach (DR5), the backtest (DR6). Signals not read yet:
 close-date history, the number of contacts per deal, the account's overdue invoices and tickets beyond
 what account health already says, and call notes (the rules support them; the reader passes none).

@@ -25,6 +25,16 @@ RESTING_REPLY = (
     "Our chat assistant is resting right now. Please leave a message through our contact form "
     "or call us, and an advisor will get back to you."
 )
+# Spoken when the receptionist is switched off, over budget or out of minutes. The page also offers
+# the typed form, so the visitor is never left without a way to reach the team (ADR 0038).
+VOICE_RESTING_REPLY = (
+    "Our voice assistant is resting right now. Please type your name and phone number in the "
+    "chat, or call us, and an advisor will get back to you."
+)
+VOICE_NO_SECRETS_REPLY = (
+    "Please do not say card numbers, bank details, ID numbers or one-time passwords on this "
+    "call. Tell me your name and phone number instead."
+)
 FALLBACK_REPLY = (
     "Sorry, I couldn't answer that. Please leave your name and phone number and an advisor will "
     "call you."
@@ -56,6 +66,63 @@ LANGUAGE_RULES = {
         "own words only for names and places."
     ),
 }
+
+# Added to the prompt when the visitor is TALKING (ADR 0038). Fixed text; nothing the visitor or a
+# model typed is put into it. The confirmation rule exists because speech recognition mishears
+# names and places: the visitor must hear their phone number and name read back first.
+VOICE_RULES = """This is a spoken conversation: the visitor hears your answer read aloud.
+Start by saying that you are an automated assistant of {organisation}. Never claim to be a
+person; if asked, say you are an automated assistant. Use at most two short sentences per turn,
+no lists, no symbols, no emoji. Read the phone number back digit by digit and the name back, and
+ask the visitor to confirm both BEFORE you call save_lead. If the visitor corrects you, read it
+back again. For any question about a project, its price, its RERA registration or availability,
+call search_knowledge first and say only what it returns; never state a price, a discount, an
+offer, an availability or a RERA number from memory, and never give legal, loan or tax advice.
+If the visitor asks for a call back and the details are saved, call request_callback with a day
+and a time of day. Never ask for or accept card numbers, bank details, one-time passwords or ID
+numbers; if the visitor starts saying one, tell them not to and move on."""
+
+# Spoken numbers (ADR 0038, VR9): a speech recogniser may write "four one one one..." as words
+# instead of digits, and the digit-based card check would not see it.
+DIGIT_WORDS = {
+    # English
+    "zero": "0", "oh": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+    "six": "6", "seven": "7", "eight": "8", "nine": "9",
+    # Hindi (Devanagari)
+    "शून्य": "0", "एक": "1", "दो": "2", "तीन": "3", "चार": "4", "पाँच": "5", "पांच": "5",
+    "छह": "6", "छः": "6", "सात": "7", "आठ": "8", "नौ": "9",
+    # Telugu
+    "సున్నా": "0", "సున": "0", "ఒకటి": "1", "రెండు": "2", "మూడు": "3", "నాలుగు": "4",
+    "ఐదు": "5", "ఆరు": "6", "ఏడు": "7", "ఎనిమిది": "8", "తొమ్మిది": "9",
+}  # fmt: skip
+# Words that announce a secret the receptionist must never take, in the three languages.
+_SECRET_WORDS = ("otp", "cvv", "ओटीपी", "ఓటీపీ", "ఒటిపి")
+# A phone number is 10 digits (12 with +91); a payment card is 13 to 19. Refuse from 13.
+SPOKEN_CARD_MIN_DIGITS = 13
+
+
+def spoken_number_refusal(text: str) -> bool:
+    """True when ``text`` reads like a card number said aloud (13 or more digits in a row, as
+    digit words in English, Hindi or Telugu mixed with digits) or names a one-time password or
+    card security code. A normal phone number said aloud passes."""
+    lowered = text.casefold()
+    if any(word in lowered for word in _SECRET_WORDS):
+        return True
+    run = 0
+    for raw in re.split(r"[\s,.;:-]+", lowered):
+        token = raw.strip()
+        if not token:
+            continue
+        if token in DIGIT_WORDS:
+            run += 1
+        elif token.isdigit():
+            run += len(token)
+        else:
+            run = 0
+        if run >= SPOKEN_CARD_MIN_DIGITS:
+            return True
+    return False
+
 
 # Cleaning that does not make a name suspicious (a link or an image in a name does).
 HARMLESS_NAME_FINDINGS = {"hidden_characters", "control_characters", "repeated_text"}
@@ -129,6 +196,70 @@ def _tool_definition() -> dict[str, Any]:
 
 
 SAVE_LEAD_TOOL = _tool_definition()
+
+
+class SearchKnowledgeArgs(BaseModel):
+    """What the model may send to search_knowledge: one question, nothing else."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=300)]
+
+
+class RequestCallbackArgs(BaseModel):
+    """What the model may send to request_callback: a day and a time of day from fixed lists. The
+    language is the one the visitor chose on the page, never the model's choice."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    day: Literal["today", "tomorrow", "day_after"]
+    window: Literal["morning", "afternoon", "evening"]
+
+
+SEARCH_KNOWLEDGE_TOOL: dict[str, Any] = {
+    "name": "search_knowledge",
+    "description": (
+        "Look up what the company has published (project brochures, policies) to answer a "
+        "visitor's question about a project, its price, its RERA registration or availability. "
+        "Returns an answer built only from those documents, or says nothing was found. Say only "
+        "what it returns; if nothing was found, say you do not have that information and offer "
+        "a callback."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {"question": {"type": "string", "minLength": 3, "maxLength": 300}},
+        "required": ["question"],
+        "additionalProperties": False,
+    },
+}
+REQUEST_CALLBACK_TOOL: dict[str, Any] = {
+    "name": "request_callback",
+    "description": (
+        "Ask for a callback from the sales team. Call it only after the visitor's details were "
+        "saved (save_lead) and the visitor asked for a call. It books nothing: a manager must "
+        "confirm. Tell the visitor the team will confirm, never that it is booked."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "day": {"type": "string", "enum": ["today", "tomorrow", "day_after"]},
+            "window": {"type": "string", "enum": ["morning", "afternoon", "evening"]},
+        },
+        "required": ["day", "window"],
+        "additionalProperties": False,
+    },
+}
+# What the voice receptionist may use (ADR 0038, VR4): three abilities, no more. The typed website
+# chat keeps its single tool.
+VOICE_TOOLS = (SAVE_LEAD_TOOL, SEARCH_KNOWLEDGE_TOOL, REQUEST_CALLBACK_TOOL)
+# Why a callback is wanted, as a fixed sentence: nothing a visitor or a model wrote goes into a
+# proposal's reason (the Sentinel and the approver read it).
+CALLBACK_REASON = "The website visitor asked, during the voice chat, for a call back from the team."
+# Said instead of an answer that holds a price or a RERA number no document backs (ADR 0038).
+VOICE_UNCITED_REPLY = (
+    "I do not have that detail confirmed from our documents. A colleague can tell you exactly: "
+    "shall I ask the team to call you back?"
+)
 
 
 def split_name(full_name: str) -> tuple[str | None, str]:

@@ -60,6 +60,7 @@ from app.modules.site_brief.router import router as site_brief_router
 from app.modules.support.router import portal_router as portal_tickets_router
 from app.modules.support.router import router as tickets_router
 from app.modules.units.router import router as units_router
+from app.modules.video_brief.router import router as video_brief_router
 from app.modules.voice.router import router as voice_router
 from app.modules.webcheck.router import router as webcheck_router
 from app.modules.workflows.router import router as workflows_router
@@ -108,6 +109,7 @@ api_router.include_router(calls_router)
 api_router.include_router(call_notes_router)
 api_router.include_router(call_notes_leads_router)
 api_router.include_router(site_brief_router)
+api_router.include_router(video_brief_router)
 api_router.include_router(portal_router)
 api_router.include_router(tickets_router)
 api_router.include_router(portal_tickets_router)

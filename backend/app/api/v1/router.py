@@ -43,6 +43,7 @@ from app.modules.orders.router import router as orders_router
 from app.modules.payment_links.router import portal_router as payment_links_portal_router
 from app.modules.payment_links.router import router as payment_links_router
 from app.modules.payment_links.router import webhook_router as payment_links_webhook_router
+from app.modules.photo_enhancer.router import router as photo_enhancer_router
 from app.modules.portal.router import router as portal_router
 from app.modules.proposal_decks.router import portal_router as proposal_decks_portal_router
 from app.modules.proposal_decks.router import router as proposal_decks_router
@@ -101,6 +102,7 @@ api_router.include_router(reports_router)
 api_router.include_router(leads_router)
 api_router.include_router(buyer_memory_router)
 api_router.include_router(calls_router)
+api_router.include_router(photo_enhancer_router)
 api_router.include_router(call_notes_router)
 api_router.include_router(call_notes_leads_router)
 api_router.include_router(site_brief_router)

@@ -198,6 +198,7 @@ class Settings(BaseSettings):
     photo_enhancements_per_original: int = Field(default=5, ge=1, le=50)
     photo_enhancer_max_memory_mb: int = Field(default=600, ge=50, le=4_000)
     photo_enhancer_max_seconds: int = Field(default=60, ge=5, le=600)
+    photo_previews_per_minute: int = Field(default=30, ge=1, le=600)
     # The worker (step CA2): a Whisper-class transcription model that gives timestamps (the
     # voice model for chat replies does not), the month's minutes per organisation (estimated
     # from the audio length), the ffmpeg / ffprobe programs and a time limit for one cleaning.

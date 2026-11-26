@@ -37,6 +37,8 @@ __all__ = [
     "set_account_segment",
     "account_owner_id",
     "ACCOUNT_SEGMENTS",
+    "Account",
+    "readable_accounts",
     "CustomerMetrics",
     "PortalAccountRead",
     "account_name",

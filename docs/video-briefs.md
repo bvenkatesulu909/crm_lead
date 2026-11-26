@@ -79,7 +79,7 @@ the **next version** of the lead's script (`GET` lists them, newest first). Perm
   (`script_banned_phrase`), or when the whole script has no words (`script_empty`), is longer than its length
   (`script_too_long`), or a line is too long (`script_line_too_long` / `script_too_many_lines`).
 - At most `CRM_VIDEO_SCRIPTS_PER_USER_HOUR` (30) saves per person per hour (429 `video_script_rate_limited`).
-- Table `video_scripts` (migration 0075): forced row-level security, database checks for every fixed list, and
+- Table `video_scripts` (migration 0077): forced row-level security, database checks for every fixed list, and
   **insert-only** - a trigger refuses every UPDATE and a DELETE of a row younger than 365 days, and the
   application role has no UPDATE or TRUNCATE. `source` is `hand_written` now; an approved AI draft (VB5) will be
   `ai_draft`.
@@ -147,7 +147,7 @@ only the documented fields, each kind of refused answer).
   of the drafter is re-run on the lines (a made-up number, an assumption said as a fact, a banned statement, a
   contact detail, the length -> 422 `video_draft_*`). Lines a person edited, or a client that invents some, get no
   further than a model's would. The lines stored in the proposal are the cleaned ones.
-- **A new approval kind `lead.video_script`** (target: the lead; author `video_brief`, migration 0076). Its payload is
+- **A new approval kind `lead.video_script`** (target: the lead; author `video_brief`, migration 0078). Its payload is
   exactly `language`, `tone`, `goal`, `length_seconds` and `lines` (at most 12 lines of at most 300 characters);
   anything else is refused. The approval card shows the planned change as the script's lines and says "the video
   script drafter" asked.
@@ -155,7 +155,7 @@ only the documented fields, each kind of refused answer).
   (links blocked, hidden text blocked, a phone number warned about, the same as any other text).
 - **A different person approves.** Nobody approves their own proposal; sales agents cannot approve. Only on approval
   is the script saved as the next version of the lead's script with `source: ai_draft`, the **approver** as the
-  person recorded and `proposal_id` pointing at the proposal (migration 0076; a database check keeps `ai_draft` and
+  person recorded and `proposal_id` pointing at the proposal (migration 0078; a database check keeps `ai_draft` and
   `proposal_id` together). The approval re-checks the lines; the plan and the outcome are compared like for every
   other kind.
 

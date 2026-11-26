@@ -131,7 +131,8 @@ def test_a_manager_reads_the_conversation_of_a_website_lead(
     lead_id = db_session.scalars(select(PublicChatSession.lead_id)).one()
 
     body = ok(api.get(transcript_url(lead_id), headers=auth("alpha.manager")))
-    assert set(body) == {"started_at", "messages"}
+    assert set(body) == {"started_at", "channel", "voice_seconds", "messages"}
+    assert (body["channel"], body["voice_seconds"]) == ("text", 0)
     roles = [m["role"] for m in body["messages"]]
     assert roles == ["visitor", "assistant", "visitor", "assistant"]
     assert body["messages"][0]["content"] == "Hello"
@@ -175,7 +176,7 @@ def test_unknown_leads_and_leads_without_a_chat(make_api, auth, world, db_sessio
     db_session.add(lead)
     db_session.flush()
     body = ok(api.get(transcript_url(lead.id), headers=auth("alpha.manager")))
-    assert body == {"started_at": None, "messages": []}
+    assert body == {"started_at": None, "channel": "text", "voice_seconds": 0, "messages": []}
 
 
 # --- the 30-day clean-up in the worker --------------------------------------------------------

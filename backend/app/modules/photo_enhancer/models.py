@@ -12,6 +12,7 @@ from typing import Any
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     ForeignKeyConstraint,
     Index,
@@ -20,6 +21,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -45,6 +47,7 @@ class PhotoEnhancement(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
             name="ready_has_facts",
         ),
         CheckConstraint("jsonb_typeof(operations) = 'object'", name="operations_object"),
+        CheckConstraint("NOT in_decks OR status = 'ready'", name="deck_only_when_ready"),
         ForeignKeyConstraint(
             ["tenant_id", "original_document_id"],
             ["documents.tenant_id", "documents.id"],
@@ -84,5 +87,7 @@ class PhotoEnhancement(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     width: Mapped[int | None] = mapped_column(Integer, default=None)
     height: Mapped[int | None] = mapped_column(Integer, default=None)
     size_bytes: Mapped[int | None] = mapped_column(BigInteger, default=None)
+    # The sales person chose this copy for proposal decks (ADR 0039, PE5; migration 0075).
+    in_decks: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(server_default=func.clock_timestamp())
     finished_at: Mapped[datetime | None] = mapped_column(default=None)

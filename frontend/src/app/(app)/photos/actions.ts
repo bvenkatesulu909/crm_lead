@@ -58,3 +58,25 @@ export async function deleteEnhancement(
   }
   redirect(`/photos/${documentId}?done=deleted`);
 }
+
+/**
+ * Choose (or stop choosing) a finished copy for proposal decks (ADR 0039, PE5). Only the choice is
+ * sent; the API checks who may do it and that the copy is finished. Nothing reaches a deck that
+ * nobody chose.
+ */
+export async function chooseForDecks(
+  enhancementId: string,
+  inDecks: boolean,
+): Promise<{ error: string | null }> {
+  if (!UUID.test(enhancementId)) throw new Error("invalid id");
+  try {
+    await apiFetch(`/photo-enhancer/enhancements/${enhancementId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ in_decks: inDecks === true }),
+    });
+  } catch (error) {
+    const info = toErrorInfo(error);
+    return { error: photoErrorText(info.code, info.message) };
+  }
+  return { error: null };
+}

@@ -14,6 +14,8 @@ export type Enhancement = {
   width: number | null;
   height: number | null;
   size_bytes: number | null;
+  /** Chosen for proposal decks (ADR 0039, PE5). */
+  in_decks: boolean;
   created_at: string;
   finished_at: string | null;
 };
@@ -161,6 +163,8 @@ export function photoErrorText(code: string | null, fallback: string): string {
       return "The photo took too long to adjust. Try a smaller size.";
     case "photo_limit_reached":
       return "Too many photos were adjusted, or this photo already has the most copies allowed. Delete one or try later.";
+    case "photo_copy_not_ready":
+      return "Only a finished copy can be chosen for decks.";
     case "photo_not_found":
     case "photo_copy_not_found":
       return "That photo was not found, or you may not see it.";

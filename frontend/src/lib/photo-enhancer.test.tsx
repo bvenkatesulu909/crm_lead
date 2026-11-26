@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  chooseForDecks,
   createEnhancement,
   deleteEnhancement,
 } from "@/app/(app)/photos/actions";
@@ -53,6 +54,7 @@ function copy(over: Partial<Enhancement> = {}): Enhancement {
     width: 400,
     height: 300,
     size_bytes: 24_000,
+    in_decks: false,
     created_at: "2026-11-22T09:00:00Z",
     finished_at: "2026-11-22T09:00:03Z",
     ...over,
@@ -271,6 +273,17 @@ describe("Server Actions", () => {
     expect(apiFetch).not.toHaveBeenCalled();
   });
 
+  it("choosing for decks sends only the choice and answers in words", async () => {
+    apiFetch.mockResolvedValue({});
+    expect(await chooseForDecks(COPY, true)).toEqual({ error: null });
+    expect(JSON.parse(apiFetch.mock.calls[0][1].body)).toEqual({
+      in_decks: true,
+    });
+    apiFetch.mockRejectedValue(problem(404, "photo_copy_not_found"));
+    expect((await chooseForDecks(COPY, false)).error).toMatch(/not found/);
+    await expect(chooseForDecks("nope", true)).rejects.toThrow("invalid id");
+  });
+
   it("delete one copy and go back to the photo", async () => {
     apiFetch.mockResolvedValue(undefined);
     await expect(
@@ -351,6 +364,78 @@ describe("PhotoCopies", () => {
     expect(
       screen.queryByRole("button", { name: "Delete copy" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("a ready copy can be chosen for decks, and the choice is saved", async () => {
+    apiFetch.mockResolvedValue({});
+    render(
+      <PhotoCopies
+        documentId={DOC}
+        copies={[copy()]}
+        caption={caption}
+        canDelete
+      />,
+    );
+    const box = screen.getByLabelText("Use in proposal decks");
+    expect(box).not.toBeChecked();
+    await userEvent.click(box);
+    await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+    const [path, init] = apiFetch.mock.calls[0];
+    expect(path).toBe(`/photo-enhancer/enhancements/${COPY}`);
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body)).toEqual({ in_decks: true });
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+  });
+
+  it("shows a copy already chosen as ticked and explains the choice", () => {
+    render(
+      <PhotoCopies
+        documentId={DOC}
+        copies={[copy({ in_decks: true })]}
+        caption={caption}
+        canDelete
+      />,
+    );
+    expect(screen.getByLabelText("Use in proposal decks")).toBeChecked();
+    expect(
+      screen.getByText(/only when .*Use in proposal decks.* is ticked/),
+    ).toBeInTheDocument();
+  });
+
+  it("explains a refused choice and leaves the page as it was", async () => {
+    apiFetch.mockRejectedValue(problem(409, "photo_copy_not_ready"));
+    render(
+      <PhotoCopies
+        documentId={DOC}
+        copies={[copy()]}
+        caption={caption}
+        canDelete
+      />,
+    );
+    await userEvent.click(screen.getByLabelText("Use in proposal decks"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/finished copy/);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("a waiting copy and a reader without rights get no deck choice", () => {
+    const { rerender } = render(
+      <PhotoCopies
+        documentId={DOC}
+        copies={[copy({ status: "queued", applied: null })]}
+        caption={caption}
+        canDelete
+      />,
+    );
+    expect(screen.queryByLabelText("Use in proposal decks")).toBeNull();
+    rerender(
+      <PhotoCopies
+        documentId={DOC}
+        copies={[copy()]}
+        caption={caption}
+        canDelete={false}
+      />,
+    );
+    expect(screen.queryByLabelText("Use in proposal decks")).toBeNull();
   });
 
   it("with no copies it explains how to make one", () => {

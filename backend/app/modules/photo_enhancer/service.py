@@ -20,7 +20,7 @@ from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.config import Settings
-from app.core.errors import DomainError, ForbiddenError, NotFoundError
+from app.core.errors import ConflictError, DomainError, ForbiddenError, NotFoundError
 from app.core.outbox import Job, PermanentJobError, enqueue
 from app.core.storage import FileStore, StoredFileMissingError
 from app.modules.agents import api as agents_api
@@ -273,6 +273,72 @@ def delete_copy(session: Session, principal: Principal, enhancement_id: uuid.UUI
         session.flush()
     _audit(session, principal, row, "photo.copy_deleted")
     return key
+
+
+class CopyNotReadyError(ConflictError):
+    code = "photo_copy_not_ready"
+
+    def __init__(self) -> None:
+        super().__init__("Only a finished adjusted copy can be chosen for decks.")
+
+
+def set_in_decks(
+    session: Session, principal: Principal, enhancement_id: uuid.UUID, value: bool
+) -> PhotoEnhancement:
+    """Choose (or stop choosing) a finished copy for proposal decks. The caller commits."""
+    _tenant_and_user(principal)
+    _check_may_enhance(principal)
+    row, _ref = _load_copy(session, principal, enhancement_id)
+    if row.status != "ready":
+        raise CopyNotReadyError()
+    if row.in_decks != value:
+        row.in_decks = value
+        session.flush()
+        _audit(session, principal, row, "photo.deck_choice", in_decks=value)
+    return row
+
+
+@dataclass(frozen=True)
+class AdjustedPhoto:
+    """A chosen copy as a deck draws it: the picture and the fixed caption."""
+
+    jpeg: bytes
+    caption: str
+
+
+def deck_photos(
+    session: Session,
+    store: FileStore,
+    tenant_id: uuid.UUID,
+    *,
+    account_id: uuid.UUID | None,
+    opportunity_id: uuid.UUID | None,
+    limit: int = 4,
+) -> list[AdjustedPhoto]:
+    """The copies chosen for decks whose original photo is on this account or deal (at most
+    ``limit``, newest first). For the deck job (no person): a copy is skipped when its file is
+    missing or damaged or no longer carries the "adjusted copy" note."""
+    found: list[AdjustedPhoto] = []
+    for row in repository.list_in_decks(session, tenant_id):
+        if len(found) >= limit:
+            break
+        ref = documents_api.document_ref(session, tenant_id, row.original_document_id)
+        if ref is None or row.derived_document_id is None:
+            continue
+        here = (ref.record_type == "account" and ref.record_id == account_id) or (
+            ref.record_type == "opportunity" and ref.record_id == opportunity_id
+        )
+        if not here:
+            continue
+        try:
+            _info, data = documents_api.read_document(
+                session, store, tenant_id, row.derived_document_id
+            )
+        except (StoredFileMissingError, documents_api.DocumentIntegrityError):
+            continue
+        if rules.has_label(data):
+            found.append(AdjustedPhoto(data, rules.DECK_CAPTION))
+    return found
 
 
 def remove_file(store: FileStore, key: str | None) -> None:

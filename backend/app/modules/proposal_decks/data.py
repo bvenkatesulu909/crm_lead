@@ -18,6 +18,19 @@ class DeckBrand:
 
 
 @dataclass(frozen=True)
+class DeckPhoto:
+    """An adjusted property photo (ADR 0039, PE5): the JPEG the photo enhancer made, with the fixed
+    caption that says it was adjusted. The deck only ever draws photos that carry that caption."""
+
+    jpeg: bytes
+    caption: str
+
+
+# At most this many photos go on the photo slide.
+MAX_DECK_PHOTOS = 4
+
+
+@dataclass(frozen=True)
 class DeckLine:
     position: int
     description: str
@@ -48,3 +61,5 @@ class DeckData:
     brand: DeckBrand
     # An approved "why this proposal" text (ADR 0032 Amendment A, PD7); none = no such slide.
     summary: str | None = None
+    # Adjusted photos the sales person chose for decks (ADR 0039, PE5); none = no photo slide.
+    photos: tuple[DeckPhoto, ...] = ()

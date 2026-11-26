@@ -10,7 +10,17 @@ from app.modules.photo_enhancer import service
 AGENT_KEY = service.AGENT_KEY
 JOB_KIND = service.JOB_KIND
 
-__all__ = ["AGENT_KEY", "JOB_KIND", "dead_job_handler", "job_handler"]
+AdjustedPhoto = service.AdjustedPhoto
+deck_photos = service.deck_photos
+
+__all__ = [
+    "AGENT_KEY",
+    "JOB_KIND",
+    "AdjustedPhoto",
+    "dead_job_handler",
+    "deck_photos",
+    "job_handler",
+]
 
 
 def job_handler(store: FileStore, settings: Settings) -> JobHandler:

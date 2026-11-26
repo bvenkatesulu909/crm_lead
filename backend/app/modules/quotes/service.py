@@ -770,6 +770,10 @@ class DeckSource:
     tax_total: Decimal
     total: Decimal
     customer_note: str | None
+    # Where the deck's own records live: the photo slide takes the photos chosen for decks on this
+    # account or deal (ADR 0039, PE5).
+    account_id: uuid.UUID | None = None
+    opportunity_id: uuid.UUID | None = None
 
 
 # A deck is made once the content can no longer change: the quote was approved (or went further).
@@ -817,6 +821,8 @@ def _deck_source(session: Session, quote: Quote) -> DeckSource:
         tax_total=quote.tax_total,
         total=quote.total,
         customer_note=quote.customer_note,
+        account_id=quote.account_id,
+        opportunity_id=quote.opportunity_id,
     )
 
 

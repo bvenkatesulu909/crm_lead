@@ -3,7 +3,8 @@
 Design: [ADR 0039](adr/0039-property-photo-enhancer.md). This page says what is built and how it behaves.
 
 **Status:** PE1 (the image rules), PE2 (the request, the worker job, storage), PE3 (the API), PE4 (the
-screens) and PE5 (photos in proposal decks) are built.
+screens), PE5 (photos in proposal decks) and PE6 (gate tests and these docs) are built. **Phase PE is
+complete.**
 
 ## 1. What it does, in plain words
 
@@ -130,8 +131,21 @@ stable code (`photo_operation_too_strong`, `photo_operation_unknown`, `photo_pre
   knowledge base), so there is nothing to add a photo to there; the rule for any future generator is the same
   (only chosen, labelled copies, with the fixed caption).
 
-## 10. Not built yet
+## 10. The gate (PE6)
 
-* PE6: final docs and gate tests.
-* The retention rule for copies of closed deals (ADR question 4) and noise reduction.
+`backend/tests/test_photo_enhancer_gate.py` keeps the ADR's promises honest. It fails when:
+
+* the list of adjustments changes (a new option - a sky swap, an object remover, a model - cannot appear
+  without changing the test, and so the ADR);
+* a cap is raised above the ADR (brightness, contrast, straightening, crop, size and pixel limits);
+* the module imports an HTTP client, a model library or an image-science library it should not have;
+* the code or the API bodies gain a word for a generative edit, a prompt, an address or a model choice;
+* this page stops stating a cap the code enforces, or the fixed label and caption.
+
+## 11. Not built (decisions left for later)
+
+* The retention rule for copies of closed deals (ADR question 4: delete copies, never originals, 12 months
+  after a deal closes) and noise reduction.
 * Faces and number plates are not detected or blurred (ADR question 5): the warning is the only help.
+* Server-side HEIC and WebP (ADR question 6): the documents module accepts neither.
+* Generative edits: out of scope by decision (ADR PE2). They would need a new ADR.

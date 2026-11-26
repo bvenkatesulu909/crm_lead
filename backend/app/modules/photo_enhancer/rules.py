@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import io
 import math
+import time
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -180,6 +181,26 @@ def operations_from_dict(raw: dict[str, Any]) -> Operations:
     )
 
 
+def operations_to_dict(ops: Operations) -> dict[str, Any]:
+    """The adjustments as plain data, the way they are kept in the record (and read back by
+    ``operations_from_dict``)."""
+    return {
+        "auto_exposure": ops.auto_exposure,
+        "auto_white_balance": ops.auto_white_balance,
+        "brightness_percent": ops.brightness_percent,
+        "contrast_percent": ops.contrast_percent,
+        "straighten_degrees": ops.straighten_degrees,
+        "crop": list(ops.crop) if ops.crop else None,
+        "sharpen": ops.sharpen,
+        "preset": ops.preset,
+        "watermark": (
+            {"corner": ops.watermark.corner, "kind": ops.watermark.kind, "text": ops.watermark.text}
+            if ops.watermark
+            else None
+        ),
+    }
+
+
 def describe(ops: Operations) -> list[str]:
     """The list shown beside an enhanced copy ("what was done"), in plain words."""
     lines: list[str] = []
@@ -320,8 +341,26 @@ def _watermark(picture: Image.Image, mark: Watermark, logo_png: bytes | None) ->
     return Image.alpha_composite(picture.convert("RGBA"), layer).convert("RGB")
 
 
+BYTES_PER_PIXEL_AT_PEAK = 12  # a rough, deliberately generous estimate of working memory
+
+
+def estimated_memory_bytes(info: PhotoInfo) -> int:
+    """What decoding and adjusting this photo may need at its peak (the worker's refusal cap)."""
+    return info.width * info.height * BYTES_PER_PIXEL_AT_PEAK
+
+
+def _on_time(deadline: float | None) -> None:
+    if deadline is not None and time.monotonic() > deadline:
+        raise PhotoRuleError("took_too_long", "The photo took too long to adjust.")
+
+
 def enhance(
-    data: bytes, ops: Operations, *, logo_png: bytes | None = None, preview: bool = False
+    data: bytes,
+    ops: Operations,
+    *,
+    logo_png: bytes | None = None,
+    preview: bool = False,
+    deadline: float | None = None,
 ) -> Enhanced:
     """Apply the allowed edits and return a clean JPEG. ``preview`` works on a small copy (fast)
     with exactly the same steps. The input is checked first; none of its metadata is kept."""
@@ -337,6 +376,7 @@ def enhance(
     except (OSError, ValueError, Image.DecompressionBombError):
         raise PhotoRuleError("not_an_image", "The file is not a readable photo.") from None
 
+    _on_time(deadline)
     if preview:
         picture.thumbnail((PREVIEW_SIDE, PREVIEW_SIDE))
     if ops.straighten_degrees:
@@ -347,6 +387,7 @@ def enhance(
         picture = picture.crop(
             (round(left * w), round(top * h), round(right * w), round(bottom * h))
         )
+    _on_time(deadline)
     if ops.auto_white_balance:
         picture = _white_balance(picture)
     if ops.auto_exposure:
@@ -356,6 +397,7 @@ def enhance(
         picture = ImageEnhance.Brightness(picture).enhance(1 + ops.brightness_percent / 100)
     if ops.contrast_percent:
         picture = ImageEnhance.Contrast(picture).enhance(1 + ops.contrast_percent / 100)
+    _on_time(deadline)
     side = PRESET_SIDES[ops.preset]
     if max(picture.size) > side:  # never made bigger than it was
         picture.thumbnail((side, side), Image.Resampling.LANCZOS)
@@ -364,6 +406,7 @@ def enhance(
     if ops.watermark:
         picture = _watermark(picture, ops.watermark, logo_png)
 
+    _on_time(deadline)
     exif = Image.Exif()
     exif[_EXIF_IMAGE_DESCRIPTION] = FILE_LABEL
     for quality in JPEG_QUALITIES:

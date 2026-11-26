@@ -32,12 +32,14 @@ from app.modules.leads import models as leads_models
 from app.modules.notifications import models as notifications_models
 from app.modules.orders import models as orders_models
 from app.modules.payment_links import models as payment_links_models
+from app.modules.photo_enhancer import models as photo_enhancer_models
 from app.modules.proposal_decks import models as proposal_decks_models
 from app.modules.public_chat import models as public_chat_models
 from app.modules.qualifier import models as qualifier_models
 from app.modules.quotes import models as quotes_models
 from app.modules.sales import models as sales_models
 from app.modules.support import models as support_models
+from app.modules.units import models as units_models
 from app.modules.webcheck import models as webcheck_models
 from app.modules.workflows import models as workflows_models
 
@@ -65,6 +67,7 @@ __all__ = [
     "notifications_models",
     "orders_models",
     "payment_links_models",
+    "photo_enhancer_models",
     "outbox_models",
     "public_chat_models",
     "qualifier_models",
@@ -72,6 +75,7 @@ __all__ = [
     "sales_models",
     "staff_assistant_models",
     "support_models",
+    "units_models",
     "webcheck_models",
     "deal_desk_models",
     "custom_agents_models",

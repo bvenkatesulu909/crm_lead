@@ -45,6 +45,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "voice",
         "call_audio",
         "payment_links",
+        "photo_enhancer",
     }
     assert AGENTS["web_check"].uses_model is False
     # An outside AI client: no model of ours to meter, the platform switch still stops it, and an
@@ -58,6 +59,9 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
     assert AGENTS["deal_desk"].default_enabled
     assert not AGENTS["deck_writer"].default_enabled  # ADR 0032 Amendment A: off until switched on
     assert not AGENTS["account_research"].default_enabled  # ADR 0024 Q8 still applies to it
+    # The photo enhancer calls no model and starts OFF (ADR 0039).
+    photo = AGENTS["photo_enhancer"]
+    assert (photo.uses_model, photo.default_enabled, photo.platform_switch) == (False, False, False)
     assert not AGENTS["call_notes"].default_enabled  # ADR 0035: off until switched on
     assert not AGENTS["voice"].default_enabled and AGENTS["voice"].platform_switch is False
     # Company details read outside sites for a lead: OFF until switched on (ADR 0026 Q4).
@@ -77,6 +81,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "company_details",
         "call_audio",
         "payment_links",
+        "photo_enhancer",
     )
     assert all(a.default_enabled for key, a in AGENTS.items() if key not in starts_off)
 

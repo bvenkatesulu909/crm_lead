@@ -105,6 +105,11 @@ class Permission(StrEnum):
     CATALOG_READ = "catalog:read"
     CATALOG_MANAGE = "catalog:manage"
 
+    # Projects and units that can be reserved (ADR 0040): sales roles read, managers and
+    # administrators maintain. Support and customers have no access.
+    UNIT_READ = "unit:read"
+    UNIT_MANAGE = "unit:manage"
+
     # Quotes. "own" = quotes the user owns or on accounts the user owns. "approve" = release
     # quotes with discounts above the limit (never one's own, except tenant admins).
     QUOTE_READ_ALL = "quote:read:all"
@@ -181,6 +186,9 @@ class Permission(StrEnum):
     # the checklist frame. Reading a transcript also needs call:read.
     CALL_NOTES_RUN = "call_notes:run"
     CALL_NOTES_MANAGE = "call_notes:manage"
+    # Property photo enhancer (ADR 0039): make an adjusted copy of a photo. The document's own
+    # rules (document:write and the record it belongs to) still apply.
+    PHOTO_ENHANCE = "photo:enhance"
     QUALIFIER_RUN = "qualifier:run"
     QUALIFIER_READ = "qualifier:read"
     QUALIFIER_MANAGE = "qualifier:manage"
@@ -205,6 +213,7 @@ _SALES_ALL = frozenset(
         _P.OPPORTUNITY_READ_ALL, _P.OPPORTUNITY_WRITE_ALL, _P.DASHBOARD_SALES_ALL,
         _P.ACTIVITY_READ_ALL, _P.ACTIVITY_WRITE_ALL, _P.ACTIVITY_ASSIGN,
         _P.CATALOG_READ, _P.CATALOG_MANAGE,
+        _P.UNIT_READ, _P.UNIT_MANAGE,
         _P.QUOTE_READ_ALL, _P.QUOTE_WRITE_ALL, _P.QUOTE_APPROVE,
         _P.CONTRACT_READ_ALL, _P.CONTRACT_WRITE_ALL, _P.CONTRACT_MANAGE,
         _P.DOCUMENT_READ, _P.DOCUMENT_WRITE, _P.DOCUMENT_DELETE,
@@ -212,7 +221,7 @@ _SALES_ALL = frozenset(
         _P.AGENT_ACTION_PROPOSE, _P.AGENT_ACTION_APPROVE, _P.AGENT_READ,
         _P.WEBCHECK_RUN, _P.WEBCHECK_READ,
         _P.BUYER_MEMORY_READ, _P.BUYER_MEMORY_WRITE,
-        _P.CALL_READ, _P.CALL_WRITE, _P.CALL_NOTES_RUN,
+        _P.CALL_READ, _P.CALL_WRITE, _P.CALL_NOTES_RUN, _P.PHOTO_ENHANCE,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
         _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN, _P.CUSTOM_AGENT_RUN,
     }
@@ -254,11 +263,13 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.CALL_READ,
             _P.CALL_WRITE,
             _P.CALL_NOTES_RUN,
+            _P.PHOTO_ENHANCE,
             _P.OPPORTUNITY_READ_OWN,
             _P.OPPORTUNITY_WRITE_OWN,
             _P.ACTIVITY_READ_OWN,
             _P.ACTIVITY_WRITE_OWN,
             _P.CATALOG_READ,
+            _P.UNIT_READ,
             _P.QUOTE_READ_OWN,
             _P.QUOTE_WRITE_OWN,
             _P.CONTRACT_READ_OWN,

@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agent_evals import custom, desk, notes, play, video, writer
+from agent_evals import custom, desk, notes, play, receptionist, video, writer
 from agent_evals.cases import Case
 from agent_evals.custom import CustomRun
 from agent_evals.desk import DeskRun, ResearchRun
@@ -17,6 +17,7 @@ from agent_evals.notes import NotesRun
 from agent_evals.play import RAG_MIN_SIMILARITY, explain, invariants
 from agent_evals.rag import HashingEmbedder, RagRun
 from agent_evals.rag_cases import RagCase
+from agent_evals.receptionist import ReceptionistRun
 from agent_evals.runner import LeadAgentRun, PortalRun, PublicRun, QualifierRun, StaffRun
 from agent_evals.scoring import CaseResult
 from agent_evals.video import VideoRun
@@ -38,6 +39,7 @@ __all__ = [
     "play_deal_desk",
     "play_portal",
     "play_public",
+    "play_receptionist",
     "play_lead_agent",
     "play_qualifier",
     "play_rag",
@@ -150,3 +152,9 @@ def play_video_brief(
     session: Session, world: World, case: Case, **options: Any
 ) -> tuple[CaseResult, VideoRun]:
     return video.play_video_brief(session, eval_world(session, world), case, **options)
+
+
+def play_receptionist(
+    session: Session, world: World, case: Case, **options: Any
+) -> tuple[CaseResult, ReceptionistRun]:
+    return receptionist.play_receptionist(session, eval_world(session, world), case, **options)

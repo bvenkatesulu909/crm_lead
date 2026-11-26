@@ -673,9 +673,50 @@ New case fields: `call_notes` (`framework` BANT or MEDDIC, `suggest` to also ask
   suite. `python -m scripts.eval_agents --provider fake --suite call_notes` plays all 28 on the
   development data.
 
-## 6s. Video drafter cases (ADR 0041, steps VB4-VB5)
+## 6s. Voice receptionist cases (ADR 0038, step VR5)
 
-The video drafter is the twelfth agent of the harness. `agent_evals/video.py` plays a case through the REAL
+The voice receptionist is the twelfth agent of the harness. `agent_evals/receptionist.py` plays a case as
+an anonymous website visitor through the REAL voice pipeline of the website chat: the checks that come
+before any audio is recognised (`voice_precheck`: the registry switch and budget, the minutes, the
+consent), then each message of the case - **the words the speech service heard in one turn** (speech
+itself is not part of the evaluation) - through `handle_voice_message`: the guardrails, the
+spoken-number check, the model with its three tools, the knowledge search over the real fictional
+brochures (customer scope), the callback proposal in the approval queue and the number check of the
+spoken answer. Only the language model is scripted (a knowledge answer is one of its steps; `{cite_all}`
+in a step cites every source the real search showed) and the embedder is the harness's hashing
+stand-in.
+
+- **Case file:** `backend/evals/agents/receptionist.json`, 32 cases in English, Hindi and Telugu:
+  a greeting that calls no tool, a lead saved in each language (also from Devanagari digits), a budget
+  read back; the knowledge search (a price from the brochure, an invented price and an invented RERA
+  number replaced by the fixed sentence - with and without a search -, an unknown RERA number, an answer
+  without citations, the internal price sheet that must never be reachable, an extra argument); callbacks
+  (a proposal, in Telugu, before the lead is saved, once per call, a bad day, a bad time of day, a free
+  text note, a language the model tries to choose); a card number said as words in English, Hindi and
+  Telugu, a one-time password and a spoken instruction, all stopped before any model; no consent; switched
+  off, over the budget, the platform switch; a tool an administrator took away; a name that is a link.
+- **New case fields:** `receptionist` (`consent`, `knowledge`, `callbacks_waiting`, `max_turns`),
+  `expect.callbacks`; `language`, `expect.lead_language` and `expect.stored_*` also apply to this agent.
+- **Checks no case can skip:** nothing changed directly (no lead, no task) and only callbacks proposed;
+  every callback is a waiting `lead.request_callback` of the receptionist with exactly the three fixed
+  fields, in the visitor's language, with the fixed reason, for a lead this call saved, at most one per call
+  and with the day and time of day the model asked for; every lead is new, unassigned, from the web and in
+  the language of the call; every conversation carries the consent time and the notice version; the turns
+  counted equal the turns answered; and a spoken answer without a successful search holds no price or RERA
+  number the visitor did not say.
+- **CI:** `tests/db/test_agent_evals_receptionist.py` runs every case (hard gate) and proves the gate can
+  fail (a wrong outcome or callback count, a spoken-number check that lets a card through, an answer gate
+  that lets an invented price through, a registry that is ignored, a tool filter that does nothing, a
+  callback that claims success without a proposal, one with more than fixed words, one in the wrong
+  language, a conversation without the consent record), and internal documents reaching the model are caught by a check that compares every internal chunk on file with everything the model was shown.
+- **Real model:** five cases are `live` (the greeting, a lead in English and in Telugu, the callback
+  proposal and the callback before the lead is saved); the rest need the scripted search answers or force a
+  bad call. No paid scorecard run has been made for this suite. `python -m scripts.eval_agents --provider
+  fake --suite receptionist` plays all 32 on the development data (which must be migrated to 0076 first).
+
+## 6t. Video drafter cases (ADR 0041, steps VB4-VB5)
+
+The video drafter is the thirteenth agent of the harness. `agent_evals/video.py` plays a case through the REAL
 `draft.draft_script` (facts read as the asker, limits, the agent registry, cleaned facts, the strict answer check, the
 code-side checks) or the REAL `draft.propose_script` (every check again, the approval queue and its Sentinel). Only the
 language model is scripted; a "propose" case calls no model at all. Each message of a case is a lead
@@ -716,7 +757,6 @@ enforces, and a person edits it before sending.
 proposal, a drafter that saves a script itself, one that writes buyer memory itself, one that forgets the audit entry, one that
 ignores the registry, one that shows the model the phone number, one that lets a made-up number through, and a payload with
 a sixth field.
-
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

@@ -25,17 +25,58 @@ def find_session(
     ).one_or_none()
 
 
+def get_session(
+    session: Session, tenant_id: uuid.UUID, session_id: uuid.UUID
+) -> PublicChatSession | None:
+    return session.scalars(
+        select(PublicChatSession).where(
+            PublicChatSession.tenant_id == tenant_id, PublicChatSession.id == session_id
+        )
+    ).one_or_none()
+
+
 def sessions_started_since(
-    session: Session, tenant_id: uuid.UUID, ip_hash: str, since: datetime
+    session: Session,
+    tenant_id: uuid.UUID,
+    ip_hash: str,
+    since: datetime,
+    *,
+    channel: str | None = None,
 ) -> int:
-    return (
+    """Conversations an address started since ``since``; with ``channel`` only that kind."""
+    statement = (
+        select(func.count())
+        .select_from(PublicChatSession)
+        .where(
+            PublicChatSession.tenant_id == tenant_id,
+            PublicChatSession.visitor_ip_hash == ip_hash,
+            PublicChatSession.created_at >= since,
+        )
+    )
+    if channel is not None:
+        statement = statement.where(PublicChatSession.channel == channel)
+    return session.scalar(statement) or 0
+
+
+def find_session_unlocked(
+    session: Session, tenant_id: uuid.UUID, token_hash: str
+) -> PublicChatSession | None:
+    """Like ``find_session`` but without the row lock: for checks that run before the work."""
+    return session.scalars(
+        select(PublicChatSession).where(
+            PublicChatSession.tenant_id == tenant_id, PublicChatSession.token_hash == token_hash
+        )
+    ).one_or_none()
+
+
+def voice_seconds_between(session: Session, tenant_id: uuid.UUID, first: date, last: date) -> int:
+    """The organisation's server-speech seconds from day ``first`` to day ``last`` inclusive."""
+    return int(
         session.scalar(
-            select(func.count())
-            .select_from(PublicChatSession)
-            .where(
-                PublicChatSession.tenant_id == tenant_id,
-                PublicChatSession.visitor_ip_hash == ip_hash,
-                PublicChatSession.created_at >= since,
+            select(func.coalesce(func.sum(PublicChatDailyStat.voice_seconds), 0)).where(
+                PublicChatDailyStat.tenant_id == tenant_id,
+                PublicChatDailyStat.day >= first,
+                PublicChatDailyStat.day <= last,
             )
         )
         or 0
@@ -145,12 +186,22 @@ def delete_stale(session: Session, tenant_id: uuid.UUID, before: datetime) -> in
 
 
 def count_event(
-    session: Session, tenant_id: uuid.UUID, day: date, *, started: int = 0, leads: int = 0
+    session: Session,
+    tenant_id: uuid.UUID,
+    day: date,
+    *,
+    started: int = 0,
+    leads: int = 0,
+    voice_seconds: int = 0,
 ) -> None:
     """Add to the day's anonymous counters in ONE statement, so two requests at the same moment
     add up instead of one overwriting the other."""
     stat = insert(PublicChatDailyStat).values(
-        tenant_id=tenant_id, day=day, conversations_started=started, leads_saved=leads
+        tenant_id=tenant_id,
+        day=day,
+        conversations_started=started,
+        leads_saved=leads,
+        voice_seconds=voice_seconds,
     )
     session.execute(
         stat.on_conflict_do_update(
@@ -159,6 +210,7 @@ def count_event(
                 "conversations_started": PublicChatDailyStat.conversations_started
                 + stat.excluded.conversations_started,
                 "leads_saved": PublicChatDailyStat.leads_saved + stat.excluded.leads_saved,
+                "voice_seconds": PublicChatDailyStat.voice_seconds + stat.excluded.voice_seconds,
                 "updated_at": func.now(),
             },
         )

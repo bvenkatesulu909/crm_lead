@@ -39,6 +39,7 @@ Agent = Literal[
     "custom_agent",
     "call_notes",
     "video_brief",
+    "receptionist",
 ]
 # The deal desk asks four models in one run (ADR 0024): each step of its script says which one
 # answers. Three reviewers run at the same time, so the order they are asked in is not fixed.
@@ -84,6 +85,8 @@ PERSONAS: dict[str, set[str]] = {
     "call_notes": {"sales_agent", "sales_manager", "tenant_admin"},
     # ADR 0041: the people who hold video_brief:write; a support agent has none.
     "video_brief": {"sales_agent", "sales_manager", "tenant_admin"},
+    # ADR 0038: the voice receptionist talks to an anonymous website visitor.
+    "receptionist": {"visitor"},
 }
 # After these outcomes nothing in the CRM has changed (or may only wait for approval): the
 # answer must not claim otherwise.
@@ -115,6 +118,10 @@ def known_tools(agent: str) -> set[str]:
         from app.modules.public_chat import rules
 
         return {str(rules.SAVE_LEAD_TOOL["name"])}
+    if agent == "receptionist":  # the same chat, spoken, with two more abilities
+        from app.modules.public_chat import rules
+
+        return {str(tool["name"]) for tool in rules.VOICE_TOOLS}
     if agent == "qualifier":
         from app.modules.qualifier import rules as qualifier_rules
 
@@ -398,6 +405,9 @@ class Expect(_Strict):
     # Website chat only (ADR 0027): the language every lead the case saved must carry. None: not
     # checked.
     lead_language: Literal["en", "hi", "te"] | None = None
+    # Voice receptionist only: how many callback proposals the call made (each one waiting for a
+    # manager, made of fixed words). None: not checked.
+    callbacks: int | None = Field(default=None, ge=0, le=3)
     # Qualifier and lead agent only: exactly the proposals the case made, in order ([] = none).
     # None: not checked.
     proposals: list[ExpectedProposal] | None = None
@@ -444,6 +454,21 @@ def _strings(value: Any) -> list[str]:
     return []
 
 
+class ReceptionistSetup(_Strict):
+    """How a voice receptionist case is played (ADR 0038). What each message of the case is: the
+    words the speech service HEARD (the speech itself is not part of the evaluation)."""
+
+    # False: the visitor did not press Start (no consent version is sent).
+    consent: bool = True
+    # True: the organisation's brochures are on file and the search tool has an embedder; False:
+    # no knowledge search is offered at all.
+    knowledge: bool = False
+    # Callback proposals the whole website may have waiting (the cap); None = the default.
+    callbacks_waiting: int | None = Field(default=None, ge=1, le=100)
+    # The call's own limit on spoken turns; None = the default.
+    max_turns: int | None = Field(default=None, ge=1, le=100)
+
+
 class Case(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -475,6 +500,8 @@ class Case(BaseModel):
     call_notes: CallNotesSetup | None = None
     # Video drafter: how the case is played. Absent = a draft with the defaults.
     video: VideoSetup | None = None
+    # Voice receptionist: how the call is played. Absent = consent given, no knowledge search.
+    receptionist: ReceptionistSetup | None = None
     script: list[Step] = Field(default_factory=list)
     expect: Expect
 
@@ -485,14 +512,18 @@ class Case(BaseModel):
                 f"as: a {self.persona} can't use the {self.agent} (allowed: "
                 f"{', '.join(sorted(PERSONAS[self.agent]))})"
             )
-        if self.agent != "public_chat" and (
+        if self.agent not in ("public_chat", "receptionist") and (
             self.expect.stored_must_contain or self.expect.stored_must_not_contain
         ):
             raise ValueError("expect.stored_*: only the website chat stores text in the CRM")
-        if self.agent != "public_chat" and (
+        if self.agent not in ("public_chat", "receptionist") and (
             self.language != "en" or self.expect.lead_language is not None
         ):
             raise ValueError("language: only the website chat has a visitor language")
+        if self.receptionist is not None and self.agent != "receptionist":
+            raise ValueError("receptionist: only for the voice receptionist")
+        if self.expect.callbacks is not None and self.agent != "receptionist":
+            raise ValueError("expect.callbacks: only for the voice receptionist")
         if self.mode == "voice" and self.agent != "staff_assistant":
             raise ValueError("mode: voice is only for the staff assistant")
         if self.custom_agent is not None and self.agent != "custom_agent":

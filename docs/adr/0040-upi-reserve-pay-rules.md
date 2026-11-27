@@ -168,6 +168,8 @@ registry switch; test mode only until "go live".
   tables), migration 0087: `reservation_settings` (insert-only versions), `reservations` (one active
   per unit, allowed status changes and fixed terms enforced by the database), `reservation_events`
   (insert-only). See `docs/reservations.md`. No API, payment or screen yet (RP3 onwards).
+  Owner's decision (2026-11-27): a hold that lapses after 7 days follows the refund policy
+  (`hold_lapsed`), not a full refund.
 
 ## 7. Alternatives considered
 

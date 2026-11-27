@@ -36,8 +36,8 @@ go back to waiting for payment or simply expire - the money is owed back instead
 Tests: `backend/tests/test_reservation_rules.py` (pure) and
 `backend/tests/db/test_reservation_tables.py` (real PostgreSQL).
 
-## Open point for the owner
+## Decided by the owner (2026-11-27)
 
 A hold that lapses after 7 days without becoming a booking is treated like a buyer's cancellation
-(`hold_lapsed`: the refund policy applies). ADR 0040 does not say this outright; if the buyer should
-get everything back in that case, it is a one-line change in `rules.py` before RP4 uses it.
+(`hold_lapsed`): the written refund policy applies - everything back inside the free-cancel window,
+after that the price minus the part the organisation keeps.

@@ -1,9 +1,10 @@
 """Public interface of the accounts module. Other modules import only from here."""
 
 import uuid
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
@@ -19,7 +20,7 @@ from app.modules.accounts.metrics import (
 )
 from app.modules.accounts.models import ACCOUNT_SEGMENTS as models_ACCOUNT_SEGMENTS
 from app.modules.accounts.models import ACCOUNT_STATUSES, Account
-from app.modules.accounts.policies import readable_accounts
+from app.modules.accounts.policies import archived_accounts, readable_accounts
 from app.modules.accounts.repository import AccountFilters
 from app.modules.accounts.schemas import PortalAccountRead
 from app.modules.accounts.service import (
@@ -37,6 +38,10 @@ __all__ = [
     "set_account_segment",
     "account_owner_id",
     "ACCOUNT_SEGMENTS",
+    "Account",
+    "batch_candidates",
+    "find_for_batch",
+    "readable_accounts",
     "CustomerMetrics",
     "PortalAccountRead",
     "account_name",
@@ -254,3 +259,42 @@ def get_account_brief(
         "country": account.country,
         "link": f"/accounts/{account.id}",
     }
+
+
+def batch_candidates(
+    session: Session, principal: Principal, account_ids: list[uuid.UUID]
+) -> list[tuple[uuid.UUID, bool]]:
+    """Of these ids, the accounts the PERSON may read, and whether each is archived (only people who
+    may restore accounts see archived ones). Ids the person may not read, that do not exist or that
+    belong to another organisation are simply absent: nobody can tell which is which."""
+    if not account_ids or principal.tenant_id is None:
+        return []
+    rows = session.execute(
+        select(Account.id, Account.deleted_at.is_not(None)).where(
+            Account.id.in_(account_ids),
+            or_(readable_accounts(principal), archived_accounts(principal)),
+        )
+    ).all()
+    return [(row[0], bool(row[1])) for row in rows]
+
+
+def find_for_batch(
+    session: Session, principal: Principal, params: dict[str, str], *, limit: int
+) -> tuple[list[uuid.UUID], int]:
+    """The ids the Accounts list would show these conditions (saved filter parameters), under the
+    person's own read rules, at most ``limit`` of them, and how many matched in all."""
+    filters = AccountFilters(
+        q=params.get("q"),
+        status=params.get("status"),
+        segment=params.get("segment"),
+        owner_id=uuid.UUID(params["owner_id"]) if "owner_id" in params else None,
+        industry=params.get("industry"),
+        country=params.get("country"),
+        lifecycle_stage=params.get("lifecycle_stage"),
+        account_type=params.get("account_type"),
+        min_value=Decimal(params["min_value"]) if "min_value" in params else None,
+        value_currency=params.get("value_currency"),
+        limit=limit,
+    )
+    items, total = service.list_accounts(session, principal, filters)
+    return [account.id for account in items], int(total)

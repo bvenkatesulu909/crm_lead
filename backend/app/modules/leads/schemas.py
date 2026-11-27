@@ -32,6 +32,7 @@ LeadSort = Literal[
 LeadPriority = Literal["hot", "warm", "cold"]
 PropertyType = Literal["apartment", "villa", "plot", "commercial"]
 PreferredLanguage = Literal["en", "hi", "te"]
+EmailConsent = Literal["unknown", "granted", "withdrawn"]
 # Keys of app.modules.leads.company.INDUSTRIES / SIZES (a test keeps them in step).
 CompanyIndustry = Literal[
     "agriculture", "automotive", "banking_finance", "construction", "consulting",
@@ -151,11 +152,17 @@ class LeadUpdate(_Input):
     company_industry: CompanyIndustry | None = None
     company_size: CompanySize | None = None
     preferred_language: PreferredLanguage | None = None
+    email_consent: EmailConsent | None = Field(
+        default=None,
+        description="E-mail consent; the server records when the answer changed (ADR 0036).",
+    )
 
     @model_validator(mode="after")
     def _check(self) -> "LeadUpdate":
         if not self.model_fields_set - {"version"}:
             raise ValueError("send at least one field to change")
+        if "email_consent" in self.model_fields_set and self.email_consent is None:
+            raise ValueError("email_consent cannot be removed; send unknown to reset it")
         if "last_name" in self.model_fields_set and self.last_name is None:
             raise ValueError("last_name cannot be removed")
         return self
@@ -258,6 +265,8 @@ class LeadRead(_Output):
     company_industry: CompanyIndustry | None = None
     company_size: CompanySize | None = None
     preferred_language: PreferredLanguage | None = None
+    email_consent: EmailConsent = "unknown"
+    email_consent_at: datetime | None = None
     owner_id: uuid.UUID | None
     converted_at: datetime | None
     converted_account_id: uuid.UUID | None

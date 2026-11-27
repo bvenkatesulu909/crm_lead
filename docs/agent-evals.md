@@ -713,10 +713,46 @@ stand-in.
   proposal and the callback before the lead is saved); the rest need the scripted search answers or force a
   bad call. No paid scorecard run has been made for this suite. `python -m scripts.eval_agents --provider
   fake --suite receptionist` plays all 32 on the development data (which must be migrated to 0076 first).
+## 6t. Batch account research cases (ADR 0042, step BR5)
 
-## 6t. Video drafter cases (ADR 0041, steps VB4-VB5)
+A batch is not a conversation, so its cases have their own small format and folder:
+`backend/evals/batches/research_batches.json`, played by `backend/agent_evals/batch.py` and gated by
+`backend/tests/db/test_agent_evals_batches.py`. Each case says which accounts go in the batch
+(`A1`, `A2`, `B1` of the test world, `made_up`, `poisoned` = an extra account whose name tries to
+steer the writer, `extra:N` = N fresh accounts), how the scripted writer answers each call
+(`ok`, `nosource`, `wrongshape`, `down`), and what happens in between (`cancel_after_steps`,
+`lose_access`, a small `monthly_budget`, a stale `confirm_factor`). The case is played through the
+REAL `estimate`, `start` and worker `run_step`, which calls the REAL single-account research; only
+the model is scripted.
 
-The video drafter is the thirteenth agent of the harness. `agent_evals/video.py` plays a case through the REAL
+16 cases: two accounts; **one hundred accounts** (the maximum); a poisoned account; another
+organisation's account and a made-up id left out and counted; only foreign or made-up ids refused;
+one failing account; an answer of the wrong shape; the model down once (retried) and three times
+(recorded as unavailable); the cap reached; cancel after one account and before the first; an
+account archived mid-batch (skipped, no model call); a sales agent refused; a stale confirmation
+refused.
+
+Checks no case can skip: **isolation** (every prompt names only the account it is about - no other
+account's name or id, deal or contact, of either organisation - and names that one), a fresh
+conversation per call, only the batch's own organisation, no account changed and nothing proposed,
+the batch's tokens equal the sum of its accounts' and stay under the cap, nothing left queued or
+running once it ended, every finished account points at a brief of its own, the end audited once.
+A refused batch must store nothing.
+
+The gate can fail: a prompt that names another account, a writer that carries the poisoned
+account's text into the next prompt, an ignored cap and a wrong expectation each fail a case. A
+selection that let another organisation's account through cannot even be stored - the item's
+account key includes the organisation - and a test proves the database refuses it.
+
+Deliberate breaks of the product (2026-11-26): 5 of 6 caught (cancel ignored, a failed account that
+stops the batch, tokens not counted, no retry, the confirmation not checked); the survivor removes
+the worker's own "can the starter still read it" check, which the single-account research repeats
+(a redundant wall). Not wired into `python -m scripts.eval_agents` (the CLI plays conversation
+cases on the development data); there is no real-model run for batches - the model part is the
+single-account research, which 6m already covers.
+## 6u. Video drafter cases (ADR 0041, steps VB4-VB5)
+
+The video drafter is the twelfth agent of the harness. `agent_evals/video.py` plays a case through the REAL
 `draft.draft_script` (facts read as the asker, limits, the agent registry, cleaned facts, the strict answer check, the
 code-side checks) or the REAL `draft.propose_script` (every check again, the approval queue and its Sentinel). Only the
 language model is scripted; a "propose" case calls no model at all. Each message of a case is a lead
@@ -757,6 +793,7 @@ enforces, and a person edits it before sending.
 proposal, a drafter that saves a script itself, one that writes buyer memory itself, one that forgets the audit entry, one that
 ignores the registry, one that shows the model the phone number, one that lets a made-up number through, and a payload with
 a sixth field.
+
 ## 7. What stays out (on purpose)
 
 - A paid run on pull requests (the existing rule: paid evals are manual).

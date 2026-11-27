@@ -44,6 +44,7 @@ from app.modules.orders.router import router as orders_router
 from app.modules.payment_links.router import portal_router as payment_links_portal_router
 from app.modules.payment_links.router import router as payment_links_router
 from app.modules.payment_links.router import webhook_router as payment_links_webhook_router
+from app.modules.photo_enhancer.router import router as photo_enhancer_router
 from app.modules.portal.router import router as portal_router
 from app.modules.proposal_decks.router import portal_router as proposal_decks_portal_router
 from app.modules.proposal_decks.router import router as proposal_decks_router
@@ -54,7 +55,9 @@ from app.modules.quotes.router import portal_router as portal_quotes_router
 from app.modules.quotes.router import router as quotes_router
 from app.modules.relationships.router import router as relationships_router
 from app.modules.reports.router import router as reports_router
+from app.modules.research_batches.router import router as research_batches_router
 from app.modules.sales.router import router as opportunities_router
+from app.modules.saved_filters.router import router as saved_filters_router
 from app.modules.site_brief.router import router as site_brief_router
 from app.modules.support.router import portal_router as portal_tickets_router
 from app.modules.support.router import router as tickets_router
@@ -95,6 +98,8 @@ api_router.include_router(units_router)
 api_router.include_router(webcheck_router)
 api_router.include_router(qualifier_router)
 api_router.include_router(custom_agents_router)
+api_router.include_router(saved_filters_router)
+api_router.include_router(research_batches_router)
 api_router.include_router(lead_agent_router)
 api_router.include_router(deal_desk_router)
 api_router.include_router(account_research_router)
@@ -104,6 +109,7 @@ api_router.include_router(reports_router)
 api_router.include_router(leads_router)
 api_router.include_router(buyer_memory_router)
 api_router.include_router(calls_router)
+api_router.include_router(photo_enhancer_router)
 api_router.include_router(call_notes_router)
 api_router.include_router(call_notes_leads_router)
 api_router.include_router(site_brief_router)

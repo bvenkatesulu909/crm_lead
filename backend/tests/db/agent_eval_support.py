@@ -148,13 +148,13 @@ def play_call_notes(
     return notes.play_call_notes(session, eval_world(session, world), case, **options)
 
 
-def play_video_brief(
-    session: Session, world: World, case: Case, **options: Any
-) -> tuple[CaseResult, VideoRun]:
-    return video.play_video_brief(session, eval_world(session, world), case, **options)
-
-
 def play_receptionist(
     session: Session, world: World, case: Case, **options: Any
 ) -> tuple[CaseResult, ReceptionistRun]:
     return receptionist.play_receptionist(session, eval_world(session, world), case, **options)
+
+
+def play_video_brief(
+    session: Session, world: World, case: Case, **options: Any
+) -> tuple[CaseResult, VideoRun]:
+    return video.play_video_brief(session, eval_world(session, world), case, **options)

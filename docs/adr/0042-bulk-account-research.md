@@ -245,6 +245,32 @@ Staging is not touched by any step; the entry stays off until an administrator s
 9. **Web and company look-ups:** no; briefs show only evidence already on file.
 10. **Retention:** 12 months, no deletes.
 
+## 8a. Amendment (2026-11-22, while building BR1)
+
+1. **The summary table reads what a brief stores.** A stored brief holds its cited sentences, how many were
+   left out, how many facts each gatherer found and its tokens - not the health, open-deal count or renewal date
+   that BR10 listed. So `deal_desk.api` gets two read functions, `latest_overviews` (newest brief per account,
+   only accounts the person may read) and `overviews_of` (the overview of given briefs), and the v1 table shows
+   those figures (sourced sentences, left out, facts per gatherer, tokens, date) beside the outcome and a link.
+   Health, open deals and renewal stay on the brief's own sentences; richer live columns would be a separate,
+   later decision because they cost more reads per account.
+2. **A batch cannot change its own terms.** Besides the rules of BR13, the database refuses any change to the
+   starter, source, account list, positions, confirmed estimate and cap, refuses `tokens_used` going down, and
+   refuses a finished batch or item coming back to life.
+3. **The hard cap is not a database check.** The stop is `tokens_used + worst case <= cap`, decided by the
+   rules before every item (tests prove it for a whole run). A database check on `tokens_used <= token_cap`
+   would only turn a miscounted call into a stuck batch.
+
+4. **A fourth way to end (BR3):** `stopped_error`, for a batch that cannot go on - its starter is no longer an
+   active member of staff, or its step job died after all its retries (migration 0086). The unstarted accounts
+   become `not_run`. When the starter is gone the audit entry is written by the organisation's Automation
+   identity, because the audit log always names an actor. `stopped_budget` covers every limit and switch: the
+   batch's cap, the month's budget, the platform switch and either registry switch being turned off.
+5. **The cap needs a stated worst case for the input.** The worst case of one account is the writer's output cap
+   (`CRM_ASSISTANT_MAX_TOKENS`) plus `CRM_RESEARCH_BATCH_WORST_INPUT_TOKENS` (default 8,000). The cap is only as
+   hard as that figure is true: BR3 measures every call from the month's usage (also a refused answer), and a
+   later step should refuse an account whose prompt would exceed the input figure before the model is called.
+
 ## 8. Consequences
 
 - A manager can prepare a whole segment in one action, knows the cost first, can stop at any time, sees which

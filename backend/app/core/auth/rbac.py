@@ -190,18 +190,24 @@ class Permission(StrEnum):
     # the checklist frame. Reading a transcript also needs call:read.
     CALL_NOTES_RUN = "call_notes:run"
     CALL_NOTES_MANAGE = "call_notes:manage"
+    # Property photo enhancer (ADR 0039): make an adjusted copy of a photo. The document's own
+    # rules (document:write and the record it belongs to) still apply.
+    PHOTO_ENHANCE = "photo:enhance"
     QUALIFIER_RUN = "qualifier:run"
     QUALIFIER_READ = "qualifier:read"
     QUALIFIER_MANAGE = "qualifier:manage"
     # The no-code agent builder (ADR 0034): administrators define small agents; sales staff run
     # them on a record they may read. A custom agent can only suggest, through the approval queue.
     CUSTOM_AGENT_MANAGE = "custom_agent:manage"
+    FOLLOW_UP_MANAGE = "follow_up:manage"
     CUSTOM_AGENT_RUN = "custom_agent:run"
     # The deal desk (ADR 0024): ask the AI reviewers to look at a deal. A sales agent may ask only
     # about deals they own; the deal must be readable either way.
     DEAL_DESK_RUN = "deal_desk:run"
     # Account research (ADR 0024): a one-page brief about an account the person may read.
     ACCOUNT_RESEARCH_RUN = "account_research:run"
+    # Research many accounts in one batch (ADR 0042): sales managers and tenant administrators.
+    RESEARCH_BATCH_RUN = "research_batch:run"
     # Deal risk forecast (ADR 0037): sales managers and administrators read the risk of the deals
     # they may read. Sales agents, support staff and portal customers do not see it in v1.
     DEAL_RISK_READ = "deal_risk:read"
@@ -226,9 +232,9 @@ _SALES_ALL = frozenset(
         _P.WEBCHECK_RUN, _P.WEBCHECK_READ,
         _P.BUYER_MEMORY_READ, _P.BUYER_MEMORY_WRITE,
         _P.VIDEO_BRIEF_READ, _P.VIDEO_BRIEF_WRITE,
-        _P.CALL_READ, _P.CALL_WRITE, _P.CALL_NOTES_RUN,
+        _P.CALL_READ, _P.CALL_WRITE, _P.CALL_NOTES_RUN, _P.PHOTO_ENHANCE,
         _P.QUALIFIER_RUN, _P.QUALIFIER_READ,
-        _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN, _P.CUSTOM_AGENT_RUN,
+        _P.DEAL_DESK_RUN, _P.ACCOUNT_RESEARCH_RUN, _P.CUSTOM_AGENT_RUN, _P.RESEARCH_BATCH_RUN,
         _P.DEAL_RISK_READ,
     }
 )  # fmt: skip
@@ -244,7 +250,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.TENANT_ADMIN: _SALES_ALL
     | {_P.TENANT_USER_READ, _P.TENANT_USER_MANAGE, _P.PORTAL_USER_INVITE}
     | {_P.QUOTE_SETTINGS_MANAGE, _P.KNOWLEDGE_MANAGE, _P.AGENT_MANAGE, _P.QUALIFIER_MANAGE}
-    | {_P.BRANDING_MANAGE, _P.CUSTOM_AGENT_MANAGE, _P.CALL_NOTES_MANAGE}
+    | {_P.BRANDING_MANAGE, _P.CUSTOM_AGENT_MANAGE, _P.CALL_NOTES_MANAGE, _P.FOLLOW_UP_MANAGE}
     | {_P.TICKET_READ_ALL, _P.TICKET_MANAGE}
     | _ORDERS_ALL
     | _BILLING_ALL
@@ -271,6 +277,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             _P.CALL_READ,
             _P.CALL_WRITE,
             _P.CALL_NOTES_RUN,
+            _P.PHOTO_ENHANCE,
             _P.OPPORTUNITY_READ_OWN,
             _P.OPPORTUNITY_WRITE_OWN,
             _P.ACTIVITY_READ_OWN,

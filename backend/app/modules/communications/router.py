@@ -23,6 +23,8 @@ from app.modules.communications.schemas import (
     EmailMessageRead,
     EmailPage,
     EmailSend,
+    FollowUpSettingsRead,
+    FollowUpSettingsUpdate,
     MessageStatus,
     PlaceholderRead,
     TemplateCreate,
@@ -54,6 +56,7 @@ TemplateUser = Annotated[
 TemplateManager = Annotated[
     Principal, Depends(require_any_permission(Permission.COMMUNICATION_TEMPLATE_MANAGE))
 ]
+FollowUpAdmin = Annotated[Principal, Depends(require_any_permission(Permission.FOLLOW_UP_MANAGE))]
 HistoryReader = Annotated[
     Principal,
     Depends(
@@ -232,3 +235,25 @@ def _page(items: Sequence[EmailMessage], total: int, limit: int, offset: int) ->
         limit=limit,
         offset=offset,
     )
+
+
+@router.get(
+    "/follow-up-settings",
+    summary="The automatic follow-up settings (administrators)",
+    responses=problem_responses(403),
+)
+def get_follow_up_settings(principal: FollowUpAdmin, session: Db) -> FollowUpSettingsRead:
+    return service.get_follow_up_settings(session, principal)
+
+
+@router.put(
+    "/follow-up-settings",
+    summary="Change the automatic follow-up settings (administrators)",
+    responses=problem_responses(403, 409, 422),
+)
+def put_follow_up_settings(
+    data: FollowUpSettingsUpdate, principal: FollowUpAdmin, session: Db
+) -> FollowUpSettingsRead:
+    result = service.update_follow_up_settings(session, principal, data)
+    session.commit()
+    return result

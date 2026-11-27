@@ -3,6 +3,12 @@ import Link from "next/link";
 
 import { Pagination } from "@/components/pagination";
 import {
+  ResearchBatchBar,
+  TickAll,
+  TickBox,
+} from "@/components/research-batch-bar";
+import { SavedFiltersBar } from "@/components/saved-filters-bar";
+import {
   ButtonLink,
   Card,
   EmptyState,
@@ -28,7 +34,13 @@ import {
   countryName,
 } from "@/lib/customer-data";
 import { formatDate } from "@/lib/format";
-import { canManageAccounts, canWriteAccounts, hasAny } from "@/lib/permissions";
+import { matchesList, type SavedFilterPage } from "@/lib/saved-filters";
+import {
+  canManageAccounts,
+  canRunResearchBatches,
+  canWriteAccounts,
+  hasAny,
+} from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
 import { restoreAccount } from "./actions";
@@ -56,11 +68,16 @@ export default async function AccountsPage({
 
   let data: AccountPage;
   let people: DirectoryUser[];
+  let savedFilters: SavedFilterPage;
   try {
     // The backend decides which accounts this user may see (own vs. all, own tenant only).
-    [data, people] = await Promise.all([
+    [data, people, savedFilters] = await Promise.all([
       apiFetch<AccountPage>(`/accounts?${accountApiQuery(params)}`),
       apiFetch<DirectoryUser[]>("/users"),
+      // Saved filters are a convenience: the list still works when they cannot be loaded.
+      apiFetch<SavedFilterPage>("/saved-filters").catch(
+        (): SavedFilterPage => ({ items: [] }),
+      ),
     ]);
   } catch (error) {
     if (error instanceof ApiError && error.status === 403) return <Forbidden />;
@@ -85,6 +102,18 @@ export default async function AccountsPage({
     params.country ||
     params.lifecycle,
   );
+  // The research boxes: only for people who may start a batch, never on the archived list.
+  const research = canRunResearchBatches(me) && !params.archived;
+  const list = {
+    q: params.q,
+    status: params.status,
+    segment: params.segment,
+    country: params.country,
+    lifecycle: params.lifecycle,
+  };
+  const activeFilter = filtered
+    ? (savedFilters.items.find((f) => matchesList(f, list)) ?? null)
+    : null;
   const tab = (archived: boolean, label: string) => (
     <Link
       href={archived ? "/accounts?archived=1" : "/accounts"}
@@ -118,6 +147,11 @@ export default async function AccountsPage({
           )
         }
       />
+      {raw.done === "filter-deleted" && (
+        <div className="mb-4">
+          <SuccessAlert>The saved filter was deleted.</SuccessAlert>
+        </div>
+      )}
       {raw.done === "archived" && (
         <div className="mb-4">
           <SuccessAlert>
@@ -135,9 +169,27 @@ export default async function AccountsPage({
           Customer health
         </Link>
         {manager && tab(true, "Archived")}
+        {canRunResearchBatches(me) && (
+          <Link
+            href="/accounts/batches"
+            className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
+          >
+            Research batches
+          </Link>
+        )}
       </nav>
       <Card>
         <form
+          // The boxes are uncontrolled: when the address changes without a reload (a saved filter
+          // was chosen) they must be rebuilt, or they keep showing the old choice.
+          key={[
+            params.q,
+            params.status,
+            params.segment,
+            params.country,
+            params.lifecycle,
+            params.archived,
+          ].join("|")}
           role="search"
           aria-label="Filter accounts"
           className="grid gap-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]"
@@ -255,6 +307,23 @@ export default async function AccountsPage({
             )}
           </div>
         </form>
+        {!params.archived && (
+          <SavedFiltersBar
+            filters={savedFilters.items}
+            list={list}
+            filtered={filtered}
+            canShare={manager}
+          />
+        )}
+        {research && data.items.length > 0 && (
+          <ResearchBatchBar
+            savedFilter={
+              activeFilter
+                ? { id: activeFilter.id, name: activeFilter.name }
+                : null
+            }
+          />
+        )}
 
         <div className="border-t border-slate-200">
           {data.items.length === 0 ? (
@@ -288,6 +357,11 @@ export default async function AccountsPage({
                 </caption>
                 <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                   <tr>
+                    {research && (
+                      <th scope="col" className="w-10 px-5 py-3">
+                        <TickAll />
+                      </th>
+                    )}
                     <th scope="col" className="px-5 py-3">
                       Name
                     </th>
@@ -311,6 +385,11 @@ export default async function AccountsPage({
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {data.items.map((account) => (
                     <tr key={account.id} className="hover:bg-slate-50">
+                      {research && (
+                        <td className="px-5 py-3">
+                          <TickBox id={account.id} name={account.name} />
+                        </td>
+                      )}
                       <th
                         scope="row"
                         className="text-left px-5 py-3 font-medium"

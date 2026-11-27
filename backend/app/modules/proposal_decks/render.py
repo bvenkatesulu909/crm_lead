@@ -28,7 +28,7 @@ from reportlab.platypus import Frame, KeepInFrame, Paragraph, Table, TableStyle
 
 from app.modules.branding import api as branding_api
 from app.modules.proposal_decks import rules
-from app.modules.proposal_decks.data import DeckData, DeckLine
+from app.modules.proposal_decks.data import MAX_DECK_PHOTOS, DeckData, DeckLine, DeckPhoto
 
 WIDTH, HEIGHT = 960.0, 540.0  # 16:9, 13.33 x 7.5 inches
 MARGIN = 60.0
@@ -167,6 +167,8 @@ class _Deck:
             out.append((True, self.about))
         if (self.d.summary or "").strip():
             out.append((True, self.summary))
+        if self.d.photos:
+            out.append((True, self.photos))
         chunks = rules.pages(self.d.lines)
         for index, chunk in enumerate(chunks, start=1):
             out.append((True, self._propose(chunk, index, len(chunks))))
@@ -252,6 +254,35 @@ class _Deck:
     def summary(self, c: Canvas) -> None:
         self._heading(c, "Why this proposal")
         _fit(c, [_para(self.d.summary or "", _style(20, leading=29))], MARGIN, 70, BODY_WIDTH, 370)
+
+    def photos(self, c: Canvas) -> None:
+        """Up to four adjusted property photos in a grid, each with its fixed caption (ADR 0039)."""
+        self._heading(c, "The property")
+        shown: list[DeckPhoto] = list(self.d.photos[:MAX_DECK_PHOTOS])
+        columns = 1 if len(shown) == 1 else 2
+        rows = -(-len(shown) // columns)
+        gap, area_top, area_height = 24.0, 440.0, 370.0
+        cell_w = (BODY_WIDTH - gap * (columns - 1)) / columns
+        cell_h = (area_height - gap * (rows - 1)) / rows
+        caption_h = 18.0
+        for index, photo in enumerate(shown):
+            column, row = index % columns, index // columns
+            left = MARGIN + column * (cell_w + gap)
+            top = area_top - row * (cell_h + gap)
+            reader = ImageReader(io.BytesIO(photo.jpeg))
+            width, height = reader.getSize()
+            scale = min(cell_w / width, (cell_h - caption_h) / height)
+            w, h = width * scale, height * scale
+            c.drawImage(reader, left + (cell_w - w) / 2, top - h, width=w, height=h)
+            _line(
+                c,
+                left + cell_w / 2,
+                top - h - 14,
+                photo.caption,
+                size=10,
+                color=HexColor("#5b6470"),
+                align="centre",
+            )
 
     def _propose(self, chunk: list[DeckLine], index: int, count: int) -> Callable[[Canvas], None]:
         def draw(c: Canvas) -> None:

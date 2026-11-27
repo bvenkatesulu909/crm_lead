@@ -38,8 +38,8 @@ Agent = Literal[
     "deck_writer",
     "custom_agent",
     "call_notes",
-    "video_brief",
     "receptionist",
+    "video_brief",
 ]
 # The deal desk asks four models in one run (ADR 0024): each step of its script says which one
 # answers. Three reviewers run at the same time, so the order they are asked in is not fixed.
@@ -83,10 +83,10 @@ PERSONAS: dict[str, set[str]] = {
     "custom_agent": {"sales_agent", "sales_manager", "tenant_admin"},
     # ADR 0035: the people who hold call_notes:run (and call:read); a support agent has neither.
     "call_notes": {"sales_agent", "sales_manager", "tenant_admin"},
-    # ADR 0041: the people who hold video_brief:write; a support agent has none.
-    "video_brief": {"sales_agent", "sales_manager", "tenant_admin"},
     # ADR 0038: the voice receptionist talks to an anonymous website visitor.
     "receptionist": {"visitor"},
+    # ADR 0041: the people who hold video_brief:write; a support agent has none.
+    "video_brief": {"sales_agent", "sales_manager", "tenant_admin"},
 }
 # After these outcomes nothing in the CRM has changed (or may only wait for approval): the
 # answer must not claim otherwise.
@@ -498,10 +498,10 @@ class Case(BaseModel):
     custom_agent: CustomAgentSetup | None = None
     # Call notes: how the case is played. Absent = the defaults (BANT, no proposals asked for).
     call_notes: CallNotesSetup | None = None
-    # Video drafter: how the case is played. Absent = a draft with the defaults.
-    video: VideoSetup | None = None
     # Voice receptionist: how the call is played. Absent = consent given, no knowledge search.
     receptionist: ReceptionistSetup | None = None
+    # Video drafter: how the case is played. Absent = a draft with the defaults.
+    video: VideoSetup | None = None
     script: list[Step] = Field(default_factory=list)
     expect: Expect
 

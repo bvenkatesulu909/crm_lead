@@ -1867,3 +1867,20 @@ export type VideoBrief = {
   consent_notes: string[];
   cautions: { code: string; text: string }[];
 };
+
+/** A saved version of a lead's buyer-video script (ADR 0041, VB3). */
+export type ScriptRead = {
+  id: string;
+  version: number;
+  source: "hand_written" | "ai_draft";
+  language: "en" | "hi" | "te";
+  tone: "warm" | "professional" | "brisk";
+  goal: "introduce" | "follow_up" | "after_visit" | "explain_quote" | "revive";
+  length_seconds: 30 | 60 | 90;
+  lines: string[];
+  words: number;
+  created_by: string;
+  created_at: string;
+};
+
+export type ScriptPage = { items: ScriptRead[] };

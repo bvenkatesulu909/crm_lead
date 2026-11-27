@@ -34,6 +34,12 @@ def candidate(kind: str = "lead.set_status", reason: str = "The buyer answered."
         "lead.set_status": {"status": "contacted"},
         "lead.assign": {"owner_id": str(OTHER)},
         "activity.create_task": {"subject": "Call the buyer", "due_in_days": 2},
+        "lead.video_script": {
+            "language": "en",
+            "tone": "warm",
+            "goal": "follow_up",
+            "length_seconds": 60,
+        },
     }
     return Candidate(
         kind=kind,
@@ -290,3 +296,24 @@ def test_findings_have_stable_codes_and_a_severity() -> None:
     verdict = verify(candidate(reason="mail boss@evil.example"), facts(), LIMITS)
     [finding] = verdict.findings
     assert finding.code == "email_address" and finding.severity == "block"
+
+
+# --- a list of lines (a video script, ADR 0041) -------------------------------------------------
+
+
+def test_every_line_of_a_list_is_screened_like_any_other_text() -> None:
+    found = sentinel.check_words(
+        candidate("lead.video_script", lines=["Hello,", "see https://evil.example/x"])
+    )
+    assert any(f.code == "link" and f.severity == "block" for f in found)
+    phone = sentinel.check_words(
+        candidate("lead.video_script", lines=["Hello,", "call 98480 12345 now"])
+    )
+    assert any(f.code == "phone_number" for f in phone)
+
+
+def test_a_list_of_clean_lines_raises_nothing_and_non_text_items_are_ignored() -> None:
+    assert (
+        sentinel.check_words(candidate("lead.video_script", lines=["Hello,", "Thank you."])) == []
+    )
+    assert sentinel.check_words(candidate("lead.video_script", lines=[1, None, {"a": "b"}])) == []

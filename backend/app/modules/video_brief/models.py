@@ -39,6 +39,11 @@ class VideoScript(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
             ["users.tenant_id", "users.id"],
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "proposal_id"],
+            ["agent_actions.tenant_id", "agent_actions.id"],
+            ondelete="RESTRICT",
+        ),
         UniqueConstraint("tenant_id", "lead_id", "version"),
         CheckConstraint("version >= 1", name="version_positive"),
         CheckConstraint("language IN ('en', 'hi', 'te')", name="language_allowed"),
@@ -50,6 +55,9 @@ class VideoScript(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
         CheckConstraint("length_seconds IN (30, 60, 90)", name="length_allowed"),
         CheckConstraint("source IN ('hand_written', 'ai_draft')", name="source_allowed"),
         CheckConstraint("words >= 1", name="words_positive"),
+        CheckConstraint(
+            "(source = 'ai_draft') = (proposal_id IS NOT NULL)", name="proposal_matches_source"
+        ),
         CheckConstraint("jsonb_array_length(lines) BETWEEN 1 AND 12", name="lines_count"),
         Index("ix_video_scripts_tenant_id_lead_id", "tenant_id", "lead_id", "seq"),
     )
@@ -66,3 +74,5 @@ class VideoScript(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
     lines: Mapped[list[Any]] = mapped_column(JSONB)
     words: Mapped[int] = mapped_column(Integer)
     source: Mapped[str] = mapped_column(String(20))
+    # The approved proposal an AI draft came from (ADR 0041, VB5); none for a hand-written script.
+    proposal_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, default=None)

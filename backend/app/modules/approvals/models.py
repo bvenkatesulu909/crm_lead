@@ -42,6 +42,7 @@ AGENTS = (
     "deck_writer",
     "custom_agent",
     "call_notes",
+    "video_brief",
     "receptionist",
 )
 REASON_MAX = 500

@@ -15,10 +15,22 @@ from app.core.auth.rbac import Permission
 from app.core.config import Settings
 from app.core.db import get_db_session
 from app.core.errors import problem_responses
+from app.modules.agents import api as agents_api
+from app.modules.assistant.api import ChatModel
 from app.modules.identity.api import require_any_permission
-from app.modules.video_brief import service
+from app.modules.video_brief import draft, service
+from app.modules.video_brief.draft_model import model_for
 from app.modules.video_brief.models import VideoScript
-from app.modules.video_brief.schemas import ScriptCreate, ScriptPage, ScriptRead, VideoBriefRead
+from app.modules.video_brief.schemas import (
+    DraftCreate,
+    DraftRead,
+    ProposeCreate,
+    ProposeRead,
+    ScriptCreate,
+    ScriptPage,
+    ScriptRead,
+    VideoBriefRead,
+)
 
 router = APIRouter(prefix="/leads", tags=["video-brief"], responses=problem_responses(401, 403))
 Db = Annotated[Session, Depends(get_db_session)]
@@ -114,4 +126,100 @@ def save_video_script(
 def list_video_scripts(lead_id: uuid.UUID, principal: Reader, session: Db) -> ScriptPage:
     return ScriptPage(
         items=[_script_read(row) for row in service.list_scripts(session, principal, lead_id)]
+    )
+
+
+def video_brief_model(request: Request) -> ChatModel:
+    """The model behind the drafter. Tests put a scripted one on the app."""
+    override: ChatModel | None = getattr(request.app.state, "video_brief_model", None)
+    return override or model_for(request.app.state.settings)
+
+
+DrafterModel = Annotated[ChatModel, Depends(video_brief_model)]
+
+
+@router.post(
+    "/{lead_id}/video-brief/draft",
+    summary="Ask the drafter for a script for this buyer's video (a draft, not saved)",
+    description="The facts are read by the server as the person asking; only the choices are "
+    "sent. The answer is a draft for the asker to read: nothing is saved or approved. The "
+    "drafter must be switched on by an administrator. Off, over budget or over a limit: "
+    "503 / 429. A script the code refuses (a made-up number, an assumption said as a fact, a "
+    "banned statement) is a 422 with a code.",
+    responses=problem_responses(404, 422, 429, 503),
+)
+def draft_video_script(
+    lead_id: uuid.UUID,
+    data: DraftCreate,
+    request: Request,
+    principal: Writer,
+    session: Db,
+    model: DrafterModel,
+) -> DraftRead:
+    settings: Settings = request.app.state.settings
+    try:
+        result = draft.draft_script(
+            session,
+            principal,
+            model,
+            lead_id,
+            goal=data.goal,
+            language=data.language,
+            tone=data.tone,
+            length_seconds=data.length_seconds,
+            quote_id=data.quote_id,
+            limits=draft.Limits.from_settings(settings),
+            ai_limits=agents_api.Limits.from_settings(settings),
+        )
+    except draft.DraftRefusedError:
+        session.commit()  # the model was called: keep the tokens it used on the month's total
+        raise
+    session.commit()
+    return DraftRead(
+        lines=result.lines,
+        words=result.words,
+        reason=result.reason,
+        language=result.language,
+        goal=result.goal,
+        tone=result.tone,
+        length_seconds=result.length_seconds,
+    )
+
+
+@router.post(
+    "/{lead_id}/video-brief/propose",
+    status_code=status.HTTP_201_CREATED,
+    summary="Send a drafted script for this buyer's video to the approval queue",
+    description="The drafter must be switched on. The server reads the facts again as the person "
+    "asking and re-runs every check of the drafter on the lines (a made-up number, an assumption "
+    "said as a fact, a banned statement are a 422 with a code). The script becomes a proposal; "
+    "nothing is saved until a different person approves it.",
+    responses=problem_responses(404, 422, 503),
+)
+def propose_video_script(
+    lead_id: uuid.UUID,
+    data: ProposeCreate,
+    request: Request,
+    principal: Writer,
+    session: Db,
+) -> ProposeRead:
+    settings: Settings = request.app.state.settings
+    result = draft.propose_script(
+        session,
+        principal,
+        lead_id,
+        goal=data.goal,
+        language=data.language,
+        tone=data.tone,
+        length_seconds=data.length_seconds,
+        lines=data.lines,
+        quote_id=data.quote_id,
+        ai_limits=agents_api.Limits.from_settings(settings),
+    )
+    session.commit()
+    return ProposeRead(
+        outcome="blocked" if result.outcome == "blocked" else "proposed",
+        proposal_id=str(result.proposal_id) if result.proposal_id else None,
+        proposal_link=f"/approvals/{result.proposal_id}" if result.proposal_id else None,
+        blocked_message=result.blocked_message,
     )

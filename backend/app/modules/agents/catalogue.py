@@ -157,6 +157,20 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="video_brief",
+            title="Video script drafter",
+            description=(
+                "Drafts the spoken script of a personalised video to one buyer, from the "
+                "buyer's confirmed facts and, if chosen, an approved quote's prices. Code checks "
+                "every number against those facts and never lets an assumption be said as a "
+                "fact. The draft is shown to the person who asked; the CRM makes no video. Off "
+                "until an administrator switches it on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_script",),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="call_notes",
             title="Call notes",
             description=(

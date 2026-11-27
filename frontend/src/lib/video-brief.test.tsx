@@ -19,6 +19,7 @@ import {
 const apiFetch = vi.fn();
 vi.mock("@/lib/server/api", () => ({
   apiFetch: (...a: unknown[]) => apiFetch(...a),
+  getMe: async () => ({ permissions: ["video_brief:read"] }),
 }));
 vi.mock("next/navigation", () => ({
   notFound: () => {

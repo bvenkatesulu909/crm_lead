@@ -339,12 +339,12 @@ def test_start_counts_one_batch_on_the_agents_page_and_no_tokens(ready, world) -
     assert usage.calls == 1 and usage.input_tokens == 0 and usage.output_tokens == 0
 
 
-def test_start_queues_no_job_yet(ready, world) -> None:
+def test_start_queues_the_first_worker_step_and_nothing_else(ready, world) -> None:
     from app.core.outbox import OutboxJob
 
     start(ready, world, rows(world.ids["A1"]), WORST)
-    jobs = ready.scalars(select(OutboxJob.kind)).all()
-    assert not [kind for kind in jobs if kind.startswith("research_batch")]  # the step is BR3
+    kinds = [kind for kind in ready.scalars(select(OutboxJob.kind)) if kind.startswith("research")]
+    assert kinds == ["research_batch.step"]
 
 
 def test_a_stale_confirmation_is_refused_and_nothing_is_written(ready, world) -> None:

@@ -63,6 +63,10 @@ class ResearchInvalidError(DomainError):
     code = "account_research_invalid_answer"
 
 
+class ResearchNoSourceError(ResearchInvalidError):
+    """The writer answered, but no sentence named a source it was given (nothing is stored)."""
+
+
 @dataclass(frozen=True)
 class Limits:
     per_account_hour: int
@@ -190,7 +194,7 @@ def run_research(
     except rules.BriefRefusedError as refusal:
         raise ResearchInvalidError(str(refusal)) from None
     if not brief.sentences:
-        raise ResearchInvalidError("No sentence of the brief named a source it was given.")
+        raise ResearchNoSourceError("No sentence of the brief named a source it was given.")
     counts = {name: sum(1 for g in gathered if g.gatherer == name) for name in rules.GATHERERS}
     usage = reply.usage or {}
     stored = AccountBrief(

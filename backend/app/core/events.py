@@ -51,6 +51,7 @@ EVENT_NAMES = frozenset(
         "webcheck.completed",
         "payment_link.paid",
         "payment_link.needs_review",
+        "research_batch.finished",
     }
 )
 MAX_DEPTH = 3

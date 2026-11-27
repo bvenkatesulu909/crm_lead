@@ -1791,6 +1791,522 @@
         "title": "AssistantStatus",
         "type": "object"
       },
+      "BatchDetailRead": {
+        "properties": {
+          "account_count": {
+            "title": "Account Count",
+            "type": "integer"
+          },
+          "archived_count": {
+            "title": "Archived Count",
+            "type": "integer"
+          },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "How many accounts are in each state.",
+            "title": "Counts",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by_user_id": {
+            "format": "uuid",
+            "title": "Created By User Id",
+            "type": "string"
+          },
+          "estimated_cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Usd"
+          },
+          "estimated_upper_tokens": {
+            "title": "Estimated Upper Tokens",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "not_available_count": {
+            "title": "Not Available Count",
+            "type": "integer"
+          },
+          "research_again": {
+            "title": "Research Again",
+            "type": "boolean"
+          },
+          "saved_filter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Filter Id"
+          },
+          "source": {
+            "enum": [
+              "filter",
+              "rows"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "finished",
+              "cancelled",
+              "stopped_budget",
+              "stopped_error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "token_cap": {
+            "title": "Token Cap",
+            "type": "integer"
+          },
+          "tokens_used": {
+            "title": "Tokens Used",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "source",
+          "saved_filter_id",
+          "account_count",
+          "not_available_count",
+          "archived_count",
+          "estimated_upper_tokens",
+          "estimated_cost_usd",
+          "token_cap",
+          "tokens_used",
+          "research_again",
+          "cancel_requested",
+          "created_by_user_id",
+          "mine",
+          "version",
+          "created_at",
+          "finished_at",
+          "counts",
+          "items"
+        ],
+        "title": "BatchDetailRead",
+        "type": "object"
+      },
+      "BatchItemRead": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the person may not read the account.",
+            "title": "Account Name"
+          },
+          "brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BriefFiguresRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "brief_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brief Id"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "reused",
+              "skipped",
+              "failed",
+              "not_run"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "position",
+          "account_id",
+          "account_name",
+          "status",
+          "failure_code",
+          "brief_id",
+          "input_tokens",
+          "output_tokens",
+          "brief"
+        ],
+        "title": "BatchItemRead",
+        "type": "object"
+      },
+      "BatchPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "BatchPage",
+        "type": "object"
+      },
+      "BatchRead": {
+        "properties": {
+          "account_count": {
+            "title": "Account Count",
+            "type": "integer"
+          },
+          "archived_count": {
+            "title": "Archived Count",
+            "type": "integer"
+          },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "How many accounts are in each state.",
+            "title": "Counts",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by_user_id": {
+            "format": "uuid",
+            "title": "Created By User Id",
+            "type": "string"
+          },
+          "estimated_cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Usd"
+          },
+          "estimated_upper_tokens": {
+            "title": "Estimated Upper Tokens",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mine": {
+            "title": "Mine",
+            "type": "boolean"
+          },
+          "not_available_count": {
+            "title": "Not Available Count",
+            "type": "integer"
+          },
+          "research_again": {
+            "title": "Research Again",
+            "type": "boolean"
+          },
+          "saved_filter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Filter Id"
+          },
+          "source": {
+            "enum": [
+              "filter",
+              "rows"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "finished",
+              "cancelled",
+              "stopped_budget",
+              "stopped_error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "token_cap": {
+            "title": "Token Cap",
+            "type": "integer"
+          },
+          "tokens_used": {
+            "title": "Tokens Used",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "source",
+          "saved_filter_id",
+          "account_count",
+          "not_available_count",
+          "archived_count",
+          "estimated_upper_tokens",
+          "estimated_cost_usd",
+          "token_cap",
+          "tokens_used",
+          "research_again",
+          "cancel_requested",
+          "created_by_user_id",
+          "mine",
+          "version",
+          "created_at",
+          "finished_at",
+          "counts"
+        ],
+        "title": "BatchRead",
+        "type": "object"
+      },
+      "BatchSelectionIn": {
+        "additionalProperties": false,
+        "description": "Which accounts: a saved filter, or ticked rows. The server resolves either one under the\nperson's own read rules, so an id the person may not read is simply not in the batch.",
+        "properties": {
+          "account_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Account Ids",
+            "type": "array"
+          },
+          "research_again": {
+            "default": false,
+            "title": "Research Again",
+            "type": "boolean"
+          },
+          "saved_filter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Filter Id"
+          },
+          "source": {
+            "enum": [
+              "filter",
+              "rows"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "title": "BatchSelectionIn",
+        "type": "object"
+      },
+      "BatchStartIn": {
+        "additionalProperties": false,
+        "properties": {
+          "account_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Account Ids",
+            "type": "array"
+          },
+          "confirmed_upper_bound_tokens": {
+            "description": "The upper bound of tokens the estimate showed. The server recomputes it and refuses (409) if it moved by more than 20 %.",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
+            "title": "Confirmed Upper Bound Tokens",
+            "type": "integer"
+          },
+          "research_again": {
+            "default": false,
+            "title": "Research Again",
+            "type": "boolean"
+          },
+          "saved_filter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Filter Id"
+          },
+          "source": {
+            "enum": [
+              "filter",
+              "rows"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "confirmed_upper_bound_tokens"
+        ],
+        "title": "BatchStartIn",
+        "type": "object"
+      },
       "Board": {
         "properties": {
           "columns": {
@@ -2466,6 +2982,50 @@
           "recorded_on"
         ],
         "title": "BriefFact",
+        "type": "object"
+      },
+      "BriefFiguresRead": {
+        "description": "What the summary table shows about a brief. No sentence text, no record content.",
+        "properties": {
+          "brief_id": {
+            "format": "uuid",
+            "title": "Brief Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dropped": {
+            "title": "Dropped",
+            "type": "integer"
+          },
+          "gathered": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Gathered",
+            "type": "object"
+          },
+          "sentences": {
+            "title": "Sentences",
+            "type": "integer"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "brief_id",
+          "created_at",
+          "sentences",
+          "dropped",
+          "gathered",
+          "tokens"
+        ],
+        "title": "BriefFiguresRead",
         "type": "object"
       },
       "BriefList": {
@@ -7510,6 +8070,91 @@
           "body"
         ],
         "title": "EmailSend",
+        "type": "object"
+      },
+      "EstimateRead": {
+        "properties": {
+          "accounts": {
+            "description": "Accounts that would be in the batch.",
+            "title": "Accounts",
+            "type": "integer"
+          },
+          "archived": {
+            "title": "Archived",
+            "type": "integer"
+          },
+          "calling_model": {
+            "title": "Calling Model",
+            "type": "integer"
+          },
+          "cap_tokens": {
+            "title": "Cap Tokens",
+            "type": "integer"
+          },
+          "daily_left": {
+            "title": "Daily Left",
+            "type": "integer"
+          },
+          "estimated_cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "An estimate from the configured prices; null when no price is set.",
+            "title": "Estimated Cost Usd"
+          },
+          "monthly_tokens_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Tokens Left"
+          },
+          "not_available": {
+            "title": "Not Available",
+            "type": "integer"
+          },
+          "reused": {
+            "description": "Accounts whose brief is under a day old: no cost.",
+            "title": "Reused",
+            "type": "integer"
+          },
+          "typical_tokens": {
+            "title": "Typical Tokens",
+            "type": "integer"
+          },
+          "upper_bound_tokens": {
+            "title": "Upper Bound Tokens",
+            "type": "integer"
+          },
+          "worst_case_tokens_per_account": {
+            "title": "Worst Case Tokens Per Account",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accounts",
+          "not_available",
+          "archived",
+          "reused",
+          "calling_model",
+          "upper_bound_tokens",
+          "typical_tokens",
+          "estimated_cost_usd",
+          "cap_tokens",
+          "monthly_tokens_left",
+          "daily_left",
+          "worst_case_tokens_per_account"
+        ],
+        "title": "EstimateRead",
         "type": "object"
       },
       "ExternalProposal": {
@@ -16853,6 +17498,49 @@
           "sections"
         ],
         "title": "ReportOut",
+        "type": "object"
+      },
+      "RetryEstimateIn": {
+        "additionalProperties": false,
+        "properties": {
+          "which": {
+            "default": "failed",
+            "enum": [
+              "failed",
+              "not_run",
+              "both"
+            ],
+            "title": "Which",
+            "type": "string"
+          }
+        },
+        "title": "RetryEstimateIn",
+        "type": "object"
+      },
+      "RetryStartIn": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed_upper_bound_tokens": {
+            "maximum": 100000000.0,
+            "minimum": 0.0,
+            "title": "Confirmed Upper Bound Tokens",
+            "type": "integer"
+          },
+          "which": {
+            "default": "failed",
+            "enum": [
+              "failed",
+              "not_run",
+              "both"
+            ],
+            "title": "Which",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmed_upper_bound_tokens"
+        ],
+        "title": "RetryStartIn",
         "type": "object"
       },
       "RevenueFigures": {
@@ -45578,6 +46266,610 @@
         "summary": "One standard report as CSV",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/api/v1/research-batches": {
+      "get": {
+        "operationId": "list_batches_api_v1_research_batches_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The organisation's batches, newest first",
+        "tags": [
+          "research-batches"
+        ]
+      },
+      "post": {
+        "operationId": "start_batch_api_v1_research_batches_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchStartIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start a batch with the cost you confirmed",
+        "tags": [
+          "research-batches"
+        ]
+      }
+    },
+    "/api/v1/research-batches/estimate": {
+      "post": {
+        "operationId": "estimate_batch_api_v1_research_batches_estimate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchSelectionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What a batch would research and cost (nothing is written, no model is called)",
+        "tags": [
+          "research-batches"
+        ]
+      }
+    },
+    "/api/v1/research-batches/{batch_id}": {
+      "get": {
+        "operationId": "get_batch_api_v1_research_batches__batch_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchDetailRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One batch with its accounts, their state and the figures of each brief",
+        "tags": [
+          "research-batches"
+        ]
+      }
+    },
+    "/api/v1/research-batches/{batch_id}/cancel": {
+      "post": {
+        "operationId": "cancel_batch_api_v1_research_batches__batch_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask a running batch to stop (the account being researched finishes)",
+        "tags": [
+          "research-batches"
+        ]
+      }
+    },
+    "/api/v1/research-batches/{batch_id}/retry": {
+      "post": {
+        "operationId": "start_retry_api_v1_research_batches__batch_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetryStartIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start a NEW batch with the failed (or not run) accounts of an ended batch",
+        "tags": [
+          "research-batches"
+        ]
+      }
+    },
+    "/api/v1/research-batches/{batch_id}/retry/estimate": {
+      "post": {
+        "operationId": "estimate_retry_api_v1_research_batches__batch_id__retry_estimate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetryEstimateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflicts with the current state (invalid status change, stale version, ...)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What it would cost to try the failed (or not run) accounts of an ended batch again",
+        "tags": [
+          "research-batches"
         ]
       }
     },

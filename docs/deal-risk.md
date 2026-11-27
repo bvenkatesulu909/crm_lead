@@ -71,8 +71,22 @@ client sends nothing but the deal id in the path and the list filters: level, sc
 the server's. A deal you may not read, another organisation's deal, a closed deal and a made-up id
 all answer 404.
 
+## The screens (DR4)
+
+Managers and administrators only (display only - the API decides again):
+
+* **Deal page:** a **Deal risk forecast** card on an open deal - the level as a word, every reason
+  with its points and source, what could not be read, how the level moved since the earlier
+  forecast, when and how it was worked out, the estimate note and a **Work out the forecast** /
+  **Update forecast** button (no AI). Nothing for a closed deal or for people without
+  `deal_risk:read`.
+* **Pipeline:** each deal card shows its level as a badge, and a **Risk forecast** filter keeps
+  only deals whose newest forecast has that level (deals without a forecast drop out).
+* **Dashboard:** two tiles, **Deals at high risk** (links to the filtered pipeline) and **Amount at
+  risk** - a plain sum per currency of those deals' values, no conversion and no weighting.
+
 ## Not built yet
 
-Screens (DR4), the optional AI coach (DR5), the backtest (DR6). Signals not read yet:
+The optional AI coach (DR5), the backtest (DR6). Signals not read yet:
 close-date history, the number of contacts per deal, the account's overdue invoices and tickets beyond
 what account health already says, and call notes (the rules support them; the reader passes none).

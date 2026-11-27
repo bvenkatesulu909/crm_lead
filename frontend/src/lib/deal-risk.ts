@@ -105,13 +105,18 @@ export function riskByDeal(items: DealRisk[]): Record<string, DealRisk> {
   return map;
 }
 
+// BigInt() instead of `100n` literals: the project compiles for ES2017.
+const ZERO = BigInt(0);
+const ONE = BigInt(1);
+const HUNDRED = BigInt(100);
+
 /** Whole cents of a decimal string such as "1200.50" (money is never a float). */
 function cents(amount: string): bigint | null {
   const match = /^(-?)(\d+)(?:\.(\d{1,2}))?\d*$/.exec(amount.trim());
   if (!match) return null;
-  const sign = match[1] === "-" ? -1n : 1n;
+  const sign = match[1] === "-" ? -ONE : ONE;
   const fraction = (match[3] ?? "").padEnd(2, "0");
-  return sign * (BigInt(match[2]) * 100n + BigInt(fraction));
+  return sign * (BigInt(match[2]) * HUNDRED + BigInt(fraction));
 }
 
 /** Plain sums of the deals' amounts per currency, with no conversion and no weighting. */
@@ -123,13 +128,13 @@ export function sumByCurrency(
     if (!deal || deal.amount === null) continue;
     const value = cents(deal.amount);
     if (value === null) continue;
-    totals.set(deal.currency, (totals.get(deal.currency) ?? 0n) + value);
+    totals.set(deal.currency, (totals.get(deal.currency) ?? ZERO) + value);
   }
   return [...totals.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([currency, total]) => ({
       currency,
-      amount: `${total / 100n}.${(total % 100n).toString().padStart(2, "0")}`,
+      amount: `${total / HUNDRED}.${(total % HUNDRED).toString().padStart(2, "0")}`,
     }));
 }
 

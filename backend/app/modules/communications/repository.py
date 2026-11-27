@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.core.auth.principal import Principal
 from app.core.search import escape_like
-from app.modules.communications.models import EmailMessage, EmailTemplate
+from app.modules.communications import follow_up_rules
+from app.modules.communications.models import EmailMessage, EmailTemplate, FollowUpPolicy
 from app.modules.communications.policies import readable_messages, readable_templates
 
 
@@ -140,3 +141,93 @@ def record_history(
     """Every e-mail of one record. The caller has already checked the record may be read."""
     statement = select(EmailMessage).where(EmailMessage.tenant_id == tenant_id, belongs_to_record)
     return _page(session, statement, limit, offset)
+
+
+# --- follow-up settings (ADR 0036) ----------------------------------------------------------
+
+
+def _policy_of(row: FollowUpPolicy) -> follow_up_rules.Policy:
+    return follow_up_rules.Policy(
+        enabled=row.enabled,
+        monthly_cap=row.monthly_cap,
+        daily_cap=row.daily_cap,
+        pending_cap=row.pending_cap,
+        expiry_days=row.expiry_days,
+        cooldown_days=row.cooldown_days,
+        template_id=row.template_id,
+    )
+
+
+def current_follow_up_policy(session: Session, tenant_id: uuid.UUID) -> follow_up_rules.Policy:
+    """The settings in force: the newest row, or the default (switched off) when none was saved."""
+    row = session.scalars(
+        select(FollowUpPolicy)
+        .where(FollowUpPolicy.tenant_id == tenant_id)
+        .order_by(FollowUpPolicy.seq.desc())
+        .limit(1)
+    ).one_or_none()
+    return follow_up_rules.Policy() if row is None else _policy_of(row)
+
+
+def add_follow_up_policy(
+    session: Session,
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    policy: follow_up_rules.Policy,
+) -> FollowUpPolicy:
+    """Store a new version of the settings. Numbers outside their bounds are refused here
+    before the database would refuse them (it checks them again)."""
+    problems = policy.problems()
+    if problems:
+        raise ValueError("outside the allowed range: " + ", ".join(problems))
+    row = FollowUpPolicy(
+        tenant_id=tenant_id,
+        created_by_user_id=user_id,
+        enabled=policy.enabled,
+        monthly_cap=policy.monthly_cap,
+        daily_cap=policy.daily_cap,
+        pending_cap=policy.pending_cap,
+        expiry_days=policy.expiry_days,
+        cooldown_days=policy.cooldown_days,
+        template_id=policy.template_id,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
+def follow_up_policy_history(
+    session: Session, tenant_id: uuid.UUID, limit: int = 50
+) -> Sequence[FollowUpPolicy]:
+    return session.scalars(
+        select(FollowUpPolicy)
+        .where(FollowUpPolicy.tenant_id == tenant_id)
+        .order_by(FollowUpPolicy.seq.desc())
+        .limit(limit)
+    ).all()
+
+
+def inbound_logged_since(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, since: datetime | None
+) -> bool:
+    """Has the lead written to us (a received e-mail someone logged) since ``since``, or ever?"""
+    conditions = [
+        EmailMessage.tenant_id == tenant_id,
+        EmailMessage.lead_id == lead_id,
+        EmailMessage.direction == "inbound_logged",
+    ]
+    if since is not None:
+        conditions.append(EmailMessage.created_at >= since)
+    return session.scalar(select(EmailMessage.id).where(*conditions).limit(1)) is not None
+
+
+def get_active_template(
+    session: Session, tenant_id: uuid.UUID, template_id: uuid.UUID
+) -> EmailTemplate | None:
+    return session.scalars(
+        select(EmailTemplate).where(
+            EmailTemplate.tenant_id == tenant_id,
+            EmailTemplate.id == template_id,
+            EmailTemplate.is_active.is_(True),
+        )
+    ).one_or_none()

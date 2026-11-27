@@ -4,6 +4,7 @@ Every function applies the leads module's own record-level policy: sales agents 
 their own leads.
 """
 
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -60,6 +61,10 @@ __all__ = [
     "create_lead_from_website",
     "email_consent_withdrawn",
     "email_state",
+    "FollowUpFacts",
+    "follow_up_facts",
+    "lead_ids_of_owner",
+    "lead_owner_for_notice",
     "owner_of_lead",
     "EXPORT",
     "export_table",
@@ -203,6 +208,72 @@ def owner_of_lead(session: Session, principal: Principal, lead_id: uuid.UUID) ->
     """Who owns a lead this principal may read (None if unowned or not readable)."""
     snapshot = lead_snapshot(session, principal, lead_id)
     return None if snapshot is None else snapshot.owner_id
+
+
+@dataclass(frozen=True)
+class FollowUpFacts:
+    """What the follow-up scan may know about a lead (ADR 0036). The address itself stays out:
+    only whether there is a usable one."""
+
+    owner_id: uuid.UUID | None
+    status: str
+    consent: str
+    has_address: bool
+    source: str | None
+    first_name: str | None
+    full_name: str
+    company: str | None
+    created_at: datetime
+
+
+def follow_up_facts(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, reader_user_id: uuid.UUID
+) -> FollowUpFacts | None:
+    """The lead as the follow-up scan sees it, read as ``reader_user_id`` with the "all" scope
+    (the leads policy hides every lead without a user), then the previous binding is put back."""
+    previous_user = session.info.get("user_id")
+    previous_scope = session.info.get("lead_scope")
+    bind_user(session, reader_user_id, "all")
+    try:
+        lead = session.scalars(
+            select(Lead).where(
+                Lead.tenant_id == tenant_id, Lead.id == lead_id, Lead.deleted_at.is_(None)
+            )
+        ).one_or_none()
+        if lead is None:
+            return None
+        address = lead.email or ""
+        return FollowUpFacts(
+            owner_id=lead.owner_id,
+            status=lead.status,
+            consent=lead.email_consent,
+            has_address=bool(re.match(r"^[^@\s]+@[^@\s]+$", address)),
+            source=lead.source,
+            first_name=lead.first_name,
+            full_name=" ".join(p for p in (lead.first_name, lead.last_name) if p),
+            company=lead.company_name,
+            created_at=lead.created_at,
+        )
+    finally:
+        if previous_user is not None and previous_scope is not None:
+            bind_user(session, uuid.UUID(str(previous_user)), str(previous_scope))
+        else:
+            clear_user(session)
+
+
+def lead_owner_for_notice(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, reader_user_id: uuid.UUID
+) -> uuid.UUID | None:
+    """Who owns the lead (for a notification), read as ``reader_user_id`` with the "all" scope."""
+    facts = follow_up_facts(session, tenant_id, lead_id, reader_user_id=reader_user_id)
+    return None if facts is None else facts.owner_id
+
+
+def lead_ids_of_owner(tenant_id: uuid.UUID, owner_id: uuid.UUID) -> Select[uuid.UUID]:
+    """Subquery: IDs of the (not deleted) leads one person owns, to count their waiting drafts."""
+    return select(Lead.id).where(
+        Lead.tenant_id == tenant_id, Lead.owner_id == owner_id, Lead.deleted_at.is_(None)
+    )
 
 
 def lead_brief(session: Session, principal: Principal, lead_id: uuid.UUID) -> str | None:

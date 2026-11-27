@@ -106,13 +106,14 @@ def reply(db: Session, world: World, target: Lead, at: datetime, org: str = "alp
 
 
 def report(api, auth, who: str = "alpha.manager") -> dict[str, Any]:
-    body = ok(api.get(URL, params=PARAMS, headers=auth(who)))
+    body: dict[str, Any] = ok(api.get(URL, params=PARAMS, headers=auth(who)))
     assert body["key"] == "follow_ups"
     return body
 
 
 def rows(body: dict[str, Any], index: int) -> list[dict[str, Any]]:
-    return body["sections"][index]["rows"]
+    found: list[dict[str, Any]] = body["sections"][index]["rows"]
+    return found
 
 
 # --- who may open it ----------------------------------------------------------------------------

@@ -60,6 +60,20 @@ export function agentLabel(
 }
 
 /**
+ * Who asked, in words. A follow-up draft is made by the CRM itself (its Automation identity, which
+ * is not in the people list), so it is not "a former colleague".
+ */
+export function askedBy(
+  action: Pick<AgentAction, "agent" | "requested_by_user_id">,
+  nameOf: (id: string | null) => string,
+): string {
+  const name = nameOf(action.requested_by_user_id);
+  if (action.agent === "follow_up" && name === "a former colleague")
+    return "the CRM automatically";
+  return name;
+}
+
+/**
  * One AI proposal: what it would do, on which record, why, who asked, and how it ended. All
  * texts come from a model or a person, so they are shown as plain text (React escapes them).
  * `decision` is the slot for the Approve / Reject buttons (the page decides whether to show them).
@@ -122,8 +136,7 @@ export function ApprovalCard({
           </div>
         </dl>
         <p className="mt-3 text-xs text-slate-500">
-          Asked by {nameOf(action.requested_by_user_id)} through{" "}
-          {agentLabel(action)}
+          Asked by {askedBy(action, nameOf)} through {agentLabel(action)}
           {action.via_client
             ? ` - application "${action.via_client}"`
             : ""} ·{" "}

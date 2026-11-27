@@ -1,7 +1,7 @@
 """E-mail consent on leads (ADR 0036, FM1).
 
-Revision ID: 0073
-Revises: 0072
+Revision ID: 0079
+Revises: 0078
 Create Date: 2026-11-21
 
 Contacts already had a consent answer; leads, the people most likely to get automatic follow-ups,
@@ -15,8 +15,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0073"
-down_revision: str | None = "0072"
+revision: str = "0079"
+down_revision: str | None = "0078"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

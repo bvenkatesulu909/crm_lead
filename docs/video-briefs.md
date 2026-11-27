@@ -159,8 +159,31 @@ only the documented fields, each kind of refused answer).
   `proposal_id` together). The approval re-checks the lines; the plan and the outcome are compared like for every
   other kind.
 
-Not built yet: the screen (a "Draft with AI" button and "Send for approval" on the video brief page - VB5b), the
-evaluation cases (VB6).
+### The screen for drafting and sending (VB5b, built 2026-11-24)
+
+The **Write your own script** box on the video brief page now has three buttons:
+
+- **Save script** (VB3b) keeps what is in the box as the next version.
+- **Draft with AI** asks the drafter (`/draft`). Only the choices are sent. The draft fills the box and a note says
+  *AI draft - not saved and not approved*, with the one-sentence reason the model gave. A refused draft (drafter
+  switched off, over budget, a made-up number, an assumption said as a fact, a banned statement ...) is explained in
+  plain words and the typed text stays.
+- **Send for approval** sends what is in the box *as the person left it* (`/propose`): the server reads the facts
+  again and runs every check again. On success the page says the script waits for a colleague and links to the
+  approval; the safety check's refusal, or a code-side refusal, is shown in plain words.
+
+The box is controlled by the page (it keeps the typed text after every refused action, and a new draft replaces it).
+The goal, language, tone, length and quote still travel as hidden fields - the ones the brief was built for. The
+saved-scripts list now says where each version came from: *Written by hand* or *AI draft, approved by a colleague*.
+The Server Actions send only the documented fields, check the lead id and the fixed lists first, and never call the
+API for an empty script or a changed choice.
+
+Tests: `src/lib/video-draft.test.tsx` (30 Vitest tests: choices, the two Server Actions, the editor, the saved list,
+the page's notice) and `e2e/video-draft.spec.ts` (one Playwright journey with the scripted drafter: switch on,
+draft, send, the asker cannot approve, a manager approves, the script appears as an approved AI draft, a made-up
+number is refused, switched off again it explains why).
+
+Not built yet: evaluation cases for the drafter (VB6) and a try with a real model.
 
 ## Who may ask
 

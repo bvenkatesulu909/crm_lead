@@ -210,6 +210,9 @@ def delete_document(session: Session, principal: Principal, document_id: uuid.UU
     doc = _load(session, principal, document_id)
     rows = repository.versions(session, doc.tenant_id, doc.group_id)
     keys = [d.storage_key for d in rows]
+    # Adjusted copies of a photo (ADR 0039) go with their original: the database removes the
+    # rows, so their files are listed here before the delete.
+    keys += repository.derived_keys(session, doc.tenant_id, [d.id for d in rows])
     session.execute(
         delete(Document).where(
             Document.tenant_id == doc.tenant_id, Document.group_id == doc.group_id

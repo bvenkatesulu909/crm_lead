@@ -16,6 +16,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pydantic import ValidationError
+from sqlalchemy import Select
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
@@ -78,6 +79,21 @@ class ProposalBlockedError(DomainError):
 class RecheckFailedError(DomainError):
     status_code = 409
     code = "agent_action_recheck_failed"
+
+
+class EditNotAllowedError(DomainError):
+    status_code = 422
+    code = "agent_action_edit_not_allowed"
+
+    def __init__(self) -> None:
+        super().__init__("Only the text of a follow-up e-mail can be edited before approving.")
+
+
+class EditRefusedError(DomainError):
+    """The edited text did not pass the safety check; the proposal is left as it was."""
+
+    status_code = 422
+    code = "agent_action_edit_refused"
 
 
 class LimitReachedError(DomainError):
@@ -191,6 +207,24 @@ def _visible(
     if target_type == "quote":
         return quotes_api.quote_brief(session, principal, target_id) is not None
     return False
+
+
+# Kinds the OWNER of the record may decide on, besides the people with the approve permission
+# (ADR 0036, question 3): a follow-up for my lead is mine to read and send.
+OWNER_DECIDES = frozenset({"communication.send_follow_up"})
+
+
+def _owns_target(session: Session, principal: Principal, action: AgentAction) -> bool:
+    """The signed-in person owns the record the proposal is about (and may read it)."""
+    if action.kind not in OWNER_DECIDES or principal.user_id is None:
+        return False
+    if action.target_type == "lead":
+        owner = leads_api.owner_of_lead(session, principal, action.target_id)
+    elif action.target_type == "contact":
+        owner = contacts_api.owner_of(session, principal, action.target_id)
+    else:
+        return False
+    return owner == principal.user_id
 
 
 def _kind(name: str) -> ActionKind:
@@ -526,6 +560,7 @@ def get_action(session: Session, principal: Principal, action_id: uuid.UUID) -> 
     if action is None or (
         not principal.has_permission(Permission.AGENT_ACTION_APPROVE)
         and action.requested_by_user_id != user_id
+        and not _owns_target(session, principal, action)
     ):
         raise AgentActionNotFoundError()
     return action
@@ -537,8 +572,17 @@ def get_action(session: Session, principal: Principal, action_id: uuid.UUID) -> 
 def _decidable(
     session: Session, principal: Principal, action_id: uuid.UUID, version: int
 ) -> tuple[AgentAction, uuid.UUID]:
-    tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_APPROVE)
+    if principal.has_permission(Permission.AGENT_ACTION_APPROVE):
+        tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_APPROVE)
+    else:
+        # Not an approver: only the owner of the record, and only for the kinds that allow it.
+        tenant_id, user_id = _staff(principal, Permission.AGENT_ACTION_PROPOSE)
     action = repository.lock(session, tenant_id, action_id)
+    if not principal.has_permission(Permission.AGENT_ACTION_APPROVE) and (
+        action is None or not _owns_target(session, principal, action)
+    ):
+        # The same answer whether the proposal exists or not: no peeking at other people's queue.
+        raise ForbiddenError("You may not do this.")
     if action is None:
         raise AgentActionNotFoundError()
     if action.requested_by_user_id == user_id:
@@ -588,6 +632,71 @@ def _recheck(session: Session, principal: Principal, action: AgentAction) -> Non
         raise RecheckFailedError(" ".join(f.message for f in verdict.blocks))
 
 
+EDITABLE_FIELDS = ("subject", "body")
+
+
+def _apply_edit(
+    session: Session,
+    principal: Principal,
+    action: AgentAction,
+    user_id: uuid.UUID,
+    edit: dict[str, str],
+) -> None:
+    """The approver rewrote the subject or text of a follow-up (ADR 0036, FM5). The new text
+    is checked like any proposal (payload shape, the kind's own check and the Sentinel's word
+    rules), the plan is rebuilt, and the audit entry records WHO changed WHICH field, never
+    the text. A refusal changes nothing."""
+    if action.kind != "communication.send_follow_up":
+        raise EditNotAllowedError()
+    fields = [
+        name for name in EDITABLE_FIELDS if name in edit and edit[name] != action.payload.get(name)
+    ]
+    if not fields:
+        return
+    kind = _kind(action.kind)
+    new_payload = {**action.payload, **{name: edit[name] for name in fields}}
+    try:
+        data = _payload(kind, new_payload)
+    except InvalidActionError as exc:
+        raise EditRefusedError(exc.detail) from exc
+    proposal = _proposal(action)
+    problem = kind.check(session, proposal, data)
+    if problem:
+        raise EditRefusedError(f"The edited text is not valid ({problem}).")
+    stored = data.model_dump(mode="json", exclude_none=True)
+    candidate = sentinel.Candidate(
+        action.kind, action.reason, stored, action.requested_by_user_id, action.tenant_id
+    )
+    findings = sentinel.check_words(candidate)
+    blocks = [f for f in findings if f.severity == "block"]
+    _observe(sentinel.Verdict(findings, ["words"]))
+    if blocks:
+        raise EditRefusedError(" ".join(f.message for f in blocks))
+    plan = kind.spec(session, principal, proposal, data)
+    previous = dict(action.verification or {})
+    warnings = [w for w in previous.get("warnings", []) if w.get("code") != "phone_number"]
+    warnings += [{"code": f.code, "message": f.message} for f in findings if f.severity == "warn"]
+    action.payload = stored
+    action.verification = {
+        **previous,
+        "warnings": warnings,
+        "spec": {
+            "changes": [c.to_json() for c in plan.changes],
+            "basis": previous.get("spec", {}).get("basis", {}),
+        },
+        "edited": {"fields": fields, "by": str(user_id)},
+    }
+    session.flush()
+    record_audit(
+        session,
+        principal,
+        action="agent_action.edited",
+        entity_type=ENTITY,
+        entity_id=action.id,
+        changes={"kind": action.kind, "fields": fields},
+    )
+
+
 def approve(
     session: Session,
     principal: Principal,
@@ -595,6 +704,7 @@ def approve(
     *,
     version: int,
     note: str | None = None,
+    edit: dict[str, str] | None = None,
 ) -> AgentAction:
     """Run the proposed action as the approver. If the owning module refuses it, nothing
     changes and the proposal is marked failed with the reason."""
@@ -602,6 +712,8 @@ def approve(
     # The approver's own rights decide: a record they can't see doesn't exist for them.
     if not _visible(session, principal, action.target_type, action.target_id):
         raise RecordNotFoundError()
+    if edit:
+        _apply_edit(session, principal, action, user_id, edit)
     kind = _kind(action.kind)
     data = _payload(kind, action.payload)  # checked again: the catalogue may have changed
     status = "approved"
@@ -695,11 +807,19 @@ def list_actions(
         principal, Permission.AGENT_ACTION_APPROVE if approver else Permission.AGENT_ACTION_PROPOSE
     )
     requester = user_id if mine or not approver else None
+    # Not an approver: my own proposals plus follow-up drafts for the records I own.
+    owned: list[Any] = []
+    if not approver and not mine:
+        owned = [
+            ("lead", leads_api.owned_lead_ids(principal)),
+            ("contact", contacts_api.owned_contact_ids(principal)),
+        ]
     return repository.page(
         session,
         tenant_id,
         status=status,
         requester=requester,
+        owner_decides=(OWNER_DECIDES, owned),
         target_id=target_id,
         limit=limit,
         offset=offset,
@@ -768,3 +888,37 @@ def requester_of(session: Session, tenant_id: uuid.UUID, action_id: uuid.UUID) -
     """Who asked for the proposal (for notifications; they are still checked: may they read it?)."""
     action = repository.get(session, tenant_id, action_id)
     return action.requested_by_user_id if action else None
+
+
+def follow_up_history(
+    session: Session, tenant_id: uuid.UUID, target_id: uuid.UUID, since: datetime
+) -> repository.DraftHistory:
+    """For the follow-up scan: the drafts of this lead so far (waiting, newest, how many lately)."""
+    return repository.draft_history(
+        session, tenant_id, "communication.send_follow_up", target_id, since
+    )
+
+
+def follow_up_drafts_today(session: Session, tenant_id: uuid.UUID, since: datetime) -> int:
+    """How many follow-up drafts the organisation made since ``since``."""
+    return repository.count_since(
+        session, tenant_id, since=since, kind="communication.send_follow_up"
+    )
+
+
+def follow_up_waiting_for(session: Session, tenant_id: uuid.UUID, leads: Select[Any]) -> int:
+    """How many follow-up drafts wait for the owner of these leads."""
+    return repository.waiting_for_targets(session, tenant_id, "communication.send_follow_up", leads)
+
+
+def deciders_for_notice(
+    session: Session, tenant_id: uuid.UUID, action_id: uuid.UUID
+) -> uuid.UUID | None:
+    """The owner of the record, if this kind of proposal is one the owner may decide on, so the
+    owner can be told it is waiting (ADR 0036). Read as the person who asked."""
+    action = repository.get(session, tenant_id, action_id)
+    if action is None or action.kind not in OWNER_DECIDES or action.target_type != "lead":
+        return None
+    return leads_api.lead_owner_for_notice(
+        session, tenant_id, action.target_id, reader_user_id=action.requested_by_user_id
+    )

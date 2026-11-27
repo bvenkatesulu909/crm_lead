@@ -17,7 +17,11 @@ import type {
 import { isUuid } from "@/lib/communications";
 import { canWriteVideoBrief } from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
-import { saveVideoScript } from "./actions";
+import {
+  draftVideoScript,
+  proposeVideoScript,
+  saveVideoScript,
+} from "./actions";
 import {
   GOAL_LABELS,
   LENGTHS,
@@ -53,6 +57,11 @@ export default async function VideoBriefPage({
   // Only a plain number may be shown as 'saved as version N'.
   const savedRaw = Array.isArray(query.saved) ? query.saved[0] : query.saved;
   const saved = /^\d{1,4}$/.test(savedRaw ?? "") ? (savedRaw as string) : "";
+  // Only a real proposal id may be linked to.
+  const proposedRaw = Array.isArray(query.proposed)
+    ? query.proposed[0]
+    : query.proposed;
+  const proposed = isUuid(proposedRaw ?? "") ? (proposedRaw as string) : "";
 
   // The lead first: a lead nobody may read stops here, before anything else is asked.
   let lead: Lead;
@@ -95,7 +104,7 @@ export default async function VideoBriefPage({
           quotes,
           brief,
           notices,
-          await extras(id, saved),
+          await extras(id, saved, proposed),
         );
       }
     }
@@ -106,11 +115,18 @@ export default async function VideoBriefPage({
       notFound();
     throw error;
   }
-  return page(id, choices, quotes, brief, notices, await extras(id, saved));
+  return page(
+    id,
+    choices,
+    quotes,
+    brief,
+    notices,
+    await extras(id, saved, proposed),
+  );
 }
 
 /** The saved scripts and whether this person may write one. Neither may stop the brief. */
-async function extras(id: string, saved: string) {
+async function extras(id: string, saved: string, proposed: string) {
   let scripts: ScriptRead[] | null = null;
   try {
     scripts =
@@ -124,7 +140,7 @@ async function extras(id: string, saved: string) {
   } catch {
     canWrite = false;
   }
-  return { scripts, canWrite, saved };
+  return { scripts, canWrite, saved, proposed };
 }
 
 function page(
@@ -137,6 +153,7 @@ function page(
     scripts: ScriptRead[] | null;
     canWrite: boolean;
     saved: string;
+    proposed: string;
   },
 ) {
   return (
@@ -248,6 +265,21 @@ function page(
           Your script was saved as version {more.saved}.
         </p>
       )}
+      {more.proposed && (
+        <p
+          role="status"
+          className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 print:hidden"
+        >
+          Your script was sent and waits for a colleague to approve it - it is
+          saved only when they do.{" "}
+          <Link
+            href={`/approvals/${more.proposed}`}
+            className="font-medium underline"
+          >
+            Open the approval
+          </Link>
+        </p>
+      )}
       <VideoBriefView brief={brief} notices={notices} />
       {more.canWrite && (
         <div className="mt-8">
@@ -255,6 +287,8 @@ function page(
             leadId={id}
             brief={brief}
             action={saveVideoScript}
+            draftAction={draftVideoScript}
+            proposeAction={proposeVideoScript}
             initialText={brief.script.map((line) => line.text).join("\n")}
             quoteId={choices.quoteId}
           />

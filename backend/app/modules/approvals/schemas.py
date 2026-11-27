@@ -96,11 +96,23 @@ class ExternalProposal(BaseModel):
     reason: Annotated[str, StringConstraints(min_length=1, max_length=500)]
 
 
+class ApproveEdit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    subject: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+        | None
+    ) = None
+    body: Annotated[str, StringConstraints(min_length=1, max_length=20_000)] | None = None
+
+
 class Approve(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     version: int
     note: Note | None = None
+    # A follow-up e-mail may be reworded before it is approved (ADR 0036). Other kinds: 422.
+    edit: "ApproveEdit | None" = None
 
 
 class Reject(BaseModel):

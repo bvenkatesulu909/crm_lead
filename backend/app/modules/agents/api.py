@@ -1,6 +1,7 @@
 """Public interface of the agents module (ADR 0016). Other modules import only this."""
 
 from app.modules.agents.catalogue import AGENTS, AgentDef
+from app.modules.agents.cost import estimate_cost_usd
 from app.modules.agents.governed import GovernedModel, governed
 from app.modules.agents.metrics import estimated_cost_by_month
 from app.modules.agents.service import (
@@ -29,6 +30,7 @@ __all__ = [
     "Limits",
     "UsageResult",
     "check_can_call",
+    "estimate_cost_usd",
     "estimated_cost_by_month",
     "effective",
     "governed",

@@ -20,7 +20,9 @@ from app.modules.activities.schemas import ActivityCreate
 
 __all__ = [
     "DealActivity",
+    "DueLeadTask",
     "OpenTask",
+    "due_lead_tasks",
     "open_tasks_of_lead",
     "deal_activity",
     "EXPORT",
@@ -100,6 +102,40 @@ def open_tasks_of_lead(
         .limit(limit)
     ).all()
     return [OpenTask(r.subject, r.due_at, r.priority) for r in rows]
+
+
+@dataclass(frozen=True)
+class DueLeadTask:
+    task_id: uuid.UUID
+    lead_id: uuid.UUID
+    created_at: datetime
+    due_at: datetime
+
+
+def due_lead_tasks(
+    session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime, limit: int = 500
+) -> list[DueLeadTask]:
+    """Open tasks on a lead whose due time falls in [start, end), oldest first. For the follow-up
+    scan (ADR 0036): runs without a user, one organisation at a time. A task is a to-do, so notes
+    never count; the cap keeps one busy day from loading everything."""
+    rows = session.scalars(
+        select(Activity)
+        .where(
+            Activity.tenant_id == tenant_id,
+            Activity.lead_id.is_not(None),
+            Activity.kind == "task",
+            Activity.status == "open",
+            Activity.due_at >= start,
+            Activity.due_at < end,
+        )
+        .order_by(Activity.due_at.asc(), Activity.id.asc())
+        .limit(limit)
+    ).all()
+    return [
+        DueLeadTask(r.id, r.lead_id, r.created_at, r.due_at)
+        for r in rows
+        if r.lead_id is not None and r.due_at is not None
+    ]
 
 
 def last_interaction_by_account(

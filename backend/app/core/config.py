@@ -205,6 +205,17 @@ class Settings(BaseSettings):
     calls_uploads_per_user_hour: int = Field(default=20, ge=1, le=1_000)
     calls_uploads_per_tenant_day: int = Field(default=300, ge=1, le=100_000)
     calls_upload_finish_minutes: int = Field(default=180, ge=5, le=1440)
+    # Property photo enhancer (ADR 0039). ``photo_enhancer_disabled`` is the platform-wide switch;
+    # the limits are counted before a job is queued; the worker refuses a photo that would need
+    # more than ``photo_enhancer_max_memory_mb`` (about 12 bytes per pixel) or more than
+    # ``photo_enhancer_max_seconds`` of work.
+    photo_enhancer_disabled: bool = False
+    photo_enhancements_per_user_hour: int = Field(default=30, ge=1, le=1_000)
+    photo_enhancements_per_tenant_day: int = Field(default=500, ge=1, le=100_000)
+    photo_enhancements_per_original: int = Field(default=5, ge=1, le=50)
+    photo_enhancer_max_memory_mb: int = Field(default=600, ge=50, le=4_000)
+    photo_enhancer_max_seconds: int = Field(default=60, ge=5, le=600)
+    photo_previews_per_minute: int = Field(default=30, ge=1, le=600)
     # The worker (step CA2): a Whisper-class transcription model that gives timestamps (the
     # voice model for chat replies does not), the month's minutes per organisation (estimated
     # from the audio length), the ffmpeg / ffprobe programs and a time limit for one cleaning.
@@ -296,6 +307,13 @@ class Settings(BaseSettings):
     # Account research (ADR 0024): briefs per account per hour and per organisation per day.
     account_research_per_account_hour: int = Field(default=1, ge=1, le=100)
     account_research_per_tenant_day: int = Field(default=200, ge=1, le=100_000)
+    # Batch account research (ADR 0042). The cap can be lowered, never raised above 100.
+    research_batch_max: int = Field(default=100, ge=1, le=100)
+    research_batch_running_per_person: int = Field(default=1, ge=1, le=10)
+    research_batch_running_per_tenant: int = Field(default=2, ge=1, le=50)
+    research_batch_per_person_day: int = Field(default=5, ge=1, le=100)
+    # The most one account's research can read in (tokens): what the hard cap is built from.
+    research_batch_worst_input_tokens: int = Field(default=8000, ge=500, le=100_000)
     # Let the lead agent look at every new website lead as the Automation identity. Off by default;
     # read when the worker starts. The agent's own switch (also off by default), budget and limits
     # still apply.
@@ -304,6 +322,10 @@ class Settings(BaseSettings):
     # Off by default; read when the worker starts. The agent switch, the budget and the limits
     # above still apply.
     qualifier_auto_web_leads: bool = False
+
+    # Automatic follow-up drafts (ADR 0036). The platform switch: True stops every organisation's
+    # scan at once, whatever its own settings say (an organisation's own switch is in its policy).
+    follow_ups_disabled: bool = False
 
     # Proposals from an outside AI client (ADR 0020): which verified applications may create
     # them (comma separated) and how many one person may make per hour through them.

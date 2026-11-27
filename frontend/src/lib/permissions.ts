@@ -124,11 +124,18 @@ export const canReadCalls = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call:read");
 export const canWriteCalls = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call:write");
+/** Property photo enhancer (ADR 0039): display only - the API checks again, and the photo's
+ * record decides who may see it. Needs both permissions. */
+export const canEnhancePhotos = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "photo:enhance") && hasAny(me, "document:write");
 /** Call notes and the deal checklist (ADR 0035): display only - the API checks again. */
 export const canRunCallNotes = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call_notes:run");
 export const canManageCallNotes = (me: Pick<Me, "permissions">) =>
   hasAny(me, "call_notes:manage");
+/** Automatic follow-up messages (ADR 0036): the organisation's settings. */
+export const canManageFollowUps = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "follow_up:manage");
 /** The Qualifier (docs/qualifier.md): ask for an assessment / read the procedure / write it. */
 export const canRunQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:run");
@@ -149,6 +156,10 @@ export const canReadDealRisk = (me: Pick<Me, "permissions">) =>
 /** Account research (ADR 0024): display only - the API checks the account again. */
 export const canResearchAccounts = (me: Pick<Me, "permissions">) =>
   hasAny(me, "account_research:run");
+/** Research many accounts at once (ADR 0042): sales managers and tenant administrators. Display
+ * only - the API checks again and resolves the accounts under the person's own read rules. */
+export const canRunResearchBatches = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "research_batch:run");
 export const canReadQualifier = (me: Pick<Me, "permissions">) =>
   hasAny(me, "qualifier:read");
 export const canManageQualifier = (me: Pick<Me, "permissions">) =>
@@ -299,6 +310,12 @@ export function navigationFor(
       label: "Call notes",
       icon: "automation",
     });
+  if (canManageFollowUps(me))
+    items.push({
+      href: "/automation/follow-ups",
+      label: "Follow-ups",
+      icon: "automation",
+    });
   if (canManageCustomAgents(me))
     items.push({
       href: "/automation/custom-agents",
@@ -353,10 +370,15 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "call_notes:run":
     "Ask for call notes and a deal checklist from a call transcript",
   "call_notes:manage": "Choose the deal checklist frame (BANT or MEDDIC)",
+  "follow_up:manage":
+    "Switch automatic follow-up drafts on and set their limits",
   "qualifier:run": "Ask the Qualifier to assess a lead",
   "qualifier:read": "Read the Qualifier's written steps",
   "qualifier:manage": "Write the Qualifier's steps and try them",
   "custom_agent:run": "Run a custom agent on a record you can see",
+  "photo:enhance":
+    "Make an adjusted copy of a property photo (the original is kept)",
+  "research_batch:run": "Ask the AI to research many accounts at once",
   "custom_agent:manage": "Define custom agents and try them",
   "tenant:user:read": "View your organisation's users",
   "tenant:user:manage": "Manage your organisation's users",

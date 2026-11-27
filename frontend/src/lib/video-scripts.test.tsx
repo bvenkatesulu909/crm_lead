@@ -248,6 +248,8 @@ describe("the editor", () => {
         leadId={LEAD}
         brief={brief()}
         action={action}
+        draftAction={vi.fn()}
+        proposeAction={vi.fn()}
         initialText={"Hello Suresh,\nThank you."}
       />,
     );
@@ -264,6 +266,8 @@ describe("the editor", () => {
         leadId={LEAD}
         brief={brief({ language: "te", length_seconds: 90, goal: "revive" })}
         action={action}
+        draftAction={vi.fn()}
+        proposeAction={vi.fn()}
         initialText="x"
       />,
     );
@@ -282,6 +286,8 @@ describe("the editor", () => {
         leadId={LEAD}
         brief={brief({ length_seconds: 30, word_target: 75 })}
         action={action}
+        draftAction={vi.fn()}
+        proposeAction={vi.fn()}
         initialText=""
       />,
     );
@@ -312,6 +318,8 @@ describe("the editor", () => {
         leadId={LEAD}
         brief={brief()}
         action={failing}
+        draftAction={vi.fn()}
+        proposeAction={vi.fn()}
         initialText="Hello"
       />,
     );

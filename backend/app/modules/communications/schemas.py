@@ -174,3 +174,31 @@ class TemplatePreview(BaseModel):
 class PlaceholderRead(BaseModel):
     name: str
     description: str
+
+
+class FollowUpSettingsRead(BaseModel):
+    """The follow-up settings in force (ADR 0036). ``version`` goes back with a change."""
+
+    enabled: bool
+    monthly_cap: int
+    daily_cap: int
+    pending_cap: int
+    expiry_days: int
+    cooldown_days: int
+    template_id: uuid.UUID | None
+    template_name: str | None
+    rule: str
+    version: int
+
+
+class FollowUpSettingsUpdate(_Input):
+    """Whole-settings replacement. The bounds are the pure rules' (and the database's) own."""
+
+    enabled: bool
+    monthly_cap: int
+    daily_cap: int
+    pending_cap: int
+    expiry_days: int
+    cooldown_days: int
+    template_id: uuid.UUID | None = None
+    version: int

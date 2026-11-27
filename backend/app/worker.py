@@ -39,15 +39,18 @@ from app.modules.contracts import api as contracts_api
 from app.modules.deal_desk import api as deal_desk_api
 from app.modules.deal_risk import api as deal_risk_api
 from app.modules.documents import api as documents_api
+from app.modules.follow_ups import api as follow_ups_api
 from app.modules.identity.models import Tenant
 from app.modules.knowledge import api as knowledge_api
 from app.modules.lead_agent import api as lead_agent_api
 from app.modules.notifications import api as notifications_api
 from app.modules.payment_links import api as payment_links_api
+from app.modules.photo_enhancer import api as photo_enhancer_api
 from app.modules.proposal_decks import api as proposal_decks_api
 from app.modules.public_chat import api as public_chat_api
 from app.modules.qualifier import api as qualifier_api
 from app.modules.quotes import api as quotes_api
+from app.modules.research_batches import api as research_batches_api
 from app.modules.webcheck import api as webcheck_api
 from app.modules.workflows import api as workflows_api
 
@@ -81,10 +84,16 @@ def job_handlers(services: WorkerServices) -> dict[str, JobHandler]:
         communications_api.EMAIL_JOB: communications_api.email_job_handler(services.mailer),
         calls_api.JOB_KIND: calls_api.job_handler(services.file_store, services.settings),
         calls_api.CLIP_JOB_KIND: calls_api.clip_job_handler(services.file_store, services.settings),
+        photo_enhancer_api.JOB_KIND: photo_enhancer_api.job_handler(
+            services.file_store, services.settings
+        ),
         payment_links_api.APPLY_JOB: payment_links_api.apply_job_handler(),
         proposal_decks_api.JOB: proposal_decks_api.job_handler(services.file_store),
         proposal_decks_api.JOB_PPTX: proposal_decks_api.job_handler(services.file_store),
         webcheck_api.CHECK_JOB: webcheck_api.check_job_handler(services.settings),
+        research_batches_api.STEP_JOB: research_batches_api.job_handler(
+            services.settings, deal_desk_api.model_for(services.settings)
+        ),
         webcheck_api.COMPANY_JOB: webcheck_api.company_job_handler(services.settings),
         # Domain events (ADR 0006): every "event.<name>" job goes to its subscribers.
         **dispatcher(
@@ -188,6 +197,19 @@ def run_schedules(
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += approvals_api.expire_due(session, now, tenant_id=tenant_id)
+            # Follow-up drafts for tasks due today (ADR 0036): proposals only, nothing is sent.
+            # A bug here must not stop the other organisations or the rules below.
+            try:
+                with session_factory() as session, session.begin():
+                    bind_tenant(session, tenant_id)
+                    count += follow_ups_api.run_schedules(
+                        session,
+                        now,
+                        tenant_id=tenant_id,
+                        platform_enabled=not (settings.follow_ups_disabled if settings else False),
+                    )
+            except Exception as error:  # noqa: BLE001 - logged by type only, never by content
+                logger.error("follow-up scan failed (%s)", type(error).__name__)
             with session_factory() as session, session.begin():
                 bind_tenant(session, tenant_id)
                 count += workflows_api.run_schedules(
@@ -203,6 +225,8 @@ def dead_job_handlers() -> dict[str, DeadJobHandler]:
         communications_api.EMAIL_JOB: communications_api.email_failed_handler(),
         calls_api.JOB_KIND: calls_api.dead_job_handler(),
         calls_api.CLIP_JOB_KIND: calls_api.clip_dead_job_handler(),
+        photo_enhancer_api.JOB_KIND: photo_enhancer_api.dead_job_handler(),
+        research_batches_api.STEP_JOB: research_batches_api.dead_job_handler(),
     }
 
 

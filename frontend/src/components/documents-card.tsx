@@ -11,8 +11,10 @@ import {
 import { Card } from "@/components/ui";
 import type { DocumentItem, DocumentList, Me } from "@/lib/api-types";
 import { formatBytes, formatDateTime } from "@/lib/format";
+import { isPhoto } from "@/lib/photo-enhancer";
 import {
   canDeleteDocuments,
+  canEnhancePhotos,
   canReadDocuments,
   canWriteDocuments,
 } from "@/lib/permissions";
@@ -74,6 +76,9 @@ export async function DocumentsCard({
                   {d.description && <p className="mt-0.5 text-xs text-slate-600">{d.description}</p>}
                   {d.customer_visible && <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800">Visible to the customer</span>}
                 </div>
+                {canEnhancePhotos(me) && isPhoto(d.content_type) && (
+                  <a href={`/photos/${d.id}`} className="text-sm text-brand-700 hover:underline">Adjust photo</a>
+                )}
                 {mayDelete && (
                   <DeleteDocumentDialog action={deleteDocument.bind(null, recordType, recordId, d.id)} name={d.file_name} versions={d.versions} />
                 )}

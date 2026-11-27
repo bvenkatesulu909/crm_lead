@@ -28,6 +28,7 @@ from app.modules.activities import api as activities_api
 from app.modules.agents import api as agents_api
 from app.modules.approvals import api as approvals_api
 from app.modules.contacts import api as contacts_api
+from app.modules.deal_risk import api as deal_risk_api
 from app.modules.identity import api as identity_api
 from app.modules.invoices import api as invoices_api
 from app.modules.leads import api as leads_api
@@ -158,6 +159,13 @@ REPORTS: dict[str, ReportDef] = {
             (SALES_ALL, approvals_api.qualifier_suggestions_table),
         ),
         priced_sections=((_any(P.AGENT_READ), lambda *a: _ai_cost_per_lead_table(*a)),),
+    ),
+    "deal_risk": ReportDef(
+        "Deal risk: forecast vs. outcome",
+        "Deals that closed in the period, grouped by their last risk forecast before closing: "
+        "how many were won on time, won late or lost. Shows whether the forecast is worth "
+        "trusting; until 30 closed deals have a forecast it says it is too early to measure.",
+        ((_any(P.DEAL_RISK_READ), deal_risk_api.backtest_table),),
     ),
     "revenue": ReportDef(
         "Revenue & quotes",

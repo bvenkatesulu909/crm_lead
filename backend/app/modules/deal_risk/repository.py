@@ -116,3 +116,25 @@ def latest_per_deal(
         .offset(offset)
     ).all()
     return list(rows), total
+
+
+def levels_before(
+    session: Session, tenant_id: uuid.UUID, closed: dict[uuid.UUID, datetime]
+) -> dict[uuid.UUID, str]:
+    """For each deal, the level of its newest snapshot taken BEFORE it closed (a forecast made
+    while it was still open). Deals without one are left out."""
+    if not closed:
+        return {}
+    rows = session.execute(
+        select(DealRiskSnapshot.opportunity_id, DealRiskSnapshot.level, DealRiskSnapshot.created_at)
+        .where(
+            DealRiskSnapshot.tenant_id == tenant_id,
+            DealRiskSnapshot.opportunity_id.in_(list(closed)),
+        )
+        .order_by(DealRiskSnapshot.seq)
+    ).all()
+    levels: dict[uuid.UUID, str] = {}
+    for deal, level, created_at in rows:
+        if created_at < closed[deal]:
+            levels[deal] = level  # later rows overwrite earlier ones: the newest before closing
+    return levels

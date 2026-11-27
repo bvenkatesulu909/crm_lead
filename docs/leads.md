@@ -211,5 +211,5 @@ What `withdrawn` stops, whoever created the message (manual, template, later aut
 3. **On conversion** - the answer and its date are copied to the new contact, so a "no" survives.
 
 `unknown` and `granted` do not block a one-to-one e-mail. The edit form has an "E-mail consent"
-choice (not on the new-lead form); the lead page shows it with its date. Migration `0078`.
+choice (not on the new-lead form); the lead page shows it with its date. Migration `0079`.
 

@@ -1,7 +1,7 @@
 """Batch account research: batches and their items (ADR 0042, BR1).
 
-Revision ID: 0084
-Revises: 0083
+Revision ID: 0085
+Revises: 0084
 Create Date: 2026-11-22
 
 Two tenant tables, ENABLE + FORCE row-level security and the tenant policy on both (ADR 0009).
@@ -16,8 +16,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0084"
-down_revision: str | None = "0083"
+revision: str = "0085"
+down_revision: str | None = "0084"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

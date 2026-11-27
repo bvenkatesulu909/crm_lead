@@ -1,7 +1,7 @@
 """The approval queue learns follow-up drafts (ADR 0036, FM2).
 
-Revision ID: 0079
-Revises: 0078
+Revision ID: 0080
+Revises: 0079
 Create Date: 2026-11-21
 
 A follow-up e-mail drafted by the system has the author ``follow_up``. The author list is written
@@ -12,19 +12,19 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0079"
-down_revision: str | None = "0078"
+revision: str = "0080"
+down_revision: str | None = "0079"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 AGENT_CHECK = "ck_agent_actions_agent_allowed"
 BEFORE = (
     "agent IN ('staff_assistant', 'mcp_client', 'qualifier', 'lead_agent', 'deal_desk', "
-    "'deck_writer', 'custom_agent', 'call_notes', 'receptionist')"
+    "'deck_writer', 'custom_agent', 'call_notes', 'receptionist', 'video_brief')"
 )
 AFTER = (
     "agent IN ('staff_assistant', 'mcp_client', 'qualifier', 'lead_agent', 'deal_desk', "
-    "'deck_writer', 'custom_agent', 'call_notes', 'receptionist', 'follow_up')"
+    "'deck_writer', 'custom_agent', 'call_notes', 'receptionist', 'video_brief', 'follow_up')"
 )
 
 

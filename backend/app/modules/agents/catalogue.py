@@ -131,6 +131,19 @@ AGENTS: dict[str, AgentDef] = {
             tools=("submit_findings", "submit_brief"),
         ),
         AgentDef(
+            key="deal_risk_coach",
+            title="Deal risk coach",
+            description=(
+                "Reads the risk forecast the CRM worked out for one deal (never the score's "
+                "author) and writes up to three short pieces of advice. It may SUGGEST at most two "
+                "follow-up tasks; they wait in the approval queue. Off until an administrator "
+                "switches it on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_advice",),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="account_research",
             title="Account research",
             description=(

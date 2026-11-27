@@ -6518,6 +6518,75 @@
         "title": "DashboardRead",
         "type": "object"
       },
+      "DealRiskAdviceLine": {
+        "properties": {
+          "factors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Factors",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "factors"
+        ],
+        "title": "DealRiskAdviceLine",
+        "type": "object"
+      },
+      "DealRiskCoachRead": {
+        "properties": {
+          "advice": {
+            "items": {
+              "$ref": "#/components/schemas/DealRiskAdviceLine"
+            },
+            "title": "Advice",
+            "type": "array"
+          },
+          "blocked_messages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocked Messages",
+            "type": "array"
+          },
+          "cleaned": {
+            "title": "Cleaned",
+            "type": "boolean"
+          },
+          "note": {
+            "default": "AI advice on the forecast. It changes nothing; any suggested task waits for a different person to approve it.",
+            "title": "Note",
+            "type": "string"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/DealRiskProposalRef"
+            },
+            "title": "Proposals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "opportunity_id",
+          "advice",
+          "proposals",
+          "blocked_messages",
+          "cleaned"
+        ],
+        "title": "DealRiskCoachRead",
+        "type": "object"
+      },
       "DealRiskDealRead": {
         "properties": {
           "account_id": {
@@ -6627,6 +6696,25 @@
           "offset"
         ],
         "title": "DealRiskList",
+        "type": "object"
+      },
+      "DealRiskProposalRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "link"
+        ],
+        "title": "DealRiskProposalRef",
         "type": "object"
       },
       "DealRiskRead": {
@@ -29468,6 +29556,105 @@
           }
         ],
         "summary": "The newest stored forecast of one deal",
+        "tags": [
+          "deal-risk"
+        ]
+      }
+    },
+    "/api/v1/deal-risk/{opportunity_id}/coach": {
+      "post": {
+        "description": "The coach sees only the forecast the CRM worked out (level, score, reasons) and writes up to three short pieces of advice; it may suggest up to two follow-up tasks, which wait in the approval queue for a different person. It never changes the score or the deal. Off until an administrator switches it on (503); over a limit 429; a deal you may not read, a closed deal or a made-up id 404. Nothing but the deal id is accepted.",
+        "operationId": "ask_coach_api_v1_deal_risk__opportunity_id__coach_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "opportunity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Opportunity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealRiskCoachRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Missing or invalid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authenticated, but not allowed to do this."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not found - or not visible to you (the API does not distinguish)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request data is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask the optional AI coach for advice on a deal's forecast",
         "tags": [
           "deal-risk"
         ]

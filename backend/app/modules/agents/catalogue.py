@@ -157,6 +157,21 @@ AGENTS: dict[str, AgentDef] = {
             default_enabled=False,
         ),
         AgentDef(
+            key="research_batches",
+            title="Batch account research",
+            description=(
+                "Lets sales managers and administrators research up to 100 accounts in one go, "
+                "one account at a time. The language-model calls are Account research's (its "
+                "switch and monthly budget apply too); this entry only switches the batch feature "
+                "and counts batches. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
             key="deck_writer",
             title="Deck writer",
             description=(
@@ -244,6 +259,21 @@ AGENTS: dict[str, AgentDef] = {
                 "Lets staff add a recording of a call with a buyer (with the buyer's consent) to a "
                 "lead, cleans it up and writes a transcript in Hindi, Telugu or English. Counts "
                 "the minutes of audio it processes. Calls no language model. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=(),
+            uses_model=False,
+            platform_switch=False,
+            default_enabled=False,
+        ),
+        AgentDef(
+            key="photo_enhancer",
+            title="Property photo enhancer",
+            description=(
+                "Lets staff make an adjusted copy of a property photo: brightness, colour, "
+                "straightening, crop, size and a watermark. It only adjusts what the camera saw, "
+                "never adds or removes anything, always keeps the original and labels the copy. "
+                "Calls no language model. Off until switched on."
             ),
             owner_role="tenant_admin",
             tools=(),

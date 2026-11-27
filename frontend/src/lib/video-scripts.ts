@@ -2,6 +2,20 @@
  * everything that matters (it cleans the text and refuses card numbers, instructions, contact
  * details and banned statements); these checks only save a round trip and explain in plain words. */
 
+import type { DialogState } from "@/lib/dialog-state";
+
+/** What asking the drafter returns: the usual dialog state plus the draft it wrote, if any. */
+export type DraftState = DialogState & {
+  draft: { lines: string[]; words: number; reason: string } | null;
+};
+
+export const initialDraftState: DraftState = {
+  attempt: 0,
+  fieldErrors: {},
+  error: null,
+  draft: null,
+};
+
 export const MAX_SCRIPT_LINES = 12;
 export const SCRIPT_LINE_MAX = 300;
 /** About 150 spoken words a minute. */
@@ -65,6 +79,30 @@ export function scriptErrorText(
       return "The script holds a statement that must never be made (see the never-say list on this page).";
     case "video_script_rate_limited":
       return "You have saved many scripts in the last hour. Try again later.";
+    case "agent_unavailable":
+      return "The video script drafter is switched off. An administrator can switch it on under AI agents.";
+    case "agent_budget_reached":
+      return "The video script drafter has used up its budget for this month.";
+    case "video_draft_rate_limited":
+      return "A script was drafted for this buyer a moment ago. Try again later.";
+    case "video_draft_invalid_answer":
+      return "The assistant's answer could not be used. Try again.";
+    case "video_draft_unsupported_number":
+      return "The draft held a number, amount or date that is not in the buyer's facts, so it was thrown away. Try again, or write it yourself.";
+    case "video_draft_assumption_stated":
+      return "The draft said a guess as if it were a fact, so it was thrown away. Try again, or write it yourself.";
+    case "video_draft_script_banned_phrase":
+      return "The draft held a statement that must never be made, so it was thrown away. Try again.";
+    case "video_draft_script_contact_detail":
+      return "The draft held a phone number or e-mail address, so it was thrown away. Try again.";
+    case "video_draft_script_unsafe_text":
+      return "The draft held text that looks like a card number or an instruction, so it was thrown away. Try again.";
+    case "video_draft_script_too_long":
+      return "The draft was longer than the chosen length, so it was thrown away. Try again or choose a longer video.";
+    case "quote_not_found":
+      return "That quote is not one of this buyer's quotes.";
+    case "video_brief_quote_not_ready":
+      return "Only an approved, sent or accepted quote can be used.";
     default:
       return fallback;
   }

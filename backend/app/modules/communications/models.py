@@ -26,6 +26,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -136,3 +137,34 @@ class EmailMessage(UUIDPrimaryKeyMixin, TenantOwnedMixin, TimestampMixin, Base):
     error_code: Mapped[str | None] = mapped_column(String(60))
     # A database-assigned order: two e-mails stored in the same instant still sort reliably.
     seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+
+
+class FollowUpPolicy(UUIDPrimaryKeyMixin, TenantOwnedMixin, Base):
+    """An organisation's follow-up settings (ADR 0036). Insert-only: a change is a new row and the
+    newest row (by ``seq``) is the one in force, so the history of who changed what is kept.
+    The bounds repeat ``follow_up_rules.BOUNDS``; the database is the second wall."""
+
+    __tablename__ = "follow_up_policies"
+    __table_args__ = (
+        _fk("created_by_user_id", "users"),
+        _fk("template_id", "email_templates"),
+        CheckConstraint("monthly_cap BETWEEN 1 AND 8", name="monthly_cap_bounds"),
+        CheckConstraint("daily_cap BETWEEN 1 AND 100", name="daily_cap_bounds"),
+        CheckConstraint("pending_cap BETWEEN 1 AND 20", name="pending_cap_bounds"),
+        CheckConstraint("expiry_days BETWEEN 1 AND 30", name="expiry_days_bounds"),
+        CheckConstraint("cooldown_days BETWEEN 1 AND 60", name="cooldown_days_bounds"),
+        # Switching it on needs a template to fill in: a draft has to have words.
+        CheckConstraint("NOT enabled OR template_id IS NOT NULL", name="enabled_has_template"),
+        Index("ix_follow_up_policies_tenant_id_seq", "tenant_id", "seq"),
+    )
+
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    monthly_cap: Mapped[int] = mapped_column(server_default=text("3"))
+    daily_cap: Mapped[int] = mapped_column(server_default=text("100"))
+    pending_cap: Mapped[int] = mapped_column(server_default=text("20"))
+    expiry_days: Mapped[int] = mapped_column(server_default=text("7"))
+    cooldown_days: Mapped[int] = mapped_column(server_default=text("7"))
+    template_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)

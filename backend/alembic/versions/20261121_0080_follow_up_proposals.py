@@ -1,15 +1,11 @@
-"""The approval queue learns the deal risk coach (ADR 0037, DR5)
+"""The approval queue learns follow-up drafts (ADR 0036, FM2).
 
 Revision ID: 0080
 Revises: 0079
-Create Date: 2026-11-27
+Create Date: 2026-11-21
 
-One author name, ``deal_risk_coach``: its follow-up tasks wait in the approval queue like every
-other AI suggestion. The name list is written out on purpose: a migration must not change when the
-code does.
-
-0079 is the lead e-mail consent migration once it is renumbered after 0078 (main had two
-migrations numbered 0073; see the fix that renumbers it). This migration needs that fix first.
+A follow-up e-mail drafted by the system has the author ``follow_up``. The author list is written
+out here on purpose: a migration must not change when the code does.
 """
 
 from collections.abc import Sequence
@@ -28,8 +24,7 @@ BEFORE = (
 )
 AFTER = (
     "agent IN ('staff_assistant', 'mcp_client', 'qualifier', 'lead_agent', 'deal_desk', "
-    "'deck_writer', 'custom_agent', 'call_notes', 'receptionist', 'video_brief', "
-    "'deal_risk_coach')"
+    "'deck_writer', 'custom_agent', 'call_notes', 'receptionist', 'video_brief', 'follow_up')"
 )
 
 
@@ -39,6 +34,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DELETE FROM agent_actions WHERE agent = 'deal_risk_coach'")
+    op.execute("DELETE FROM agent_actions WHERE agent = 'follow_up'")
     op.drop_constraint(op.f(AGENT_CHECK), "agent_actions", type_="check")
     op.create_check_constraint(op.f(AGENT_CHECK), "agent_actions", BEFORE)

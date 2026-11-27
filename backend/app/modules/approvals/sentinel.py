@@ -235,6 +235,12 @@ def check_state(candidate: Candidate, facts: Facts) -> list[Finding]:
                 findings.append(
                     Finding("lead_owned_by_other", "warn", "Someone else owns this lead.")
                 )
+    elif candidate.kind == "communication.send_follow_up":
+        # A closed lead is not chased: leave the conversation as it ended (ADR 0036 stop rules).
+        if facts.lead_status in ("converted", "unqualified"):
+            findings.append(
+                Finding("lead_closed", "block", "This lead is closed; no follow-up is sent.")
+            )
     elif candidate.kind == "activity.create_task":
         assignee = payload.get("assignee_id")
         if assignee and str(assignee) != str(candidate.requester_id):

@@ -107,8 +107,7 @@ under AI agents, with the usual monthly token budget, tool filter and platform s
   429. A deal one may not read, a closed deal or a made-up id: 404 before any model is asked.
 * Audit `deal_risk.coached` with the level, counts and proposal ids only.
 * `CRM_AI_PROVIDER=fake` gives a scripted coach for local demos (refused in production).
-* Migration 0080 teaches the approval queue the name. It follows 0079, the lead e-mail consent
-  migration once main's duplicate 0073 is renumbered; it needs that fix first.
+* Migration 0087 teaches the approval queue the name (it follows main's 0086).
 
 ## Not built yet
 

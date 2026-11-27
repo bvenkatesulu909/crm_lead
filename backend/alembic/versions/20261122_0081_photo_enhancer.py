@@ -1,7 +1,7 @@
 """Property photo enhancer: adjusted copies of photos (ADR 0039, PE2).
 
-Revision ID: 0080
-Revises: 0079
+Revision ID: 0081
+Revises: 0080
 Create Date: 2026-11-22
 
 Two changes:
@@ -23,8 +23,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0080"
-down_revision: str | None = "0079"
+revision: str = "0081"
+down_revision: str | None = "0080"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

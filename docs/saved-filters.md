@@ -65,7 +65,7 @@ runs the normal account search as the person.
 
 ## Storage and audit
 
-One table, `saved_filters` (migration 0082): tenant-owned, row-level security enabled and forced, a check that
+One table, `saved_filters` (migration 0083): tenant-owned, row-level security enabled and forced, a check that
 the record type is `account` and that the name is 1-80 characters, unique names as above. Visibility (own or shared)
 is applied in the SQL of every query. Creating, changing and deleting a filter is written to the audit log with the
 kind of change and the names of the conditions - never the values.

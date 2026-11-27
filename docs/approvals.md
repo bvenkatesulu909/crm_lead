@@ -179,7 +179,7 @@ The web app also sends `Content-Security-Policy-Report-Only` (outside images and
 
 ## Follow-up e-mail drafts (ADR 0036, step FM2, 2026-11-21)
 
-Kind `communication.send_follow_up` (author `follow_up`, migration `0078`), for a lead or a contact:
+Kind `communication.send_follow_up` (author `follow_up`, migration `0079`), for a lead or a contact:
 
 - **Payload (strict):** `reason_code` (only `task_due_today` in v1), `subject` (1-200), `body` (1-20,000, not blank), optional `template_id`. The text is FINAL: a template is filled in when the draft is made, so the approver reads exactly what will be sent. The plan shows it as the change `email`.
 - **Checked when proposed:** the person can be found, has a usable address, has NOT withdrawn e-mail consent, and the template (if any) is active. Sentinel: links, e-mail addresses, markup and instruction-like text are blocked (a phone number only warns); a lead that is `converted` or `unqualified` is blocked (`lead_closed`); a duplicate waiting draft is blocked.
@@ -192,7 +192,7 @@ Kind `communication.send_follow_up` (author `follow_up`, migration `0078`), for 
 Two parts, neither of which creates a draft yet (that is the scan, step FM4):
 
 - **Rules** (`backend/app/modules/communications/follow_up_rules.py`, pure): the fixed menu has ONE rule in v1, `task_due_today` (a task on a lead falls due today in UTC and is not done; an overdue task is not chased). `evaluate(policy, facts)` lists every reason a draft may not be made: `platform_off`, `switched_off`, `unknown_rule`, `no_template`, `bad_policy`, `consent_withdrawn`, `consent_unknown`, `no_address`, `no_owner`, `lead_closed`, `reply_received`, `draft_waiting`, `cooldown`, `monthly_cap`, `daily_cap`, `owner_pending_cap`. Consent: a "no" always stops; "unknown" allows only a conversation the person started; "granted" allows. Numbers outside their bounds make the whole policy bad and nothing else is judged (found by a test: a text where a number belonged crashed the comparison).
-- **Settings** (table `follow_up_policies`, migration `0079`): one row per change, newest wins, never updated, deleted only after 365 days, forced row-level security, composite foreign keys keep the template and the author inside the organisation. Defaults (off): 3 per person per 30 days (never above 8), 100 drafts per organisation per day (never above 100), 20 waiting per owner, expiry 7 days, cooldown 7 days. Switching on needs a template (a database check). The database repeats every bound. Read and write through `communications/repository.py` (`current_follow_up_policy`, `add_follow_up_policy`, `follow_up_policy_history`); the service with permission and audit comes with the API (FM5).
+- **Settings** (table `follow_up_policies`, migration `0080`): one row per change, newest wins, never updated, deleted only after 365 days, forced row-level security, composite foreign keys keep the template and the author inside the organisation. Defaults (off): 3 per person per 30 days (never above 8), 100 drafts per organisation per day (never above 100), 20 waiting per owner, expiry 7 days, cooldown 7 days. Switching on needs a template (a database check). The database repeats every bound. Read and write through `communications/repository.py` (`current_follow_up_policy`, `add_follow_up_policy`, `follow_up_policy_history`); the service with permission and audit comes with the API (FM5).
 
 ## The follow-up scan (ADR 0036, step FM4, 2026-11-21)
 

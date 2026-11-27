@@ -1,7 +1,7 @@
 """Saved video scripts (ADR 0041, VB3)
 
-Revision ID: 0085
-Revises: 0084
+Revision ID: 0077
+Revises: 0076
 Create Date: 2026-11-22
 
 One new table, ``video_scripts``: a saved version of the script for a lead's buyer video. ENABLE +
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0085"
-down_revision: str | None = "0084"
+revision: str = "0077"
+down_revision: str | None = "0076"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

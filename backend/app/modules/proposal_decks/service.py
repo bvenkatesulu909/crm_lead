@@ -26,8 +26,15 @@ from app.core.storage import FileStore
 from app.modules.branding import api as branding_api
 from app.modules.documents import api as documents_api
 from app.modules.identity import api as identity_api
+from app.modules.photo_enhancer import api as photo_enhancer_api
 from app.modules.proposal_decks import rules
-from app.modules.proposal_decks.data import DeckBrand, DeckData, DeckLine
+from app.modules.proposal_decks.data import (
+    MAX_DECK_PHOTOS,
+    DeckBrand,
+    DeckData,
+    DeckLine,
+    DeckPhoto,
+)
 from app.modules.proposal_decks.models import DeckSummary
 from app.modules.proposal_decks.render import render_deck
 from app.modules.proposal_decks.render_pptx import render_pptx
@@ -294,7 +301,10 @@ def latest_summary(session: Session, tenant_id: uuid.UUID, quote_id: uuid.UUID) 
 
 
 def _deck_data(
-    source: quotes_api.DeckSource, brand: DeckBrand, summary: str | None = None
+    source: quotes_api.DeckSource,
+    brand: DeckBrand,
+    summary: str | None = None,
+    photos: tuple[DeckPhoto, ...] = (),
 ) -> DeckData:
     return DeckData(
         number=source.number,
@@ -325,6 +335,7 @@ def _deck_data(
         customer_note=source.customer_note,
         brand=brand,
         summary=summary,
+        photos=photos,
     )
 
 
@@ -356,6 +367,17 @@ def run_job(session: Session, store: FileStore, job: Job) -> None:
             logo_png=brand.logo_png,
         ),
         latest_summary(session, job.tenant_id, quote_id),
+        tuple(
+            DeckPhoto(photo.jpeg, photo.caption)
+            for photo in photo_enhancer_api.deck_photos(
+                session,
+                store,
+                job.tenant_id,
+                account_id=source.account_id,
+                opportunity_id=source.opportunity_id,
+                limit=MAX_DECK_PHOTOS,
+            )
+        ),
     )
     content = render_pptx(data) if fmt == "pptx" else render_deck(data)
     existing = documents_api.find_by_content(

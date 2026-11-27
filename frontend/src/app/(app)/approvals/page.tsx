@@ -28,6 +28,7 @@ import {
   canDecideOn,
   parseApprovalFilters,
 } from "@/lib/approvals";
+import { followUpDraft } from "@/lib/follow-ups";
 import { canApproveActions, canReadApprovals } from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
@@ -156,6 +157,7 @@ export default async function ApprovalsPage({
                       </Link>
                       <ApprovalDecision
                         description={a.description}
+                        draft={followUpDraft(a) ?? undefined}
                         approve={approveProposal.bind(null, a.id, a.version)}
                         reject={rejectProposal.bind(null, a.id, a.version)}
                       />

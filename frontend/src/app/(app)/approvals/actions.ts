@@ -38,10 +38,20 @@ async function decide(
       fieldErrors: { note: problem },
       error: null,
     };
+  // A reworded follow-up e-mail (ADR 0036): only the two texts go to the API, which checks
+  // them again and ignores a field that was not changed.
+  const subject = formData.get("subject");
+  const text = formData.get("body");
+  const edit =
+    decision === "approve" &&
+    typeof subject === "string" &&
+    typeof text === "string"
+      ? { subject, body: text }
+      : undefined;
   try {
     await apiFetch<AgentAction>(`/approvals/actions/${id}/${decision}`, {
       method: "POST",
-      body: JSON.stringify({ version, note: note.trim() || null }),
+      body: JSON.stringify({ version, note: note.trim() || null, edit }),
     });
   } catch (error) {
     const info = toErrorInfo(error);

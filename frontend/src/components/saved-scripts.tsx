@@ -24,7 +24,10 @@ export function SavedScripts({ scripts }: { scripts: ScriptRead[] }) {
                 <span className="font-normal text-slate-500">
                   · {formatDateTime(s.created_at)} · {languageName(s.language)}{" "}
                   · {GOAL_LABELS[s.goal]} · {TONE_LABELS[s.tone]} ·{" "}
-                  {s.length_seconds} seconds · {s.words} words
+                  {s.length_seconds} seconds · {s.words} words ·{" "}
+                  {s.source === "ai_draft"
+                    ? "AI draft, approved by a colleague"
+                    : "Written by hand"}
                 </span>
               </p>
               <ol lang={s.language} className="mt-2 space-y-1">

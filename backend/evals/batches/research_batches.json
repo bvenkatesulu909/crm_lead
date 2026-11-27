@@ -1,0 +1,111 @@
+{
+  "about": "Batch account research (ADR 0042, BR5). Each case is played through the real batch service, the real worker step and the real single-account research; only the model is scripted. agent_evals/batch.py adds checks no case can skip (isolation between accounts and organisations, nothing changed, the bookkeeping). All accounts are fictional.",
+  "cases": [
+    {
+      "id": "batch-two-accounts-finish",
+      "description": "Two readable accounts are researched one after the other and the batch finishes.",
+      "select": ["A1", "A2"],
+      "expect": {"status": "finished", "counts": {"done": 2}, "model_calls": 2}
+    },
+    {
+      "id": "batch-one-hundred-accounts",
+      "description": "The largest batch allowed: one hundred accounts, one model call each, every prompt about one account only.",
+      "select": ["A1", "A2", "extra:98"],
+      "expect": {"status": "finished", "counts": {"done": 100}, "model_calls": 100}
+    },
+    {
+      "id": "batch-poisoned-account",
+      "description": "An account whose own name tries to make the writer list other customers is researched like any other; its text never reaches another account's prompt.",
+      "select": ["A1", "poisoned", "A2"],
+      "expect": {"status": "finished", "counts": {"done": 3}, "model_calls": 3}
+    },
+    {
+      "id": "batch-other-organisation-left-out",
+      "description": "An account of another organisation and a made-up id in the selection are counted as not available and never researched.",
+      "select": ["A1", "B1", "made_up"],
+      "expect": {"status": "finished", "counts": {"done": 1}, "model_calls": 1, "not_available": 2}
+    },
+    {
+      "id": "batch-only-other-organisation-refused",
+      "description": "A selection with only another organisation's account is refused before anything is stored.",
+      "select": ["B1"],
+      "expect": {"status": "finished", "refused": "empty_selection"}
+    },
+    {
+      "id": "batch-made-up-only-refused",
+      "description": "A selection with only made-up ids is refused before anything is stored.",
+      "select": ["made_up", "made_up"],
+      "expect": {"status": "finished", "refused": "empty_selection"}
+    },
+    {
+      "id": "batch-one-failing-account",
+      "description": "The writer cites a record it was never given for the second account; that account fails and the others are still researched.",
+      "select": ["A1", "A2", "extra:1"],
+      "writer": {"2": "nosource"},
+      "expect": {"status": "finished", "counts": {"done": 2, "failed": 1}, "model_calls": 3, "failures": ["no_sourced_sentence"]}
+    },
+    {
+      "id": "batch-answer-of-the-wrong-shape",
+      "description": "An answer without the brief tool is refused for that account only.",
+      "select": ["A1", "A2"],
+      "writer": {"1": "wrongshape"},
+      "expect": {"status": "finished", "counts": {"done": 1, "failed": 1}, "model_calls": 2, "failures": ["answer_refused"]}
+    },
+    {
+      "id": "batch-model-down-once",
+      "description": "The model is unreachable once; the step is tried again and the account is researched.",
+      "select": ["A1", "A2"],
+      "writer": {"1": "down"},
+      "expect": {"status": "finished", "counts": {"done": 2}, "model_calls": 3}
+    },
+    {
+      "id": "batch-model-down-three-times",
+      "description": "The model is unreachable three times for the first account; it is recorded as unavailable and the batch goes on.",
+      "select": ["A1", "A2"],
+      "writer": {"1": "down", "2": "down", "3": "down"},
+      "expect": {"status": "finished", "counts": {"done": 1, "failed": 1}, "model_calls": 4, "failures": ["unavailable"]}
+    },
+    {
+      "id": "batch-cap-reached",
+      "description": "A small monthly budget holds the cap down; the batch stops before an account whose worst case would pass the cap, and the rest is marked not run.",
+      "select": ["A1", "A2", "extra:2"],
+      "monthly_budget": 10024,
+      "expect": {"status": "stopped_budget", "counts": {"done": 3, "not_run": 1}, "model_calls": 3}
+    },
+    {
+      "id": "batch-cancel-after-one",
+      "description": "A cancel after the first account stops the batch before the second; the first brief is kept.",
+      "select": ["A1", "A2", "extra:1"],
+      "cancel_after_steps": 1,
+      "expect": {"status": "cancelled", "counts": {"done": 1, "not_run": 2}, "model_calls": 1}
+    },
+    {
+      "id": "batch-cancel-before-start",
+      "description": "A cancel before the first step researches nothing.",
+      "select": ["A1", "A2"],
+      "cancel_after_steps": 0,
+      "expect": {"status": "cancelled", "counts": {"not_run": 2}, "model_calls": 0}
+    },
+    {
+      "id": "batch-permission-lost",
+      "description": "An account archived after the batch started is skipped without a model call.",
+      "select": ["A1", "A2"],
+      "lose_access": ["A2"],
+      "expect": {"status": "finished", "counts": {"done": 1, "skipped": 1}, "model_calls": 1}
+    },
+    {
+      "id": "batch-sales-agent-refused",
+      "description": "A sales agent may not start a batch.",
+      "select": ["A1"],
+      "starter": "alpha.agent1",
+      "expect": {"status": "finished", "refused": "forbidden"}
+    },
+    {
+      "id": "batch-stale-confirmation-refused",
+      "description": "A confirmed figure far from today's estimate (a stale screen) is refused.",
+      "select": ["A1", "A2"],
+      "confirm_factor": 2.0,
+      "expect": {"status": "finished", "refused": "estimate_changed"}
+    }
+  ]
+}

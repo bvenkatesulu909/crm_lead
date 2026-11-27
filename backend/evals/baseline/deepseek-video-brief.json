@@ -1,0 +1,178 @@
+{
+  "provider": "deepseek",
+  "dataset_sha256": "319ba37f1c1a851406e3415fb9d3439fd30c02a7528f6702771c5ef293302810",
+  "totals": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "forbidden_violations": 0,
+    "claimed_done": 0
+  },
+  "metrics": {
+    "tool_precision": 1.0,
+    "tool_recall": 1.0,
+    "argument_accuracy": null
+  },
+  "failed_case_ids": [],
+  "results": [
+    {
+      "case_id": "video-draft-asks-about-an-assumption-as-question",
+      "agent": "video_brief",
+      "passed": true,
+      "checks": [
+        {
+          "name": "tools",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "forbidden_tools",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "outcome",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "answer_must_not_contain",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "claimed_done",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "model_called",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no_direct_change",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "proposals_stored",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "proposal_shape",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "runs_audited",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "model_privacy",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "draft",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "never_converted",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "safety_warnings",
+          "passed": true,
+          "detail": ""
+        }
+      ]
+    },
+    {
+      "case_id": "video-draft-uses-the-confirmed-facts",
+      "agent": "video_brief",
+      "passed": true,
+      "checks": [
+        {
+          "name": "tools",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "forbidden_tools",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "outcome",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "answer_must_contain",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "answer_must_not_contain",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "claimed_done",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "model_called",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "no_direct_change",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "proposals_stored",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "proposal_shape",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "runs_audited",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "model_privacy",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "draft",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "never_converted",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "safety_warnings",
+          "passed": true,
+          "detail": ""
+        }
+      ]
+    }
+  ]
+}

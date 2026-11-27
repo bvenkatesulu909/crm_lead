@@ -33,6 +33,7 @@ import type {
   LeadScore,
   PublicChatTranscript,
 } from "@/lib/api-types";
+import { CONSENT_LABELS } from "@/lib/customer-data";
 import {
   PROPERTY_TYPE_LABELS,
   LANGUAGE_LABELS,
@@ -43,7 +44,11 @@ import {
   leadName,
 } from "@/lib/format";
 import { availableActions } from "@/lib/lead-rules";
-import { canReadBuyerMemory, hasAny } from "@/lib/permissions";
+import {
+  canReadBuyerMemory,
+  canReadVideoBrief,
+  hasAny,
+} from "@/lib/permissions";
 import { apiFetch, getMe } from "@/lib/server/api";
 
 import {
@@ -182,6 +187,10 @@ export default async function LeadPage({
     ["Phone", lead.phone ?? "—"],
     ["Source", lead.source ? SOURCE_LABELS[lead.source] : "—"],
     [
+      "E-mail consent",
+      `${CONSENT_LABELS[lead.email_consent ?? "unknown"]}${lead.email_consent_at ? ` (since ${formatDateTime(lead.email_consent_at)})` : ""}`,
+    ],
+    [
       "Call in",
       lead.preferred_language ? LANGUAGE_LABELS[lead.preferred_language] : "—",
     ],
@@ -232,6 +241,15 @@ export default async function LeadPage({
               >
                 Site visit brief
               </ButtonLink>
+              {canReadVideoBrief(me) && (
+                <ButtonLink
+                  variant="secondary"
+                  href={`/print/leads/${lead.id}/video-brief`}
+                  className="ml-2"
+                >
+                  Video brief
+                </ButtonLink>
+              )}
             </div>
           )}
         </div>

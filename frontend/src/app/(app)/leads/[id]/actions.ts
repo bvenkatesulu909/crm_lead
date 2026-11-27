@@ -87,6 +87,8 @@ export async function updateLead(
     company_website: data.company_website ?? null,
     company_industry: data.company_industry ?? null,
     company_size: data.company_size ?? null,
+    // Left out when the form did not carry it, so a save can never reset a "no".
+    ...(data.email_consent ? { email_consent: data.email_consent } : {}),
   };
   try {
     await apiFetch<Lead>(path, { method: "PATCH", body: JSON.stringify(body) });

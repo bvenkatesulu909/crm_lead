@@ -1,7 +1,7 @@
 """One stored deal risk snapshot (ADR 0037, step DR2).
 
 Insert-only: the database refuses to change a row and to delete one younger than 365 days
-(migration 0073). The factors are stored as codes, sentences and numbers - never free text a person
+(migration 0074). The factors are stored as codes, sentences and numbers - never free text a person
 typed - so a snapshot can be shown again without reading the deal.
 """
 

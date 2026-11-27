@@ -28,6 +28,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "staff_assistant",
         "portal_assistant",
         "public_chat",
+        "receptionist",
         "knowledge_answers",
         "qualifier",
         "lead_agent",
@@ -35,6 +36,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "deal_desk",
         "account_research",
         "call_notes",
+        "video_brief",
     }
     assert {key for key, agent in AGENTS.items() if agent.uses_model} == models
     # The web check is governed like an agent but calls no language model (ADR 0019).
@@ -59,7 +61,10 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
     assert not AGENTS["deck_writer"].default_enabled  # ADR 0032 Amendment A: off until switched on
     assert not AGENTS["account_research"].default_enabled  # ADR 0024 Q8 still applies to it
     assert not AGENTS["call_notes"].default_enabled  # ADR 0035: off until switched on
+    assert not AGENTS["video_brief"].default_enabled  # ADR 0041: off until switched on
     assert not AGENTS["voice"].default_enabled and AGENTS["voice"].platform_switch is False
+    # The voice receptionist talks to anonymous visitors: OFF until switched on (ADR 0038).
+    assert not AGENTS["receptionist"].default_enabled and AGENTS["receptionist"].uses_model
     # Company details read outside sites for a lead: OFF until switched on (ADR 0026 Q4).
     details = AGENTS["company_details"]
     assert (details.uses_model, details.platform_switch, details.default_enabled) == (
@@ -72,7 +77,9 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "lead_agent",
         "deck_writer",
         "call_notes",
+        "video_brief",
         "voice",
+        "receptionist",
         "account_research",
         "company_details",
         "call_audio",
@@ -91,6 +98,7 @@ def test_every_key_fits_the_database_rule() -> None:
         "staff_assistant",
         "portal_assistant",
         "public_chat",
+        "receptionist",
         "deal_desk",
         "account_research",
         "deck_writer",

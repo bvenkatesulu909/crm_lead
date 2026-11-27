@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit
 from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
+from app.core.db import bind_user, clear_user
 from app.core.errors import DomainError, ForbiddenError
 from app.core.records import LeadQualifierFacts, LeadSnapshot, Recipient, RecordFacts
 from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, export_rows
@@ -142,6 +143,8 @@ class LeadBriefFacts:
     budget_min_inr: int | None
     budget_max_inr: int | None
     location: str | None
+    # The account the lead became; a quote can only belong to a lead through it.
+    converted_account_id: uuid.UUID | None = None
 
 
 def brief_facts(
@@ -154,7 +157,7 @@ def brief_facts(
     return LeadBriefFacts(
         lead.first_name, lead.last_name, lead.status, lead.source, lead.owner_id, lead.phone,
         lead.email, lead.preferred_language, lead.property_type, lead.budget_min_inr,
-        lead.budget_max_inr, lead.location,
+        lead.budget_max_inr, lead.location, lead.converted_account_id,
     )  # fmt: skip
 
 
@@ -215,8 +218,33 @@ def lead_recipient(session: Session, principal: Principal, lead_id: uuid.UUID) -
         email=lead.email,
         company=lead.company_name,
         account_id=None,
-        consent_withdrawn=False,
+        consent_withdrawn=lead.email_consent == "withdrawn",
     )
+
+
+def email_consent_withdrawn(
+    session: Session, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, reader_user_id: uuid.UUID
+) -> bool:
+    """True if the lead has withdrawn e-mail consent, or no longer exists (fail closed).
+
+    For the worker's last check before an e-mail leaves (ADR 0036). The worker binds only the
+    tenant, and the leads policy hides every lead without a user and scope, so this reads ONE
+    column with the sender's id and the "all" scope, then puts the previous binding back. The
+    sender already got past the read rules when the e-mail was queued; reassigning the lead
+    since then must not let a withdrawn consent slip through."""
+    previous_user = session.info.get("user_id")
+    previous_scope = session.info.get("lead_scope")
+    bind_user(session, reader_user_id, "all")
+    try:
+        consent = session.scalar(
+            select(Lead.email_consent).where(Lead.tenant_id == tenant_id, Lead.id == lead_id)
+        )
+    finally:
+        if previous_user is not None and previous_scope is not None:
+            bind_user(session, uuid.UUID(str(previous_user)), str(previous_scope))
+        else:
+            clear_user(session)
+    return consent is None or consent == "withdrawn"
 
 
 def create_lead_from_website(

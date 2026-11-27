@@ -1,6 +1,7 @@
 """Public interface of the contacts module. Other modules import only from here."""
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, and_, select
@@ -42,6 +43,8 @@ def create_contact(
     job_title: str | None,
     account_id: uuid.UUID | None,
     owner_id: uuid.UUID | None,
+    email_consent: str = "unknown",
+    email_consent_at: datetime | None = None,
 ) -> uuid.UUID:
     """Insert a contact in the caller's transaction (authorization is the caller's job)."""
     contact = Contact(
@@ -53,6 +56,8 @@ def create_contact(
         job_title=job_title,
         account_id=account_id,
         owner_id=owner_id,
+        email_consent=email_consent,
+        email_consent_at=email_consent_at,
     )
     session.add(contact)
     session.flush()

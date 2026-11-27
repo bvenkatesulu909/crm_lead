@@ -112,6 +112,11 @@ export const canReadWebCheck = (me: Pick<Me, "permissions">) =>
 /** Buyer memory (ADR 0028): display only - the API checks again, and the lead decides. */
 export const canReadBuyerMemory = (me: Pick<Me, "permissions">) =>
   hasAny(me, "buyer_memory:read");
+/** The video brief (ADR 0041): display only - the API checks again, and the lead decides. */
+export const canReadVideoBrief = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "video_brief:read");
+export const canWriteVideoBrief = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "video_brief:write");
 export const canWriteBuyerMemory = (me: Pick<Me, "permissions">) =>
   hasAny(me, "buyer_memory:write");
 /** Call recordings (ADR 0030): display only - the API checks again, and the lead decides. */
@@ -341,6 +346,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "buyer_memory:read":
     "See what we know about a buyer: facts, assumptions and gaps",
   "buyer_memory:write": "Record and confirm what we know about a buyer",
+  "video_brief:read": "Prepare the brief for a personalised video to a buyer",
+  "video_brief:write": "Save approved scripts for buyer videos",
   "call:read": "See call recordings and transcripts on a lead",
   "call:write": "Add a call recording to a lead",
   "call_notes:run":

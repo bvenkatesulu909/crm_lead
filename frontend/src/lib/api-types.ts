@@ -120,6 +120,8 @@ export type Lead = {
   company_industry?: CompanyIndustry | null;
   company_size?: CompanySize | null;
   preferred_language?: PreferredLanguage | null;
+  email_consent?: EmailConsent;
+  email_consent_at?: string | null;
   owner_id: string | null;
   converted_at: string | null;
   converted_account_id: string | null;
@@ -1834,3 +1836,51 @@ export type CustomAgentRun = {
 };
 
 export type CustomAgentRunPage = { items: CustomAgentRun[] };
+
+/** The brief for a personalised buyer video (ADR 0041): built by code, nothing stored. */
+export type VideoBrief = {
+  first_name: string;
+  language: "en" | "hi" | "te";
+  tone: "warm" | "professional" | "brisk";
+  tone_note: string;
+  goal: "introduce" | "follow_up" | "after_visit" | "explain_quote" | "revive";
+  length_seconds: 30 | 60 | 90;
+  word_target: number;
+  words: number;
+  known: {
+    kind: "fact" | "assumption" | "form" | "price";
+    key: string;
+    label: string;
+    value: string;
+    source: string | null;
+    quote: string | null;
+    reason: string | null;
+  }[];
+  script: {
+    kind: "greeting" | "intro" | "fact" | "price" | "question" | "closing";
+    text: string;
+    cites: string[];
+    seconds: number;
+  }[];
+  must_say: string[];
+  must_not_say: string[];
+  consent_notes: string[];
+  cautions: { code: string; text: string }[];
+};
+
+/** A saved version of a lead's buyer-video script (ADR 0041, VB3). */
+export type ScriptRead = {
+  id: string;
+  version: number;
+  source: "hand_written" | "ai_draft";
+  language: "en" | "hi" | "te";
+  tone: "warm" | "professional" | "brisk";
+  goal: "introduce" | "follow_up" | "after_visit" | "explain_quote" | "revive";
+  length_seconds: 30 | 60 | 90;
+  lines: string[];
+  words: number;
+  created_by: string;
+  created_at: string;
+};
+
+export type ScriptPage = { items: ScriptRead[] };

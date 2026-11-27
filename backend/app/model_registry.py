@@ -39,6 +39,8 @@ from app.modules.qualifier import models as qualifier_models
 from app.modules.quotes import models as quotes_models
 from app.modules.sales import models as sales_models
 from app.modules.support import models as support_models
+from app.modules.units import models as units_models
+from app.modules.video_brief import models as video_brief_models
 from app.modules.webcheck import models as webcheck_models
 from app.modules.workflows import models as workflows_models
 
@@ -73,12 +75,14 @@ __all__ = [
     "sales_models",
     "staff_assistant_models",
     "support_models",
+    "units_models",
     "webcheck_models",
     "deal_desk_models",
     "deal_risk_models",
     "custom_agents_models",
     "call_notes_models",
     "proposal_decks_models",
+    "video_brief_models",
     "workflows_models",
 ]
 

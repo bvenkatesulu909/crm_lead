@@ -56,6 +56,7 @@ _DETAIL_FIELDS = (
     "company_industry",
     "company_size",
     "preferred_language",
+    "email_consent",
 )
 
 
@@ -232,6 +233,9 @@ def update_lead(
     before = _snapshot(lead)
     for field, value in changes_wanted.items():
         setattr(lead, field, value)
+    if before["email_consent"] != lead.email_consent:
+        # Server-controlled date, as for contacts: a client can't back-date consent.
+        lead.email_consent_at = None if lead.email_consent == "unknown" else datetime.now(UTC)
     changes = diff(before, _snapshot(lead))
     if changes:
         record_audit(
@@ -384,6 +388,9 @@ def convert_lead(
         job_title=lead.job_title,
         account_id=account_id,
         owner_id=lead.owner_id,
+        # The person's answer travels with them (ADR 0036): a "no" must survive conversion.
+        email_consent=lead.email_consent,
+        email_consent_at=lead.email_consent_at,
     )
 
     opportunity_id = None

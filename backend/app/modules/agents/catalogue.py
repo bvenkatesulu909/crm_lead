@@ -76,6 +76,19 @@ AGENTS: dict[str, AgentDef] = {
             tools=("save_lead",),
         ),
         AgentDef(
+            key="receptionist",
+            title="Voice receptionist",
+            description=(
+                "Talks to anonymous website visitors by voice in Hindi, Telugu or English and "
+                "saves a lead on request. It is the website chat, spoken: it can only save a "
+                "lead, never reads CRM data and says it is an automated assistant. Counts "
+                "model tokens and server speech minutes. Off until switched on."
+            ),
+            owner_role="tenant_admin",
+            tools=("request_callback", "save_lead", "search_knowledge"),
+            default_enabled=False,
+        ),
+        AgentDef(
             key="knowledge_answers",
             title="Knowledge answers",
             description="Answers questions from the knowledge base, always with sources.",
@@ -141,6 +154,20 @@ AGENTS: dict[str, AgentDef] = {
             ),
             owner_role="tenant_admin",
             tools=("submit_summary",),
+            default_enabled=False,
+        ),
+        AgentDef(
+            key="video_brief",
+            title="Video script drafter",
+            description=(
+                "Drafts the spoken script of a personalised video to one buyer, from the "
+                "buyer's confirmed facts and, if chosen, an approved quote's prices. Code checks "
+                "every number against those facts and never lets an assumption be said as a "
+                "fact. The draft is shown to the person who asked; the CRM makes no video. Off "
+                "until an administrator switches it on."
+            ),
+            owner_role="tenant_admin",
+            tools=("submit_script",),
             default_enabled=False,
         ),
         AgentDef(

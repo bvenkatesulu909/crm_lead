@@ -1,7 +1,7 @@
 """Deal risk forecast: insert-only snapshots (DR2)
 
-Revision ID: 0073
-Revises: 0072
+Revision ID: 0074
+Revises: 0073
 Create Date: 2026-11-22
 
 ADR 0037. One new table, ``deal_risk_snapshots``: ENABLE + FORCE row-level security and the
@@ -15,8 +15,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0073"
-down_revision: str | None = "0072"
+revision: str = "0074"
+down_revision: str | None = "0073"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

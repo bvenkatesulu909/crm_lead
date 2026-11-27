@@ -127,7 +127,15 @@ def test_the_counters_outlive_the_conversations_the_cleanup_deletes(
 
 def test_the_table_holds_nothing_that_could_identify_a_visitor_or_a_lead() -> None:
     columns = {c.name for c in PublicChatDailyStat.__table__.columns}
-    assert columns == {"tenant_id", "day", "conversations_started", "leads_saved", "updated_at"}
+    # voice_seconds (ADR 0038) is one more anonymous number: seconds of speech used that day.
+    assert columns == {
+        "tenant_id",
+        "day",
+        "conversations_started",
+        "leads_saved",
+        "voice_seconds",
+        "updated_at",
+    }
 
 
 def test_one_organisation_never_sees_anothers_numbers(make_api, db_session, world) -> None:

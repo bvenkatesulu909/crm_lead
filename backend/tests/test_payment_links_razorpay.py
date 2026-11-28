@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from app.modules.payment_links import webhook
-from app.modules.payment_links.provider import ProviderError
+from app.modules.payment_links.provider import ProviderError, ProviderRefusedError
 from app.modules.payment_links.razorpay import BASE_URL, RazorpayProvider
 
 NOW = datetime(2026, 11, 13, 9, 0, tzinfo=UTC)
@@ -182,6 +182,56 @@ def test_a_refusal_becomes_a_short_error_without_the_body(status: int) -> None:
         create(provider(rec))
     assert str(status) in str(refused.value)
     assert "secret detail" not in str(refused.value) and "rzp_test_key" not in str(refused.value)
+
+
+def test_an_amount_above_the_account_limit_is_a_refusal_not_an_outage() -> None:
+    """Seen on staging 2026-11-27: a 5.5 crore link got 400 "amount exceeds maximum amount"."""
+    rec = Recorder(
+        400,
+        {
+            "error": {
+                "code": "BAD_REQUEST_ERROR",
+                "description": "amount exceeds maximum amount allowed.",
+                "field": None,
+            }
+        },
+    )
+    with pytest.raises(ProviderRefusedError) as refused:
+        create(provider(rec), amount_paise=5_500_000_000)
+    assert refused.value.reason == "amount_too_large"
+    assert "maximum amount allowed" not in str(refused.value)
+
+
+@pytest.mark.parametrize("status", [400, 422])
+def test_another_bad_request_is_a_plain_refusal(status: int) -> None:
+    rec = Recorder(status, {"error": {"description": "reference_id already exists rzp_test_key"}})
+    with pytest.raises(ProviderRefusedError) as refused:
+        create(provider(rec))
+    assert refused.value.reason == "refused"
+    assert "rzp_test_key" not in str(refused.value)
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_a_refused_key_is_its_own_refusal(status: int) -> None:
+    with pytest.raises(ProviderRefusedError) as refused:
+        create(provider(Recorder(status, {"error": {"description": "x"}})))
+    assert refused.value.reason == "key_refused"
+
+
+@pytest.mark.parametrize("status", [429, 500, 502, 302])
+def test_busy_or_broken_answers_stay_an_outage(status: int) -> None:
+    with pytest.raises(ProviderError) as failed:
+        create(provider(Recorder(status, {})))
+    assert not isinstance(failed.value, ProviderRefusedError)
+
+
+@pytest.mark.parametrize(
+    "body", [b"<html>", b"[]", b'{"error": "text"}', b'{"error": {"description": 5}}']
+)
+def test_a_refusal_with_an_odd_body_is_still_a_plain_refusal(body: bytes) -> None:
+    with pytest.raises(ProviderRefusedError) as refused:
+        create(provider(Recorder(400, body)))
+    assert refused.value.reason == "refused"
 
 
 @pytest.mark.parametrize(

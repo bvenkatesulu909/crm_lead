@@ -249,3 +249,18 @@ def test_the_secrets_do_not_show_in_the_settings_text() -> None:
     text = repr(settings(razorpay_mode="test", **KEYS))
     assert "s1" not in text.replace("rzp_test", "")  # SecretStr hides them
     assert "razorpay_key_secret=SecretStr('**********')" in text
+
+
+@pytest.mark.parametrize(
+    ("amount", "text"),
+    [
+        (Decimal("500000"), "₹5,00,000"),
+        (Decimal("55000000.00"), "₹5,50,00,000"),
+        (Decimal("999"), "₹999"),
+        (Decimal("1000"), "₹1,000"),
+        (Decimal("214.16"), "₹214.16"),
+        (Decimal("100000.50"), "₹1,00,000.50"),
+    ],
+)
+def test_rupees_are_written_the_indian_way(amount: Decimal, text: str) -> None:
+    assert rules.rupees_text(amount) == text

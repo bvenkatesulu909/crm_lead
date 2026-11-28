@@ -68,6 +68,11 @@ export function paymentLinkErrorText(
       return "UPI payment links are switched off for your organisation. An administrator can switch them on under Automation → AI agents.";
     case "payment_provider_unavailable":
       return "The payment service could not be reached. Try again in a moment.";
+    case "payment_provider_refused":
+      return "The payment service refused to create this link. Trying again will not help; an administrator should check the payment settings.";
+    // The server's sentence names the balance and the limit, so it is kept as it is.
+    case "payment_amount_above_limit":
+      return fallback;
     case "payment_link_rate_limited":
       return "Too many payment links were created. Try again later.";
     case "invoice_not_found":

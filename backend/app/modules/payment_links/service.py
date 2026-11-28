@@ -6,6 +6,7 @@ which runs in the worker for an event the webhook receiver verified and stored. 
 commit; the router (or the worker) commits once.
 """
 
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -27,13 +28,21 @@ from app.modules.identity import api as identity_api
 from app.modules.invoices import api as invoices_api
 from app.modules.payment_links import rules, webhook
 from app.modules.payment_links.models import PaymentEvent, PaymentLink
-from app.modules.payment_links.provider import PaymentProvider, ProviderError
+from app.modules.payment_links.provider import (
+    AmountTooLargeError,
+    PaymentProvider,
+    ProviderError,
+    ProviderRefusedError,
+)
 from app.modules.payment_links.schemas import PaymentLinkRead
 
 ENTITY = "payment_link"
 AGENT_KEY = "payment_links"
 APPLY_JOB = "payment_link.apply"
 MAX_BODY_BYTES = 64 * 1024
+
+
+logger = logging.getLogger(__name__)
 
 
 class InvoiceNotFoundError(NotFoundError):
@@ -69,6 +78,22 @@ class ProviderUnavailableError(DomainError):
 
     def __init__(self) -> None:
         super().__init__("The payment service could not be reached. Try again in a moment.")
+
+
+class AmountAboveLimitError(DomainError):
+    status_code = 422
+    code = "payment_amount_above_limit"
+
+
+class ProviderRefusedLinkError(DomainError):
+    status_code = 422
+    code = "payment_provider_refused"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "The payment service refused to create this link. Trying again will not help; "
+            "an administrator should check the payment settings."
+        )
 
 
 class InvalidSignatureError(DomainError):
@@ -139,6 +164,12 @@ def create_link(
         paise = rules.to_paise(invoice.balance_due)
     except ValueError as exc:
         raise InvoiceNotPayableError(str(exc)) from None
+    if invoice.balance_due > settings.razorpay_max_link_rupees:
+        raise AmountAboveLimitError(
+            f"The balance of {rules.rupees_text(invoice.balance_due)} is above the limit for one "
+            f"UPI payment ({rules.rupees_text(settings.razorpay_max_link_rupees)}). "
+            "Collect it another way, or in smaller parts."
+        )
 
     recent = session.scalar(
         select(func.count())
@@ -191,7 +222,17 @@ def create_link(
             expires_at=expires,
             notes={"invoice_id": str(invoice.id)},
         )
-    except ProviderError:
+    except AmountTooLargeError:
+        raise AmountAboveLimitError(
+            f"The payment service refused {rules.rupees_text(invoice.balance_due)}: it is above "
+            "the most one UPI payment may be on this account. Collect it another way, or in "
+            "smaller parts."
+        ) from None
+    except ProviderRefusedError as exc:
+        logger.warning("payment link refused by the provider: %s", exc)
+        raise ProviderRefusedLinkError() from None
+    except ProviderError as exc:
+        logger.warning("payment provider unavailable: %s", exc)
         raise ProviderUnavailableError() from None
 
     link = PaymentLink(

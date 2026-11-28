@@ -106,6 +106,17 @@ describe("helpers", () => {
     );
     expect(paymentLinkErrorText(null, "fallback")).toBe("fallback");
   });
+
+  it("a refusal is not called an outage, and the limit sentence keeps its amounts", () => {
+    const refused = paymentLinkErrorText("payment_provider_refused", "x");
+    expect(refused).toMatch(/refused/);
+    expect(refused).not.toMatch(/could not be reached|try again in a moment/i);
+    const limit =
+      "The balance of ₹5,50,00,000 is above the limit for one UPI payment (₹5,00,000).";
+    expect(paymentLinkErrorText("payment_amount_above_limit", limit)).toBe(
+      limit,
+    );
+  });
 });
 
 describe("createPaymentLink", () => {

@@ -9,7 +9,11 @@ import httpx
 import pytest
 
 from app.modules.payment_links import webhook
-from app.modules.payment_links.provider import ProviderError
+from app.modules.payment_links.provider import (
+    AmountTooLargeError,
+    ProviderError,
+    ProviderRefusedError,
+)
 from app.modules.payment_links.razorpay import BASE_URL, RazorpayProvider
 
 NOW = datetime(2026, 11, 13, 9, 0, tzinfo=UTC)
@@ -243,3 +247,44 @@ def test_only_the_fixed_host_is_ever_called() -> None:
     provider(rec).cancel_link("plink_1")
     assert {r.url.host for r in rec.requests} == {"api.razorpay.com"}
     assert {r.url.scheme for r in rec.requests} == {"https"}
+
+
+# --- a refusal is not an outage (staging, 2026-11-28: a 5.5 crore invoice was called "unreachable")
+
+
+def test_an_amount_above_razorpays_maximum_is_named_as_such() -> None:
+    error = {"code": "BAD_REQUEST_ERROR", "description": "amount exceeds maximum amount allowed."}
+    rec = Recorder(400, {"error": error})
+    with pytest.raises(AmountTooLargeError) as refused:
+        create(provider(rec))
+    assert "exceeds" not in str(refused.value)  # Razorpay's own words never reach a message
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 422])
+def test_any_other_client_error_is_a_refusal_not_an_outage(status: int) -> None:
+    rec = Recorder(status, {"error": {"description": "something else"}})
+    with pytest.raises(ProviderRefusedError) as refused:
+        create(provider(rec))
+    assert not isinstance(refused.value, AmountTooLargeError)
+
+
+@pytest.mark.parametrize("status", [429, 500, 502, 503, 302])
+def test_busy_or_broken_answers_are_an_outage(status: int) -> None:
+    with pytest.raises(ProviderError) as failed:
+        create(provider(Recorder(status, {"error": {"description": "amount exceeds maximum"}})))
+    assert not isinstance(failed.value, ProviderRefusedError)
+
+
+def test_a_refusal_with_a_body_that_is_not_json_is_still_a_refusal() -> None:
+    with pytest.raises(ProviderRefusedError):
+        create(provider(Recorder(400, b"<html>")))
+
+
+def test_a_network_failure_is_not_a_refusal() -> None:
+    def boom(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("no route")
+
+    client = httpx.Client(transport=httpx.MockTransport(boom))
+    with pytest.raises(ProviderError) as failed:
+        create(RazorpayProvider("k", "s", client=client))
+    assert not isinstance(failed.value, ProviderRefusedError)

@@ -33,7 +33,12 @@ from app.modules.invoices.models import Invoice, Payment
 from app.modules.notifications.models import Notification
 from app.modules.payment_links import rules, service
 from app.modules.payment_links.models import PaymentEvent, PaymentLink
-from app.modules.payment_links.provider import FakeProvider, ProviderError
+from app.modules.payment_links.provider import (
+    AmountTooLargeError,
+    FakeProvider,
+    ProviderError,
+    ProviderRefusedError,
+)
 from app.worker import WorkerServices, job_handlers, run_due_jobs
 from tests.auth_helpers import TEST_ISSUER
 from tests.conftest import UNREACHABLE_DATABASE_URL
@@ -356,6 +361,55 @@ def test_a_provider_that_is_down_stores_nothing(hooked, auth, world, on, fake, d
     assert problem["code"] == "payment_provider_unavailable"
     assert alpha_rows(db_session, world, PaymentLink) == []
     assert "500" not in json.dumps(problem)
+
+
+def test_a_balance_above_the_limit_is_refused_before_the_provider(
+    hooked, auth, world, on, fake, db_session
+) -> None:
+    app = app_of(hooked)
+    app.state.settings = app.state.settings.model_copy(
+        update={"razorpay_max_link_rupees": Decimal("200")}
+    )
+    invoice = invoice_of(hooked, auth, world)  # 214.16
+    problem = make_link(hooked, auth, invoice, code=422)
+    assert problem["code"] == "payment_amount_above_limit"
+    assert "₹214.16" in problem["detail"] and "₹200" in problem["detail"]
+    assert fake.links == {}
+    assert alpha_rows(db_session, world, PaymentLink) == []
+
+
+def test_a_balance_at_the_limit_is_accepted(hooked, auth, world, on, fake) -> None:
+    app = app_of(hooked)
+    app.state.settings = app.state.settings.model_copy(
+        update={"razorpay_max_link_rupees": Decimal("214.16")}
+    )
+    make_link(hooked, auth, invoice_of(hooked, auth, world))
+    assert len(fake.links) == 1
+
+
+def test_the_providers_own_maximum_is_explained_not_called_an_outage(
+    hooked, auth, world, on, fake, db_session
+) -> None:
+    def too_big(**_: Any) -> None:
+        raise AmountTooLargeError("Razorpay refused the amount.")
+
+    fake.create_link = too_big
+    problem = make_link(hooked, auth, invoice_of(hooked, auth, world), code=422)
+    assert problem["code"] == "payment_amount_above_limit"
+    assert alpha_rows(db_session, world, PaymentLink) == []
+
+
+def test_a_refusal_by_the_provider_is_not_called_an_outage(
+    hooked, auth, world, on, fake, db_session
+) -> None:
+    def refused(**_: Any) -> None:
+        raise ProviderRefusedError("Razorpay refused the request with status 401.")
+
+    fake.create_link = refused
+    problem = make_link(hooked, auth, invoice_of(hooked, auth, world), code=422)
+    assert problem["code"] == "payment_provider_refused"
+    assert "401" not in json.dumps(problem)
+    assert alpha_rows(db_session, world, PaymentLink) == []
 
 
 def test_the_hourly_limit_stops_a_flood(hooked, auth, world, on) -> None:

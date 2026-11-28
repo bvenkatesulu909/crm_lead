@@ -71,6 +71,21 @@ def from_paise(paise: int) -> Decimal:
     return Decimal(paise) / 100
 
 
+def rupees_text(amount: Decimal) -> str:
+    """₹ with Indian digit grouping (₹5,50,00,000; ₹1,00,000.50). Paise only when there are some."""
+    whole, _, fraction = f"{amount.quantize(Decimal('0.01'))}".partition(".")
+    sign = "-" if whole.startswith("-") else ""
+    digits = whole.lstrip("-")
+    if len(digits) > 3:
+        head, tail = digits[:-3], digits[-3:]
+        pairs: list[str] = []
+        while len(head) > 2:
+            pairs.insert(0, head[-2:])
+            head = head[:-2]
+        digits = ",".join([head, *pairs, tail])
+    return f"₹{sign}{digits}" + (f".{fraction}" if fraction != "00" else "")
+
+
 def reference_id(invoice_id: uuid.UUID, attempt: int) -> str:
     """A unique, short reference for a link: the invoice and which try this is (1-99)."""
     if not 1 <= attempt <= 99:

@@ -75,6 +75,10 @@ comes from the verified token (or, for the webhook, from the stored link).
 - **Amount and currency must match the link.** A different amount or currency, an invoice that no longer
   has a balance, or a part payment made meanwhile that leaves too little: nothing is recorded; the people
   who record payments get a notification.
+- **An upper limit per link.** A balance above `CRM_RAZORPAY_MAX_LINK_RUPEES` (default ₹5,00,000) is
+  refused before Razorpay is called (422 `payment_amount_above_limit`; the sentence names the balance and
+  the limit). Raise the setting if Razorpay raised your account's limit; an amount Razorpay still refuses
+  is answered as described in section 6 (`payment_amount_too_large`).
 - **Only INR invoices.** The demo data's default currency is EUR; an invoice in another currency answers
   409 "UPI payments are for invoices in INR".
 - **No customer data is sent to Razorpay or copied out of its events** (no e-mail, phone or UPI id).
@@ -83,7 +87,8 @@ comes from the verified token (or, for the webhook, from the stored link).
 
 ## 5. Limits of version 1
 
-- One full-balance link per invoice at a time; no part payments.
+- One full-balance link per invoice at a time; no part payments, so an invoice above the limit cannot
+  be collected by UPI (a token amount is the reserve-pay feature, ADR 0040).
 - Refunds done at Razorpay are not mirrored: a person reverses the payment in the CRM as today.
 - A link created at Razorpay whose database save fails later is an orphan; paying it is acknowledged as
   "unknown link" and a person must reconcile it.

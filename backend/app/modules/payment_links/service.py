@@ -75,6 +75,13 @@ class ProviderUnavailableError(DomainError):
         super().__init__("The payment service could not be reached. Try again in a moment.")
 
 
+class AmountAboveLimitError(DomainError):
+    """The balance is above CRM_RAZORPAY_MAX_LINK_RUPEES: refused before Razorpay is asked."""
+
+    status_code = 422
+    code = "payment_amount_above_limit"
+
+
 class ProviderRefusedLinkError(DomainError):
     """Razorpay answered and refused the link. Unlike an outage, trying again will not help."""
 
@@ -173,6 +180,12 @@ def create_link(
         paise = rules.to_paise(invoice.balance_due)
     except ValueError as exc:
         raise InvoiceNotPayableError(str(exc)) from None
+    if invoice.balance_due > settings.razorpay_max_link_rupees:
+        raise AmountAboveLimitError(
+            f"The balance of {rules.rupees_text(invoice.balance_due)} is above the limit for one "
+            f"UPI payment ({rules.rupees_text(settings.razorpay_max_link_rupees)}). "
+            "Collect it another way, or in smaller parts."
+        )
 
     recent = session.scalar(
         select(func.count())

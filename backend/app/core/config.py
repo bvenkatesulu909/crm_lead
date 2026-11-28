@@ -257,6 +257,11 @@ class Settings(BaseSettings):
     razorpay_webhook_secret: SecretStr | None = None
     razorpay_link_expiry_days: int = Field(default=7, ge=1, le=90)
     razorpay_links_per_user_hour: int = Field(default=30, ge=1, le=1_000)
+    # The largest balance one UPI link may ask for. Razorpay refuses amounts above the account's own
+    # per-payment maximum; checking first lets the CRM say why. Raise it if Razorpay raised yours.
+    razorpay_max_link_rupees: Decimal = Field(
+        default=Decimal("500000"), gt=0, le=Decimal("1000000000")
+    )
 
     # Proposal decks (ADR 0032): decks one person may ask for per hour.
     proposal_decks_per_user_hour: int = Field(default=30, ge=1, le=1_000)

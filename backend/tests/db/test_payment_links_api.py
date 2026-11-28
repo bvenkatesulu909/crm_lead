@@ -381,6 +381,30 @@ def test_a_provider_that_is_down_stores_nothing(hooked, auth, world, on, fake, d
     assert "500" not in json.dumps(problem)
 
 
+def test_a_balance_above_the_limit_is_refused_before_the_provider(
+    hooked, auth, world, on, fake, db_session
+) -> None:
+    app = app_of(hooked)
+    app.state.settings = app.state.settings.model_copy(
+        update={"razorpay_max_link_rupees": Decimal("200")}
+    )
+    invoice = invoice_of(hooked, auth, world)  # 214.16
+    problem = make_link(hooked, auth, invoice, code=422)
+    assert problem["code"] == "payment_amount_above_limit"
+    assert "₹214.16" in problem["detail"] and "₹200" in problem["detail"]
+    assert fake.links == {}
+    assert alpha_rows(db_session, world, PaymentLink) == []
+
+
+def test_a_balance_at_the_limit_is_accepted(hooked, auth, world, on, fake) -> None:
+    app = app_of(hooked)
+    app.state.settings = app.state.settings.model_copy(
+        update={"razorpay_max_link_rupees": Decimal("214.16")}
+    )
+    make_link(hooked, auth, invoice_of(hooked, auth, world))
+    assert len(fake.links) == 1
+
+
 def test_the_hourly_limit_stops_a_flood(hooked, auth, world, on) -> None:
     app_of(hooked).state.settings = app_of(hooked).state.settings.model_copy(
         update={"razorpay_links_per_user_hour": 2}

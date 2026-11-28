@@ -106,6 +106,14 @@ describe("helpers", () => {
     );
     expect(paymentLinkErrorText(null, "fallback")).toBe("fallback");
   });
+
+  it("the server's limit sentence keeps its amounts", () => {
+    const limit =
+      "The balance of ₹5,50,00,000 is above the limit for one UPI payment (₹5,00,000).";
+    expect(paymentLinkErrorText("payment_amount_above_limit", limit)).toBe(
+      limit,
+    );
+  });
 });
 
 describe("createPaymentLink", () => {

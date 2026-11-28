@@ -39,6 +39,7 @@ from app.modules.public_chat import models as public_chat_models
 from app.modules.qualifier import models as qualifier_models
 from app.modules.quotes import models as quotes_models
 from app.modules.research_batches import models as research_batches_models
+from app.modules.reservations import models as reservations_models
 from app.modules.sales import models as sales_models
 from app.modules.saved_filters import models as saved_filters_models
 from app.modules.support import models as support_models
@@ -79,6 +80,7 @@ __all__ = [
     "sales_models",
     "staff_assistant_models",
     "support_models",
+    "reservations_models",
     "units_models",
     "webcheck_models",
     "deal_desk_models",

@@ -109,8 +109,32 @@ under AI agents, with the usual monthly token budget, tool filter and platform s
 * `CRM_AI_PROVIDER=fake` gives a scripted coach for local demos (refused in production).
 * Migration 0087 teaches the approval queue the name (it follows main's 0086).
 
+## Is the forecast worth trusting? (DR6)
+
+For every deal that **closed**, the CRM takes the newest forecast made while it was still open and
+compares it with what happened: **won on time**, **won late** (after its expected close date) or
+**lost**. "Went badly" means lost or won late. A forecast that works shows a clearly higher "went
+badly" rate for high-risk deals than for low-risk ones; the rates are compared, not raw counts.
+Forecasts made after a deal closed never count.
+
+* **Report:** Reports -> **Deal risk: forecast vs. outcome** (managers and administrators), for any
+  period: one row per level plus deals that had no forecast, and a verdict in the section title.
+* **Script:** `python -m scripts.deal_risk_backtest --tenant alpha-demo --days 365` (in `backend`,
+  venv active) prints the same table. It reads as the organisation's Automation identity inside one
+  transaction that is rolled back: nothing is written.
+* Until **30** closed deals have a forecast, the verdict is **"Too early to measure"** (ADR 0037
+  question 5). If high-risk deals do not go badly more often than low-risk ones, the verdict says
+  the rules need revising (a new rules version; old snapshots keep theirs).
+
+### The coach on the deal page
+
+When a forecast has reasons, the Risk card shows **Ask the AI coach** (managers and administrators).
+The advice appears under the button as plain text with the suggested tasks linked into the approval
+queue; it is not stored, so it is gone when the page is reloaded. When the coach is switched off,
+over budget or over its limit, the card says so in plain words.
+
 ## Not built yet
 
-A button for the coach on the deal page, BP-10 evaluation cases for the coach, the backtest (DR6). Signals not read yet:
+BP-10 evaluation cases for the coach, a real-model try. Signals not read yet:
 close-date history, the number of contacts per deal, the account's overdue invoices and tickets beyond
 what account health already says, and call notes (the rules support them; the reader passes none).

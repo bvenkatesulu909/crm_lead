@@ -4,6 +4,7 @@
  * everything again - who may see a forecast and what it says. A forecast is an estimate from the
  * listed reasons: never show the score as a probability or as a fact.
  */
+import type { ApiErrorInfo } from "@/lib/api-error";
 import { isUuid } from "@/lib/communications";
 
 export type RiskLevel = "low" | "medium" | "high";
@@ -155,4 +156,57 @@ export function levelChange(
 export function opportunityPath(opportunityId: string): string {
   if (!isUuid(opportunityId)) throw new Error("invalid deal");
   return `/opportunities/${opportunityId}`;
+}
+
+// --- the optional AI coach (DR5) -----------------------------------------------------------------
+
+export type DealRiskCoach = {
+  opportunity_id: string;
+  /** Written by a model and cleaned by the API: shown as plain text only. */
+  advice: { text: string; factors: string[] }[];
+  proposals: { id: string; link: string }[];
+  blocked_messages: string[];
+  cleaned: boolean;
+  note: string;
+};
+
+/** What the coach's Server Action hands back: the advice (it is not stored) or an error. */
+export type CoachState = {
+  attempt: number;
+  result: DealRiskCoach | null;
+  error: ApiErrorInfo | null;
+};
+
+export const initialCoachState: CoachState = {
+  attempt: 0,
+  result: null,
+  error: null,
+};
+
+const COACH_ERROR_TEXTS: Record<string, string> = {
+  agent_unavailable:
+    "The deal risk coach is switched off. An administrator can switch it on under AI agents.",
+  agent_budget_reached:
+    "The deal risk coach has reached its limit for this month.",
+  deal_risk_coach_rate_limited:
+    "This deal was coached a moment ago. Try again in an hour.",
+  deal_risk_coach_invalid_answer:
+    "The coach did not give a usable answer. Nothing was shown or suggested. Please try again later.",
+  deal_not_found: "Deal not found.",
+  assistant_unavailable: "The AI is not available right now.",
+};
+
+export function coachErrorText(
+  code: string | undefined | null,
+  fallback: string,
+): string {
+  return (code && COACH_ERROR_TEXTS[code]) || fallback;
+}
+
+/** A suggested task's link points into the approval queue, nowhere else. */
+export function coachProposalLink(link: string): string | null {
+  const id = link.startsWith("/approvals/")
+    ? link.slice("/approvals/".length)
+    : "";
+  return isUuid(id) ? `/approvals/${id}` : null;
 }

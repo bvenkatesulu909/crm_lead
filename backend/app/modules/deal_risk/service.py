@@ -16,7 +16,8 @@ from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.config import Settings
 from app.core.errors import DomainError, ForbiddenError
-from app.modules.deal_risk import repository, signals
+from app.core.reporting import Column, Filters, Table
+from app.modules.deal_risk import backtest, repository, signals
 from app.modules.deal_risk.models import DealRiskSnapshot
 from app.modules.deal_risk.rules import Risk, assess
 from app.modules.identity import api as identity_api
@@ -199,3 +200,55 @@ def run_nightly(session: Session, now: datetime, *, tenant_id: uuid.UUID) -> int
 def delete_expired(session: Session, now: datetime, *, tenant_id: uuid.UUID) -> int:
     """Delete snapshots older than the retention (the worker, per organisation)."""
     return repository.delete_older_than(session, tenant_id, now - RETENTION)
+
+
+LEVEL_LABELS = {
+    "high": "High risk",
+    "medium": "Medium risk",
+    "low": "Low risk",
+    "none": "No forecast before closing",
+}
+
+
+def backtest_summary(
+    session: Session, principal: Principal, start: datetime, end: datetime
+) -> backtest.Summary:
+    """Compare forecasts with what happened, for deals this person may read that closed in
+    [start, end). No permission check here: the report and the script check before calling."""
+    if principal.tenant_id is None:
+        raise DealRiskNotAllowedError
+    deals = sales_api.closed_deals(session, principal, start, end)
+    levels = repository.levels_before(
+        session, principal.tenant_id, {d.id: d.closed_at for d in deals}
+    )
+    return backtest.summarise(
+        [backtest.Case(levels.get(d.id), d.won, d.closed_at, d.expected_close_date) for d in deals]
+    )
+
+
+def backtest_table(session: Session, principal: Principal, filters: Filters) -> Table:
+    """The "Deal risk: forecast vs. outcome" report section (managers and administrators)."""
+    _require(principal)
+    summary = backtest_summary(session, principal, filters.period.start, filters.period.end)
+    return Table(
+        f"Forecast vs. outcome - {summary.verdict}",
+        (
+            Column("level", "Last forecast before closing"),
+            Column("deals", "Closed deals", "number"),
+            Column("won_on_time", "Won on time", "number"),
+            Column("won_late", "Won late", "number"),
+            Column("lost", "Lost", "number"),
+            Column("went_badly", "Went badly (lost or late) %", "percent"),
+        ),
+        [
+            {
+                "level": LEVEL_LABELS[row.level],
+                "deals": row.deals,
+                "won_on_time": row.won_on_time,
+                "won_late": row.won_late,
+                "lost": row.lost,
+                "went_badly": row.badly_percent,
+            }
+            for row in summary.rows
+        ],
+    )

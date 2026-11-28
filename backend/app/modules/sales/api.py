@@ -47,10 +47,12 @@ __all__ = [
     "pipeline_metrics",
     "transfer_open_opportunities",
     "won_deals_by_account",
+    "ClosedDeal",
     "DealLabel",
     "RiskInputs",
     "WonHistory",
     "open_deal_ids",
+    "closed_deals",
     "deal_labels",
     "readable_open_deal_ids",
     "risk_inputs",
@@ -472,3 +474,43 @@ def deal_labels(
     return {
         o.id: DealLabel(o.id, o.name, o.account_id, o.stage, o.amount, o.currency) for o in rows
     }
+
+
+@dataclass(frozen=True)
+class ClosedDeal:
+    """A deal that closed, as the deal risk backtest (ADR 0037, DR6) needs it: no names, no text."""
+
+    id: uuid.UUID
+    won: bool
+    closed_at: datetime
+    expected_close_date: date | None
+
+
+CLOSED_DEALS_LIMIT = 5000
+
+
+def closed_deals(
+    session: Session, principal: Principal, start: datetime, end: datetime
+) -> list[ClosedDeal]:
+    """Deals this person may read that closed (won or lost) in [start, end)."""
+    rows = session.execute(
+        select(
+            Opportunity.id,
+            Opportunity.stage,
+            Opportunity.closed_at,
+            Opportunity.expected_close_date,
+        )
+        .where(
+            Opportunity.stage.in_(("closed_won", "closed_lost")),
+            Opportunity.closed_at >= start,
+            Opportunity.closed_at < end,
+            readable_opportunities(principal),
+        )
+        .order_by(Opportunity.closed_at)
+        .limit(CLOSED_DEALS_LIMIT)
+    ).all()
+    return [
+        ClosedDeal(r.id, r.stage == "closed_won", r.closed_at, r.expected_close_date)
+        for r in rows
+        if r.closed_at is not None
+    ]

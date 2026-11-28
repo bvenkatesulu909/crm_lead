@@ -126,8 +126,15 @@ Forecasts made after a deal closed never count.
   question 5). If high-risk deals do not go badly more often than low-risk ones, the verdict says
   the rules need revising (a new rules version; old snapshots keep theirs).
 
+### The coach on the deal page
+
+When a forecast has reasons, the Risk card shows **Ask the AI coach** (managers and administrators).
+The advice appears under the button as plain text with the suggested tasks linked into the approval
+queue; it is not stored, so it is gone when the page is reloaded. When the coach is switched off,
+over budget or over its limit, the card says so in plain words.
+
 ## Not built yet
 
-A button for the coach on the deal page, BP-10 evaluation cases for the coach, a real-model try. Signals not read yet:
+BP-10 evaluation cases for the coach, a real-model try. Signals not read yet:
 close-date history, the number of contacts per deal, the account's overdue invoices and tickets beyond
 what account health already says, and call notes (the rules support them; the reader passes none).

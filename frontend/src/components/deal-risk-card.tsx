@@ -1,4 +1,8 @@
-import { updateDealRisk } from "@/app/(app)/deal-risk/actions";
+import {
+  askDealRiskCoach,
+  updateDealRisk,
+} from "@/app/(app)/deal-risk/actions";
+import { DealRiskCoachButton } from "@/components/deal-risk-coach";
 import { UpdateDealRiskButton } from "@/components/deal-risk-button";
 import { RiskBadge } from "@/components/risk-badge";
 import { Card } from "@/components/ui";
@@ -111,6 +115,12 @@ export async function DealRiskCard({
           action={updateDealRisk.bind(null, opportunity.id)}
           hasForecast={latest !== null}
         />
+        {latest && latest.factors.length > 0 && (
+          // The coach answers a forecast's reasons, so it is offered only when there are some.
+          <DealRiskCoachButton
+            action={askDealRiskCoach.bind(null, opportunity.id)}
+          />
+        )}
         <p className="text-xs text-slate-500">
           A forecast is an estimate from the reasons listed, not a promise. It
           is worked out by fixed rules from this deal&apos;s records; no AI

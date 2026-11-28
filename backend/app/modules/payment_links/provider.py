@@ -17,6 +17,19 @@ class ProviderError(Exception):
     """The provider refused or could not be reached. The message never holds a key or a secret."""
 
 
+class ProviderRefusedError(ProviderError):
+    """The provider answered and said no; trying the same request again will not help.
+
+    ``reason`` is one of ``amount_too_large`` (above the account's limit for one payment),
+    ``key_refused`` (the API key was not accepted) or ``refused`` (any other bad request). It is a
+    code chosen by the CRM, never text from the provider's answer.
+    """
+
+    def __init__(self, reason: str, message: str = "Razorpay refused the request.") -> None:
+        super().__init__(message)
+        self.reason = reason
+
+
 @dataclass(frozen=True)
 class CreatedLink:
     provider_link_id: str

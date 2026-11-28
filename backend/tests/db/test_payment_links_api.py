@@ -33,7 +33,7 @@ from app.modules.invoices.models import Invoice, Payment
 from app.modules.notifications.models import Notification
 from app.modules.payment_links import rules, service
 from app.modules.payment_links.models import PaymentEvent, PaymentLink
-from app.modules.payment_links.provider import FakeProvider, ProviderError
+from app.modules.payment_links.provider import FakeProvider, ProviderError, ProviderRefusedError
 from app.worker import WorkerServices, job_handlers, run_due_jobs
 from tests.auth_helpers import TEST_ISSUER
 from tests.conftest import UNREACHABLE_DATABASE_URL
@@ -344,6 +344,29 @@ def test_another_organisations_invoice_is_not_found(hooked, auth, world, on) -> 
 def test_only_those_who_collect_payments_may_create_a_link(hooked, auth, world, on, who) -> None:
     invoice = invoice_of(hooked, auth, world)
     make_link(hooked, auth, invoice, who, code=403)
+
+
+@pytest.mark.parametrize(
+    ("reason", "code", "words"),
+    [
+        ("amount_too_large", "payment_amount_too_large", "highest amount"),
+        ("key_refused", "payment_provider_key_refused", "key"),
+        ("refused", "payment_provider_refused", "will not help"),
+    ],
+)
+def test_a_refusal_says_why_and_not_try_again(
+    hooked, auth, world, on, fake, db_session, reason, code, words
+) -> None:
+    def refuse(**_: Any) -> None:
+        raise ProviderRefusedError(reason)
+
+    fake.create_link = refuse
+    invoice = invoice_of(hooked, auth, world)
+    problem = make_link(hooked, auth, invoice, code=422)
+    assert problem["code"] == code
+    assert words in problem["detail"]
+    assert "could not be reached" not in problem["detail"]
+    assert alpha_rows(db_session, world, PaymentLink) == []
 
 
 def test_a_provider_that_is_down_stores_nothing(hooked, auth, world, on, fake, db_session) -> None:

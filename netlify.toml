@@ -12,6 +12,12 @@
   # Netlify's Next.js adapter turns it into Functions plus routing. Deployed as plain files it has
   # no index.html, so Netlify answers "Page not found" for every address - see docs/deployment.md.
   publish = ".next"
+  # Build ONLY on the real site, crmlead-co-in (https://crm.crmlead.co.in). An old stray copy,
+  # silly-brioche-4aec66, is still linked to this repository from a Netlify login nobody can find,
+  # and the link can't be removed on GitHub without also cutting off the real site (both use the
+  # same Netlify GitHub App). Exit 0 = "skip this build", so every other site cancels at once.
+  # On the real site it behaves like Netlify's default: skip when nothing in frontend/ changed.
+  ignore = 'if [ "$SITE_NAME" != "crmlead-co-in" ]; then exit 0; fi; git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- .'
 
 # The Next.js adapter, named explicitly. On 24 Oct 2026 the deploy log showed "0 new function(s)"
 # and 414 plain files uploaded from frontend/.next: Netlify did NOT run its automatic adapter

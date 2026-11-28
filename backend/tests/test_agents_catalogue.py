@@ -37,6 +37,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "account_research",
         "call_notes",
         "video_brief",
+        "deal_risk_coach",
     }
     assert {key for key, agent in AGENTS.items() if agent.uses_model} == models
     # The web check is governed like an agent but calls no language model (ADR 0019).
@@ -74,6 +75,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         False,
     )
     assert not AGENTS["video_brief"].default_enabled  # ADR 0041: off until switched on
+    assert not AGENTS["deal_risk_coach"].default_enabled  # ADR 0037 DR6: off until switched on
     assert not AGENTS["voice"].default_enabled and AGENTS["voice"].platform_switch is False
     # The voice receptionist talks to anonymous visitors: OFF until switched on (ADR 0038).
     assert not AGENTS["receptionist"].default_enabled and AGENTS["receptionist"].uses_model
@@ -90,6 +92,7 @@ def test_the_ai_features_and_the_web_check_are_listed() -> None:
         "deck_writer",
         "call_notes",
         "video_brief",
+        "deal_risk_coach",
         "voice",
         "receptionist",
         "account_research",

@@ -6,7 +6,6 @@ which runs in the worker for an event the webhook receiver verified and stored. 
 commit; the router (or the worker) commits once.
 """
 
-import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -29,7 +28,6 @@ from app.modules.invoices import api as invoices_api
 from app.modules.payment_links import rules, webhook
 from app.modules.payment_links.models import PaymentEvent, PaymentLink
 from app.modules.payment_links.provider import (
-    AmountTooLargeError,
     PaymentProvider,
     ProviderError,
     ProviderRefusedError,
@@ -40,9 +38,6 @@ ENTITY = "payment_link"
 AGENT_KEY = "payment_links"
 APPLY_JOB = "payment_link.apply"
 MAX_BODY_BYTES = 64 * 1024
-
-
-logger = logging.getLogger(__name__)
 
 
 class InvoiceNotFoundError(NotFoundError):
@@ -81,19 +76,40 @@ class ProviderUnavailableError(DomainError):
 
 
 class AmountAboveLimitError(DomainError):
+    """The balance is above CRM_RAZORPAY_MAX_LINK_RUPEES: refused before Razorpay is asked."""
+
     status_code = 422
     code = "payment_amount_above_limit"
 
 
 class ProviderRefusedLinkError(DomainError):
-    status_code = 422
-    code = "payment_provider_refused"
+    """Razorpay answered and refused the link. Unlike an outage, trying again will not help."""
 
-    def __init__(self) -> None:
-        super().__init__(
-            "The payment service refused to create this link. Trying again will not help; "
-            "an administrator should check the payment settings."
+    status_code = 422
+    _TEXT = {
+        "amount_too_large": (
+            "payment_amount_too_large",
+            "Razorpay does not accept a payment this large: the amount is above the highest amount "
+            "your Razorpay account allows for one payment. Ask Razorpay to raise the limit, or "
+            "collect this invoice another way.",
+        ),
+        "key_refused": (
+            "payment_provider_key_refused",
+            "Razorpay did not accept the CRM's key. An administrator must check the Razorpay "
+            "settings on the server.",
+        ),
+    }
+
+    def __init__(self, reason: str) -> None:
+        self.code, text = self._TEXT.get(
+            reason,
+            (
+                "payment_provider_refused",
+                "Razorpay refused this payment link, so trying again will not help. An "
+                "administrator can find the request's reference in the server log.",
+            ),
         )
+        super().__init__(text)
 
 
 class InvalidSignatureError(DomainError):
@@ -222,17 +238,9 @@ def create_link(
             expires_at=expires,
             notes={"invoice_id": str(invoice.id)},
         )
-    except AmountTooLargeError:
-        raise AmountAboveLimitError(
-            f"The payment service refused {rules.rupees_text(invoice.balance_due)}: it is above "
-            "the most one UPI payment may be on this account. Collect it another way, or in "
-            "smaller parts."
-        ) from None
-    except ProviderRefusedError as exc:
-        logger.warning("payment link refused by the provider: %s", exc)
-        raise ProviderRefusedLinkError() from None
-    except ProviderError as exc:
-        logger.warning("payment provider unavailable: %s", exc)
+    except ProviderRefusedError as refused:
+        raise ProviderRefusedLinkError(refused.reason) from None
+    except ProviderError:
         raise ProviderUnavailableError() from None
 
     link = PaymentLink(

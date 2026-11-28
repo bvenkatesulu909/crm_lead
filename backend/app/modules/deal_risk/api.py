@@ -1,5 +1,6 @@
 """The deal risk forecast as other modules and the worker may use it (ADR 0037)."""
 
+from app.modules.deal_risk.coach import AdviceInvalidError, CoachRateLimitedError, run_coach
 from app.modules.deal_risk.service import (
     DealRiskNotAllowedError,
     NotComputedError,
@@ -16,6 +17,9 @@ from app.modules.deal_risk.service import (
 from app.modules.deal_risk.signals import DealNotFoundError
 
 __all__ = [
+    "AdviceInvalidError",
+    "CoachRateLimitedError",
+    "run_coach",
     "DealNotFoundError",
     "DealRiskNotAllowedError",
     "NotComputedError",

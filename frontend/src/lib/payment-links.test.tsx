@@ -107,10 +107,7 @@ describe("helpers", () => {
     expect(paymentLinkErrorText(null, "fallback")).toBe("fallback");
   });
 
-  it("a refusal is not called an outage, and the limit sentence keeps its amounts", () => {
-    const refused = paymentLinkErrorText("payment_provider_refused", "x");
-    expect(refused).toMatch(/refused/);
-    expect(refused).not.toMatch(/could not be reached|try again in a moment/i);
+  it("the server's limit sentence keeps its amounts", () => {
     const limit =
       "The balance of ₹5,50,00,000 is above the limit for one UPI payment (₹5,00,000).";
     expect(paymentLinkErrorText("payment_amount_above_limit", limit)).toBe(
@@ -152,6 +149,19 @@ describe("createPaymentLink", () => {
     );
     const result = await createPaymentLink(INVOICE, initialDialogState);
     expect(result.error?.message).toMatch(/could not be reached/);
+  });
+
+  it.each([
+    ["payment_amount_too_large", /highest amount.*Razorpay/],
+    ["payment_provider_key_refused", /key/],
+    ["payment_provider_refused", /will not help/],
+  ])("a refusal by Razorpay (%s) never says try again", async (code, words) => {
+    apiFetch.mockRejectedValueOnce(problem(422, code));
+    const result = await createPaymentLink(INVOICE, initialDialogState);
+    expect(result.error?.message).toMatch(words);
+    expect(result.error?.message).not.toMatch(
+      /could not be reached|Try again in a moment/,
+    );
   });
 });
 

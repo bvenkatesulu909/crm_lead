@@ -71,8 +71,46 @@ client sends nothing but the deal id in the path and the list filters: level, sc
 the server's. A deal you may not read, another organisation's deal, a closed deal and a made-up id
 all answer 404.
 
+## The screens (DR4)
+
+Managers and administrators only (display only - the API decides again):
+
+* **Deal page:** a **Deal risk forecast** card on an open deal - the level as a word, every reason
+  with its points and source, what could not be read, how the level moved since the earlier
+  forecast, when and how it was worked out, the estimate note and a **Work out the forecast** /
+  **Update forecast** button (no AI). Nothing for a closed deal or for people without
+  `deal_risk:read`.
+* **Pipeline:** each deal card shows its level as a badge, and a **Risk forecast** filter keeps
+  only deals whose newest forecast has that level (deals without a forecast drop out).
+* **Dashboard:** two tiles, **Deals at high risk** (links to the filtered pipeline) and **Amount at
+  risk** - a plain sum per currency of those deals' values, no conversion and no weighting.
+
+## The optional AI coach (DR5)
+
+`POST /api/v1/deal-risk/{deal}/coach` (managers and administrators; nothing but the deal id is
+accepted). Registry entry **deal_risk_coach**, **off by default**: an administrator switches it on
+under AI agents, with the usual monthly token budget, tool filter and platform switch.
+
+* The coach sees **only the forecast the code worked out**: the level, the score and the reasons
+  (codes, sentences built by code, points) and what could not be read. Never the deal's or
+  customer's name, a contact detail, an id or text a person typed.
+* It answers with ONE tool, `submit_advice`: at most **three** short pieces of advice and at most
+  **two** follow-up tasks. Every piece must cite reason codes that really are in the forecast; a
+  wrong shape, an unknown code, an instruction-like text or anything extra refuses the **whole**
+  answer (422, nothing shown or proposed; the tokens used still count). Links and markup are taken
+  out and the answer says so.
+* Tasks only become **proposals** (`activity.create_task` on the deal, author `deal_risk_coach`)
+  through the approval queue and its safety check; a different person approves. The proposal's
+  reason is the CRM's own sentence for the cited reason, not model text.
+* It never changes the score, the stage, the amount, a date, the owner or anything else.
+* Limits: 1 per deal per hour, 200 per organisation per day (`CRM_DEAL_RISK_COACH_PER_*`), then
+  429. A deal one may not read, a closed deal or a made-up id: 404 before any model is asked.
+* Audit `deal_risk.coached` with the level, counts and proposal ids only.
+* `CRM_AI_PROVIDER=fake` gives a scripted coach for local demos (refused in production).
+* Migration 0087 teaches the approval queue the name (it follows main's 0086).
+
 ## Not built yet
 
-Screens (DR4), the optional AI coach (DR5), the backtest (DR6). Signals not read yet:
+A button for the coach on the deal page, BP-10 evaluation cases for the coach, the backtest (DR6). Signals not read yet:
 close-date history, the number of contacts per deal, the account's overdue invoices and tickets beyond
 what account health already says, and call notes (the rules support them; the reader passes none).

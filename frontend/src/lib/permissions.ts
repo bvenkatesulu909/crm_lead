@@ -149,6 +149,10 @@ export const canRunCustomAgents = (me: Pick<Me, "permissions">) =>
  * about deals they own. */
 export const canRunDealDesk = (me: Pick<Me, "permissions">) =>
   hasAny(me, "deal_desk:run");
+/** Deal risk forecast (ADR 0037): sales managers and administrators. Display only - the API
+ * decides again. */
+export const canReadDealRisk = (me: Pick<Me, "permissions">) =>
+  hasAny(me, "deal_risk:read");
 /** Account research (ADR 0024): display only - the API checks the account again. */
 export const canResearchAccounts = (me: Pick<Me, "permissions">) =>
   hasAny(me, "account_research:run");

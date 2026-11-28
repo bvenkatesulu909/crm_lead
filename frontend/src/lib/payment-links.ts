@@ -68,11 +68,13 @@ export function paymentLinkErrorText(
       return "UPI payment links are switched off for your organisation. An administrator can switch them on under Automation → AI agents.";
     case "payment_provider_unavailable":
       return "The payment service could not be reached. Try again in a moment.";
+    // Razorpay answered and said no: trying again will not change the answer.
+    case "payment_amount_too_large":
+      return "Razorpay does not accept a payment this large: the amount is above the highest amount your Razorpay account allows for one payment. Ask Razorpay to raise the limit, or collect this invoice another way.";
+    case "payment_provider_key_refused":
+      return "Razorpay did not accept the CRM's key. An administrator must check the Razorpay settings on the server.";
     case "payment_provider_refused":
-      return "The payment service refused to create this link. Trying again will not help; an administrator should check the payment settings.";
-    // The server's sentence names the balance and the limit, so it is kept as it is.
-    case "payment_amount_above_limit":
-      return fallback;
+      return "Razorpay refused this payment link, so trying again will not help. An administrator can find the request's reference in the server log.";
     case "payment_link_rate_limited":
       return "Too many payment links were created. Try again later.";
     case "invoice_not_found":

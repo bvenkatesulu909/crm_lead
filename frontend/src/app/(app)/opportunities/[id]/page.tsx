@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { ActivityPanel } from "@/components/activity-panel";
 import { CustomAgentsSection } from "@/components/custom-agents-section";
 import { DealDeskCard } from "@/components/deal-desk-card";
+import { DealRiskCard } from "@/components/deal-risk-card";
 import { EmailCard } from "@/components/email-card";
 import { DocumentsCard } from "@/components/documents-card";
 import { QuoteStatusBadge } from "@/components/quote-view";
@@ -53,6 +54,7 @@ const DONE: Record<string, string> = {
   reopened: "The deal is open again.",
   "deal-desk-reviewed":
     "The deal desk reviewed this deal. Any suggested task waits for approval.",
+  "deal-risk-updated": "The deal risk forecast was updated.",
   planned: "The task was added.",
   logged: "The activity was logged.",
   completed: "The task was marked as done.",
@@ -177,6 +179,13 @@ export default async function OpportunityPage({
             </dl>
             {opp.description && <p className="whitespace-pre-line border-t border-slate-100 px-5 py-4 text-sm text-slate-700">{opp.description}</p>}
           </Card>
+          <DealRiskCard
+            me={me}
+            opportunity={{
+              id: opp.id,
+              is_open: (OPEN_STAGES as readonly string[]).includes(opp.stage),
+            }}
+          />
           <DealDeskCard
             me={me}
             opportunity={{

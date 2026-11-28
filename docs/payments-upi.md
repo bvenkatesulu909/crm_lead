@@ -76,14 +76,9 @@ comes from the verified token (or, for the webhook, from the stored link).
   has a balance, or a part payment made meanwhile that leaves too little: nothing is recorded; the people
   who record payments get a notification.
 - **An upper limit per link.** A balance above `CRM_RAZORPAY_MAX_LINK_RUPEES` (default ₹5,00,000) is
-  refused before Razorpay is called (422 `payment_amount_above_limit`, the sentence names the balance and
-  the limit). Razorpay also refuses amounts above the account's own per-payment maximum; that answer is
-  reported the same way. Found on staging on 2026-11-28: a ₹5,50,00,000 invoice was refused by
-  Razorpay and the screen wrongly said the service "could not be reached".
-- **A refusal is not an outage.** Razorpay answering 4xx (other than 429) becomes 422
-  `payment_provider_refused` ("trying again will not help"); only a network failure, 429, 5xx or an
-  unreadable answer is 503 `payment_provider_unavailable`. Neither message carries Razorpay's words;
-  the server log records only the HTTP status.
+  refused before Razorpay is called (422 `payment_amount_above_limit`; the sentence names the balance and
+  the limit). Raise the setting if Razorpay raised your account's limit; an amount Razorpay still refuses
+  is answered as described in section 6 (`payment_amount_too_large`).
 - **Only INR invoices.** The demo data's default currency is EUR; an invoice in another currency answers
   409 "UPI payments are for invoices in INR".
 - **No customer data is sent to Razorpay or copied out of its events** (no e-mail, phone or UPI id).
@@ -100,6 +95,13 @@ comes from the verified token (or, for the webhook, from the stored link).
 - Razorpay's field names for the standard payment link (`amount` in paise, `expire_by`, `accept_partial`,
   `reference_id`, `notes`) are taken from its public documentation and covered by tests against a fake
   transport; they are **verified against Razorpay's test mode only in UP4**.
+- **Razorpay's own limit per payment wins.** The CRM accepts invoices up to ₹10 crore, but each Razorpay
+  account has a highest amount for one payment (set by Razorpay; raise it with them). A larger link is
+  refused with 422 `payment_amount_too_large` and plain words; nothing is stored. Other refusals are
+  `payment_provider_key_refused` (401/403: the key was not accepted) and `payment_provider_refused`
+  (any other 400/422). Only an unreachable, busy (429) or broken (5xx) Razorpay is still
+  `payment_provider_unavailable` (503, "try again"). The client reads Razorpay's error only to pick that
+  code; its text is never logged or shown.
 - Caddy does not rate-limit the webhook path (the stock proxy has no such module); the signature check
   is cheap and the body is capped.
 
@@ -132,6 +134,14 @@ on a PC. **You type the keys yourself; they are never sent to Claude, put in cha
 6. **What is verified here for the first time:** the field names Razorpay accepts (`amount` in paise,
    `expire_by`, `accept_partial`, `reference_id`, `notes`) and the real `payment_link.paid` body. If
    Razorpay differs from the fake, the client or the parser is fixed with a failing test first.
+
+**First attempt (2026-11-27, staging):** the keys were already on the server (`check_env.py` OK, mode
+`test`), Razorpay accepted them (a read-only call answered 200) and the webhook refused an unsigned call
+(401). The first real link request, for a ₹5.5 crore invoice, was answered **400 "amount exceeds maximum
+amount allowed"** - the account's limit per payment - and the screen wrongly said "could not be
+reached. Try again", which is now fixed (section 5). Two earlier invoices had been paid with
+*Record payment* by hand, which hides the card (nothing left to collect). The paid-link check
+(`success@razorpay`, then `failure@razorpay`) is still to be done with a small invoice.
 
 Nothing here moves real money. Going live (a live key, `CRM_RAZORPAY_GO_LIVE=true`) is a separate decision
 after the whole go-live checklist, as ADR 0007 says.

@@ -14,21 +14,20 @@ from app.modules.payment_links import rules
 
 
 class ProviderError(Exception):
-    """The provider could not be reached, was busy or broken, or refused (see the subclasses).
-
-    The message never holds a key, a secret or anything the provider sent back.
-    """
+    """The provider refused or could not be reached. The message never holds a key or a secret."""
 
 
 class ProviderRefusedError(ProviderError):
-    """The provider answered and refused this request (a 4xx answer other than 429).
+    """The provider answered and said no; trying the same request again will not help.
 
-    Trying again will not help, so the person is told it was refused, not that the service is down.
+    ``reason`` is one of ``amount_too_large`` (above the account's limit for one payment),
+    ``key_refused`` (the API key was not accepted) or ``refused`` (any other bad request). It is a
+    code chosen by the CRM, never text from the provider's answer.
     """
 
-
-class AmountTooLargeError(ProviderRefusedError):
-    """The amount is above the provider account's maximum for one payment."""
+    def __init__(self, reason: str, message: str = "Razorpay refused the request.") -> None:
+        super().__init__(message)
+        self.reason = reason
 
 
 @dataclass(frozen=True)
@@ -93,10 +92,8 @@ class FakeProvider:
             raise ProviderError("That reference was already used.")
         if currency != rules.CURRENCY:
             raise ProviderError("Only INR is supported.")
-        if amount_paise > rules.MAX_PAISE:
-            raise AmountTooLargeError("The amount is above the maximum.")
-        if amount_paise < rules.MIN_PAISE:
-            raise ProviderRefusedError("The amount is out of range.")
+        if not rules.MIN_PAISE <= amount_paise <= rules.MAX_PAISE:
+            raise ProviderError("The amount is out of range.")
         link_id = f"plink_fake{next(self._counter):06d}"
         self.links[link_id] = {
             "reference_id": reference_id,

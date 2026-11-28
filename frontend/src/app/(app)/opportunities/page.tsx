@@ -20,7 +20,14 @@ import type {
 } from "@/lib/api-types";
 import { formatAmounts } from "@/lib/dashboard";
 import {
+  LEVEL_LABELS,
+  riskByDeal,
+  type DealRiskList,
+  type RiskLevel,
+} from "@/lib/deal-risk";
+import {
   canManageOpportunities,
+  canReadDealRisk,
   canWriteOpportunities,
   hasAny,
 } from "@/lib/permissions";
@@ -79,7 +86,7 @@ export default async function PipelinePage({
   searchParams,
 }: PageProps<"/opportunities">) {
   const raw = await searchParams;
-  const { q, owner, query } = boardQuery(raw);
+  const { q, owner, risk, query } = boardQuery(raw);
   const me = await getMe();
 
   let board: Board;
@@ -104,6 +111,26 @@ export default async function PipelinePage({
         />
       </>
     );
+  }
+  // The forecast (ADR 0037) is for managers and administrators; without it the board is as before.
+  const levels: Record<string, RiskLevel> | undefined = canReadDealRisk(me)
+    ? await apiFetch<DealRiskList>("/deal-risk?limit=100")
+        .then((r) =>
+          Object.fromEntries(
+            Object.entries(riskByDeal(r.items)).map(([id, f]) => [id, f.level]),
+          ),
+        )
+        .catch(() => undefined)
+    : undefined;
+  if (levels && risk) {
+    // Only deals whose newest forecast has the chosen level (a deal without one is left out).
+    board = {
+      ...board,
+      columns: board.columns.map((c) => {
+        const items = c.items.filter((o) => levels[o.id] === risk);
+        return { ...c, items, count: items.length };
+      }),
+    };
   }
   const accountNames = Object.fromEntries(accounts.map((a) => [a.id, a.name]));
   const ownerNames = Object.fromEntries(
@@ -132,7 +159,7 @@ export default async function PipelinePage({
         }
       />
       <Card className="mb-6">
-        <form role="search" aria-label="Filter pipeline" className="grid gap-4 px-5 py-4 sm:grid-cols-[2fr_1fr_auto]">
+        <form role="search" aria-label="Filter pipeline" className="grid gap-4 px-5 py-4 sm:grid-cols-[2fr_1fr_1fr_auto]">
           <div>
             <label htmlFor="pipe-q" className="text-sm font-medium text-slate-700">Search</label>
             <input id="pipe-q" name="q" type="search" defaultValue={q} maxLength={100} placeholder="Deal name or next step" className={field} />
@@ -146,9 +173,18 @@ export default async function PipelinePage({
               </select>
             </div>
           ) : <span className="hidden sm:block" />}
+          {levels && (
+            <div>
+              <label htmlFor="pipe-risk" className="text-sm font-medium text-slate-700">Risk forecast</label>
+              <select id="pipe-risk" name="risk" defaultValue={risk} className={field}>
+                <option value="">Any</option>
+                {(["high", "medium", "low"] as const).map((l) => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <button type="submit" className={buttonClass("primary")}>Apply</button>
-            {(q || owner) && <Link href="/opportunities" className={buttonClass("secondary")}>Clear</Link>}
+            {(q || owner || risk) && <Link href="/opportunities" className={buttonClass("secondary")}>Clear</Link>}
           </div>
         </form>
       </Card>
@@ -159,6 +195,7 @@ export default async function PipelinePage({
         ownerNames={ownerNames}
         writable={writable}
         move={moveOnBoard}
+        risk={levels}
       />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

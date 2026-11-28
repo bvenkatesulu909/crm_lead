@@ -45,6 +45,7 @@ AGENTS = (
     "receptionist",
     "video_brief",
     "follow_up",
+    "deal_risk_coach",
 )
 REASON_MAX = 500
 

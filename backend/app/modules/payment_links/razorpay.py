@@ -3,37 +3,33 @@
 ``POST /v1/payment_links`` creates a standard payment link, ``POST /v1/payment_links/{id}/cancel``
 cancels one. Nothing else is called. The host is fixed in this file, never taken from a setting or a
 record; redirects are not followed; the key goes only in the Basic-auth header; errors say the
-HTTP status and nothing from the body, so no key, link or customer detail reaches a log. A refusal's
-body is looked at for one thing only - whether Razorpay says the amount is above its maximum - so
-the person can be told why; its words are never passed on.
+HTTP status and nothing from the body, so no key, link or customer detail reaches a log. A refusal
+(400/422, 401/403) is told apart from an outage, and the body is only read to pick a fixed reason
+code (an amount above the account's limit); its text is never kept.
 """
 
 from datetime import datetime
 
 import httpx
 
-from app.modules.payment_links.provider import (
-    AmountTooLargeError,
-    CreatedLink,
-    ProviderError,
-    ProviderRefusedError,
-)
+from app.modules.payment_links.provider import CreatedLink, ProviderError, ProviderRefusedError
 from app.modules.payment_links.rules import REFERENCE_MAX_LENGTH
 
 BASE_URL = "https://api.razorpay.com/v1"
 _ID_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
-# Razorpay's description of an amount above the account's per-payment maximum (seen on staging).
-_AMOUNT_TOO_LARGE = "amount exceeds maximum"
 
 
-def _says_amount_too_large(response: httpx.Response) -> bool:
+def _refusal_reason(response: httpx.Response) -> str:
+    """A fixed code for a bad request: only the amount limit is told apart; the text is dropped."""
     try:
         data = response.json()
     except ValueError:
-        return False
+        return "refused"
     error = data.get("error") if isinstance(data, dict) else None
     description = error.get("description") if isinstance(error, dict) else None
-    return isinstance(description, str) and _AMOUNT_TOO_LARGE in description.lower()
+    if isinstance(description, str) and "maximum amount" in description.lower():
+        return "amount_too_large"
+    return "refused"
 
 
 class RazorpayProvider:
@@ -53,13 +49,13 @@ class RazorpayProvider:
             response = self._client.post(f"{BASE_URL}{path}", json=body, auth=self._auth)
         except httpx.HTTPError as exc:
             raise ProviderError("Razorpay could not be reached.") from exc
-        status = response.status_code
-        if 400 <= status < 500 and status != 429:
-            if status == 400 and _says_amount_too_large(response):
-                raise AmountTooLargeError("Razorpay refused the amount as above its maximum.")
-            raise ProviderRefusedError(f"Razorpay refused the request with status {status}.")
-        if status != 200:
-            raise ProviderError(f"Razorpay answered with status {status}.")
+        if response.status_code != 200:
+            message = f"Razorpay answered with status {response.status_code}."
+            if response.status_code in (401, 403):
+                raise ProviderRefusedError("key_refused", message)
+            if response.status_code in (400, 422):
+                raise ProviderRefusedError(_refusal_reason(response), message)
+            raise ProviderError(message)
         try:
             data = response.json()
         except ValueError as exc:

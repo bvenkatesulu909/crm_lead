@@ -89,6 +89,7 @@ def test_the_catalogue_has_the_eleven_model_agents() -> None:
         "account_research",
         "call_notes",
         "video_brief",
+        "deal_risk_coach",
     }
 
 

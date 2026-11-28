@@ -63,3 +63,30 @@ class DealRiskList(BaseModel):
 
 class DealRiskSnapshotList(BaseModel):
     items: list[DealRiskSnapshotRead]
+
+
+class DealRiskAdviceLine(BaseModel):
+    # Written by a model and cleaned (no links, pictures or hidden text): show it as plain text.
+    text: str
+    # The codes of the forecast's reasons this line answers (checked: they are in the forecast).
+    factors: list[str]
+
+
+class DealRiskProposalRef(BaseModel):
+    id: uuid.UUID
+    link: str
+
+
+class DealRiskCoachRead(BaseModel):
+    opportunity_id: uuid.UUID
+    advice: list[DealRiskAdviceLine]
+    # Follow-up tasks waiting in the approval queue: nothing on the deal changed.
+    proposals: list[DealRiskProposalRef]
+    # Tasks the safety check refused, in plain words.
+    blocked_messages: list[str]
+    # Some text the model wrote was cleaned before it was shown.
+    cleaned: bool
+    note: str = (
+        "AI advice on the forecast. It changes nothing; any suggested task waits for a different "
+        "person to approve it."
+    )

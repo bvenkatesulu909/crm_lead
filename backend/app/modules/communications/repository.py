@@ -3,7 +3,7 @@
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.orm import Session
@@ -243,3 +243,31 @@ def get_active_template(
             EmailTemplate.is_active.is_(True),
         )
     ).one_or_none()
+
+
+def replies_after(
+    session: Session,
+    tenant_id: uuid.UUID,
+    sent: Sequence[tuple[uuid.UUID, datetime]],
+    within: timedelta,
+) -> list[bool]:
+    """For each (lead, moment): did the lead write to us (a received e-mail someone logged) within
+    ``within`` after that moment? One query for all of them; the answer keeps the input's order."""
+    if not sent:
+        return []
+    leads = {lead for lead, _ in sent}
+    earliest = min(moment for _, moment in sent)
+    logged: dict[uuid.UUID, list[datetime]] = {}
+    for lead, created in session.execute(
+        select(EmailMessage.lead_id, EmailMessage.created_at).where(
+            EmailMessage.tenant_id == tenant_id,
+            EmailMessage.direction == "inbound_logged",
+            EmailMessage.lead_id.in_(leads),
+            EmailMessage.created_at >= earliest,
+        )
+    ).all():
+        if lead is not None:
+            logged.setdefault(lead, []).append(created)
+    return [
+        any(moment <= at < moment + within for at in logged.get(lead, ())) for lead, moment in sent
+    ]

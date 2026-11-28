@@ -142,6 +142,19 @@ describe("createPaymentLink", () => {
     const result = await createPaymentLink(INVOICE, initialDialogState);
     expect(result.error?.message).toMatch(/could not be reached/);
   });
+
+  it.each([
+    ["payment_amount_too_large", /highest amount.*Razorpay/],
+    ["payment_provider_key_refused", /key/],
+    ["payment_provider_refused", /will not help/],
+  ])("a refusal by Razorpay (%s) never says try again", async (code, words) => {
+    apiFetch.mockRejectedValueOnce(problem(422, code));
+    const result = await createPaymentLink(INVOICE, initialDialogState);
+    expect(result.error?.message).toMatch(words);
+    expect(result.error?.message).not.toMatch(
+      /could not be reached|Try again in a moment/,
+    );
+  });
 });
 
 describe("StaffPaymentLinks", () => {

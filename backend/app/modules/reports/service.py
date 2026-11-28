@@ -22,11 +22,21 @@ from app.core.auth.principal import Principal
 from app.core.auth.rbac import Permission
 from app.core.config import Settings
 from app.core.errors import DomainError, ForbiddenError, NotFoundError
-from app.core.reporting import Cell, Column, ExportFilters, ExportSpec, Filters, Period, Table
+from app.core.reporting import (
+    Cell,
+    Column,
+    ExportFilters,
+    ExportSpec,
+    Filters,
+    Period,
+    Table,
+    percent,
+)
 from app.modules.accounts import api as accounts_api
 from app.modules.activities import api as activities_api
 from app.modules.agents import api as agents_api
 from app.modules.approvals import api as approvals_api
+from app.modules.communications import api as communications_api
 from app.modules.contacts import api as contacts_api
 from app.modules.deal_risk import api as deal_risk_api
 from app.modules.identity import api as identity_api
@@ -112,6 +122,48 @@ def _ai_cost_per_lead_table(
     )
 
 
+# --- replies after an automatic follow-up (ADR 0036, step FM7) ------------------------------
+
+REPLY_WINDOW_DAYS = 14
+
+
+def _follow_up_replies_table(session: Session, principal: Principal, filters: Filters) -> Table:
+    """How many approved follow-ups (per rule) were followed by the lead writing back within
+    two weeks. A "reply" is a received e-mail someone logged on the lead: a reply that nobody
+    logged is not counted, so this is a lower bound."""
+    sent = approvals_api.follow_ups_sent(session, principal, filters)
+    replied = communications_api.follow_up_replies(
+        session,
+        principal,
+        [(lead, moment) for _, lead, moment in sent],
+        timedelta(days=REPLY_WINDOW_DAYS),
+    )
+    per_rule: dict[str, list[int]] = {}
+    for (code, _, _), answered in zip(sent, replied, strict=True):
+        counts = per_rule.setdefault(code, [0, 0])
+        counts[0] += 1
+        counts[1] += int(answered)
+    labels = approvals_api.FOLLOW_UP_RULE_LABELS
+    return Table(
+        f"Replies within {REPLY_WINDOW_DAYS} days of an approved follow-up",
+        (
+            Column("rule", "Rule"),
+            Column("sent", "Follow-ups approved", "number"),
+            Column("replied", "Lead wrote back", "number"),
+            Column("reply_share", "Reply rate %", "percent"),
+        ),
+        [
+            {
+                "rule": labels.get(code, code or "Unknown"),
+                "sent": total,
+                "replied": answered,
+                "reply_share": percent(answered, total),
+            }
+            for code, (total, answered) in sorted(per_rule.items())
+        ],
+    )
+
+
 # --- what exists, and who may use it -----------------------------------------------------
 
 Section = tuple[frozenset[Permission], Callable[[Session, Principal, Filters], Table]]
@@ -166,6 +218,15 @@ REPORTS: dict[str, ReportDef] = {
         "how many were won on time, won late or lost. Shows whether the forecast is worth "
         "trusting; until 30 closed deals have a forecast it says it is too early to measure.",
         ((_any(P.DEAL_RISK_READ), deal_risk_api.backtest_table),),
+    ),
+    "follow_ups": ReportDef(
+        "Follow-ups: drafts and replies",
+        "Follow-up e-mails the CRM drafted, what people did with them (approved, reworded, "
+        "rejected, expired) and how often the lead wrote back afterwards.",
+        (
+            (SALES_ALL, approvals_api.follow_up_drafts_table),
+            (SALES_ALL, _follow_up_replies_table),
+        ),
     ),
     "revenue": ReportDef(
         "Revenue & quotes",

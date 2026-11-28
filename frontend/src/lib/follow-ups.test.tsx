@@ -549,3 +549,35 @@ describe("the approval Server Actions", () => {
     expect(state.error?.message).toMatch(/links/);
   });
 });
+
+describe("who asked for a follow-up draft", () => {
+  it("is the CRM itself when the requester is not a known person", () => {
+    render(<ApprovalCard action={draft()} people={{}} me={{ user_id: ME }} />);
+    expect(
+      screen.getByText(/Asked by the CRM automatically/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/former colleague/)).toBeNull();
+  });
+
+  it("still names a known person, and other proposals keep the old wording", () => {
+    render(
+      <ApprovalCard
+        action={draft()}
+        people={{ [OTHER]: "Ravi" }}
+        me={{ user_id: ME }}
+      />,
+    );
+    expect(screen.getByText(/Asked by Ravi/)).toBeInTheDocument();
+  });
+
+  it("a staff assistant proposal from someone who left is still a former colleague", () => {
+    render(
+      <ApprovalCard
+        action={draft({ kind: "lead.set_status", agent: "staff_assistant" })}
+        people={{}}
+        me={{ user_id: ME }}
+      />,
+    );
+    expect(screen.getByText(/Asked by a former colleague/)).toBeInTheDocument();
+  });
+});

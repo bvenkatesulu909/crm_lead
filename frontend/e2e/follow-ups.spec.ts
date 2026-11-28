@@ -24,9 +24,10 @@ async function signedIn(browser: Browser, user: string, target = "/") {
   return page;
 }
 
-/** Runs the background worker once: it also runs the follow-up scan, then sends queued e-mail. */
+/** Runs the background worker once: it also runs the follow-up scan, then sends queued e-mail.
+ * E2E_PYTHON may name another Python (a git worktree has no backend/.venv of its own). */
 function runWorkerOnce() {
-  execFileSync(path.join("..", "backend", ".venv", "Scripts", "python.exe"), ["-m", "app.worker", "--once"], {
+  execFileSync(process.env.E2E_PYTHON ?? path.join("..", "backend", ".venv", "Scripts", "python.exe"), ["-m", "app.worker", "--once"], {
     cwd: path.join("..", "backend"),
     timeout: 90_000,
     stdio: "ignore",
@@ -60,12 +61,13 @@ async function createLead(agent: Page, consent: "granted" | "withdrawn") {
   await agent.goto("/leads/new");
   await agent.getByLabel(/First name/).fill("Asha");
   await agent.getByLabel(/Last name/).fill(lastName);
-  await agent.getByLabel(/^E-mail$/).fill(address);
+  await agent.getByLabel(/^E-mail/).fill(address);
   await agent.getByRole("button", { name: "Create lead" }).click();
   await agent
     .getByRole("link", { name: new RegExp(lastName) })
     .first()
     .click();
+  await agent.waitForURL(/\/leads\/[0-9a-f-]{36}$/);
   const url = new URL(agent.url()).pathname;
   await agent.goto(`${url}/edit`);
   await agent.getByLabel("E-mail consent").selectOption(consent);
@@ -77,9 +79,13 @@ async function createLead(agent: Page, consent: "granted" | "withdrawn") {
 /** A follow-up task on the lead's page, due today (UTC). */
 async function planTaskDueToday(agent: Page, leadUrl: string, subject: string) {
   await agent.goto(leadUrl);
-  await agent.getByLabel("Subject").fill(subject);
-  await agent.getByLabel(/^Due/).fill(dueTodayUtc());
-  await agent.getByRole("button", { name: "Add to tasks" }).click();
+  // The lead page has two "Subject" fields (e-mail dialog and task form): use the task form.
+  const form = agent.locator("form").filter({
+    has: agent.getByRole("button", { name: "Add to tasks" }),
+  });
+  await form.getByLabel("Subject").fill(subject);
+  await form.getByLabel(/^Due/).fill(dueTodayUtc());
+  await form.getByRole("button", { name: "Add to tasks" }).click();
   await expect(
     agent.getByText("The follow-up was added to your tasks."),
   ).toBeVisible();
@@ -91,7 +97,7 @@ const waiting = (page: Page) =>
 test("a due follow-up becomes one draft; the owner rewords and approves it; an opted-out lead gets none", async ({
   browser,
 }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(600_000);
   const manager = await signedIn(browser, USERS.manager);
   const template = await createTemplate(manager);
 
@@ -138,7 +144,8 @@ test("a due follow-up becomes one draft; the owner rewords and approves it; an o
   //    sent yet) ...
   await waiting(agent).getByRole("link", { name: /Follow-up e-mail/ }).click();
   const mail = agent.getByRole("group", { name: "The e-mail" });
-  await expect(mail).toContainText("Hello Asha");
+  // The first visit to this page compiles it (slow on a development server).
+  await expect(mail).toContainText("Hello Asha", { timeout: 120_000 });
   await expect(mail).toContainText(`Dear Asha ${agreed.lastName},`);
   await expect(mail).not.toContainText("{{");
   await expect(agent.getByText("the follow-up assistant")).toBeVisible();

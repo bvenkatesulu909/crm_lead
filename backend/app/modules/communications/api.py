@@ -1,7 +1,8 @@
 """Public interface of the communications module. Other modules import only from here."""
 
 import uuid
-from datetime import datetime
+from collections.abc import Sequence
+from datetime import datetime, timedelta
 
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -18,6 +19,7 @@ __all__ = [
     "EMAIL_JOB",
     "email_failed_handler",
     "email_job_handler",
+    "follow_up_replies",
     "follow_up_policy",
     "follow_up_rules",
     "follow_up_problem",
@@ -146,3 +148,16 @@ def message_brief(
 ) -> tuple[str, str] | None:
     """(subject, link) of an e-mail this principal may see (for notifications), else None."""
     return service.message_brief(session, principal, message_id)
+
+
+def follow_up_replies(
+    session: Session,
+    principal: Principal,
+    sent: Sequence[tuple[uuid.UUID, datetime]],
+    within: timedelta,
+) -> list[bool]:
+    """For the reports module: did each lead write back within ``within`` after a follow-up
+    was approved? Booleans only; the organisation is the reader's own."""
+    if principal.tenant_id is None:
+        return [False] * len(sent)
+    return repository.replies_after(session, principal.tenant_id, sent, within)

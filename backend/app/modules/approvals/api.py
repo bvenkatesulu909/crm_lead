@@ -1,6 +1,13 @@
 """Public interface of the approvals module (ADR 0014). Other modules import only this."""
 
-from app.modules.approvals.metrics import qualifier_suggestions_table
+from app.modules.approvals.metrics import (
+    RULE_LABELS as FOLLOW_UP_RULE_LABELS,
+)
+from app.modules.approvals.metrics import (
+    follow_up_drafts_table,
+    follow_ups_sent,
+    qualifier_suggestions_table,
+)
 from app.modules.approvals.sentinel import Limits as SentinelLimits
 from app.modules.approvals.service import (
     InvalidActionError,
@@ -28,10 +35,13 @@ __all__ = [
     "audit_blocked",
     "deciders_for_notice",
     "describe",
+    "FOLLOW_UP_RULE_LABELS",
     "expire_due",
+    "follow_up_drafts_table",
     "follow_up_drafts_today",
     "follow_up_history",
     "follow_up_waiting_for",
+    "follow_ups_sent",
     "propose",
     "propose_external",
     "qualifier_suggestions_table",

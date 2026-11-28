@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
+import { RiskBadge } from "@/components/risk-badge";
 import { ErrorAlert, cx } from "@/components/ui";
 import type { ApiErrorInfo } from "@/lib/api-error";
 import {
@@ -12,6 +13,7 @@ import {
   type OpenStage,
 } from "@/lib/api-types";
 import { formatAmounts } from "@/lib/dashboard";
+import type { RiskLevel } from "@/lib/deal-risk";
 import { STAGE_LABELS } from "@/lib/pipeline";
 
 type Move = (
@@ -32,8 +34,10 @@ function Card({
   canMove,
   onMove,
   busy,
+  risk,
 }: {
   opp: Opportunity;
+  risk?: RiskLevel;
   accountName: string;
   ownerName: string;
   canMove: boolean;
@@ -64,7 +68,10 @@ function Card({
         {opp.name}
       </Link>
       <p className="mt-0.5 truncate text-xs text-slate-500">{accountName}</p>
-      <p className="mt-2 text-sm font-semibold text-slate-900">{money(opp)}</p>
+      <p className="mt-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+        <span>{money(opp)}</span>
+        {risk && <RiskBadge level={risk} />}
+      </p>
       <p className="text-xs text-slate-500">
         {closing ? `Closes ${closing}` : "No close date"} · {ownerName}
       </p>
@@ -99,6 +106,7 @@ export function PipelineBoard({
   ownerNames,
   writable,
   move,
+  risk,
 }: {
   columns: BoardColumn[];
   accountNames: Record<string, string>;
@@ -106,6 +114,8 @@ export function PipelineBoard({
   /** IDs of deals this user may move (display only; the API decides). */
   writable: string[];
   move: Move;
+  /** Newest forecast level per deal id (ADR 0037); only for people who may see it. */
+  risk?: Record<string, RiskLevel>;
 }) {
   const [error, setError] = useState<ApiErrorInfo | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -163,6 +173,7 @@ export function PipelineBoard({
                     canMove={writable.includes(o.id)}
                     onMove={onMove}
                     busy={busy === o.id}
+                    risk={risk?.[o.id]}
                   />
                 ))}
               </ol>
